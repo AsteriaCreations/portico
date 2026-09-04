@@ -3,7 +3,6 @@
 namespace App\Models;
 
 use App\Enums\EntryCoverageSource;
-use App\Enums\PoolCoverageSource;
 use Database\Factories\AttendanceFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -14,7 +13,6 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 #[Fillable([
     'member_id', 'event_id', 'checked_in_by', 'checked_in_at', 'departed_at',
     'entry_fee', 'entry_coverage', 'entry_covered_by', 'comp_reason_id',
-    'pool_fee', 'pool_coverage', 'pool_covered_by',
     'voucher_coverage',
     'amount_paid', 'payment_method', 'register_shift_id', 'on_behalf_note', 'notes', 'visit_note',
 ])]
@@ -33,9 +31,6 @@ class Attendance extends Model
             'entry_fee' => 'decimal:2',
             'entry_coverage' => 'decimal:2',
             'entry_covered_by' => EntryCoverageSource::class,
-            'pool_fee' => 'decimal:2',
-            'pool_coverage' => 'decimal:2',
-            'pool_covered_by' => PoolCoverageSource::class,
             'voucher_coverage' => 'decimal:2',
             'amount_paid' => 'decimal:2',
         ];

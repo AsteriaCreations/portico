@@ -14,9 +14,11 @@ return new class extends Migration
      */
     public function up(): void
     {
-        // Entry and pool are priced independently and each can draw on its own
-        // subscription, so they're recorded as two separate snapshot lines,
-        // not a single shared coverage_source.
+        // Entry is priced and recorded here as its own snapshot line; every
+        // other chargeable (pool, and any other subscribable add-on) is
+        // recorded as an attendance_add_ons row instead (see that table) —
+        // one shared shape for "a charge that can be comped/subscribed/
+        // day-passed," rather than a second hardcoded pair of columns here.
         Schema::create('attendance', function (Blueprint $table) {
             $table->id();
             $table->foreignIdFor(Member::class)->constrained();
@@ -27,10 +29,6 @@ return new class extends Migration
             $table->decimal('entry_fee', 8, 2)->default(0);
             $table->decimal('entry_coverage', 8, 2)->default(0);
             $table->enum('entry_covered_by', ['none', 'comp', 'regular_subscription'])->default('none');
-            // POOL component snapshot
-            $table->decimal('pool_fee', 8, 2)->default(0);
-            $table->decimal('pool_coverage', 8, 2)->default(0);
-            $table->enum('pool_covered_by', ['none', 'comp', 'pool_subscription'])->default('none');
             // settlement
             $table->decimal('amount_paid', 8, 2)->default(0);
             $table->string('payment_method', 30)->nullable();

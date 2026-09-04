@@ -1,8 +1,8 @@
 <?php
 
+use App\Models\AddOnDayPass;
 use App\Models\Attendance;
 use App\Models\MiscellaneousPayment;
-use App\Models\PoolDayPass;
 use App\Models\Register;
 use App\Models\Subscription;
 use App\Models\User;
@@ -165,8 +165,8 @@ test('revenueBreakdown splits event, subscription, and other totals across every
 test('cashReceived folds in a cash-paid pool day pass but not a non-cash one', function () {
     $shift = $this->service->openShift($this->register, $this->user, 0);
 
-    PoolDayPass::factory()->create(['register_shift_id' => $shift->id, 'payment_method' => 'cash', 'amount_paid' => 15]);
-    PoolDayPass::factory()->create(['register_shift_id' => $shift->id, 'payment_method' => 'venmo', 'amount_paid' => 999]);
+    AddOnDayPass::factory()->create(['register_shift_id' => $shift->id, 'payment_method' => 'cash', 'amount_paid' => 15]);
+    AddOnDayPass::factory()->create(['register_shift_id' => $shift->id, 'payment_method' => 'venmo', 'amount_paid' => 999]);
 
     expect($this->service->cashReceived($shift))->toEqual(15.0);
 });
@@ -174,7 +174,7 @@ test('cashReceived folds in a cash-paid pool day pass but not a non-cash one', f
 test('revenueBreakdown folds a pool day pass into the other bucket', function () {
     $shift = $this->service->openShift($this->register, $this->user, 0);
 
-    PoolDayPass::factory()->create(['register_shift_id' => $shift->id, 'payment_method' => 'cash', 'amount_paid' => 15]);
+    AddOnDayPass::factory()->create(['register_shift_id' => $shift->id, 'payment_method' => 'cash', 'amount_paid' => 15]);
 
     expect($this->service->revenueBreakdown($shift))->toEqual([
         'event' => 0.0,

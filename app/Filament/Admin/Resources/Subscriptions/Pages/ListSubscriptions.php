@@ -2,8 +2,8 @@
 
 namespace App\Filament\Admin\Resources\Subscriptions\Pages;
 
-use App\Enums\PlanType;
 use App\Filament\Admin\Resources\Subscriptions\SubscriptionResource;
+use App\Models\AddOn;
 use App\Models\Member;
 use App\Models\PaymentMethod;
 use App\Models\Plan;
@@ -71,8 +71,15 @@ class ListSubscriptions extends ListRecords
                             }
                         };
                     }),
-                Select::make('plan_type')
-                    ->options(PlanType::selectableOptions())
+                Select::make('add_on_id')
+                    ->label('Plan')
+                    // Entry (the Regular subscription) plus every currently
+                    // subscribable add-on (Pool, at launch) -- same set
+                    // CheckIn::purchaseSubscriptionAction() offers.
+                    ->options(fn () => collect([AddOn::entry()])
+                        ->merge(AddOn::subscribable()->orderBy('sort_order')->get()->filter(fn (AddOn $addOn) => $addOn->isCurrentlyPurchasable()))
+                        ->mapWithKeys(fn (AddOn $addOn) => [$addOn->id => $addOn->name])
+                        ->all())
                     ->required()
                     ->live(),
                 DatePicker::make('desired_start')
@@ -85,16 +92,15 @@ class ListSubscriptions extends ListRecords
                 Select::make('duration_months')
                     ->label('Duration')
                     ->options(function (Get $get): array {
-                        $rawPlanType = $get('plan_type');
-                        if (! $rawPlanType) {
+                        $addOn = $get('add_on_id') ? AddOn::find($get('add_on_id')) : null;
+                        if (! $addOn) {
                             return [];
                         }
-                        $planType = $rawPlanType instanceof PlanType ? $rawPlanType : PlanType::from($rawPlanType);
 
                         // As of now, not desired_start — SubscriptionBundleService::purchase()
                         // prices every duration (including 1) at today's rate,
                         // since this action records a payment happening now.
-                        return Plan::currentOptionsFor($planType, now())
+                        return Plan::currentOptionsFor($addOn, now())
                             ->mapWithKeys(fn (Plan $plan) => [$plan->duration_months => "{$plan->duration_months} month(s) — \$".number_format($plan->price, 2)])
                             ->all();
                     })
@@ -106,13 +112,13 @@ class ListSubscriptions extends ListRecords
             ])
             ->action(function (array $data): void {
                 $member = Member::findOrFail($data['member_id']);
-                $planType = $data['plan_type'] instanceof PlanType ? $data['plan_type'] : PlanType::from($data['plan_type']);
+                $addOn = AddOn::findOrFail($data['add_on_id']);
                 $months = (int) $data['duration_months'];
                 $desiredStart = Carbon::parse($data['desired_start']);
 
                 $rows = app(SubscriptionBundleService::class)->purchase(
                     $member,
-                    $planType,
+                    $addOn,
                     $months,
                     $desiredStart,
                     Auth::user(),
@@ -163,7 +169,7 @@ class ListSubscriptions extends ListRecords
                             if ($member && ! $member->isSubscriptionEligible()) {
                                 $fail('This member is not yet subscription-eligible.');
                             }
-                            if ($member && $member->hasActiveSubscription(PlanType::Regular, now()->startOfMonth())) {
+                            if ($member && $member->hasActiveSubscriptionFor(AddOn::entry(), now()->startOfMonth())) {
                                 $fail('This member already has regular subscription coverage this month.');
                             }
                         };

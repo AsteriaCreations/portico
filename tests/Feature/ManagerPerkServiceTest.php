@@ -1,7 +1,8 @@
 <?php
 
-use App\Enums\PlanType;
+use App\Enums\AddOnKind;
 use App\Enums\Role;
+use App\Models\AddOn;
 use App\Models\Attendance;
 use App\Models\Member;
 use App\Models\Subscription;
@@ -14,6 +15,7 @@ uses(RefreshDatabase::class);
 beforeEach(function () {
     $this->service = new ManagerPerkService;
     $this->manager = User::factory()->create(['role' => Role::Manager]);
+    $this->entry = AddOn::create(['name' => AddOn::ENTRY_NAME, 'kind' => AddOnKind::Entry, 'subscribable' => true]);
 });
 
 test('a manager can grant the perk to a member, creating a $0 regular subscription', function () {
@@ -21,7 +23,7 @@ test('a manager can grant the perk to a member, creating a $0 regular subscripti
 
     $subscription = $this->service->grant($this->manager, $beneficiary);
 
-    expect($subscription->plan_type)->toBe(PlanType::Regular)
+    expect($subscription->add_on_id)->toBe($this->entry->id)
         ->and($subscription->amount_paid)->toEqual(0)
         ->and($subscription->recorded_by)->toBe($this->manager->id)
         ->and($subscription->comp_source)->toBe(ManagerPerkService::CompSource)
@@ -53,7 +55,7 @@ test('the perk cannot be granted to a member who already has regular subscriptio
     $beneficiary = Member::factory()->create(['subscription_eligible' => true]);
     Subscription::create([
         'member_id' => $beneficiary->id,
-        'plan_type' => PlanType::Regular,
+        'add_on_id' => $this->entry->id,
         'covered_month' => now()->startOfMonth()->toDateString(),
         'amount_paid' => 60,
     ]);

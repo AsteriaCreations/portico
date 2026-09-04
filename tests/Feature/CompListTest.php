@@ -1,11 +1,13 @@
 <?php
 
+use App\Enums\AddOnKind;
 use App\Enums\EntryCoverageSource;
 use App\Enums\Role;
 use App\Filament\Admin\Pages\CheckIn;
 use App\Filament\Admin\Resources\Events\Pages\EditEvent;
 use App\Filament\Admin\Resources\Events\RelationManagers\CompListRelationManager;
 use App\Filament\Admin\Resources\Events\RelationManagers\PrepayListRelationManager;
+use App\Models\AddOn;
 use App\Models\Attendance;
 use App\Models\CompReason;
 use App\Models\Event;
@@ -20,6 +22,12 @@ uses(RefreshDatabase::class);
 beforeEach(function () {
     $this->manager = User::factory()->create(['active' => true, 'role' => Role::Manager]);
     $this->actingAs($this->manager);
+
+    // PricingService::price() always resolves the entry target -- present
+    // in a real install via AddOnSeeder, seeded directly here for this
+    // test's minimal fixture. Pool too, since one test prices a pool event.
+    AddOn::create(['name' => AddOn::ENTRY_NAME, 'kind' => AddOnKind::Entry, 'subscribable' => true]);
+    AddOn::create(['name' => AddOn::POOL_NAME, 'subscribable' => true, 'priced_per_event' => true]);
 });
 
 test('adding a member to the comp list waives entry via applyEventComp, leaving pool priced independently', function () {

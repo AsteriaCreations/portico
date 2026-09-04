@@ -1,8 +1,9 @@
 <?php
 
-use App\Enums\PlanType;
+use App\Enums\AddOnKind;
 use App\Enums\Role;
 use App\Filament\Admin\Resources\Subscriptions\Pages\ListSubscriptions;
+use App\Models\AddOn;
 use App\Models\Member;
 use App\Models\MembershipSetting;
 use App\Models\Subscription;
@@ -12,6 +13,10 @@ use Illuminate\Support\Facades\Gate;
 use Livewire\Livewire;
 
 uses(RefreshDatabase::class);
+
+beforeEach(function () {
+    $this->entry = AddOn::create(['name' => AddOn::ENTRY_NAME, 'kind' => AddOnKind::Entry, 'subscribable' => true]);
+});
 
 test('a manager sees and can use the grant-perk action', function () {
     $manager = User::factory()->create(['role' => Role::Manager]);
@@ -75,7 +80,7 @@ test('granting to a member already covered this month is rejected inline', funct
     $beneficiary = Member::factory()->create(['subscription_eligible' => true]);
     Subscription::create([
         'member_id' => $beneficiary->id,
-        'plan_type' => PlanType::Regular,
+        'add_on_id' => $this->entry->id,
         'covered_month' => now()->startOfMonth()->toDateString(),
         'amount_paid' => 60,
     ]);

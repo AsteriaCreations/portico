@@ -17,7 +17,6 @@ return new class extends Migration
             // subscription/comp covered the difference) — see
             // docs/BLUEPRINT.md "Historical attendance import".
             $table->enum('entry_covered_by', ['none', 'comp', 'regular_subscription', 'legacy_import'])->default('none')->change();
-            $table->enum('pool_covered_by', ['none', 'comp', 'pool_subscription', 'legacy_import'])->default('none')->change();
         });
     }
 
@@ -28,7 +27,6 @@ return new class extends Migration
     {
         Schema::table('attendance', function (Blueprint $table) {
             $table->enum('entry_covered_by', ['none', 'comp', 'regular_subscription'])->default('none')->change();
-            $table->enum('pool_covered_by', ['none', 'comp', 'pool_subscription'])->default('none')->change();
         });
     }
 };

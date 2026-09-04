@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\AttendanceAddOn;
 use App\Models\Event;
 use App\Models\Member;
 use App\Models\User;
@@ -77,12 +78,20 @@ class PrepayListImporter
                 $attrs['amount_paid'] = $override;
             }
 
-            $event->attendance()->create([
+            $attendance = $event->attendance()->create([
                 'member_id' => $member->id,
                 'checked_in_by' => $recordedBy->id,
                 'checked_in_at' => null,
                 ...$attrs,
             ]);
+
+            // toAttendanceAttributes() above only covers entry -- each
+            // subscribable add-on's line (Pool, at launch) is its own
+            // attendance_add_ons row, same as CheckIn::checkInAction()'s
+            // own transaction.
+            foreach ($breakdown->addOnAttendanceRows() as $addOnRow) {
+                AttendanceAddOn::create(['attendance_id' => $attendance->id, ...$addOnRow]);
+            }
 
             $created++;
         }

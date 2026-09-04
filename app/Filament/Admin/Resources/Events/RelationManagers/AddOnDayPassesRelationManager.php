@@ -7,15 +7,16 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 
 /**
- * Read-only ledger of one-time pool day passes sold for this event — rows
- * are written only through CheckIn::purchasePoolDayPassAction() (see
- * PoolDayPassPolicy, which forbids update/delete here).
+ * Read-only ledger of one-time add-on day passes sold for this event (Pool,
+ * the only day-passable add-on today) — rows are written only through
+ * CheckIn::purchaseAddOnDayPassAction() (see AddOnDayPassPolicy, which
+ * forbids update/delete here).
  */
-class PoolDayPassesRelationManager extends RelationManager
+class AddOnDayPassesRelationManager extends RelationManager
 {
-    protected static string $relationship = 'poolDayPasses';
+    protected static string $relationship = 'addOnDayPasses';
 
-    protected static ?string $title = 'Pool day passes';
+    protected static ?string $title = 'Add-on day passes';
 
     public function table(Table $table): Table
     {
@@ -24,6 +25,8 @@ class PoolDayPassesRelationManager extends RelationManager
             ->columns([
                 TextColumn::make('member.username')
                     ->label('Member'),
+                TextColumn::make('addOn.name')
+                    ->label('Add-on'),
                 TextColumn::make('amount_paid')
                     ->money()
                     ->sortable(),

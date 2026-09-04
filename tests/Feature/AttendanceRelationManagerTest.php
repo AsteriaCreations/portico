@@ -1,11 +1,12 @@
 <?php
 
+use App\Enums\AddOnKind;
 use App\Enums\EntryCoverageSource;
-use App\Enums\PlanType;
 use App\Filament\Admin\Resources\Events\Pages\EditEvent;
 use App\Filament\Admin\Resources\Events\RelationManagers\AttendanceRelationManager as EventAttendanceRelationManager;
 use App\Filament\Admin\Resources\Members\Pages\EditMember;
 use App\Filament\Admin\Resources\Members\RelationManagers\AttendanceRelationManager as MemberAttendanceRelationManager;
+use App\Models\AddOn;
 use App\Models\Attendance;
 use App\Models\Event;
 use App\Models\Member;
@@ -19,8 +20,10 @@ uses(RefreshDatabase::class);
 beforeEach(function () {
     $this->actingAs(User::factory()->create(['active' => true]));
 
+    $entry = AddOn::create(['name' => AddOn::ENTRY_NAME, 'kind' => AddOnKind::Entry, 'subscribable' => true]);
+
     Plan::create([
-        'code' => PlanType::Regular,
+        'add_on_id' => $entry->id,
         'price' => 60.00,
         'credit' => 25.00,
         'effective_from' => '2026-01-01',
@@ -41,7 +44,7 @@ test('checking a member in from the event page prices the attendance via the pri
     $event = Event::factory()->create(['event_date' => '2026-07-19', 'entry_fee' => 40, 'pool_fee' => 0]);
     $member = Member::factory()->create();
     $member->subscriptions()->create([
-        'plan_type' => PlanType::Regular,
+        'add_on_id' => AddOn::entry()->id,
         'covered_month' => '2026-07-01',
         'amount_paid' => 60,
     ]);

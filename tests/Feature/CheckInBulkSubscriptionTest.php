@@ -1,8 +1,9 @@
 <?php
 
-use App\Enums\PlanType;
+use App\Enums\AddOnKind;
 use App\Enums\Role;
 use App\Filament\Admin\Pages\CheckIn;
+use App\Models\AddOn;
 use App\Models\Category;
 use App\Models\Event;
 use App\Models\Member;
@@ -19,9 +20,12 @@ beforeEach(function () {
     $this->user = User::factory()->create(['active' => true, 'role' => Role::Manager]);
     $this->actingAs($this->user);
 
-    Plan::create(['code' => PlanType::Regular, 'duration_months' => 1, 'price' => 60, 'credit' => 25, 'effective_from' => '2026-01-01']);
-    Plan::create(['code' => PlanType::Regular, 'duration_months' => 3, 'price' => 175, 'credit' => null, 'effective_from' => '2026-01-01']);
-    Plan::create(['code' => PlanType::Pool, 'duration_months' => 1, 'price' => 15, 'credit' => null, 'effective_from' => '2026-01-01']);
+    $this->entry = AddOn::create(['name' => AddOn::ENTRY_NAME, 'kind' => AddOnKind::Entry, 'subscribable' => true]);
+    $pool = AddOn::create(['name' => AddOn::POOL_NAME, 'subscribable' => true, 'priced_per_event' => true]);
+
+    Plan::create(['add_on_id' => $this->entry->id, 'duration_months' => 1, 'price' => 60, 'credit' => 25, 'effective_from' => '2026-01-01']);
+    Plan::create(['add_on_id' => $this->entry->id, 'duration_months' => 3, 'price' => 175, 'credit' => null, 'effective_from' => '2026-01-01']);
+    Plan::create(['add_on_id' => $pool->id, 'duration_months' => 1, 'price' => 15, 'credit' => null, 'effective_from' => '2026-01-01']);
 });
 
 function bulkClearMember(Category $category, array $overrides = []): Member
@@ -49,7 +53,7 @@ test('buying a 3-month bundle at check-in creates 3 rows split correctly', funct
         ])
         ->assertHasNoActionErrors();
 
-    $rows = Subscription::where('member_id', $member->id)->where('plan_type', PlanType::Regular)->orderBy('covered_month')->get();
+    $rows = Subscription::where('member_id', $member->id)->where('add_on_id', $this->entry->id)->orderBy('covered_month')->get();
 
     // Subtracting/adding from the 1st avoids Carbon's month-overflow quirk
     // on a 31st (now()->addMonth() can land mid-next-month instead of the
@@ -64,7 +68,7 @@ test('buying a 3-month bundle at check-in creates 3 rows split correctly', funct
 test('a bundle purchase whose window collides with existing coverage shifts forward, end to end', function () {
     $member = bulkClearMember($this->irregular, ['subscription_eligible' => true]);
     $member->subscriptions()->create([
-        'plan_type' => PlanType::Regular,
+        'add_on_id' => $this->entry->id,
         'covered_month' => now()->startOfMonth()->addMonth()->toDateString(),
         'amount_paid' => 60,
     ]);
@@ -79,7 +83,7 @@ test('a bundle purchase whose window collides with existing coverage shifts forw
         ->assertHasNoActionErrors();
 
     $bundleRows = Subscription::where('member_id', $member->id)
-        ->where('plan_type', PlanType::Regular)
+        ->where('add_on_id', $this->entry->id)
         ->where('amount_paid', '!=', 60)
         ->orderBy('covered_month')
         ->get();
@@ -95,7 +99,7 @@ test('a bundle purchase whose window collides with existing coverage shifts forw
 test('the 1-month option is still hidden outright (not shifted) once that exact month is covered', function () {
     $member = bulkClearMember($this->irregular, ['subscription_eligible' => true]);
     $member->subscriptions()->create([
-        'plan_type' => PlanType::Regular,
+        'add_on_id' => $this->entry->id,
         'covered_month' => now()->startOfMonth()->toDateString(),
         'amount_paid' => 60,
     ]);
@@ -106,7 +110,7 @@ test('the 1-month option is still hidden outright (not shifted) once that exact 
 
     $method = (new ReflectionClass(CheckIn::class))->getMethod('subscriptionOptions');
     $method->setAccessible(true);
-    $options = $method->invoke($instance->instance(), PlanType::Regular, $member->fresh(), $event);
+    $options = $method->invoke($instance->instance(), $this->entry, $member->fresh(), $event);
 
     expect($options)->not->toHaveKey(1)
         ->and($options)->toHaveKey(3);

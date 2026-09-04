@@ -60,9 +60,9 @@ class Event extends Model
         return $this->hasMany(CompRequest::class);
     }
 
-    public function poolDayPasses(): HasMany
+    public function addOnDayPasses(): HasMany
     {
-        return $this->hasMany(PoolDayPass::class);
+        return $this->hasMany(AddOnDayPass::class);
     }
 
     /**

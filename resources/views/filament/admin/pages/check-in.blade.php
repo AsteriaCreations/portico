@@ -112,9 +112,9 @@
             @endif
 
             {{-- Unlike Buy Subscription above, not gated by isSubscriptionEligible() --
-            a one-time pool day pass is revenue, not a membership perk. --}}
+            a one-time add-on day pass is revenue, not a membership perk. --}}
             <div class="mt-4">
-                {{ $this->purchasePoolDayPassAction }}
+                {{ $this->purchaseAddOnDayPassAction }}
             </div>
 
             @if (app(\App\Services\AdmissionPolicy::class)->needsCapture($member))

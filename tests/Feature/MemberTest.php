@@ -1,6 +1,7 @@
 <?php
 
-use App\Enums\PlanType;
+use App\Enums\AddOnKind;
+use App\Models\AddOn;
 use App\Models\Event;
 use App\Models\Member;
 use App\Models\MembershipSetting;
@@ -8,17 +9,19 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);
 
-test('hasActiveSubscription matches only the same plan type and month', function () {
+test('hasActiveSubscriptionFor matches only the same add-on and month', function () {
+    $entry = AddOn::create(['name' => AddOn::ENTRY_NAME, 'kind' => AddOnKind::Entry, 'subscribable' => true]);
+    $pool = AddOn::create(['name' => AddOn::POOL_NAME, 'subscribable' => true, 'priced_per_event' => true]);
     $member = Member::factory()->create();
     $member->subscriptions()->create([
-        'plan_type' => PlanType::Regular,
+        'add_on_id' => $entry->id,
         'covered_month' => '2026-07-01',
         'amount_paid' => 60,
     ]);
 
-    expect($member->hasActiveSubscription(PlanType::Regular, now()->parse('2026-07-01')))->toBeTrue()
-        ->and($member->hasActiveSubscription(PlanType::Pool, now()->parse('2026-07-01')))->toBeFalse()
-        ->and($member->hasActiveSubscription(PlanType::Regular, now()->parse('2026-08-01')))->toBeFalse();
+    expect($member->hasActiveSubscriptionFor($entry, now()->parse('2026-07-01')))->toBeTrue()
+        ->and($member->hasActiveSubscriptionFor($pool, now()->parse('2026-07-01')))->toBeFalse()
+        ->and($member->hasActiveSubscriptionFor($entry, now()->parse('2026-08-01')))->toBeFalse();
 });
 
 test('isSubscriptionEligible is false below the attendance threshold with no manual flag', function () {

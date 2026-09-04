@@ -2,7 +2,7 @@
 
 namespace Database\Factories;
 
-use App\Enums\PlanType;
+use App\Models\AddOn;
 use App\Models\Plan;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
@@ -19,7 +19,7 @@ class PlanFactory extends Factory
     public function definition(): array
     {
         return [
-            'code' => fake()->randomElement(PlanType::cases()),
+            'add_on_id' => AddOn::factory(),
             'duration_months' => 1,
             'price' => fake()->randomFloat(2, 10, 100),
             'credit' => null,

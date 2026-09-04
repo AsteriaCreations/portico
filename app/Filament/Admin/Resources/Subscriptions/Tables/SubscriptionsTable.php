@@ -2,7 +2,7 @@
 
 namespace App\Filament\Admin\Resources\Subscriptions\Tables;
 
-use App\Enums\PlanType;
+use App\Models\AddOn;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
@@ -21,7 +21,8 @@ class SubscriptionsTable
                     ->label('Member')
                     ->searchable()
                     ->sortable(),
-                TextColumn::make('plan_type')
+                TextColumn::make('addOn.name')
+                    ->label('Plan')
                     ->badge(),
                 TextColumn::make('covered_month')
                     ->date('F Y')
@@ -45,8 +46,14 @@ class SubscriptionsTable
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
-                SelectFilter::make('plan_type')
-                    ->options(PlanType::class),
+                // Every add-on, not just currently-subscribable ones -- a
+                // legitimate old subscription for an add-on that's since
+                // had subscribable turned off (or Pool while pool_enabled
+                // is off) must stay filterable, same reasoning
+                // AddOn::subscribable() itself never applies to browsing.
+                SelectFilter::make('add_on_id')
+                    ->label('Plan')
+                    ->options(fn () => AddOn::orderBy('sort_order')->pluck('name', 'id')->all()),
             ])
             ->recordActions([
                 EditAction::make(),

@@ -2,6 +2,8 @@
 
 namespace App\Filament\Admin\Resources\Events\RelationManagers;
 
+use App\Models\Attendance;
+use App\Models\AttendanceAddOn;
 use App\Models\Member;
 use App\Models\MembershipSetting;
 use App\Models\PaymentMethod;
@@ -84,7 +86,6 @@ class PrepayListRelationManager extends RelationManager
                     ->searchable()
                     ->sortable(),
                 TextColumn::make('entry_fee')->money()->sortable(),
-                TextColumn::make('pool_fee')->money()->sortable(),
                 TextColumn::make('amount_paid')->money()->sortable(),
                 TextColumn::make('payment_method')
                     ->toggleable(isToggledHiddenByDefault: true),
@@ -144,6 +145,17 @@ class PrepayListRelationManager extends RelationManager
                             'checked_in_at' => null,
                             ...$attrs,
                         ];
+                    })
+                    // toAttendanceAttributes() above only covers entry --
+                    // each subscribable add-on's line (Pool, at launch) is
+                    // its own attendance_add_ons row, same as
+                    // CheckIn::checkInAction()'s own transaction.
+                    ->after(function (Attendance $record): void {
+                        $breakdown = app(PricingService::class)->price($record->member, $this->getOwnerRecord());
+
+                        foreach ($breakdown->addOnAttendanceRows() as $row) {
+                            AttendanceAddOn::create(['attendance_id' => $record->id, ...$row]);
+                        }
                     }),
                 $this->bulkUploadAction(),
             ])

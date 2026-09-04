@@ -1,8 +1,10 @@
 <?php
 
+use App\Enums\AddOnKind;
 use App\Enums\Role;
 use App\Filament\Admin\Resources\Events\Pages\EditEvent;
 use App\Filament\Admin\Resources\Events\RelationManagers\PrepayListRelationManager;
+use App\Models\AddOn;
 use App\Models\Attendance;
 use App\Models\Event;
 use App\Models\Member;
@@ -20,6 +22,11 @@ uses(RefreshDatabase::class);
 beforeEach(function () {
     $this->manager = User::factory()->create(['active' => true, 'role' => Role::Manager]);
     $this->actingAs($this->manager);
+
+    // PricingService::price() always resolves the entry target -- present
+    // in a real install via AddOnSeeder, seeded directly here for this
+    // test's minimal fixture.
+    AddOn::create(['name' => AddOn::ENTRY_NAME, 'kind' => AddOnKind::Entry, 'subscribable' => true]);
 });
 
 function buildPrepayUploadFixture(array $rows): string

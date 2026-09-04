@@ -5,10 +5,10 @@ namespace App\Filament\Admin\Resources\Events;
 use App\Filament\Admin\Resources\Events\Pages\CreateEvent;
 use App\Filament\Admin\Resources\Events\Pages\EditEvent;
 use App\Filament\Admin\Resources\Events\Pages\ListEvents;
+use App\Filament\Admin\Resources\Events\RelationManagers\AddOnDayPassesRelationManager;
 use App\Filament\Admin\Resources\Events\RelationManagers\AttendanceRelationManager;
 use App\Filament\Admin\Resources\Events\RelationManagers\CompListRelationManager;
 use App\Filament\Admin\Resources\Events\RelationManagers\CompRequestsRelationManager;
-use App\Filament\Admin\Resources\Events\RelationManagers\PoolDayPassesRelationManager;
 use App\Filament\Admin\Resources\Events\RelationManagers\PrepayListRelationManager;
 use App\Filament\Admin\Resources\Events\Schemas\EventForm;
 use App\Filament\Admin\Resources\Events\Tables\EventsTable;
@@ -44,7 +44,7 @@ class EventResource extends Resource
             PrepayListRelationManager::class,
             CompListRelationManager::class,
             CompRequestsRelationManager::class,
-            PoolDayPassesRelationManager::class,
+            AddOnDayPassesRelationManager::class,
         ];
     }
 

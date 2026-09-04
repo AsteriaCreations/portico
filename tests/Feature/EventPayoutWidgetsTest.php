@@ -1,9 +1,10 @@
 <?php
 
+use App\Enums\AddOnKind;
 use App\Enums\EntryCoverageSource;
 use App\Enums\PayoutType;
-use App\Enums\PlanType;
 use App\Enums\Role;
+use App\Models\AddOn;
 use App\Models\Attendance;
 use App\Models\Category;
 use App\Models\Event;
@@ -18,8 +19,10 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 uses(RefreshDatabase::class);
 
 beforeEach(function () {
+    $entry = AddOn::create(['name' => AddOn::ENTRY_NAME, 'kind' => AddOnKind::Entry, 'subscribable' => true]);
+
     Plan::create([
-        'code' => PlanType::Regular,
+        'add_on_id' => $entry->id,
         'price' => 60.00,
         'credit' => 25.00,
         'effective_from' => '2026-01-01',

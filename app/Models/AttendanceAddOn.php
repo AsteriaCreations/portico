@@ -2,13 +2,14 @@
 
 namespace App\Models;
 
+use App\Enums\AddOnCoverageSource;
 use Database\Factories\AttendanceAddOnFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-#[Fillable(['attendance_id', 'add_on_id', 'name', 'price', 'is_overnight'])]
+#[Fillable(['attendance_id', 'add_on_id', 'name', 'price', 'fee', 'coverage', 'covered_by', 'is_overnight'])]
 class AttendanceAddOn extends Model
 {
     /** @use HasFactory<AttendanceAddOnFactory> */
@@ -21,6 +22,9 @@ class AttendanceAddOn extends Model
     {
         return [
             'price' => 'decimal:2',
+            'fee' => 'decimal:2',
+            'coverage' => 'decimal:2',
+            'covered_by' => AddOnCoverageSource::class,
             'is_overnight' => 'boolean',
         ];
     }

@@ -2,68 +2,92 @@
 
 namespace App\Services;
 
+use App\Enums\AddOnCoverageSource;
 use App\Enums\EntryCoverageSource;
-use App\Enums\PlanType;
-use App\Enums\PoolCoverageSource;
+use App\Models\AddOn;
 use App\Models\Event;
 use App\Models\Member;
 use App\Models\Plan;
+use Illuminate\Support\Collection;
 
 /**
- * The single source of truth for what a member owes at an event. Entry and pool
- * are priced independently — each subscription only ever discounts its own
- * component. See docs/BLUEPRINT.md "Fee pipeline" for the spec
- * this implements.
+ * The single source of truth for what a member owes at an event. Entry is
+ * priced on its own (host bypass, category comp, the Regular subscription's
+ * per-visit credit); every subscribable add-on (Pool, at launch — see
+ * AddOn::subscribable()) is priced independently of entry and of every other
+ * add-on, each drawing on its own subscription/day-pass/comp coverage. See
+ * docs/BLUEPRINT.md "Fee pipeline" for the spec this implements.
  */
 class PricingService
 {
     public function price(Member $member, Event $event): PriceBreakdown
     {
         $month = $event->event_date->clone()->startOfMonth();
+        $entry = AddOn::entry();
+        $subscribable = AddOn::subscribable()->get();
 
         return $this->build(
             $member,
             $event,
-            regularActive: $member->hasActiveSubscription(PlanType::Regular, $month),
-            poolActive: $member->hasActiveSubscription(PlanType::Pool, $month),
-            poolDayPassActive: $member->hasPoolDayPassFor($event),
+            regularActive: $member->hasActiveSubscriptionFor($entry, $month),
+            subscribableAddOns: $subscribable,
+            activeAddOnSubscriptionIds: $subscribable->filter(fn (AddOn $addOn) => $member->hasActiveSubscriptionFor($addOn, $month))->pluck('id')->all(),
+            addOnDayPassIds: $subscribable->filter(fn (AddOn $addOn) => $member->hasDayPassFor($addOn, $event))->pluck('id')->all(),
         );
     }
 
     /**
-     * Same coverage math as price(), but regular/pool subscription coverage is
-     * driven by caller-supplied booleans instead of real subscription rows —
-     * lets the check-in page show a live running total for an option staff
-     * have selected but not yet purchased, without writing a speculative
-     * Subscription row. A selection only ever adds coverage on top of
-     * whatever's already active for real; it never removes existing coverage.
+     * Same coverage math as price(), but regular/add-on subscription
+     * coverage additionally counts whatever's currently *selected* on the
+     * check-in page — lets the page show a live running total for an option
+     * staff have picked but not yet purchased, without writing a
+     * speculative Subscription row. A selection only ever adds coverage on
+     * top of whatever's already active for real; it never removes existing
+     * coverage.
+     *
+     * @param  int[]  $addOnSubscriptionIdsSelected  add-on IDs staff have picked a subscription duration for on the live pricing form
      */
-    public function previewWithSelections(Member $member, Event $event, bool $regularSelected, bool $poolSelected): PriceBreakdown
+    public function previewWithSelections(Member $member, Event $event, bool $regularSelected, array $addOnSubscriptionIdsSelected = []): PriceBreakdown
     {
         $month = $event->event_date->clone()->startOfMonth();
+        $entry = AddOn::entry();
+        $subscribable = AddOn::subscribable()->get();
 
         return $this->build(
             $member,
             $event,
-            regularActive: $regularSelected || $member->hasActiveSubscription(PlanType::Regular, $month),
-            poolActive: $poolSelected || $member->hasActiveSubscription(PlanType::Pool, $month),
-            poolDayPassActive: $member->hasPoolDayPassFor($event),
+            regularActive: $regularSelected || $member->hasActiveSubscriptionFor($entry, $month),
+            subscribableAddOns: $subscribable,
+            activeAddOnSubscriptionIds: $subscribable->filter(fn (AddOn $addOn) => in_array($addOn->id, $addOnSubscriptionIdsSelected, true) || $member->hasActiveSubscriptionFor($addOn, $month))->pluck('id')->all(),
+            addOnDayPassIds: $subscribable->filter(fn (AddOn $addOn) => $member->hasDayPassFor($addOn, $event))->pluck('id')->all(),
         );
     }
 
-    private function build(Member $member, Event $event, bool $regularActive, bool $poolActive, bool $poolDayPassActive): PriceBreakdown
+    /**
+     * @param  Collection<int, AddOn>  $subscribableAddOns
+     * @param  int[]  $activeAddOnSubscriptionIds
+     * @param  int[]  $addOnDayPassIds
+     */
+    private function build(Member $member, Event $event, bool $regularActive, Collection $subscribableAddOns, array $activeAddOnSubscriptionIds, array $addOnDayPassIds): PriceBreakdown
     {
         $entryFee = (float) $event->entry_fee;
-        $poolFee = (float) $event->pool_fee;
 
         if ($member->category->is_comped) {
+            $addOnLines = $subscribableAddOns
+                ->map(function (AddOn $addOn) use ($event) {
+                    $fee = $addOn->priceFor($event);
+
+                    return $fee !== null ? new AddOnPriceLine($addOn, $fee, $fee, AddOnCoverageSource::Comp) : null;
+                })
+                ->filter()
+                ->values()
+                ->all();
+
             return new PriceBreakdown(
                 entryFee: $entryFee,
                 entryCoverage: $entryFee,
                 entryCoveredBy: EntryCoverageSource::Comp,
-                poolFee: $poolFee,
-                poolCoverage: $poolFee,
-                poolCoveredBy: PoolCoverageSource::Comp,
+                addOnLines: $addOnLines,
                 voucherCoverage: 0.0,
                 amountPaid: 0.0,
             );
@@ -73,7 +97,7 @@ class PricingService
             $entryCoverage = $entryFee;
             $entryCoveredBy = EntryCoverageSource::Host;
         } elseif ($entryFee > 0 && $regularActive) {
-            $credit = (float) (Plan::currentFor(PlanType::Regular, $event->event_date)?->credit ?? 0);
+            $credit = (float) (Plan::currentFor(AddOn::entry(), $event->event_date)?->credit ?? 0);
             $entryCoverage = min($entryFee, $credit);
             $entryCoveredBy = EntryCoverageSource::RegularSubscription;
         } else {
@@ -81,45 +105,49 @@ class PricingService
             $entryCoveredBy = EntryCoverageSource::None;
         }
 
-        if ($poolFee > 0 && $poolDayPassActive) {
-            $poolCoverage = $poolFee;
-            $poolCoveredBy = PoolCoverageSource::DayPass;
-        } elseif ($poolFee > 0 && $poolActive) {
-            $poolCoverage = $poolFee;
-            $poolCoveredBy = PoolCoverageSource::PoolSubscription;
-        } else {
-            $poolCoverage = 0.0;
-            $poolCoveredBy = PoolCoverageSource::None;
+        $addOnLines = [];
+        foreach ($subscribableAddOns as $addOn) {
+            $fee = $addOn->priceFor($event);
+            if ($fee === null) {
+                continue;
+            }
+
+            if (in_array($addOn->id, $addOnDayPassIds, true)) {
+                $coverage = $fee;
+                $coveredBy = AddOnCoverageSource::DayPass;
+            } elseif (in_array($addOn->id, $activeAddOnSubscriptionIds, true)) {
+                $credit = Plan::currentFor($addOn, $event->event_date)?->credit;
+                $coverage = $credit !== null ? min($fee, (float) $credit) : $fee;
+                $coveredBy = AddOnCoverageSource::Subscription;
+            } else {
+                $coverage = 0.0;
+                $coveredBy = AddOnCoverageSource::None;
+            }
+
+            $addOnLines[] = new AddOnPriceLine($addOn, $fee, $coverage, $coveredBy);
         }
+
+        $amountPaid = ($entryFee - $entryCoverage) + collect($addOnLines)->sum(fn (AddOnPriceLine $line) => $line->amountDue());
 
         return new PriceBreakdown(
             entryFee: $entryFee,
             entryCoverage: $entryCoverage,
             entryCoveredBy: $entryCoveredBy,
-            poolFee: $poolFee,
-            poolCoverage: $poolCoverage,
-            poolCoveredBy: $poolCoveredBy,
+            addOnLines: $addOnLines,
             voucherCoverage: 0.0,
-            amountPaid: ($entryFee - $entryCoverage) + ($poolFee - $poolCoverage),
+            amountPaid: $amountPaid,
         );
     }
 
-    /**
-     * Applies voucher credit on top of an already-priced breakdown. A separate,
-     * explicit step from price() because it's opt-in and partial at check-in,
-     * not a deterministic function of member+event — see
-     * docs/BLUEPRINT.md "Vouchers". Always capped at both the
-     * payer's available balance and what's still due; never goes negative.
-     */
     /**
      * A manager waiving this specific visit's entry fee (e.g. a volunteer
      * "House Sub" that night) — a per-visit override layered on top of
      * price(), the same shape as applyVoucher(), not baked into price()
      * itself: that's a property of member+event, this is a one-off
      * decision. Fully overrides whatever price() already computed for entry
-     * (category comp, regular-subscription coverage, or nothing). Entry only — pool
-     * stays priced independently. See docs/BLUEPRINT.md
-     * "Still open" ("House sub comped rates").
+     * (category comp, regular-subscription coverage, or nothing). Entry
+     * only — add-on lines stay priced independently. See
+     * docs/BLUEPRINT.md "Per-event comp".
      */
     public function applyEventComp(PriceBreakdown $breakdown): PriceBreakdown
     {
@@ -127,14 +155,19 @@ class PricingService
             entryFee: $breakdown->entryFee,
             entryCoverage: $breakdown->entryFee,
             entryCoveredBy: EntryCoverageSource::EventComp,
-            poolFee: $breakdown->poolFee,
-            poolCoverage: $breakdown->poolCoverage,
-            poolCoveredBy: $breakdown->poolCoveredBy,
+            addOnLines: $breakdown->addOnLines,
             voucherCoverage: $breakdown->voucherCoverage,
             amountPaid: max(0.0, $breakdown->amountPaid - ($breakdown->entryFee - $breakdown->entryCoverage)),
         );
     }
 
+    /**
+     * Applies voucher credit on top of an already-priced breakdown. A
+     * separate, explicit step from price() because it's opt-in and partial
+     * at check-in, not a deterministic function of member+event — see
+     * docs/BLUEPRINT.md "Vouchers". Always capped at both the
+     * payer's available balance and what's still due; never goes negative.
+     */
     public function applyVoucher(PriceBreakdown $breakdown, float $availableBalance, float $requestedAmount): PriceBreakdown
     {
         $applied = max(0.0, min($requestedAmount, $availableBalance, $breakdown->amountPaid));
@@ -143,9 +176,7 @@ class PricingService
             entryFee: $breakdown->entryFee,
             entryCoverage: $breakdown->entryCoverage,
             entryCoveredBy: $breakdown->entryCoveredBy,
-            poolFee: $breakdown->poolFee,
-            poolCoverage: $breakdown->poolCoverage,
-            poolCoveredBy: $breakdown->poolCoveredBy,
+            addOnLines: $breakdown->addOnLines,
             voucherCoverage: $applied,
             amountPaid: $breakdown->amountPaid - $applied,
         );

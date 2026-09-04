@@ -12,11 +12,11 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('attendance', function (Blueprint $table) {
-            // A third, independent settlement line: unlike entry/pool coverage
-            // it isn't tied to a component, it just discounts whatever's left
-            // of the combined total after entry/pool coverage is applied. See
-            // docs/BLUEPRINT.md "Vouchers".
-            $table->decimal('voucher_coverage', 8, 2)->default(0)->after('pool_covered_by');
+            // An independent settlement line: unlike entry/add-on coverage it
+            // isn't tied to a single component, it just discounts whatever's
+            // left of the combined total after entry and add-on coverage are
+            // applied. See docs/BLUEPRINT.md "Vouchers".
+            $table->decimal('voucher_coverage', 8, 2)->default(0)->after('entry_covered_by');
         });
     }
 

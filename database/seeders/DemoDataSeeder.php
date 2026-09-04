@@ -2,9 +2,9 @@
 
 namespace Database\Seeders;
 
+use App\Enums\AddOnCoverageSource;
 use App\Enums\CompRequestStatus;
 use App\Enums\EntryCoverageSource;
-use App\Enums\PoolCoverageSource;
 use App\Enums\Role;
 use App\Models\AddOn;
 use App\Models\Attendance;
@@ -45,7 +45,9 @@ class DemoDataSeeder extends Seeder
         $categories = Category::all()->keyBy('name');
         $eventTypes = EventType::all();
         $compReasons = CompReason::all();
-        $addOns = AddOn::all();
+        // Flat, non-subscribable add-ons only -- Entry/Pool are priced
+        // through PricingService, not this random "sprinkling" logic.
+        $addOns = AddOn::where('subscribable', false)->get();
 
         $users = $this->seedUsers();
         $members = $this->seedMembers($categories);
@@ -231,14 +233,15 @@ class DemoDataSeeder extends Seeder
                     $entryCoveredBy = EntryCoverageSource::RegularSubscription;
                 }
 
+                $poolFee = (float) $event->pool_fee;
                 $poolCoverage = 0.0;
-                $poolCoveredBy = PoolCoverageSource::None;
-                if ((float) $event->pool_fee > 0 && fake()->boolean(25)) {
-                    $poolCoverage = (float) $event->pool_fee;
-                    $poolCoveredBy = PoolCoverageSource::PoolSubscription;
+                $poolCoveredBy = AddOnCoverageSource::None;
+                if ($poolFee > 0 && fake()->boolean(25)) {
+                    $poolCoverage = $poolFee;
+                    $poolCoveredBy = AddOnCoverageSource::Subscription;
                 }
 
-                $amountPaid = ((float) $event->entry_fee - $entryCoverage) + ((float) $event->pool_fee - $poolCoverage);
+                $amountPaid = ((float) $event->entry_fee - $entryCoverage) + ($poolFee - $poolCoverage);
 
                 $attendance = Attendance::create([
                     'member_id' => $member->id,
@@ -249,13 +252,22 @@ class DemoDataSeeder extends Seeder
                     'entry_coverage' => $entryCoverage,
                     'entry_covered_by' => $entryCoveredBy,
                     'comp_reason_id' => $compReasonId,
-                    'pool_fee' => $event->pool_fee,
-                    'pool_coverage' => $poolCoverage,
-                    'pool_covered_by' => $poolCoveredBy,
                     'voucher_coverage' => 0,
                     'amount_paid' => $amountPaid,
                     'payment_method' => $amountPaid > 0 ? fake()->randomElement(['cash', 'venmo']) : null,
                 ]);
+
+                if ($poolFee > 0 && $poolAddOn = AddOn::pool()) {
+                    AttendanceAddOn::create([
+                        'attendance_id' => $attendance->id,
+                        'add_on_id' => $poolAddOn->id,
+                        'name' => $poolAddOn->name,
+                        'price' => $poolFee - $poolCoverage,
+                        'fee' => $poolFee,
+                        'coverage' => $poolCoverage,
+                        'covered_by' => $poolCoveredBy,
+                    ]);
+                }
 
                 // A light sprinkling of Event Add-Ons, so attendance_add_ons
                 // isn't empty either.
@@ -283,7 +295,7 @@ class DemoDataSeeder extends Seeder
                 if (fake()->boolean(60)) {
                     Subscription::create([
                         'member_id' => $member->id,
-                        'plan_type' => 'regular',
+                        'add_on_id' => AddOn::entry()->id,
                         'covered_month' => today()->subMonths($monthsAgo)->startOfMonth(),
                         'amount_paid' => 60,
                         'paid_on' => today()->subMonths($monthsAgo)->startOfMonth()->addDays(2),

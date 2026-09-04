@@ -158,7 +158,7 @@ CREATE TABLE events (
   name          VARCHAR(80),                         -- 'Sunday Pool Social', etc.
   event_type_id INT,                                 -- FK -> event_types (label / analytics ONLY, not a fee input)
   entry_fee     DECIMAL(8,2) NOT NULL DEFAULT 0,     -- regular admission; 0 => pool-only event
-  pool_fee      DECIMAL(8,2) NOT NULL DEFAULT 0,     -- additive pool access; 0 => pool closed / none
+  pool_fee      DECIMAL(8,2) NOT NULL DEFAULT 0,     -- Pool add-on's price for this event; 0 => pool closed / none (see add_ons below)
   door_prepay_enabled BOOLEAN NOT NULL DEFAULT FALSE, -- lets this event surface at the check-in desk ahead of its own date
   showrunner_id INT,                                  -- FK -> members; the member running this event (Showrunner role's comp-list nominations, Admin-approved)
   host_id       INT,                                  -- FK -> members; automatically free entry at THIS event when they check in (see "Host")
@@ -194,11 +194,35 @@ CREATE TABLE occupancy_adjustments (
 -- excludes departed rows from its attendance COUNT the same way this ledger's
 -- SUM already reduced it. Both mechanisms coexist; see the code for details.
 
+-- ADD_ONS — editable catalog of chargeable extras, including Pool. `kind='entry'`
+-- marks the one protected row every Regular subscription targets (so plans/
+-- subscriptions can reference one NOT NULL add_on_id FK for every target,
+-- Entry included — a nullable "no target" case would break the unique index
+-- below, since SQL treats two NULLs as non-colliding). `subscribable` gates
+-- whether this add-on participates in the coverage engine (comp/subscription/
+-- day-pass) at all; a non-subscribable add-on is a flat, always-full-price
+-- extra (Private room rental, Sleepover) tracked only via attendance_add_ons,
+-- never through PricingService. `priced_per_event` means the price varies by
+-- event (Pool, from events.pool_fee) rather than one flat catalog `price`.
+CREATE TABLE add_ons (
+  id               INT AUTO_INCREMENT PRIMARY KEY,
+  name             VARCHAR(60) NOT NULL UNIQUE,
+  kind             ENUM('entry','addon') NOT NULL DEFAULT 'addon',
+  priced_per_event BOOLEAN NOT NULL DEFAULT FALSE,
+  price            DECIMAL(8,2),                     -- NULL when priced_per_event
+  subscribable     BOOLEAN NOT NULL DEFAULT FALSE,
+  max_per_night    INT,                               -- building-wide cap (e.g. one rentable room); NULL = unlimited
+  is_overnight     BOOLEAN NOT NULL DEFAULT FALSE,     -- extends sponsor accountability / Active Patrons visibility past midnight
+  description      VARCHAR(255),
+  sort_order       INT NOT NULL DEFAULT 0,
+  active           BOOLEAN NOT NULL DEFAULT TRUE
+);
+
 -- SUBSCRIPTIONS — monthly, tied to a calendar month
 CREATE TABLE subscriptions (
   id            INT AUTO_INCREMENT PRIMARY KEY,
   member_id     INT NOT NULL,
-  plan_type     ENUM('regular','pool') NOT NULL,     -- regular covers ENTRY, pool covers POOL
+  add_on_id     INT NOT NULL,                        -- what this covers: the entry add-on, or a subscribable one (e.g. Pool)
   covered_month DATE NOT NULL,                        -- first day of covered month (e.g. 2026-07-01)
   amount_paid   DECIMAL(8,2) NOT NULL DEFAULT 0,
   paid_on       DATE,
@@ -206,24 +230,27 @@ CREATE TABLE subscriptions (
   comp_source   VARCHAR(50),                          -- e.g. 'manager_monthly_perk'; NULL for a normal paid sub
   notes         VARCHAR(255),                          -- audit detail, e.g. "gifted to <member>"
   created_at TIMESTAMP NULL, updated_at TIMESTAMP NULL,
-  UNIQUE (member_id, plan_type, covered_month),
+  UNIQUE (member_id, add_on_id, covered_month),
   FOREIGN KEY (member_id)  REFERENCES members(id),
+  FOREIGN KEY (add_on_id)  REFERENCES add_ons(id),
   FOREIGN KEY (recorded_by) REFERENCES users(id)
 );
 
 -- PLANS — editable, effective-dated fee settings (manager-managed)
 CREATE TABLE plans (
   id             INT AUTO_INCREMENT PRIMARY KEY,
-  code           ENUM('regular','pool') NOT NULL,
-  price          DECIMAL(8,2) NOT NULL,              -- e.g. 60.00 regular · 15.00 pool (seed defaults, editable)
-  credit         DECIMAL(8,2),                       -- e.g. 25.00 for regular; pool = full coverage
+  add_on_id      INT NOT NULL,                       -- what this plan prices: the entry add-on, or a subscribable one
+  price          DECIMAL(8,2) NOT NULL,              -- e.g. 60.00 entry · 15.00 pool (seed defaults, editable)
+  credit         DECIMAL(8,2),                       -- per-visit credit (e.g. 25.00 for entry); NULL = full coverage instead
   effective_from DATE NOT NULL,
   effective_to   DATE,                               -- NULL = current
-  created_at TIMESTAMP NULL, updated_at TIMESTAMP NULL
+  created_at TIMESTAMP NULL, updated_at TIMESTAMP NULL,
+  FOREIGN KEY (add_on_id) REFERENCES add_ons(id)
 );
--- Semantics: 'regular' covers the ENTRY component via `credit` (per event); 'pool' covers the POOL component in full.
 
--- ATTENDANCE — the join + a self-auditing, two-component price record
+-- ATTENDANCE — the join + a self-auditing entry price record. Every other
+-- chargeable (Pool, and any other subscribable add-on) is its own
+-- attendance_add_ons row below, not a second hardcoded pair of columns here.
 CREATE TABLE attendance (
   id                INT AUTO_INCREMENT PRIMARY KEY,
   member_id         INT NOT NULL,
@@ -236,13 +263,9 @@ CREATE TABLE attendance (
   entry_coverage    DECIMAL(8,2) NOT NULL DEFAULT 0, -- comp, regular-subscription credit, or a manager's per-visit comp
   entry_covered_by  ENUM('none','comp','regular_subscription','legacy_import','event_comp') NOT NULL DEFAULT 'none',
   comp_reason_id    INT,                             -- set only when entry_covered_by = 'event_comp' (see Comp reasons)
-  -- POOL component snapshot --
-  pool_fee          DECIMAL(8,2) NOT NULL DEFAULT 0, -- snapshot of event.pool_fee
-  pool_coverage     DECIMAL(8,2) NOT NULL DEFAULT 0, -- comp or pool-subscription applied
-  pool_covered_by   ENUM('none','comp','pool_subscription','legacy_import') NOT NULL DEFAULT 'none',
   -- settlement --
   voucher_coverage  DECIMAL(8,2) NOT NULL DEFAULT 0, -- account-credit applied after subscription coverage (see Vouchers)
-  amount_paid       DECIMAL(8,2) NOT NULL DEFAULT 0, -- (entry_fee-entry_coverage)+(pool_fee-pool_coverage)-voucher_coverage
+  amount_paid       DECIMAL(8,2) NOT NULL DEFAULT 0, -- (entry_fee-entry_coverage) + every add-on line's (fee-coverage) - voucher_coverage
   payment_method    VARCHAR(30),
   on_behalf_note    VARCHAR(120),                    -- guest / paid-for-by breadcrumb
   notes             VARCHAR(255),
@@ -252,6 +275,28 @@ CREATE TABLE attendance (
   FOREIGN KEY (event_id)      REFERENCES events(id),
   FOREIGN KEY (checked_in_by) REFERENCES users(id),
   FOREIGN KEY (comp_reason_id) REFERENCES comp_reasons(id)
+);
+
+-- ATTENDANCE_ADD_ONS — one row per add-on charged on a visit, name/price
+-- snapshotted at purchase time (never rewritten by a later catalog edit).
+-- `price` is the amount actually paid for the line (fee-coverage), the same
+-- meaning for a flat item or a subscribable one, so it always folds straight
+-- into attendance.amount_paid. `fee`/`coverage`/`covered_by` are only ever
+-- set for a subscribable add-on's line (Pool, at launch) -- null/0/null for
+-- an ordinary flat add-on, which never goes through PricingService at all.
+CREATE TABLE attendance_add_ons (
+  id           INT AUTO_INCREMENT PRIMARY KEY,
+  attendance_id INT NOT NULL,
+  add_on_id    INT,                                  -- nullable: survives the catalog row being deleted later
+  name         VARCHAR(60) NOT NULL,
+  price        DECIMAL(8,2) NOT NULL,
+  fee          DECIMAL(8,2),
+  coverage     DECIMAL(8,2) NOT NULL DEFAULT 0,
+  covered_by   ENUM('none','comp','subscription','day_pass','legacy_import'),
+  is_overnight BOOLEAN NOT NULL DEFAULT FALSE,
+  created_at   TIMESTAMP NULL,
+  FOREIGN KEY (attendance_id) REFERENCES attendance(id),
+  FOREIGN KEY (add_on_id)     REFERENCES add_ons(id)
 );
 
 -- COMP REASONS — extensible list of reasons a specific visit's entry was waived
@@ -286,30 +331,36 @@ CREATE INDEX ix_attendance_event  ON attendance(event_id);
 CREATE INDEX ix_attendance_member ON attendance(member_id);
 CREATE INDEX ix_events_date        ON events(event_date);
 CREATE INDEX ix_events_type        ON events(event_type_id);
-CREATE INDEX ix_subs_lookup        ON subscriptions(member_id, plan_type, covered_month);
+CREATE INDEX ix_subs_lookup        ON subscriptions(member_id, add_on_id, covered_month);
 CREATE INDEX ix_vouchers_member    ON vouchers(member_id);
 ```
 
-**This DDL covers the core domain plus a few early additions** (`ban_exceptions`, `member_status_changes`, `occupancy_adjustments`, `comp_reasons`). It is not kept in lockstep with every table added since — `payment_methods`, `comp_requests`, `add_ons`/`attendance_add_ons`, `pool_day_passes`, `miscellaneous_payments`, `registers`/`register_shifts`, `membership_settings` (incl. its feature-flag columns), `member_username_changes`, `skills`/`member_skill`, `showrunner_payout_tiers`/`instructor_pay_rates`, and `attendance_behavior_notes` are all real, in-use tables that this block doesn't define. **Migrations under `database/migrations/` are the source of truth for the schema** — read those for the current shape of any table.
+**This DDL covers the core domain plus a few early additions** (`ban_exceptions`, `member_status_changes`, `occupancy_adjustments`, `comp_reasons`). It is not kept in lockstep with every table added since — `payment_methods`, `comp_requests`, `add_on_day_passes`, `miscellaneous_payments`, `registers`/`register_shifts`, `membership_settings` (incl. its feature-flag columns), `member_username_changes`, `skills`/`member_skill`, `showrunner_payout_tiers`/`instructor_pay_rates`, and `attendance_behavior_notes` are all real, in-use tables that this block doesn't define. **Migrations under `database/migrations/` are the source of truth for the schema** — read those for the current shape of any table.
 
-Note the **snapshot columns** on `attendance`: a check-in records how each component's price was reached *at that moment*, so later fee changes never rewrite history. Because a single visit can draw on both subscriptions, entry and pool are recorded as **two independent lines**, not one `coverage_source`. `voucher_coverage` is a third, independent settlement line — it discounts the *combined* total still due after entry/pool coverage, not a specific component (see Vouchers below).
+Note the **snapshot columns**: a check-in records how each component's price was reached *at that moment*, so later fee changes never rewrite history. Entry lives on `attendance` itself; every other chargeable a visit draws on (Pool, and any other subscribable add-on) is its own `attendance_add_ons` row — a single shared shape for "a charge that can be comped/subscribed/day-passed," rather than a second hardcoded pair of columns per new chargeable. `voucher_coverage` is a further, independent settlement line on `attendance` — it discounts the *combined* total still due after entry and every add-on line's own coverage, not a specific component (see Vouchers below).
 
 ---
 
 ## Fee pipeline (per attendance row)
 
-Runs once per check-in. Entry and pool are priced **independently**; each subscription only ever touches its own component. `event_type` plays no part here.
+Runs once per check-in. Entry is priced on its own; every **subscribable**
+add-on (Pool, at launch — see "Add-ons" below) is priced independently of
+entry and of every other add-on, each drawing on its own subscription/
+day-pass/comp coverage. A non-subscribable add-on (a rentable room, a
+sleepover) never runs through this pipeline at all — flat price, always
+charged in full, folded straight into `amount_paid`. `event_type` plays no
+part here.
 
 ```
 price(member, event):
     entry = event.entry_fee        # 0 on a pool-only event
-    pool  = event.pool_fee         # 0 when the pool is closed / none
 
-    # Comp categories are free on everything
+    # Comp categories are free on everything subscribable
     if member.category.is_comped:
+        lines = [ (addOn, fee, fee, 'comp') for addOn in subscribable_add_ons()
+                  if (fee := addOn.price_for(event)) is not None ]
         return entry_fee=entry, entry_cov=entry, entry_src='comp',
-               pool_fee=pool,   pool_cov=pool,   pool_src='comp',
-               due=0
+               add_on_lines=lines, due=0
 
     month = first_of_month(event.event_date)
 
@@ -317,24 +368,38 @@ price(member, event):
     if entry > 0 and event.host_id == member.id:
         entry_cov = entry ; entry_src = 'host'
     # ENTRY — Regular subscription, per-event $25 credit, floored at zero
-    elif entry > 0 and active_sub(member,'regular',month):
-        entry_cov = min(entry, current_plan('regular').credit)   # 25
+    elif entry > 0 and active_sub(member, entry_add_on, month):
+        entry_cov = min(entry, current_plan(entry_add_on).credit)   # 25
         entry_src = 'regular_subscription'
     else:
         entry_cov = 0 ; entry_src = 'none'
 
-    # POOL — Pool subscription, full coverage
-    if pool > 0 and active_sub(member,'pool',month):
-        pool_cov = pool ; pool_src = 'pool_subscription'
-    else:
-        pool_cov = 0 ; pool_src = 'none'
+    # Every subscribable add-on priced for this event (Pool, at launch) —
+    # day pass beats an active subscription beats nothing, same precedence
+    # Pool always had.
+    lines = []
+    for addOn in subscribable_add_ons():
+        fee = addOn.price_for(event)
+        if fee is None: continue
+        if has_day_pass(member, addOn, event):
+            cov, src = fee, 'day_pass'
+        elif active_sub(member, addOn, month):
+            credit = current_plan(addOn).credit
+            cov, src = (min(fee, credit) if credit is not None else fee), 'subscription'
+        else:
+            cov, src = 0, 'none'
+        lines.append((addOn, fee, cov, src))
 
-    due = (entry - entry_cov) + (pool - pool_cov)
-    return entry_fee=entry, entry_cov, entry_src,
-           pool_fee=pool,   pool_cov, pool_src, due
+    due = (entry - entry_cov) + sum(fee - cov for (_, fee, cov, _) in lines)
+    return entry_fee=entry, entry_cov, entry_src, add_on_lines=lines, due
 
-# active_sub = a subscriptions row where member + plan_type match
+# active_sub = a subscriptions row where member + add_on_id match
 # and covered_month = the first-of-month of the event's date.
+# subscribable_add_ons() = add_ons where subscribable AND active
+# (Pool additionally drops out while the pool_enabled flag is off —
+# see "Feature flags" — but that never affects pricing of an event that
+# already has a nonzero pool_fee or coverage from an existing subscription,
+# only whether NEW Pool commitments can be bought).
 ```
 
 Coverage matrix (entry $8, pool $5 where present):
@@ -345,7 +410,7 @@ Coverage matrix (entry $8, pool $5 where present):
 | Entry + pool ($8+$5) | $13 | $5 | $8 | $0 |
 | Pool only ($5) | $5 | $5 | $0 | $0 |
 
-Each subscription discounts only its own component. `entry_fee = 0` is a pool-only event; `pool_fee = 0` is an entry-only event — no separate "type" needed for pricing. The `event_type` label plays no part in the math; fees come solely from `entry_fee` and `pool_fee`.
+Each subscription discounts only its own line. `entry_fee = 0` is a pool-only event; a pool event with no price for it produces no add-on line at all — no separate "type" needed for pricing. The `event_type` label plays no part in the math; fees come solely from `entry_fee` and each add-on's own price.
 
 **Check-in desk flow**: member is looked up first — it alone determines admission decision, subscription eligibility, and guest-sponsor status — then event, since that only affects per-event price and capacity. Member status (raw ban/watchlist/deceased flags, subscription eligibility, Prospective identity-capture) shows the moment a member is selected, before any event is picked — only the *final* admission outcome (ban exceptions, age) and anything touching an attendance row need an event too. A subscription itself can be bought two ways: standalone against the member's account the moment they're selected (no event needed — `SubscriptionBundleService::purchase()`, the same mechanism `ListSubscriptions::bulkPurchaseAction()` already uses standalone, Manager+, for phone-order purchases; the check-in page's version is deliberately ungated, matching the existing "subscription collection at check-in is every role including Door" rule), or bundled into check-in itself via live, on-page subscription/per-event-comp/voucher state (not sealed inside a "Check In" confirmation dialog), so staff see the running total update as they pick things; `PricingService::previewWithSelections()` runs the same `price()` math above against a selected-but-not-yet-purchased option, without writing a speculative `subscriptions` row. Either way "Check In" itself is a small final-confirm step (payment method, notes) reading whatever coverage — bought standalone or picked live — is already in effect.
 
@@ -367,7 +432,7 @@ Entry only, same as per-event comp — pool is priced independently (the host st
 
 ## Per-event comp (waiving one visit's entry)
 
-Distinct from a member's own comped category (`categories.is_comped` — permanent, applies to everything that member ever attends): this is a **Manager+** decision to waive **one specific visit's entry fee**, e.g. a member who worked that event as a "House Sub." Pool is priced independently — a comped entry doesn't touch the pool fee.
+Distinct from a member's own comped category (`categories.is_comped` — permanent, applies to everything that member ever attends): this is a **Manager+** decision to waive **one specific visit's entry fee**, e.g. a member who worked that event as a "House Sub." Every add-on line is priced independently — a comped entry doesn't touch pool or any other add-on.
 
 A separate, explicit step layered on top of `price()` above, the same shape as applying voucher credit — not baked into the pipeline itself, since it's a one-off decision about a visit, not a property of member+event:
 
@@ -375,11 +440,24 @@ A separate, explicit step layered on top of `price()` above, the same shape as a
 applyEventComp(breakdown):
     return entry_fee=breakdown.entry_fee,
            entry_cov=breakdown.entry_fee, entry_src='event_comp',   # full override
-           pool_fee=breakdown.pool_fee, pool_cov=breakdown.pool_cov, pool_src=breakdown.pool_src,   # untouched
+           add_on_lines=breakdown.add_on_lines,   # untouched
            due = breakdown.due - (breakdown.entry_fee - breakdown.entry_cov)
 ```
 
 Fully overrides whatever `price()` already computed for entry — comp-by-category, regular-subscription coverage, or nothing — same as comp-by-category already overrides a subscription in the pipeline. `comp_reason_id` (optional) records why, from the extensible `comp_reasons` list — a manager can add a new reason as one comes up; it's editable settings data, not a hardcoded enum, same pattern as `event_types`/`plans`. Enforced server-side (not just a hidden checkbox): the check-in page only *applies* the comp if the submitting user passes the `grant-event-comp` gate (Manager+), regardless of what's in the submitted payload.
+
+---
+
+## Add-ons (chargeable extras, some subscribable)
+
+`add_ons` is one editable catalog for two different shapes of "extra charge":
+
+- **Flat, non-subscribable** (the default — e.g. Private room rental, Sleepover): one catalog `price`, opt-in via a checkbox at check-in, always charged in full. Never touches `PricingService` at all — comp, subscriptions, and vouchers only ever apply to entry and to subscribable add-on lines, never to these. Recorded as an `attendance_add_ons` row with `fee`/`coverage`/`covered_by` left null — the row exists purely as a snapshot of what was sold and for how much.
+- **Subscribable** (`subscribable = true` — Pool, at launch): participates in the same coverage engine entry does. A `plans` row can target it (`add_on_id`), a member can hold a `subscriptions` row covering it for a given month, and a one-time `add_on_day_passes` row can cover it for exactly one event. Coverage precedence is day pass, then an active subscription, then nothing — identical to entry's own host-then-subscription-then-nothing order, just without the host case. Priced automatically whenever the event has a price for it — no checkbox, the same "no staff action required" behavior Pool always had.
+
+A subscribable add-on can additionally be `priced_per_event = true` (Pool is the only one today) — its price comes from a per-event source (`events.pool_fee`) instead of one flat catalog `price`, since not every event has a pool. A day pass only ever makes sense for a `priced_per_event` add-on: a flat add-on's price never varies by event, so "buy just today's coverage" is identical to just checking the flat-add-on box that visit.
+
+**Entry is modeled the same way, once removed** — the one protected `add_ons` row (`kind = 'entry'`, name "Entry", never renamable or deletable) is what every Regular subscription's `plans`/`subscriptions.add_on_id` actually points at. This is purely so those two tables get one clean NOT NULL foreign key for every target instead of a nullable "no target" case (which would silently break their `UNIQUE (member_id, add_on_id, covered_month)` index — SQL treats two NULLs as non-colliding, so a member could otherwise hold two "no-target" subscriptions for the same month with no constraint catching it). Entry's own fee logic — `event.entry_fee`, the host bypass, the per-visit credit — never reads anything off that row; only the subscription-lookup side is unified through it.
 
 ---
 
@@ -395,12 +473,12 @@ An event's **Comp List** (`CompListRelationManager` on `EventResource`, Manager+
 
 ## Subscription eligibility (who can subscribe)
 
-Not every member can start a subscription on demand. A member is eligible for **either** plan (regular or pool) once:
+Not every member can start a subscription on demand. A member is eligible for **any** plan — entry or a subscribable add-on like Pool — once:
 
 - they've attended **5 events, all-time** — computed live from `attendance` (never stored as a count, per the "derived, never stored" rule), **or**
 - `members.subscription_eligible` is manually set to `true`.
 
-The manual flag is the override path — primarily for the eventual Excel migration, where a member's years of pre-system attendance won't exist as `attendance` rows, so they'd otherwise incorrectly read as "0 events attended" (see "Still open" below). One rule governs both plan types; the threshold is configurable (`config/membership.php`, defaults to 5), not hardcoded.
+The manual flag is the override path — primarily for the eventual Excel migration, where a member's years of pre-system attendance won't exist as `attendance` rows, so they'd otherwise incorrectly read as "0 events attended" (see "Still open" below). One rule governs every plan, whatever it targets; the threshold is configurable (`config/membership.php`, defaults to 5), not hardcoded.
 
 Enforced everywhere a subscription can be created: the check-in page's "pay subscription" option (any role — see Roles & permissions), the Subscriptions resource's create form (Manager+), and the monthly Manager & Owner subscription perk (see below) — the perk waives price, not this rule.
 
@@ -427,7 +505,7 @@ after due is computed by price(member, event):
         write vouchers row: amount = -voucherApplied, attendance_id = this visit, reason = required
 ```
 
-`attendance.voucher_coverage` stores `voucherApplied` as the price snapshot — same rule as `entry_coverage`/`pool_coverage`: never recomputed later.
+`attendance.voucher_coverage` stores `voucherApplied` as the price snapshot — same rule as `entry_coverage` and each add-on line's own `coverage`: never recomputed later.
 
 ---
 
@@ -435,7 +513,7 @@ after due is computed by price(member, event):
 
 **Manager and Owner — not Admin.** The one deliberate exception to the "each tier contains the one below" rule (see Roles & permissions): this is a front-line perk, not extended to Admin, even though Owner otherwise outranks Admin. Owner's inclusion isn't a rank thing — Owner qualifies for the same reason Manager does, not because Owner sits above Admin in the hierarchy.
 
-Once per calendar month, a Manager or Owner may create a **regular** subscription (`plan_type = 'regular'`) at `amount_paid = 0`, for themselves or gifted to any *subscription-eligible* member, tagged `comp_source = 'manager_monthly_perk'` with `notes` explaining the grant (e.g. "gifted to jsmith92"). `recorded_by` is always the granting user, whether the subscription covers themselves or someone else. Each qualifying user (each Manager, each Owner) has their own independent monthly allowance — one grant per person, not one per club per month.
+Once per calendar month, a Manager or Owner may create a **regular** subscription (targeting the protected `add_ons` entry row) at `amount_paid = 0`, for themselves or gifted to any *subscription-eligible* member, tagged `comp_source = 'manager_monthly_perk'` with `notes` explaining the grant (e.g. "gifted to jsmith92"). `recorded_by` is always the granting user, whether the subscription covers themselves or someone else. Each qualifying user (each Manager, each Owner) has their own independent monthly allowance — one grant per person, not one per club per month.
 
 The beneficiary must pass the same "Subscription eligibility" check as every other subscription-creating path (see above) — this perk waives the *price*, not the eligibility rule.
 
@@ -575,7 +653,7 @@ Everything after step 7 (vouchers, guests, prepay/capacity, ban exceptions, per-
 - entry $8 + pool $5: both subs → $0 · Regular only → $5 · Pool only → $8 · nothing → $13.
 - pool-only $5: Pool subscription → $0 · no sub → $5 · Regular subscription only → $5 (regular does nothing).
 
-Each case asserts the stored `entry_coverage` / `pool_coverage` / `amount_paid`, not just the total.
+Each case asserts the stored `entry_coverage` / the pool add-on line's `coverage` / `amount_paid`, not just the total.
 
 **Subscription eligibility**: fewer than 5 attended events and `subscription_eligible = false` → not eligible · 5+ attended events → eligible · `subscription_eligible = true` → eligible regardless of count · prepaid (`checked_in_at` null) attendance rows don't count toward the 5.
 

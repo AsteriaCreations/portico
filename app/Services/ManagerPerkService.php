@@ -2,7 +2,7 @@
 
 namespace App\Services;
 
-use App\Enums\PlanType;
+use App\Models\AddOn;
 use App\Models\Member;
 use App\Models\Subscription;
 use App\Models\User;
@@ -43,14 +43,15 @@ class ManagerPerkService
         }
 
         $month = now()->startOfMonth();
+        $entry = AddOn::entry();
 
-        if ($beneficiary->hasActiveSubscription(PlanType::Regular, $month)) {
+        if ($beneficiary->hasActiveSubscriptionFor($entry, $month)) {
             throw new \RuntimeException('This member already has regular subscription coverage this month.');
         }
 
         return Subscription::create([
             'member_id' => $beneficiary->id,
-            'plan_type' => PlanType::Regular,
+            'add_on_id' => $entry->id,
             'covered_month' => $month->toDateString(),
             'amount_paid' => 0,
             'paid_on' => now(),

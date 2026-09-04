@@ -3,9 +3,9 @@
 namespace App\Filament\Admin\Widgets;
 
 use App\Enums\Role;
+use App\Models\AddOnDayPass;
 use App\Models\Attendance;
 use App\Models\MiscellaneousPayment;
-use App\Models\PoolDayPass;
 use App\Models\Subscription;
 use Filament\Widgets\ChartWidget;
 
@@ -20,7 +20,7 @@ use Filament\Widgets\ChartWidget;
  * which already includes Event Add-On revenue folded into amount_paid),
  * Subscription (windowed on paid_on, the transaction date — see
  * SubscriptionOverviewWidget's own comment on why), and Other
- * (MiscellaneousPayment + PoolDayPass, same as revenueBreakdown()'s "other"
+ * (MiscellaneousPayment + AddOnDayPass, same as revenueBreakdown()'s "other"
  * bucket, just without the register_shift_id scoping).
  */
 class MonthlyRevenueChartWidget extends ChartWidget
@@ -69,7 +69,7 @@ class MonthlyRevenueChartWidget extends ChartWidget
                         $range = [$month, $month->copy()->endOfMonth()];
 
                         return (float) MiscellaneousPayment::query()->whereBetween('created_at', $range)->sum('amount')
-                            + (float) PoolDayPass::query()->whereBetween('created_at', $range)->sum('amount_paid');
+                            + (float) AddOnDayPass::query()->whereBetween('created_at', $range)->sum('amount_paid');
                     })->all(),
                 ],
             ],

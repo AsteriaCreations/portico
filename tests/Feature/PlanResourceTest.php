@@ -1,8 +1,9 @@
 <?php
 
-use App\Enums\PlanType;
+use App\Enums\AddOnKind;
 use App\Filament\Admin\Resources\Plans\Pages\CreatePlan;
 use App\Filament\Admin\Resources\Plans\Pages\ListPlans;
+use App\Models\AddOn;
 use App\Models\Plan;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -12,6 +13,7 @@ uses(RefreshDatabase::class);
 
 beforeEach(function () {
     $this->actingAs(User::factory()->create(['active' => true]));
+    $this->entry = AddOn::create(['name' => AddOn::ENTRY_NAME, 'kind' => AddOnKind::Entry, 'subscribable' => true]);
 });
 
 test('plans list page renders', function () {
@@ -23,7 +25,7 @@ test('plans list page renders', function () {
 test('a new effective-dated plan can be created', function () {
     Livewire::test(CreatePlan::class)
         ->fillForm([
-            'code' => PlanType::Regular->value,
+            'add_on_id' => $this->entry->id,
             'price' => 65,
             'credit' => 25,
             'effective_from' => '2027-01-01',
@@ -32,7 +34,7 @@ test('a new effective-dated plan can be created', function () {
         ->assertHasNoFormErrors();
 
     $plan = Plan::whereDate('effective_from', '2027-01-01')->firstOrFail();
-    expect($plan->code)->toBe(PlanType::Regular)
+    expect($plan->add_on_id)->toBe($this->entry->id)
         ->and($plan->price)->toEqual(65)
         ->and($plan->credit)->toEqual(25);
 });

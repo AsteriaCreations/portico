@@ -15,7 +15,8 @@ class PlansTable
         return $table
             ->defaultSort('effective_from', 'desc')
             ->columns([
-                TextColumn::make('code')
+                TextColumn::make('addOn.name')
+                    ->label('Target')
                     ->badge(),
                 TextColumn::make('duration_months')
                     ->label('Duration')

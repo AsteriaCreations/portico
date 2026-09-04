@@ -1,12 +1,13 @@
 <?php
 
+use App\Enums\AddOnCoverageSource;
+use App\Enums\AddOnKind;
 use App\Enums\EntryCoverageSource;
-use App\Enums\PlanType;
-use App\Enums\PoolCoverageSource;
 use App\Enums\Role;
 use App\Filament\Admin\Pages\CheckIn;
 use App\Filament\Admin\Widgets\RecordDeparturesWidget;
 use App\Models\AddOn;
+use App\Models\AddOnDayPass;
 use App\Models\Attendance;
 use App\Models\AttendanceAddOn;
 use App\Models\BanException;
@@ -16,7 +17,6 @@ use App\Models\Event;
 use App\Models\Member;
 use App\Models\MembershipSetting;
 use App\Models\Plan;
-use App\Models\PoolDayPass;
 use App\Models\Register;
 use App\Models\Subscription;
 use App\Models\User;
@@ -35,9 +35,21 @@ beforeEach(function () {
     $this->user = User::factory()->create(['active' => true, 'role' => Role::Manager]);
     $this->actingAs($this->user);
 
-    Plan::create(['code' => PlanType::Regular, 'price' => 60, 'credit' => 25, 'effective_from' => '2026-01-01']);
-    Plan::create(['code' => PlanType::Pool, 'price' => 15, 'credit' => null, 'effective_from' => '2026-01-01']);
+    $this->entry = AddOn::create(['name' => AddOn::ENTRY_NAME, 'kind' => AddOnKind::Entry, 'subscribable' => true]);
+    $this->pool = AddOn::create(['name' => AddOn::POOL_NAME, 'subscribable' => true, 'priced_per_event' => true]);
+
+    Plan::create(['add_on_id' => $this->entry->id, 'price' => 60, 'credit' => 25, 'effective_from' => '2026-01-01']);
+    Plan::create(['add_on_id' => $this->pool->id, 'price' => 15, 'credit' => null, 'effective_from' => '2026-01-01']);
 });
+
+/**
+ * Pool is the only subscribable add-on in these tests, so its
+ * attendance_add_ons row (if any) is the whole relation.
+ */
+function poolAddOnRow(Attendance $attendance): ?AttendanceAddOn
+{
+    return $attendance->addOns()->first();
+}
 
 function clearMember(Category $category, array $overrides = []): Member
 {
@@ -244,14 +256,14 @@ test('buying a subscription standalone creates a real subscription immediately, 
     Livewire::test(CheckIn::class)
         ->fillForm(['member_id' => $member->id])
         ->callAction('purchaseSubscription', data: [
-            'plan_type' => PlanType::Regular->value,
+            'add_on_id' => $this->entry->id,
             'desired_start' => now()->startOfMonth(),
             'duration_months' => '1',
             'payment_method' => 'other',
         ])
         ->assertHasNoActionErrors();
 
-    $subscription = Subscription::where('member_id', $member->id)->where('plan_type', PlanType::Regular)->firstOrFail();
+    $subscription = Subscription::where('member_id', $member->id)->where('add_on_id', $this->entry->id)->firstOrFail();
     expect($subscription->amount_paid)->toEqual(60)
         ->and($subscription->recorded_by)->toBe($this->user->id)
         ->and($subscription->payment_method)->toBe('other');
@@ -266,7 +278,7 @@ test('a door volunteer can also buy a subscription standalone', function () {
     Livewire::test(CheckIn::class)
         ->fillForm(['member_id' => $member->id])
         ->callAction('purchaseSubscription', data: [
-            'plan_type' => PlanType::Regular->value,
+            'add_on_id' => $this->entry->id,
             'desired_start' => now()->startOfMonth(),
             'duration_months' => '1',
             'payment_method' => 'other',
@@ -289,13 +301,13 @@ test('buying a pool subscription standalone is rejected once pool_enabled is off
     Livewire::test(CheckIn::class)
         ->fillForm(['member_id' => $member->id])
         ->callAction('purchaseSubscription', data: [
-            'plan_type' => PlanType::Pool->value,
+            'add_on_id' => $this->pool->id,
             'desired_start' => now()->startOfMonth(),
             'duration_months' => '1',
             'payment_method' => 'other',
         ]);
 
-    expect(Subscription::where('member_id', $member->id)->where('plan_type', PlanType::Pool)->exists())->toBeFalse();
+    expect(Subscription::where('member_id', $member->id)->where('add_on_id', $this->pool->id)->exists())->toBeFalse();
 });
 
 test('buying a pool day pass is rejected once pool_enabled is off, even via a forged action call', function () {
@@ -303,7 +315,7 @@ test('buying a pool day pass is rejected once pool_enabled is off, even via a fo
     $member = clearMember($this->irregular);
     $event = Event::factory()->create(['event_date' => now()->toDateString(), 'pool_fee' => 15]);
 
-    // purchasePoolDayPassAction is hidden when disabled -- callAction()
+    // purchaseAddOnDayPassAction is hidden when disabled -- callAction()
     // would refuse to call a hidden action itself (asserts visibility as a
     // test-authoring nicety, not a security boundary), so mountAction()/
     // callMountedAction() skip that assertion, the same way a forged
@@ -311,11 +323,11 @@ test('buying a pool day pass is rejected once pool_enabled is off, even via a fo
     // what actually stops this.
     Livewire::test(CheckIn::class)
         ->fillForm(['member_id' => $member->id])
-        ->mountAction('purchasePoolDayPass')
+        ->mountAction('purchaseAddOnDayPass')
         ->fillForm(['event_id' => $event->id, 'payment_method' => 'other'])
         ->callMountedAction();
 
-    expect(PoolDayPass::where('member_id', $member->id)->exists())->toBeFalse();
+    expect(AddOnDayPass::where('member_id', $member->id)->exists())->toBeFalse();
 });
 
 test('a forged pool subscription selection at check-in is silently ignored once pool_enabled is off', function () {
@@ -325,14 +337,17 @@ test('a forged pool subscription selection at check-in is silently ignored once 
 
     Livewire::test(CheckIn::class)
         ->fillForm(['event_id' => $event->id, 'member_id' => $member->id])
-        ->fillForm(['subscription_pool_duration' => '1'], 'pricingForm')
+        ->set("pricingData.subscription_addon_{$this->pool->id}_duration", '1')
         ->callAction('checkIn', data: ['checked_in_at' => now()])
         ->assertHasNoActionErrors();
 
-    expect(Subscription::where('member_id', $member->id)->where('plan_type', PlanType::Pool)->exists())->toBeFalse();
+    expect(Subscription::where('member_id', $member->id)->where('add_on_id', $this->pool->id)->exists())->toBeFalse();
 
     $attendance = Attendance::where('member_id', $member->id)->where('event_id', $event->id)->firstOrFail();
-    expect($attendance->pool_coverage)->toEqual(0)
+    // pool_enabled only stops NEW Pool commitments -- the event still has a
+    // nonzero pool_fee, so it's still priced (and uncovered, since no
+    // subscription/day-pass exists) exactly as before Pool was an add-on.
+    expect(poolAddOnRow($attendance)->coverage)->toEqual(0)
         ->and($attendance->amount_paid)->toEqual(35); // 20 entry + 15 pool, unbought
 });
 
@@ -340,7 +355,7 @@ test('a member with a real, pre-existing pool subscription still gets pool cover
     $member = clearMember($this->irregular);
     $event = Event::factory()->create(['event_date' => now()->toDateString(), 'entry_fee' => 0, 'pool_fee' => 15]);
     $member->subscriptions()->create([
-        'plan_type' => PlanType::Pool,
+        'add_on_id' => $this->pool->id,
         'covered_month' => now()->startOfMonth(),
         'amount_paid' => 15,
     ]);
@@ -353,7 +368,7 @@ test('a member with a real, pre-existing pool subscription still gets pool cover
         ->assertHasNoActionErrors();
 
     $attendance = Attendance::where('member_id', $member->id)->where('event_id', $event->id)->firstOrFail();
-    expect($attendance->pool_covered_by)->toBe(PoolCoverageSource::PoolSubscription)
+    expect(poolAddOnRow($attendance)->covered_by)->toBe(AddOnCoverageSource::Subscription)
         ->and($attendance->amount_paid)->toEqual(0);
 });
 
@@ -364,7 +379,7 @@ test('buying a subscription standalone, then checking in that night, shows the e
     $component = Livewire::test(CheckIn::class)
         ->fillForm(['member_id' => $member->id])
         ->callAction('purchaseSubscription', data: [
-            'plan_type' => PlanType::Regular->value,
+            'add_on_id' => $this->entry->id,
             'desired_start' => now()->startOfMonth(),
             'duration_months' => '1',
             'payment_method' => 'other',
@@ -392,7 +407,7 @@ test('a 1-month subscription purchase at check-in is priced as of today, not the
     // is explicitly always priced as of today since it's a payment happening
     // now regardless of which (possibly future, door-prepay) event is
     // selected.
-    Plan::create(['code' => PlanType::Regular, 'price' => 75, 'credit' => 25, 'effective_from' => now()->toDateString()]);
+    Plan::create(['add_on_id' => $this->entry->id, 'price' => 75, 'credit' => 25, 'effective_from' => now()->toDateString()]);
 
     $member = clearMember($this->irregular, ['subscription_eligible' => true]);
     $event = Event::factory()->create(['event_date' => '2026-01-05', 'entry_fee' => 40, 'pool_fee' => 0]);
@@ -403,7 +418,7 @@ test('a 1-month subscription purchase at check-in is priced as of today, not the
         ->callAction('checkIn', data: ['checked_in_at' => now()])
         ->assertHasNoActionErrors();
 
-    $subscription = Subscription::where('member_id', $member->id)->where('plan_type', PlanType::Regular)->firstOrFail();
+    $subscription = Subscription::where('member_id', $member->id)->where('add_on_id', $this->entry->id)->firstOrFail();
     expect($subscription->amount_paid)->toEqual(75.0);
 });
 
@@ -744,7 +759,7 @@ test('paying regular subscription at check-in creates the subscription and appli
         ])
         ->assertHasNoActionErrors();
 
-    $subscription = Subscription::where('member_id', $member->id)->where('plan_type', PlanType::Regular)->firstOrFail();
+    $subscription = Subscription::where('member_id', $member->id)->where('add_on_id', $this->entry->id)->firstOrFail();
     expect($subscription->covered_month->toDateString())->toBe(now()->startOfMonth()->toDateString())
         ->and($subscription->amount_paid)->toEqual(60)
         ->and($subscription->recorded_by)->toBe($this->user->id);
@@ -761,18 +776,18 @@ test('paying pool subscription at check-in creates the subscription and covers t
 
     Livewire::test(CheckIn::class)
         ->fillForm(['event_id' => $event->id, 'member_id' => $member->id])
-        ->fillForm(['subscription_pool_duration' => '1'], 'pricingForm')
+        ->fillForm(["subscription_addon_{$this->pool->id}_duration" => '1'], 'pricingForm')
         ->callAction('checkIn', data: [
             'checked_in_at' => now(),
         ])
         ->assertHasNoActionErrors();
 
-    $subscription = Subscription::where('member_id', $member->id)->where('plan_type', PlanType::Pool)->firstOrFail();
+    $subscription = Subscription::where('member_id', $member->id)->where('add_on_id', $this->pool->id)->firstOrFail();
     expect($subscription->amount_paid)->toEqual(15);
 
     $attendance = Attendance::where('member_id', $member->id)->where('event_id', $event->id)->firstOrFail();
-    expect($attendance->pool_covered_by)->toBe(PoolCoverageSource::PoolSubscription)
-        ->and($attendance->pool_coverage)->toEqual(15)
+    expect(poolAddOnRow($attendance)->covered_by)->toBe(AddOnCoverageSource::Subscription)
+        ->and(poolAddOnRow($attendance)->coverage)->toEqual(15)
         ->and($attendance->amount_paid)->toEqual(0);
 });
 
@@ -781,7 +796,7 @@ test('the subscription checkbox is not offered once the member already has an ac
     $event = Event::factory()->create(['event_date' => now()->toDateString(), 'entry_fee' => 40]);
     Subscription::create([
         'member_id' => $member->id,
-        'plan_type' => PlanType::Regular,
+        'add_on_id' => $this->entry->id,
         'covered_month' => now()->startOfMonth()->toDateString(),
         'amount_paid' => 60,
     ]);
@@ -794,7 +809,7 @@ test('the subscription checkbox is not offered once the member already has an ac
         ])
         ->assertHasNoActionErrors();
 
-    expect(Subscription::where('member_id', $member->id)->where('plan_type', PlanType::Regular)->count())->toBe(1);
+    expect(Subscription::where('member_id', $member->id)->where('add_on_id', $this->entry->id)->count())->toBe(1);
 });
 
 test('the subscription checkbox is not offered for a member who is not yet eligible', function () {
@@ -832,7 +847,7 @@ test('a member becomes subscription-eligible purely from live attendance count',
         ])
         ->assertHasNoActionErrors();
 
-    expect(Subscription::where('member_id', $member->id)->where('plan_type', PlanType::Regular)->exists())->toBeTrue();
+    expect(Subscription::where('member_id', $member->id)->where('add_on_id', $this->entry->id)->exists())->toBeTrue();
 });
 
 test('a door volunteer can also collect a subscription payment at check-in', function () {
@@ -850,7 +865,7 @@ test('a door volunteer can also collect a subscription payment at check-in', fun
         ])
         ->assertHasNoActionErrors();
 
-    $subscription = Subscription::where('member_id', $member->id)->where('plan_type', PlanType::Regular)->firstOrFail();
+    $subscription = Subscription::where('member_id', $member->id)->where('add_on_id', $this->entry->id)->firstOrFail();
     expect($subscription->recorded_by)->toBe($door->id);
 });
 
@@ -1653,7 +1668,7 @@ test('a prepay for a future-month event creates a subscription covering that eve
         ])
         ->assertHasNoActionErrors();
 
-    $subscription = Subscription::where('member_id', $member->id)->where('plan_type', PlanType::Regular)->firstOrFail();
+    $subscription = Subscription::where('member_id', $member->id)->where('add_on_id', $this->entry->id)->firstOrFail();
     expect($subscription->covered_month->toDateString())->toBe('2026-09-01');
 });
 

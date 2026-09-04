@@ -1,8 +1,8 @@
 <?php
 
 use App\Enums\PayoutType;
-use App\Enums\PlanType;
 use App\Enums\Role;
+use App\Models\AddOn;
 use App\Models\Category;
 use App\Models\EventType;
 use App\Models\InstructorPayRate;
@@ -55,11 +55,11 @@ test('event types are seeded', function () {
 test('plans are seeded with the starting fees', function () {
     $this->seed();
 
-    $regular = Plan::where('code', PlanType::Regular)->firstOrFail();
+    $regular = Plan::where('add_on_id', AddOn::entry()->id)->firstOrFail();
     expect($regular->price)->toEqual(60.00);
     expect($regular->credit)->toEqual(25.00);
 
-    $pool = Plan::where('code', PlanType::Pool)->firstOrFail();
+    $pool = Plan::where('add_on_id', AddOn::pool()->id)->firstOrFail();
     expect($pool->price)->toEqual(15.00);
     expect($pool->credit)->toBeNull();
 });

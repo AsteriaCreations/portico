@@ -4,7 +4,7 @@ namespace App\Services;
 
 use App\Enums\EntryCoverageSource;
 use App\Enums\PayoutType;
-use App\Enums\PlanType;
+use App\Models\AddOn;
 use App\Models\Attendance;
 use App\Models\AttendanceAddOn;
 use App\Models\Event;
@@ -26,7 +26,7 @@ class ShowrunnerPayoutService
 {
     public function calculate(Event $event): ShowrunnerPayoutResult
     {
-        $creditThreshold = (float) (Plan::currentFor(PlanType::Regular, $event->event_date)?->credit ?? 0);
+        $creditThreshold = (float) (Plan::currentFor(AddOn::entry(), $event->event_date)?->credit ?? 0);
         $includeSh = (float) $event->entry_fee > $creditThreshold;
 
         $cashCount = $this->arrivedQuery($event)->where('entry_covered_by', EntryCoverageSource::None)->count();
@@ -39,16 +39,23 @@ class ShowrunnerPayoutService
             ? [EntryCoverageSource::None, EntryCoverageSource::RegularSubscription]
             : [EntryCoverageSource::None];
 
-        $poolRevenue = (float) $this->arrivedQuery($event)
-            ->whereIn('entry_covered_by', $qualifyingBuckets)
-            ->selectRaw('COALESCE(SUM(pool_fee - pool_coverage), 0) as total')
-            ->value('total');
-
         $qualifyingAttendanceIds = $this->arrivedQuery($event)
             ->whereIn('entry_covered_by', $qualifyingBuckets)
             ->pluck('id');
 
-        $addonRevenue = (float) AttendanceAddOn::whereIn('attendance_id', $qualifyingAttendanceIds)->sum('price');
+        // 'price' is the amount actually paid for the line (fee - coverage),
+        // the same meaning whether the row is a flat add-on or a
+        // subscribable one — see attendance_add_ons' own migration comment.
+        $poolAddOn = AddOn::pool();
+        $poolRevenue = $poolAddOn
+            ? (float) AttendanceAddOn::whereIn('attendance_id', $qualifyingAttendanceIds)->where('add_on_id', $poolAddOn->id)->sum('price')
+            : 0.0;
+
+        // Flat (non-subscribable) add-on lines only — a subscribable line
+        // (Pool, at launch) has its own covered_by value and its own
+        // showrunner_door_includes_pool toggle above, so it must not also
+        // be double-counted into the generic add-on total here.
+        $addonRevenue = (float) AttendanceAddOn::whereIn('attendance_id', $qualifyingAttendanceIds)->whereNull('covered_by')->sum('price');
 
         $headcount = $cashCount + ($includeSh ? $shCount : 0);
 

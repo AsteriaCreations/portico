@@ -19,7 +19,11 @@ class AddOnsTable
                 TextColumn::make('name')
                     ->searchable(),
                 TextColumn::make('price')
-                    ->money(),
+                    ->money()
+                    ->placeholder('Per event'),
+                IconColumn::make('subscribable')
+                    ->boolean()
+                    ->tooltip(fn (bool $state): string => $state ? 'Subscribable' : 'Not subscribable'),
                 TextColumn::make('max_per_night')
                     ->label('Max/night')
                     ->numeric()
@@ -45,7 +49,12 @@ class AddOnsTable
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
-                    DeleteBulkAction::make(),
+                    // Individual-record authorization, not just the bulk
+                    // action's own gate -- without this a bulk delete could
+                    // route around AddOnPolicy::delete()'s protection of the
+                    // 'entry' row the same way CategoryResource's own bulk
+                    // delete once could for its protected names.
+                    DeleteBulkAction::make()->authorizeIndividualRecords('delete'),
                 ]),
             ]);
     }

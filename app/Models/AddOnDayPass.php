@@ -2,16 +2,16 @@
 
 namespace App\Models;
 
-use Database\Factories\PoolDayPassFactory;
+use Database\Factories\AddOnDayPassFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-#[Fillable(['member_id', 'event_id', 'amount_paid', 'payment_method', 'register_shift_id', 'recorded_by'])]
-class PoolDayPass extends Model
+#[Fillable(['member_id', 'event_id', 'add_on_id', 'amount_paid', 'payment_method', 'register_shift_id', 'recorded_by'])]
+class AddOnDayPass extends Model
 {
-    /** @use HasFactory<PoolDayPassFactory> */
+    /** @use HasFactory<AddOnDayPassFactory> */
     use HasFactory;
 
     // Append-only: rows are never edited, only ever created.
@@ -32,6 +32,11 @@ class PoolDayPass extends Model
     public function event(): BelongsTo
     {
         return $this->belongsTo(Event::class);
+    }
+
+    public function addOn(): BelongsTo
+    {
+        return $this->belongsTo(AddOn::class);
     }
 
     public function registerShift(): BelongsTo

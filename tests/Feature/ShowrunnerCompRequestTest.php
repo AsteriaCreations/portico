@@ -1,11 +1,13 @@
 <?php
 
+use App\Enums\AddOnKind;
 use App\Enums\CompRequestStatus;
 use App\Enums\EntryCoverageSource;
 use App\Enums\Role;
 use App\Filament\Admin\Pages\ShowrunnerCompRequests;
 use App\Filament\Admin\Resources\Events\Pages\EditEvent;
 use App\Filament\Admin\Resources\Events\RelationManagers\CompRequestsRelationManager;
+use App\Models\AddOn;
 use App\Models\Attendance;
 use App\Models\BanException;
 use App\Models\CompReason;
@@ -19,6 +21,13 @@ use Illuminate\Support\Facades\DB;
 use Livewire\Livewire;
 
 uses(RefreshDatabase::class);
+
+beforeEach(function () {
+    // PricingService::price() (via CompRequestsRelationManager::approveAction())
+    // always resolves the entry target -- present in a real install via
+    // AddOnSeeder, seeded directly here for this test's minimal fixture.
+    AddOn::create(['name' => AddOn::ENTRY_NAME, 'kind' => AddOnKind::Entry, 'subscribable' => true]);
+});
 
 function makeShowrunner(?Event $event = null): array
 {
@@ -373,6 +382,8 @@ test('a manager can view the comp request queue but cannot approve or reject', f
 });
 
 test('an admin approving a comp request comps the entry via applyEventComp, leaves pool untouched, and marks it approved', function () {
+    AddOn::create(['name' => AddOn::POOL_NAME, 'subscribable' => true, 'priced_per_event' => true]);
+
     $admin = User::factory()->create(['role' => Role::Admin, 'active' => true]);
     $event = Event::factory()->create(['entry_fee' => 40, 'pool_fee' => 5]);
     $target = Member::factory()->create();

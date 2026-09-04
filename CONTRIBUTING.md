@@ -42,10 +42,12 @@ disagree, the blueprint wins.
    subscription month", occupancy, door take, voucher balance, probation status — all
    `COUNT`/`MAX`/`SUM` queries or live predicates, not columns.
 5. **Attendance rows are price snapshots.** Store `entry_fee`, `entry_coverage`,
-   `entry_covered_by`, `pool_*`, `voucher_coverage`, `amount_paid` at check-in. Never
-   recompute or rewrite historical rows when fees later change.
-6. **Fees are editable data, not constants.** Subscription price/credit and pool price
-   live in `plans` (effective-dated); event fees live on the event; operational tunables
+   `entry_covered_by`, `voucher_coverage`, `amount_paid` at check-in; every other
+   chargeable a visit draws on (Pool, and any other subscribable add-on) is its own
+   `attendance_add_ons` row (`fee`/`coverage`/`covered_by`), not a second hardcoded pair
+   of columns. Never recompute or rewrite historical rows when fees later change.
+6. **Fees are editable data, not constants.** Subscription price/credit live in `plans`
+   (effective-dated, targeting an `add_ons` row); event fees live on the event; operational tunables
    live in the `membership_settings` singleton (`/admin/membership-settings`). Never
    hardcode a dollar amount in code.
 
@@ -94,7 +96,7 @@ everywhere a `subscriptions` row gets created.
 
 - PSR-12 / Laravel conventions. Eloquent relationships for every FK. Validation via Form
   Requests or Filament schema rules.
-- Backed PHP enums for `role`, `event_type`, `plan_type`, coverage sources, mirroring the
+- Backed PHP enums for `role`, `event_type`, `add_on_kind`, coverage sources, mirroring the
   DB enums.
 - Money as `DECIMAL(8,2)`; no float math on currency.
 - Business logic in services / model methods — not controllers, not Blade.

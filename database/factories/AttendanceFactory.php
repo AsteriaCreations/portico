@@ -3,7 +3,6 @@
 namespace Database\Factories;
 
 use App\Enums\EntryCoverageSource;
-use App\Enums\PoolCoverageSource;
 use App\Models\Attendance;
 use App\Models\Event;
 use App\Models\Member;
@@ -29,9 +28,6 @@ class AttendanceFactory extends Factory
             'entry_fee' => 0,
             'entry_coverage' => 0,
             'entry_covered_by' => EntryCoverageSource::None,
-            'pool_fee' => 0,
-            'pool_coverage' => 0,
-            'pool_covered_by' => PoolCoverageSource::None,
             'voucher_coverage' => 0,
             'amount_paid' => 0,
             'payment_method' => null,

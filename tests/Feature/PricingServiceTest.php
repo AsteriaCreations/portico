@@ -1,13 +1,16 @@
 <?php
 
+use App\Enums\AddOnCoverageSource;
+use App\Enums\AddOnKind;
 use App\Enums\EntryCoverageSource;
-use App\Enums\PlanType;
-use App\Enums\PoolCoverageSource;
+use App\Models\AddOn;
 use App\Models\Category;
 use App\Models\Event;
 use App\Models\Member;
 use App\Models\Plan;
 use App\Models\User;
+use App\Services\AddOnPriceLine;
+use App\Services\PriceBreakdown;
 use App\Services\PricingService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
@@ -15,15 +18,18 @@ use Illuminate\Support\Carbon;
 uses(RefreshDatabase::class);
 
 beforeEach(function () {
+    $this->entry = AddOn::create(['name' => AddOn::ENTRY_NAME, 'kind' => AddOnKind::Entry, 'subscribable' => true]);
+    $this->pool = AddOn::create(['name' => AddOn::POOL_NAME, 'subscribable' => true, 'priced_per_event' => true]);
+
     Plan::create([
-        'code' => PlanType::Regular,
+        'add_on_id' => $this->entry->id,
         'price' => 60.00,
         'credit' => 25.00,
         'effective_from' => '2026-01-01',
     ]);
 
     Plan::create([
-        'code' => PlanType::Pool,
+        'add_on_id' => $this->pool->id,
         'price' => 15.00,
         'credit' => null,
         'effective_from' => '2026-01-01',
@@ -32,13 +38,22 @@ beforeEach(function () {
     $this->pricing = new PricingService;
 });
 
-function subscribe(Member $member, PlanType $planType, string $eventDate): void
+function subscribe(Member $member, AddOn $addOn, string $eventDate): void
 {
     $member->subscriptions()->create([
-        'plan_type' => $planType,
+        'add_on_id' => $addOn->id,
         'covered_month' => Carbon::parse($eventDate)->startOfMonth()->toDateString(),
         'amount_paid' => 0,
     ]);
+}
+
+/**
+ * Pool is the only subscribable add-on in these tests, so its line (if any)
+ * is the whole addOnLines array.
+ */
+function poolLine(PriceBreakdown $breakdown): ?AddOnPriceLine
+{
+    return $breakdown->addOnLines[0] ?? null;
 }
 
 test('a comped category owes nothing on any event', function () {
@@ -51,15 +66,15 @@ test('a comped category owes nothing on any event', function () {
     expect($breakdown->amountPaid)->toBe(0.0)
         ->and($breakdown->entryCoveredBy)->toBe(EntryCoverageSource::Comp)
         ->and($breakdown->entryCoverage)->toBe(8.0)
-        ->and($breakdown->poolCoveredBy)->toBe(PoolCoverageSource::Comp)
-        ->and($breakdown->poolCoverage)->toBe(5.0);
+        ->and(poolLine($breakdown)->coveredBy)->toBe(AddOnCoverageSource::Comp)
+        ->and(poolLine($breakdown)->coverage)->toBe(5.0);
 });
 
 test('entry-only event, regular subscription covers up to the credit', function (float $entryFee, float $expectedDue) {
     $category = Category::factory()->create(['is_comped' => false]);
     $member = Member::factory()->create(['category_id' => $category->id]);
     $event = Event::factory()->create(['event_date' => '2026-07-19', 'entry_fee' => $entryFee, 'pool_fee' => 0]);
-    subscribe($member, PlanType::Regular, '2026-07-19');
+    subscribe($member, $this->entry, '2026-07-19');
 
     $breakdown = $this->pricing->price($member, $event);
 
@@ -76,7 +91,7 @@ test('a member covered by a 3-month regular bundle still only gets the ordinary 
     // the DB purely to prove PricingService ignores it and keeps sourcing
     // the per-visit credit from the duration-1 row below.
     Plan::create([
-        'code' => PlanType::Regular,
+        'add_on_id' => $this->entry->id,
         'duration_months' => 3,
         'price' => 175.00,
         'credit' => null,
@@ -89,7 +104,7 @@ test('a member covered by a 3-month regular bundle still only gets the ordinary 
 
     // Materializes the same as SubscriptionBundleService::purchase() would
     // leave behind for July, whether the member bought 1 month or 3.
-    subscribe($member, PlanType::Regular, '2026-07-19');
+    subscribe($member, $this->entry, '2026-07-19');
 
     $breakdown = $this->pricing->price($member, $event);
 
@@ -115,10 +130,10 @@ test('entry plus pool event pricing matrix', function (bool $hasRegular, bool $h
     $event = Event::factory()->create(['event_date' => '2026-07-19', 'entry_fee' => 8, 'pool_fee' => 5]);
 
     if ($hasRegular) {
-        subscribe($member, PlanType::Regular, '2026-07-19');
+        subscribe($member, $this->entry, '2026-07-19');
     }
     if ($hasPool) {
-        subscribe($member, PlanType::Pool, '2026-07-19');
+        subscribe($member, $this->pool, '2026-07-19');
     }
 
     $breakdown = $this->pricing->price($member, $event);
@@ -137,10 +152,10 @@ test('pool-only event pricing matrix', function (bool $hasRegular, bool $hasPool
     $event = Event::factory()->create(['event_date' => '2026-07-19', 'entry_fee' => 0, 'pool_fee' => 5]);
 
     if ($hasRegular) {
-        subscribe($member, PlanType::Regular, '2026-07-19');
+        subscribe($member, $this->entry, '2026-07-19');
     }
     if ($hasPool) {
-        subscribe($member, PlanType::Pool, '2026-07-19');
+        subscribe($member, $this->pool, '2026-07-19');
     }
 
     $breakdown = $this->pricing->price($member, $event);
@@ -157,12 +172,12 @@ test('a pool day pass fully covers pool at the event it was bought for, leaving 
     $category = Category::factory()->create(['is_comped' => false]);
     $member = Member::factory()->create(['category_id' => $category->id]);
     $event = Event::factory()->create(['event_date' => '2026-07-19', 'entry_fee' => 8, 'pool_fee' => 5]);
-    $member->poolDayPasses()->create(['event_id' => $event->id, 'amount_paid' => 5, 'payment_method' => 'cash', 'recorded_by' => User::factory()->create()->id]);
+    $member->addOnDayPasses()->create(['event_id' => $event->id, 'add_on_id' => $this->pool->id, 'amount_paid' => 5, 'payment_method' => 'cash', 'recorded_by' => User::factory()->create()->id]);
 
     $breakdown = $this->pricing->price($member, $event);
 
-    expect($breakdown->poolCoveredBy)->toBe(PoolCoverageSource::DayPass)
-        ->and($breakdown->poolCoverage)->toBe(5.0)
+    expect(poolLine($breakdown)->coveredBy)->toBe(AddOnCoverageSource::DayPass)
+        ->and(poolLine($breakdown)->coverage)->toBe(5.0)
         ->and($breakdown->entryCoveredBy)->toBe(EntryCoverageSource::None)
         ->and($breakdown->amountPaid)->toBe(8.0);
 });
@@ -172,11 +187,11 @@ test('a pool day pass does not cover a different event for the same member', fun
     $member = Member::factory()->create(['category_id' => $category->id]);
     $paidForEvent = Event::factory()->create(['event_date' => '2026-07-19', 'entry_fee' => 0, 'pool_fee' => 5]);
     $otherEvent = Event::factory()->create(['event_date' => '2026-07-20', 'entry_fee' => 0, 'pool_fee' => 5]);
-    $member->poolDayPasses()->create(['event_id' => $paidForEvent->id, 'amount_paid' => 5, 'payment_method' => 'cash', 'recorded_by' => User::factory()->create()->id]);
+    $member->addOnDayPasses()->create(['event_id' => $paidForEvent->id, 'add_on_id' => $this->pool->id, 'amount_paid' => 5, 'payment_method' => 'cash', 'recorded_by' => User::factory()->create()->id]);
 
     $breakdown = $this->pricing->price($member, $otherEvent);
 
-    expect($breakdown->poolCoveredBy)->toBe(PoolCoverageSource::None)
+    expect(poolLine($breakdown)->coveredBy)->toBe(AddOnCoverageSource::None)
         ->and($breakdown->amountPaid)->toBe(5.0);
 });
 
@@ -184,33 +199,52 @@ test('a pool day pass takes precedence over an active pool subscription in the r
     $category = Category::factory()->create(['is_comped' => false]);
     $member = Member::factory()->create(['category_id' => $category->id]);
     $event = Event::factory()->create(['event_date' => '2026-07-19', 'entry_fee' => 0, 'pool_fee' => 5]);
-    subscribe($member, PlanType::Pool, '2026-07-19');
-    $member->poolDayPasses()->create(['event_id' => $event->id, 'amount_paid' => 5, 'payment_method' => 'cash', 'recorded_by' => User::factory()->create()->id]);
+    subscribe($member, $this->pool, '2026-07-19');
+    $member->addOnDayPasses()->create(['event_id' => $event->id, 'add_on_id' => $this->pool->id, 'amount_paid' => 5, 'payment_method' => 'cash', 'recorded_by' => User::factory()->create()->id]);
 
     $breakdown = $this->pricing->price($member, $event);
 
-    expect($breakdown->poolCoveredBy)->toBe(PoolCoverageSource::DayPass)
+    expect(poolLine($breakdown)->coveredBy)->toBe(AddOnCoverageSource::DayPass)
         ->and($breakdown->amountPaid)->toBe(0.0);
 });
 
-test('breakdown maps cleanly onto attendance snapshot columns', function () {
+test('breakdown maps cleanly onto attendance snapshot columns, entry and add-on lines separately', function () {
     $category = Category::factory()->create(['is_comped' => false]);
     $member = Member::factory()->create(['category_id' => $category->id]);
     $event = Event::factory()->create(['event_date' => '2026-07-19', 'entry_fee' => 8, 'pool_fee' => 5]);
-    subscribe($member, PlanType::Regular, '2026-07-19');
+    subscribe($member, $this->entry, '2026-07-19');
 
-    $attributes = $this->pricing->price($member, $event)->toAttendanceAttributes();
+    $breakdown = $this->pricing->price($member, $event);
 
-    expect($attributes)->toBe([
+    expect($breakdown->toAttendanceAttributes())->toBe([
         'entry_fee' => 8.0,
         'entry_coverage' => 8.0,
         'entry_covered_by' => EntryCoverageSource::RegularSubscription,
-        'pool_fee' => 5.0,
-        'pool_coverage' => 0.0,
-        'pool_covered_by' => PoolCoverageSource::None,
         'voucher_coverage' => 0.0,
         'amount_paid' => 5.0,
     ]);
+
+    expect($breakdown->addOnAttendanceRows())->toBe([
+        [
+            'add_on_id' => $this->pool->id,
+            'name' => AddOn::POOL_NAME,
+            'price' => 5.0,
+            'fee' => 5.0,
+            'coverage' => 0.0,
+            'covered_by' => AddOnCoverageSource::None,
+            'is_overnight' => false,
+        ],
+    ]);
+});
+
+test('an event with no pool fee produces no add-on line at all', function () {
+    $category = Category::factory()->create(['is_comped' => false]);
+    $member = Member::factory()->create(['category_id' => $category->id]);
+    $event = Event::factory()->create(['event_date' => '2026-07-19', 'entry_fee' => 8, 'pool_fee' => 0]);
+
+    $breakdown = $this->pricing->price($member, $event);
+
+    expect($breakdown->addOnLines)->toBe([]);
 });
 
 test('the event host owes nothing on entry, pool priced independently', function () {
@@ -222,8 +256,8 @@ test('the event host owes nothing on entry, pool priced independently', function
 
     expect($breakdown->entryCoverage)->toBe(40.0)
         ->and($breakdown->entryCoveredBy)->toBe(EntryCoverageSource::Host)
-        ->and($breakdown->poolCoverage)->toBe(0.0)
-        ->and($breakdown->poolCoveredBy)->toBe(PoolCoverageSource::None)
+        ->and(poolLine($breakdown)->coverage)->toBe(0.0)
+        ->and(poolLine($breakdown)->coveredBy)->toBe(AddOnCoverageSource::None)
         ->and($breakdown->amountPaid)->toBe(5.0);
 });
 
@@ -243,7 +277,7 @@ test('host coverage is reported even when the host also has an active regular su
     $category = Category::factory()->create(['is_comped' => false]);
     $host = Member::factory()->create(['category_id' => $category->id]);
     $event = Event::factory()->create(['event_date' => '2026-07-19', 'entry_fee' => 40, 'host_id' => $host->id]);
-    subscribe($host, PlanType::Regular, '2026-07-19');
+    subscribe($host, $this->entry, '2026-07-19');
 
     $breakdown = $this->pricing->price($host, $event);
 
@@ -255,7 +289,7 @@ test('applyVoucher covers the remainder up to what is still due', function () {
     $category = Category::factory()->create(['is_comped' => false]);
     $member = Member::factory()->create(['category_id' => $category->id]);
     $event = Event::factory()->create(['event_date' => '2026-07-19', 'entry_fee' => 40, 'pool_fee' => 0]);
-    subscribe($member, PlanType::Regular, '2026-07-19');
+    subscribe($member, $this->entry, '2026-07-19');
 
     $breakdown = $this->pricing->price($member, $event); // $15 due after the $25 subscription credit
     $result = $this->pricing->applyVoucher($breakdown, availableBalance: 100.0, requestedAmount: 15.0);
@@ -298,9 +332,9 @@ test('applyEventComp waives entry regardless of what price() already covered, le
 
     expect($result->entryCoverage)->toBe(40.0)
         ->and($result->entryCoveredBy)->toBe(EntryCoverageSource::EventComp)
-        ->and($result->poolFee)->toBe(5.0)
-        ->and($result->poolCoverage)->toBe(0.0)
-        ->and($result->poolCoveredBy)->toBe(PoolCoverageSource::None)
+        ->and(poolLine($result)->fee)->toBe(5.0)
+        ->and(poolLine($result)->coverage)->toBe(0.0)
+        ->and(poolLine($result)->coveredBy)->toBe(AddOnCoverageSource::None)
         ->and($result->amountPaid)->toBe(5.0);
 });
 
@@ -308,7 +342,7 @@ test('applyEventComp overrides an existing regular subscription entry coverage',
     $category = Category::factory()->create(['is_comped' => false]);
     $member = Member::factory()->create(['category_id' => $category->id]);
     $event = Event::factory()->create(['event_date' => '2026-07-19', 'entry_fee' => 40, 'pool_fee' => 0]);
-    subscribe($member, PlanType::Regular, '2026-07-19');
+    subscribe($member, $this->entry, '2026-07-19');
 
     $breakdown = $this->pricing->price($member, $event); // $15 due after the $25 subscription credit
     $result = $this->pricing->applyEventComp($breakdown);

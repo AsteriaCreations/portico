@@ -2,8 +2,10 @@
 
 namespace App\Filament\Admin\Resources\AddOns\Schemas;
 
+use App\Models\AddOn;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
+use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
 
 class AddOnForm
@@ -14,11 +16,26 @@ class AddOnForm
             ->components([
                 TextInput::make('name')
                     ->required()
-                    ->maxLength(60),
+                    ->maxLength(60)
+                    // The one protected 'entry' row's name is never editable
+                    // -- every Regular subscription is keyed off it (see the
+                    // add_ons migration's own comment). Mirrors
+                    // Category::PROTECTED_NAMES' disabled()/dehydrated(false)
+                    // technique.
+                    ->disabled(fn (?AddOn $record): bool => $record?->name === AddOn::ENTRY_NAME)
+                    ->dehydrated(fn (?AddOn $record): bool => $record?->name !== AddOn::ENTRY_NAME),
+                Toggle::make('subscribable')
+                    ->helperText('Lets a Plan be created for this add-on, so a member can subscribe to cover it monthly instead of paying per visit.'),
+                Toggle::make('priced_per_event')
+                    ->label('Priced per event')
+                    ->live()
+                    ->helperText('Only meaningful for Pool today -- its price varies by event (events.pool_fee) rather than one flat catalog price.')
+                    ->visible(fn (?AddOn $record): bool => $record?->name === AddOn::POOL_NAME),
                 TextInput::make('price')
-                    ->required()
+                    ->required(fn (Get $get): bool => ! $get('priced_per_event'))
                     ->numeric()
-                    ->prefix('$'),
+                    ->prefix('$')
+                    ->visible(fn (Get $get): bool => ! $get('priced_per_event')),
                 TextInput::make('max_per_night')
                     ->label('Max per night')
                     ->numeric()

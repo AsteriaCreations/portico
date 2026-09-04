@@ -2,8 +2,8 @@
 
 namespace App\Filament\Admin\Widgets;
 
-use App\Enums\PlanType;
 use App\Enums\Role;
+use App\Models\AddOn;
 use App\Models\MembershipSetting;
 use App\Models\Subscription;
 use Filament\Widgets\StatsOverviewWidget;
@@ -11,11 +11,12 @@ use Filament\Widgets\StatsOverviewWidget\Stat;
 
 /**
  * Subscriptions are a core recurring revenue stream with no prior Analytics
- * visibility at all. "Active this month" mirrors Member::hasActiveSubscription
- * ()'s own predicate (covered_month is stored as a first-of-month date, per
- * SubscriptionBundleService::resolveStart()); revenue windows on paid_on
- * (when money actually changed hands), not covered_month, matching how cash
- * reporting elsewhere windows on transaction date rather than covered period.
+ * visibility at all. "Active this month" mirrors Member::
+ * hasActiveSubscriptionFor()'s own predicate (covered_month is stored as a
+ * first-of-month date, per SubscriptionBundleService::resolveStart());
+ * revenue windows on paid_on (when money actually changed hands), not
+ * covered_month, matching how cash reporting elsewhere windows on
+ * transaction date rather than covered period.
  */
 class SubscriptionOverviewWidget extends StatsOverviewWidget
 {
@@ -35,7 +36,7 @@ class SubscriptionOverviewWidget extends StatsOverviewWidget
         $stats = [
             Stat::make(
                 'Active Regular subscribers',
-                Subscription::where('plan_type', PlanType::Regular)
+                Subscription::where('add_on_id', AddOn::entry()->id)
                     ->whereDate('covered_month', $thisMonth)
                     ->distinct('member_id')
                     ->count('member_id'),
@@ -43,13 +44,13 @@ class SubscriptionOverviewWidget extends StatsOverviewWidget
         ];
 
         // Pool subscriptions aren't retroactively hidden once purchased (see
-        // PlanType::selectableOptions()'s own comment) -- but a club that's
-        // turned pool off entirely doesn't need this count cluttering the
-        // page.
-        if (MembershipSetting::current()->pool_enabled) {
+        // AddOn::priceFor()'s own comment) -- but a club that's turned pool
+        // off entirely doesn't need this count cluttering the page.
+        $poolAddOn = AddOn::pool();
+        if ($poolAddOn && MembershipSetting::current()->pool_enabled) {
             $stats[] = Stat::make(
                 'Active Pool subscribers',
-                Subscription::where('plan_type', PlanType::Pool)
+                Subscription::where('add_on_id', $poolAddOn->id)
                     ->whereDate('covered_month', $thisMonth)
                     ->distinct('member_id')
                     ->count('member_id'),

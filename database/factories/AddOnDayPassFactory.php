@@ -2,16 +2,17 @@
 
 namespace Database\Factories;
 
+use App\Models\AddOn;
+use App\Models\AddOnDayPass;
 use App\Models\Event;
 use App\Models\Member;
-use App\Models\PoolDayPass;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
- * @extends Factory<PoolDayPass>
+ * @extends Factory<AddOnDayPass>
  */
-class PoolDayPassFactory extends Factory
+class AddOnDayPassFactory extends Factory
 {
     /**
      * Define the model's default state.
@@ -23,6 +24,7 @@ class PoolDayPassFactory extends Factory
         return [
             'member_id' => Member::factory(),
             'event_id' => Event::factory(),
+            'add_on_id' => AddOn::factory(),
             'amount_paid' => 15,
             'payment_method' => 'cash',
             'register_shift_id' => null,

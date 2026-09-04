@@ -2,15 +2,15 @@
 
 namespace App\Models;
 
-use App\Enums\PlanType;
 use Carbon\CarbonInterface;
 use Database\Factories\PlanFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-#[Fillable(['code', 'duration_months', 'price', 'credit', 'effective_from', 'effective_to'])]
+#[Fillable(['add_on_id', 'duration_months', 'price', 'credit', 'effective_from', 'effective_to'])]
 class Plan extends Model
 {
     /** @use HasFactory<PlanFactory> */
@@ -19,13 +19,17 @@ class Plan extends Model
     protected function casts(): array
     {
         return [
-            'code' => PlanType::class,
             'duration_months' => 'integer',
             'price' => 'decimal:2',
             'credit' => 'decimal:2',
             'effective_from' => 'date',
             'effective_to' => 'date',
         ];
+    }
+
+    public function addOn(): BelongsTo
+    {
+        return $this->belongsTo(AddOn::class);
     }
 
     /**
@@ -35,12 +39,12 @@ class Plan extends Model
      * charged at the time. The per-visit entry credit always comes from the
      * duration-1 row, regardless of what duration a member actually
      * purchased under — coverage is checked per calendar month
-     * (Member::hasActiveSubscription()), not per purchase.
+     * (Member::hasActiveSubscriptionFor()), not per purchase.
      */
-    public static function currentFor(PlanType $planType, CarbonInterface $asOf, int $durationMonths = 1): ?self
+    public static function currentFor(AddOn $addOn, CarbonInterface $asOf, int $durationMonths = 1): ?self
     {
         return static::query()
-            ->where('code', $planType)
+            ->where('add_on_id', $addOn->id)
             ->where('duration_months', $durationMonths)
             ->whereDate('effective_from', '<=', $asOf->toDateString())
             ->where(fn ($query) => $query
@@ -51,7 +55,7 @@ class Plan extends Model
     }
 
     /**
-     * Every currently-effective plan row for a code, one per distinct
+     * Every currently-effective plan row for an add-on, one per distinct
      * duration — the monthly rate plus any bulk-discount durations (e.g. a
      * 3-month bundle) — ordered shortest-first. Powers the check-in and
      * admin bulk-purchase duration pickers; adding a new bundle duration
@@ -59,10 +63,10 @@ class Plan extends Model
      *
      * @return Collection<int, self>
      */
-    public static function currentOptionsFor(PlanType $planType, CarbonInterface $asOf): Collection
+    public static function currentOptionsFor(AddOn $addOn, CarbonInterface $asOf): Collection
     {
         return static::query()
-            ->where('code', $planType)
+            ->where('add_on_id', $addOn->id)
             ->whereDate('effective_from', '<=', $asOf->toDateString())
             ->where(fn ($query) => $query
                 ->whereNull('effective_to')

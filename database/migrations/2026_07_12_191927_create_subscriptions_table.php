@@ -13,18 +13,19 @@ return new class extends Migration
      */
     public function up(): void
     {
+        // What this subscription covers (Entry, Pool, or any other
+        // subscribable add-on) is added by a later migration, once add_ons
+        // exists to reference — see
+        // add_add_on_id_to_plans_and_subscriptions_table, which also adds
+        // this table's real unique/lookup indexes.
         Schema::create('subscriptions', function (Blueprint $table) {
             $table->id();
             $table->foreignIdFor(Member::class)->constrained();
-            $table->enum('plan_type', ['regular', 'pool']); // regular covers ENTRY, pool covers POOL
             $table->date('covered_month'); // first day of the covered month
             $table->decimal('amount_paid', 8, 2)->default(0);
             $table->date('paid_on')->nullable();
             $table->foreignIdFor(User::class, 'recorded_by')->nullable()->constrained('users');
             $table->timestamps();
-
-            $table->unique(['member_id', 'plan_type', 'covered_month']);
-            $table->index(['member_id', 'plan_type', 'covered_month'], 'ix_subs_lookup');
         });
     }
 

@@ -2,10 +2,10 @@
 
 namespace App\Services;
 
+use App\Models\AddOnDayPass;
 use App\Models\Attendance;
 use App\Models\MiscellaneousPayment;
 use App\Models\PaymentMethod;
-use App\Models\PoolDayPass;
 use App\Models\Register;
 use App\Models\RegisterDrop;
 use App\Models\RegisterShift;
@@ -18,9 +18,9 @@ use Illuminate\Support\Facades\DB;
  * reconciling what the box should hold. Expected cash is always derived from
  * the shift's own opening count plus every cash-flagged (PaymentMethod::
  * cashCodes()) row attributed to it (attendance, subscriptions,
- * miscellaneous_payments, and pool_day_passes -- the latter two for cash
+ * miscellaneous_payments, and add_on_day_passes -- the latter two for cash
  * taken outside the normal event/subscription flow, e.g. a vendor payment,
- * donation, or a one-time pool day pass) minus the append-only
+ * donation, or a one-time add-on day pass) minus the append-only
  * register_drops ledger, the same "derived, never
  * stored" shape as CapacityService::occupancy(). One open shift per register
  * at a time is enforced here, not by a DB constraint — two concurrent
@@ -101,11 +101,11 @@ class RegisterShiftService
             ->whereIn('payment_method', $cashCodes)
             ->sum('amount');
 
-        $poolDayPassCash = PoolDayPass::where('register_shift_id', $shift->id)
+        $addOnDayPassCash = AddOnDayPass::where('register_shift_id', $shift->id)
             ->whereIn('payment_method', $cashCodes)
             ->sum('amount_paid');
 
-        return (float) $attendanceCash + (float) $subscriptionCash + (float) $miscCash + (float) $poolDayPassCash;
+        return (float) $attendanceCash + (float) $subscriptionCash + (float) $miscCash + (float) $addOnDayPassCash;
     }
 
     /**
@@ -118,7 +118,7 @@ class RegisterShiftService
     public function revenueBreakdown(RegisterShift $shift): array
     {
         $other = (float) MiscellaneousPayment::where('register_shift_id', $shift->id)->sum('amount')
-            + (float) PoolDayPass::where('register_shift_id', $shift->id)->sum('amount_paid');
+            + (float) AddOnDayPass::where('register_shift_id', $shift->id)->sum('amount_paid');
 
         return [
             'event' => (float) Attendance::where('register_shift_id', $shift->id)->sum('amount_paid'),

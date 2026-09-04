@@ -2,7 +2,6 @@
 
 namespace App\Filament\Admin\Resources\Plans\Schemas;
 
-use App\Enums\PlanType;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
@@ -15,8 +14,9 @@ class PlanForm
     {
         return $schema
             ->components([
-                Select::make('code')
-                    ->options(PlanType::class)
+                Select::make('add_on_id')
+                    ->label('Target')
+                    ->relationship('addOn', 'name')
                     ->live()
                     ->required(),
                 TextInput::make('duration_months')
@@ -33,10 +33,10 @@ class PlanForm
                     ->numeric()
                     ->prefix('$'),
                 TextInput::make('credit')
-                    ->helperText('Per-event credit applied to the entry fee. Only meaningful on a 1-month plan — a bundle purchase still draws the ordinary monthly credit each visit. Leave blank for the pool plan — pool coverage is always full.')
+                    ->helperText('Per-visit credit applied to the target\'s fee. Only meaningful on a 1-month plan — a bundle purchase still draws the ordinary monthly credit each visit. Leave blank for full coverage instead of a fixed credit.')
                     ->numeric()
                     ->prefix('$')
-                    ->hidden(fn (Get $get) => $get('code') === PlanType::Pool->value || (int) $get('duration_months') !== 1)
+                    ->hidden(fn (Get $get): bool => (int) $get('duration_months') !== 1)
                     ->default(null),
                 DatePicker::make('effective_from')
                     ->required(),

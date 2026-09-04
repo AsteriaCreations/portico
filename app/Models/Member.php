@@ -2,7 +2,6 @@
 
 namespace App\Models;
 
-use App\Enums\PlanType;
 use Carbon\CarbonInterface;
 use Database\Factories\MemberFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -78,9 +77,9 @@ class Member extends Model
         return $this->hasMany(Voucher::class);
     }
 
-    public function poolDayPasses(): HasMany
+    public function addOnDayPasses(): HasMany
     {
-        return $this->hasMany(PoolDayPass::class);
+        return $this->hasMany(AddOnDayPass::class);
     }
 
     public function banExceptions(): HasMany
@@ -133,22 +132,22 @@ class Member extends Model
         return $this->category->name === 'Prospective';
     }
 
-    public function hasActiveSubscription(PlanType $planType, CarbonInterface $coveredMonth): bool
+    public function hasActiveSubscriptionFor(AddOn $addOn, CarbonInterface $coveredMonth): bool
     {
         return $this->subscriptions()
-            ->where('plan_type', $planType)
+            ->where('add_on_id', $addOn->id)
             ->whereDate('covered_month', $coveredMonth->toDateString())
             ->exists();
     }
 
     /**
-     * A one-time purchase covering pool for exactly this event -- distinct
-     * from a Pool subscription, which covers a whole calendar month. See
-     * docs/BLUEPRINT.md "Still open" (pool pass).
+     * A one-time purchase covering a subscribable add-on for exactly this
+     * event -- distinct from a subscription, which covers a whole calendar
+     * month. See docs/BLUEPRINT.md "Fee pipeline".
      */
-    public function hasPoolDayPassFor(Event $event): bool
+    public function hasDayPassFor(AddOn $addOn, Event $event): bool
     {
-        return $this->poolDayPasses()->where('event_id', $event->id)->exists();
+        return $this->addOnDayPasses()->where('event_id', $event->id)->where('add_on_id', $addOn->id)->exists();
     }
 
     /**

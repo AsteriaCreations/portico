@@ -2,6 +2,8 @@
 
 namespace App\Filament\Admin\Resources\Events\RelationManagers;
 
+use App\Models\Attendance;
+use App\Models\AttendanceAddOn;
 use App\Models\CompReason;
 use App\Models\Member;
 use App\Services\CapacityService;
@@ -70,7 +72,6 @@ class CompListRelationManager extends RelationManager
                 TextColumn::make('compReason.name')
                     ->label('Reason'),
                 TextColumn::make('entry_fee')->money()->sortable(),
-                TextColumn::make('pool_fee')->money()->sortable(),
                 TextColumn::make('amount_paid')->money()->sortable(),
                 TextColumn::make('notes')
                     ->toggleable(isToggledHiddenByDefault: true),
@@ -123,6 +124,17 @@ class CompListRelationManager extends RelationManager
                             'checked_in_at' => null,
                             ...$breakdown->toAttendanceAttributes(),
                         ];
+                    })
+                    // toAttendanceAttributes() above only covers entry --
+                    // each subscribable add-on's line (Pool, at launch,
+                    // untouched by the comp) is its own attendance_add_ons
+                    // row, same as CheckIn::checkInAction()'s own transaction.
+                    ->after(function (Attendance $record): void {
+                        $breakdown = app(PricingService::class)->price($record->member, $this->getOwnerRecord());
+
+                        foreach ($breakdown->addOnAttendanceRows() as $row) {
+                            AttendanceAddOn::create(['attendance_id' => $record->id, ...$row]);
+                        }
                     }),
             ])
             ->recordActions([

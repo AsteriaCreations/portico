@@ -2,7 +2,6 @@
 
 namespace App\Filament\Admin\Resources\Subscriptions\Schemas;
 
-use App\Enums\PlanType;
 use App\Models\Member;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Hidden;
@@ -35,8 +34,9 @@ class SubscriptionForm
                         },
                         condition: fn (string $operation): bool => $operation === 'create',
                     ),
-                Select::make('plan_type')
-                    ->options(PlanType::class)
+                Select::make('add_on_id')
+                    ->label('Plan')
+                    ->relationship('addOn', 'name')
                     ->required(),
                 DatePicker::make('covered_month')
                     ->helperText('The calendar month this payment covers — stored as the first of the month.')

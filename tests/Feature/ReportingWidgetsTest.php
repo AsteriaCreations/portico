@@ -1,7 +1,7 @@
 <?php
 
+use App\Enums\AddOnKind;
 use App\Enums\EntryCoverageSource;
-use App\Enums\PlanType;
 use App\Enums\Role;
 use App\Filament\Admin\Widgets\AddOnRevenueWidget;
 use App\Filament\Admin\Widgets\CompCostWidget;
@@ -16,6 +16,8 @@ use App\Filament\Admin\Widgets\VoucherLiabilityWidget;
 use App\Filament\Admin\Widgets\WeeklyAttendanceChartWidget;
 use App\Filament\Admin\Widgets\WeeklyCategoryBreakdownWidget;
 use App\Filament\Admin\Widgets\WeeklySummaryWidget;
+use App\Models\AddOn;
+use App\Models\AddOnDayPass;
 use App\Models\Attendance;
 use App\Models\AttendanceAddOn;
 use App\Models\Category;
@@ -26,7 +28,6 @@ use App\Models\EventType;
 use App\Models\Member;
 use App\Models\MembershipSetting;
 use App\Models\MiscellaneousPayment;
-use App\Models\PoolDayPass;
 use App\Models\RegisterShift;
 use App\Models\Subscription;
 use App\Models\User;
@@ -310,21 +311,24 @@ test('subscription overview widget counts active subscribers this month by plan 
     $manager = User::factory()->create(['active' => true, 'role' => Role::Manager]);
     $this->actingAs($manager);
 
+    $entry = AddOn::create(['name' => AddOn::ENTRY_NAME, 'kind' => AddOnKind::Entry, 'subscribable' => true]);
+    $pool = AddOn::create(['name' => AddOn::POOL_NAME, 'subscribable' => true, 'priced_per_event' => true]);
+
     $thisMonth = now()->startOfMonth()->toDateString();
     // Subtracting from the 1st avoids Carbon's month-overflow quirk on a
     // 31st (now()->subMonth() from July 31 lands back on July 1, not June).
     $lastMonth = now()->startOfMonth()->subMonth()->toDateString();
 
-    Subscription::factory()->create(['plan_type' => PlanType::Regular, 'covered_month' => $thisMonth, 'paid_on' => now(), 'amount_paid' => 60]);
-    Subscription::factory()->create(['plan_type' => PlanType::Regular, 'covered_month' => $thisMonth, 'paid_on' => now(), 'amount_paid' => 60]);
-    Subscription::factory()->create(['plan_type' => PlanType::Pool, 'covered_month' => $thisMonth, 'paid_on' => now(), 'amount_paid' => 15]);
+    Subscription::factory()->create(['add_on_id' => $entry->id, 'covered_month' => $thisMonth, 'paid_on' => now(), 'amount_paid' => 60]);
+    Subscription::factory()->create(['add_on_id' => $entry->id, 'covered_month' => $thisMonth, 'paid_on' => now(), 'amount_paid' => 60]);
+    Subscription::factory()->create(['add_on_id' => $pool->id, 'covered_month' => $thisMonth, 'paid_on' => now(), 'amount_paid' => 15]);
     // Covered last month, not this one — should not count as "active" this
     // month, but paid today, so it still counts toward this week's revenue
     // (revenue windows on paid_on, the transaction date, not covered_month).
-    Subscription::factory()->create(['plan_type' => PlanType::Regular, 'covered_month' => $lastMonth, 'paid_on' => now(), 'amount_paid' => 60]);
+    Subscription::factory()->create(['add_on_id' => $entry->id, 'covered_month' => $lastMonth, 'paid_on' => now(), 'amount_paid' => 60]);
     // Covered this month but paid last week — still an "active" subscriber
     // this month, just excluded from the this-week revenue figure.
-    Subscription::factory()->create(['plan_type' => PlanType::Regular, 'covered_month' => $thisMonth, 'paid_on' => now()->subWeeks(2), 'amount_paid' => 999]);
+    Subscription::factory()->create(['add_on_id' => $entry->id, 'covered_month' => $thisMonth, 'paid_on' => now()->subWeeks(2), 'amount_paid' => 999]);
 
     Livewire::test(SubscriptionOverviewWidget::class)->assertSuccessful();
 
@@ -343,6 +347,9 @@ test('subscription overview widget counts active subscribers this month by plan 
 test('subscription overview widget omits the pool stat once pool_enabled is off, restores once re-enabled', function () {
     $manager = User::factory()->create(['active' => true, 'role' => Role::Manager]);
     $this->actingAs($manager);
+
+    AddOn::create(['name' => AddOn::ENTRY_NAME, 'kind' => AddOnKind::Entry, 'subscribable' => true]);
+    AddOn::create(['name' => AddOn::POOL_NAME, 'subscribable' => true, 'priced_per_event' => true]);
 
     MembershipSetting::current()->update(['pool_enabled' => false]);
     $widget = new SubscriptionOverviewWidget;
@@ -372,7 +379,7 @@ test('monthly revenue chart widget buckets event, subscription, and other revenu
     Attendance::factory()->for($event)->create(['checked_in_at' => now(), 'amount_paid' => 50]);
     Subscription::factory()->create(['paid_on' => now(), 'amount_paid' => 60]);
     MiscellaneousPayment::factory()->create(['amount' => 20]);
-    PoolDayPass::factory()->create(['amount_paid' => 15]);
+    AddOnDayPass::factory()->create(['amount_paid' => 15]);
 
     // 13 months ago — outside the 12-month rolling window, should not count.
     Attendance::factory()->for($event)->create(['checked_in_at' => now()->startOfMonth()->subMonths(13), 'amount_paid' => 999]);

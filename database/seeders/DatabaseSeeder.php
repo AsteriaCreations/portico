@@ -69,9 +69,9 @@ class DatabaseSeeder extends Seeder
         $this->call([
             CategorySeeder::class,
             EventTypeSeeder::class,
-            PlanSeeder::class,
-            CompReasonSeeder::class,
             AddOnSeeder::class,
+            PlanSeeder::class, // depends on AddOnSeeder (Entry/Pool rows)
+            CompReasonSeeder::class,
             ShowrunnerPayoutTierSeeder::class,
             InstructorPayRateSeeder::class,
         ]);

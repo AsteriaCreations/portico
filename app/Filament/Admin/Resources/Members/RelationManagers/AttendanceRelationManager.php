@@ -3,7 +3,8 @@
 namespace App\Filament\Admin\Resources\Members\RelationManagers;
 
 use App\Enums\EntryCoverageSource;
-use App\Enums\PoolCoverageSource;
+use App\Models\Attendance;
+use App\Models\AttendanceAddOn;
 use App\Models\Event;
 use App\Models\PaymentMethod;
 use App\Services\PricingService;
@@ -44,9 +45,6 @@ class AttendanceRelationManager extends RelationManager
                 TextInput::make('entry_fee')->numeric()->prefix('$')->disabled(),
                 TextInput::make('entry_coverage')->numeric()->prefix('$')->disabled(),
                 Select::make('entry_covered_by')->options(EntryCoverageSource::class)->disabled(),
-                TextInput::make('pool_fee')->numeric()->prefix('$')->disabled(),
-                TextInput::make('pool_coverage')->numeric()->prefix('$')->disabled(),
-                Select::make('pool_covered_by')->options(PoolCoverageSource::class)->disabled(),
                 TextInput::make('amount_paid')
                     ->label('Amount paid')
                     ->required()
@@ -78,9 +76,6 @@ class AttendanceRelationManager extends RelationManager
                 TextColumn::make('entry_fee')->money()->sortable(),
                 TextColumn::make('entry_coverage')->money()->sortable(),
                 TextColumn::make('entry_covered_by')->badge(),
-                TextColumn::make('pool_fee')->money()->sortable(),
-                TextColumn::make('pool_coverage')->money()->sortable(),
-                TextColumn::make('pool_covered_by')->badge(),
                 TextColumn::make('amount_paid')->money()->sortable(),
                 TextColumn::make('payment_method')
                     ->toggleable(isToggledHiddenByDefault: true),
@@ -131,6 +126,17 @@ class AttendanceRelationManager extends RelationManager
                             'checked_in_by' => auth()->id(),
                             ...$breakdown->toAttendanceAttributes(),
                         ];
+                    })
+                    // toAttendanceAttributes() above only covers entry --
+                    // each subscribable add-on's line (Pool, at launch) is
+                    // its own attendance_add_ons row, same as
+                    // CheckIn::checkInAction()'s own transaction.
+                    ->after(function (Attendance $record): void {
+                        $breakdown = app(PricingService::class)->price($this->getOwnerRecord(), $record->event);
+
+                        foreach ($breakdown->addOnAttendanceRows() as $row) {
+                            AttendanceAddOn::create(['attendance_id' => $record->id, ...$row]);
+                        }
                     }),
             ])
             ->recordActions([

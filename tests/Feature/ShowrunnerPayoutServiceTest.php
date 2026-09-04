@@ -1,8 +1,10 @@
 <?php
 
+use App\Enums\AddOnCoverageSource;
+use App\Enums\AddOnKind;
 use App\Enums\EntryCoverageSource;
 use App\Enums\PayoutType;
-use App\Enums\PlanType;
+use App\Models\AddOn;
 use App\Models\Attendance;
 use App\Models\AttendanceAddOn;
 use App\Models\Category;
@@ -16,8 +18,10 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 uses(RefreshDatabase::class);
 
 beforeEach(function () {
+    $entry = AddOn::create(['name' => AddOn::ENTRY_NAME, 'kind' => AddOnKind::Entry, 'subscribable' => true]);
+
     Plan::create([
-        'code' => PlanType::Regular,
+        'add_on_id' => $entry->id,
         'price' => 60.00,
         'credit' => 25.00,
         'effective_from' => '2026-01-01',
@@ -147,14 +151,21 @@ test('comped, event-comp, and host entries never count toward headcount or door 
 });
 
 test('pool and add-on revenue only count toward the door total when their settings toggle is on', function () {
+    $pool = AddOn::create(['name' => AddOn::POOL_NAME, 'subscribable' => true, 'priced_per_event' => true]);
     $event = Event::factory()->create(['event_date' => '2026-07-19', 'entry_fee' => 10, 'pool_fee' => 5]);
     $attendance = Attendance::factory()->for($event)->create([
         'checked_in_at' => now(),
         'entry_covered_by' => EntryCoverageSource::None,
         'entry_fee' => 10,
         'entry_coverage' => 0,
-        'pool_fee' => 5,
-        'pool_coverage' => 0,
+    ]);
+    AttendanceAddOn::factory()->for($attendance, 'attendance')->create([
+        'add_on_id' => $pool->id,
+        'name' => AddOn::POOL_NAME,
+        'price' => 5,
+        'fee' => 5,
+        'coverage' => 0,
+        'covered_by' => AddOnCoverageSource::None,
     ]);
     AttendanceAddOn::factory()->for($attendance, 'attendance')->create(['price' => 30]);
 

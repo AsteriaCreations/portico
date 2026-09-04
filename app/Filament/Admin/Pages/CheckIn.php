@@ -3,9 +3,9 @@
 namespace App\Filament\Admin\Pages;
 
 use App\Enums\AdmissionOutcome;
-use App\Enums\PlanType;
 use App\Enums\Role;
 use App\Models\AddOn;
+use App\Models\AddOnDayPass;
 use App\Models\Attendance;
 use App\Models\AttendanceAddOn;
 use App\Models\Category;
@@ -16,7 +16,6 @@ use App\Models\MembershipSetting;
 use App\Models\MiscellaneousPayment;
 use App\Models\PaymentMethod;
 use App\Models\Plan;
-use App\Models\PoolDayPass;
 use App\Models\Register;
 use App\Models\RegisterShift;
 use App\Models\Subscription;
@@ -238,11 +237,19 @@ class CheckIn extends Page implements HasTable
 
         $eligible = $member->isSubscriptionEligible();
 
+        $addOnSubscriptionIdsSelected = $eligible
+            ? AddOn::subscribable()->get()
+                ->filter(fn (AddOn $addOn) => $addOn->isCurrentlyPurchasable())
+                ->filter(fn (AddOn $addOn) => ($this->pricingData["subscription_addon_{$addOn->id}_duration"] ?? 'none') !== 'none')
+                ->pluck('id')
+                ->all()
+            : [];
+
         $breakdown = app(PricingService::class)->previewWithSelections(
             $member,
             $event,
             regularSelected: $eligible && ($this->pricingData['subscription_regular_duration'] ?? 'none') !== 'none',
-            poolSelected: $eligible && MembershipSetting::current()->pool_enabled && ($this->pricingData['subscription_pool_duration'] ?? 'none') !== 'none',
+            addOnSubscriptionIdsSelected: $addOnSubscriptionIdsSelected,
         );
 
         if (($this->pricingData['comp_entry'] ?? false) && Gate::allows('grant-event-comp')) {
@@ -326,8 +333,24 @@ class CheckIn extends Page implements HasTable
             && $decision?->outcome !== AdmissionOutcome::Capture;
 
         $eligible = $member?->isSubscriptionEligible() ?? false;
-        $regularOptions = ($member && $event && $eligible) ? $this->subscriptionOptions(PlanType::Regular, $member, $event) : ['none' => 'No subscription payment'];
-        $poolOptions = ($member && $event && $eligible) ? $this->subscriptionOptions(PlanType::Pool, $member, $event) : ['none' => 'No subscription payment'];
+        $regularOptions = ($member && $event && $eligible) ? $this->subscriptionOptions(AddOn::entry(), $member, $event) : ['none' => 'No subscription payment'];
+        // One Select per subscribable add-on (Pool, at launch) rather than a
+        // hardcoded pair of fields -- a club that flags a second add-on
+        // subscribable gets a duration picker for it with no code change.
+        $addOnSubscriptionSelects = AddOn::subscribable()->orderBy('sort_order')->get()
+            ->filter(fn (AddOn $addOn) => $addOn->isCurrentlyPurchasable())
+            ->map(function (AddOn $addOn) use ($member, $event, $eligible, $canPreviewPricing) {
+                $options = ($member && $event && $eligible) ? $this->subscriptionOptions($addOn, $member, $event) : ['none' => 'No subscription payment'];
+
+                return Select::make("subscription_addon_{$addOn->id}_duration")
+                    ->label("{$addOn->name} Subscription")
+                    ->live()
+                    ->options($options)
+                    ->default('none')
+                    ->visible($canPreviewPricing && $eligible && count($options) > 1);
+            })
+            ->values()
+            ->all();
         $canGrantComp = Gate::allows('grant-event-comp');
         $entryFee = $this->getPriceBreakdown()?->entryFee ?? 0.0;
         $ownBalance = $member?->voucherBalance() ?? 0.0;
@@ -340,7 +363,13 @@ class CheckIn extends Page implements HasTable
             ->components([
                 CheckboxList::make('add_on_ids')
                     ->label('Add-ons')
+                    // Subscribable add-ons (Pool) are never in this list --
+                    // they're priced automatically via PricingService
+                    // whenever the event has a price for them, the same
+                    // "no checkbox needed" behavior pool_fee always had.
+                    // Only flat, non-subscribable extras are opt-in here.
                     ->options(fn () => AddOn::where('active', true)
+                        ->where('subscribable', false)
                         ->orderBy('sort_order')
                         ->get()
                         ->mapWithKeys(fn (AddOn $addOn) => [
@@ -363,12 +392,7 @@ class CheckIn extends Page implements HasTable
                     ->options($regularOptions)
                     ->default('none')
                     ->visible($canPreviewPricing && $eligible && count($regularOptions) > 1),
-                Select::make('subscription_pool_duration')
-                    ->label('Pool Subscription')
-                    ->live()
-                    ->options($poolOptions)
-                    ->default('none')
-                    ->visible($canPreviewPricing && $eligible && count($poolOptions) > 1 && MembershipSetting::current()->pool_enabled),
+                ...$addOnSubscriptionSelects,
                 Checkbox::make('comp_entry')
                     ->label('Comp this entry (e.g. worked the event)')
                     ->live()
@@ -660,7 +684,7 @@ class CheckIn extends Page implements HasTable
     // Door" precedent;
     // this is that same capability, just no longer requiring an event to be
     // selected first. Once purchased, a later check-in that night picks up
-    // the coverage automatically via Member::hasActiveSubscription() -- no
+    // the coverage automatically via Member::hasActiveSubscriptionFor() -- no
     // special-casing needed in pricingForm/getLivePriceBreakdown().
     public function purchaseSubscriptionAction(): Action
     {
@@ -672,8 +696,16 @@ class CheckIn extends Page implements HasTable
             ->label('Buy Subscription')
             ->visible(fn (): bool => (bool) $member?->isSubscriptionEligible())
             ->schema([
-                Select::make('plan_type')
-                    ->options(PlanType::selectableOptions())
+                Select::make('add_on_id')
+                    ->label('Plan')
+                    // Entry (the Regular subscription) plus every currently
+                    // subscribable add-on (Pool, at launch) -- rebuilt fresh
+                    // on every open/submit, same reasoning as every other
+                    // options() closure here.
+                    ->options(fn () => collect([AddOn::entry()])
+                        ->merge(AddOn::subscribable()->orderBy('sort_order')->get()->filter(fn (AddOn $addOn) => $addOn->isCurrentlyPurchasable()))
+                        ->mapWithKeys(fn (AddOn $addOn) => [$addOn->id => $addOn->name])
+                        ->all())
                     ->required()
                     ->live(),
                 DatePicker::make('desired_start')
@@ -686,13 +718,12 @@ class CheckIn extends Page implements HasTable
                 Select::make('duration_months')
                     ->label('Duration')
                     ->options(function (Get $get): array {
-                        $rawPlanType = $get('plan_type');
-                        if (! $rawPlanType) {
+                        $addOn = $get('add_on_id') ? AddOn::find($get('add_on_id')) : null;
+                        if (! $addOn) {
                             return [];
                         }
-                        $planType = $rawPlanType instanceof PlanType ? $rawPlanType : PlanType::from($rawPlanType);
 
-                        return Plan::currentOptionsFor($planType, now())
+                        return Plan::currentOptionsFor($addOn, now())
                             ->mapWithKeys(fn (Plan $plan) => [$plan->duration_months => "{$plan->duration_months} month(s) — \$".number_format($plan->price, 2)])
                             ->all();
                     })
@@ -707,13 +738,16 @@ class CheckIn extends Page implements HasTable
                 $member = $this->getSelectedMember();
                 abort_unless($member, 404);
 
-                $planType = $data['plan_type'] instanceof PlanType ? $data['plan_type'] : PlanType::from($data['plan_type']);
+                $addOn = AddOn::find($data['add_on_id']);
+                abort_unless($addOn, 404);
 
                 // Re-checked here, not just via the filtered Select options
                 // above -- same defensive pattern as every other standalone
                 // action in this app. Door can't reach the Settings page to
-                // flip this flag, so hiding the option alone isn't enough.
-                abort_unless($planType !== PlanType::Pool || MembershipSetting::current()->pool_enabled, 403);
+                // flip pool_enabled, so hiding the option alone isn't
+                // enough. Entry is always purchasable.
+                $purchasableIds = AddOn::subscribable()->get()->filter(fn (AddOn $a) => $a->isCurrentlyPurchasable())->pluck('id');
+                abort_unless($addOn->id === AddOn::entry()->id || $purchasableIds->contains($addOn->id), 403);
 
                 $months = (int) $data['duration_months'];
                 $desiredStart = Carbon::parse($data['desired_start']);
@@ -721,7 +755,7 @@ class CheckIn extends Page implements HasTable
 
                 $rows = app(SubscriptionBundleService::class)->purchase(
                     $member,
-                    $planType,
+                    $addOn,
                     $months,
                     $desiredStart,
                     auth()->user(),
@@ -746,30 +780,49 @@ class CheckIn extends Page implements HasTable
             });
     }
 
-    // A one-time purchase covering pool for exactly one event -- distinct
-    // from the Pool subscription (a whole calendar month) purchasable above
-    // via purchaseSubscriptionAction(). Not gated by isSubscriptionEligible()
+    // A one-time purchase covering a subscribable add-on for exactly one
+    // event -- distinct from a subscription (a whole calendar month)
+    // purchasable above via purchaseSubscriptionAction(). Only meaningful
+    // for a priced_per_event add-on (Pool, at launch): a flat add-on's price
+    // never varies by event, so a "day pass" for one would be identical to
+    // just checking it at check-in. Not gated by isSubscriptionEligible()
     // -- that rule only applies where a `subscriptions` row gets created,
     // and this deliberately never creates one. Its own event Select, not
     // coupled to whatever event is currently selected on the page, so staff
     // can sell a pass for a different night while mid-transaction on
-    // tonight's. See docs/BLUEPRINT.md "Still open" (pool pass).
-    public function purchasePoolDayPassAction(): Action
+    // tonight's. See docs/BLUEPRINT.md "Fee pipeline".
+    public function purchaseAddOnDayPassAction(): Action
     {
         $member = $this->getSelectedMember();
         $openShift = $this->getOpenShift();
         $venmoAlreadyUsed = $member?->hasUsedVenmo() ?? false;
+        $dayPassableAddOns = AddOn::subscribable()->where('priced_per_event', true)->orderBy('sort_order')->get()
+            ->filter(fn (AddOn $addOn) => $addOn->isCurrentlyPurchasable());
+        $defaultAddOnId = $dayPassableAddOns->count() === 1 ? $dayPassableAddOns->first()->id : null;
 
-        return Action::make('purchasePoolDayPass')
-            ->label('Buy Pool Day Pass')
-            ->visible(fn (): bool => (bool) $member && MembershipSetting::current()->pool_enabled)
+        return Action::make('purchaseAddOnDayPass')
+            ->label('Buy Day Pass')
+            ->visible(fn (): bool => (bool) $member && $dayPassableAddOns->isNotEmpty())
             ->schema([
+                Select::make('add_on_id')
+                    ->label('Add-on')
+                    ->options($dayPassableAddOns->pluck('name', 'id')->all())
+                    ->default($defaultAddOnId)
+                    ->required()
+                    ->live(),
                 Select::make('event_id')
                     ->label('Event')
-                    ->options(fn () => static::poolDayPassEventOptionsQuery()
-                        ->orderBy('event_date')
-                        ->get()
-                        ->mapWithKeys(fn (Event $event) => [$event->id => "{$event->name} — {$event->event_date->toFormattedDateString()} (\$".number_format((float) $event->pool_fee, 2).')']))
+                    ->options(function (Get $get) {
+                        $addOn = $get('add_on_id') ? AddOn::find($get('add_on_id')) : null;
+                        if (! $addOn) {
+                            return [];
+                        }
+
+                        return static::addOnDayPassEventOptionsQuery($addOn)
+                            ->orderBy('event_date')
+                            ->get()
+                            ->mapWithKeys(fn (Event $event) => [$event->id => "{$event->name} — {$event->event_date->toFormattedDateString()} (\$".number_format((float) $addOn->priceFor($event), 2).')']);
+                    })
                     ->required()
                     ->searchable(),
                 Select::make('payment_method')
@@ -781,18 +834,28 @@ class CheckIn extends Page implements HasTable
             ->action(function (array $data): void {
                 $member = $this->getSelectedMember();
                 abort_unless($member, 404);
-                abort_unless(MembershipSetting::current()->pool_enabled, 403);
+
+                $addOn = AddOn::find($data['add_on_id']);
+                abort_unless($addOn, 404);
+                // Re-checked here, not just via the filtered Select options
+                // above -- same defense-in-depth as purchaseSubscriptionAction().
+                $dayPassablePurchasableIds = AddOn::subscribable()->where('priced_per_event', true)->get()->filter(fn (AddOn $a) => $a->isCurrentlyPurchasable())->pluck('id');
+                abort_unless($dayPassablePurchasableIds->contains($addOn->id), 403);
 
                 $event = Event::find($data['event_id']);
                 abort_unless($event, 404);
 
+                $price = $addOn->priceFor($event);
+                abort_unless($price !== null, 422);
+
                 $paymentMethod = $data['payment_method'] ?? null;
 
                 try {
-                    $pass = PoolDayPass::create([
+                    $pass = AddOnDayPass::create([
                         'member_id' => $member->id,
                         'event_id' => $event->id,
-                        'amount_paid' => $event->pool_fee,
+                        'add_on_id' => $addOn->id,
+                        'amount_paid' => $price,
                         'payment_method' => $paymentMethod,
                         'register_shift_id' => $this->getOpenShift()?->id,
                         'recorded_by' => auth()->id(),
@@ -802,7 +865,7 @@ class CheckIn extends Page implements HasTable
                         throw $exception;
                     }
 
-                    Notification::make()->title("{$member->username} already has a pool day pass for that event.")->danger()->send();
+                    Notification::make()->title("{$member->username} already has a {$addOn->name} day pass for that event.")->danger()->send();
 
                     return;
                 }
@@ -812,7 +875,7 @@ class CheckIn extends Page implements HasTable
                 }
 
                 Notification::make()
-                    ->title('Pool day pass recorded — $'.number_format((float) $pass->amount_paid, 2)." for {$event->name}")
+                    ->title("{$addOn->name} day pass recorded — \$".number_format((float) $pass->amount_paid, 2)." for {$event->name}")
                     ->success()
                     ->send();
             });
@@ -889,23 +952,23 @@ class CheckIn extends Page implements HasTable
     }
 
     /**
-     * Subscription payment options for one plan type at check-in: "no payment," the
-     * ordinary single month (hidden outright if that exact month is already
-     * covered — unchanged from before bundles existed), and any bulk
-     * duration currently configured in Plans. A bulk option is never hidden
-     * on conflict — the resolved (possibly shifted) coverage range is baked
-     * right into its label instead, so staff see where it'll land before
-     * anyone commits to it.
+     * Subscription payment options for one add-on (or Entry) at check-in:
+     * "no payment," the ordinary single month (hidden outright if that
+     * exact month is already covered — unchanged from before bundles
+     * existed), and any bulk duration currently configured in Plans. A bulk
+     * option is never hidden on conflict — the resolved (possibly shifted)
+     * coverage range is baked right into its label instead, so staff see
+     * where it'll land before anyone commits to it.
      *
      * @return array<int|string, string>
      */
-    protected function subscriptionOptions(PlanType $planType, Member $member, Event $event): array
+    protected function subscriptionOptions(AddOn $addOn, Member $member, Event $event): array
     {
         $options = ['none' => 'No subscription payment'];
         $eventMonth = $event->event_date->clone()->startOfMonth();
 
-        $monthlyPlan = Plan::currentFor($planType, $event->event_date);
-        if ($monthlyPlan && ! $member->hasActiveSubscription($planType, $eventMonth)) {
+        $monthlyPlan = Plan::currentFor($addOn, $event->event_date);
+        if ($monthlyPlan && ! $member->hasActiveSubscriptionFor($addOn, $eventMonth)) {
             $options[1] = 'This month — $'.number_format($monthlyPlan->price, 2);
         }
 
@@ -915,13 +978,13 @@ class CheckIn extends Page implements HasTable
         // time (SubscriptionBundleService::purchase() does the same), since
         // the check-in desk collects payment today regardless of which
         // (possibly future, door-prepay) event is selected.
-        foreach (Plan::currentOptionsFor($planType, now()) as $plan) {
+        foreach (Plan::currentOptionsFor($addOn, now()) as $plan) {
             if ($plan->duration_months <= 1) {
                 continue;
             }
 
             try {
-                $resolution = $service->resolveStart($member, $planType, $eventMonth, $plan->duration_months);
+                $resolution = $service->resolveStart($member, $addOn, $eventMonth, $plan->duration_months);
             } catch (HttpException) {
                 // No free block found within the lookahead — an extreme edge
                 // case; just don't offer this duration rather than error the page.
@@ -1051,15 +1114,24 @@ class CheckIn extends Page implements HasTable
                         $month = $event->event_date->clone()->startOfMonth();
                         $subscriptionTotal = 0.0;
 
-                        foreach ([['type' => PlanType::Regular, 'field' => 'subscription_regular_duration'], ['type' => PlanType::Pool, 'field' => 'subscription_pool_duration']] as ['type' => $planType, 'field' => $field]) {
-                            // A forged pricingData['subscription_pool_duration']
-                            // must not buy pool coverage while disabled, even
-                            // though the field itself is already hidden --
-                            // same defense-in-depth as the two pool actions.
-                            if ($planType === PlanType::Pool && ! MembershipSetting::current()->pool_enabled) {
-                                continue;
-                            }
+                        // Filtered to currently-purchasable add-ons (Pool
+                        // excluded while pool_enabled is off) -- looping
+                        // only over what remains is itself the defense-in-
+                        // depth against a forged subscription_addon_{id}_
+                        // duration field for a now-disabled add-on, same as
+                        // the day-pass/subscription actions above re-
+                        // checking the same fresh query. Pricing itself
+                        // (below, via PricingService::price()) is
+                        // unaffected by this filter -- an event that
+                        // already has a pool fee still charges for it,
+                        // and an existing subscription still covers it,
+                        // regardless of whether new ones can be bought.
+                        $targets = collect([['addOn' => AddOn::entry(), 'field' => 'subscription_regular_duration']])
+                            ->merge(AddOn::subscribable()->get()
+                                ->filter(fn (AddOn $addOn) => $addOn->isCurrentlyPurchasable())
+                                ->map(fn (AddOn $addOn) => ['addOn' => $addOn, 'field' => "subscription_addon_{$addOn->id}_duration"]));
 
+                        foreach ($targets as ['addOn' => $addOn, 'field' => $field]) {
                             $selected = $pricingData[$field] ?? 'none';
                             if ($selected === 'none' || $selected === null || ! $member->isSubscriptionEligible()) {
                                 continue;
@@ -1080,7 +1152,7 @@ class CheckIn extends Page implements HasTable
                                 // wrong here, where a stale/forged '1' selection for an
                                 // already-covered month must silently no-op, not buy a
                                 // different month than what was on screen.)
-                                if ($member->hasActiveSubscription($planType, $month)) {
+                                if ($member->hasActiveSubscriptionFor($addOn, $month)) {
                                     continue;
                                 }
                                 // Priced as of today, not the event's date -- matches
@@ -1088,13 +1160,13 @@ class CheckIn extends Page implements HasTable
                                 // priced as of today" rule, since this is a payment
                                 // happening now regardless of which (possibly future,
                                 // door-prepay) event is selected.
-                                $plan = Plan::currentFor($planType, now());
+                                $plan = Plan::currentFor($addOn, now());
                                 if (! $plan) {
                                     continue;
                                 }
                                 Subscription::create([
                                     'member_id' => $member->id,
-                                    'plan_type' => $planType,
+                                    'add_on_id' => $addOn->id,
                                     'covered_month' => $month->toDateString(),
                                     'amount_paid' => $plan->price,
                                     'paid_on' => now(),
@@ -1109,7 +1181,7 @@ class CheckIn extends Page implements HasTable
 
                             $bundleRows = app(SubscriptionBundleService::class)->purchase(
                                 $member,
-                                $planType,
+                                $addOn,
                                 $months,
                                 $month,
                                 auth()->user(),
@@ -1123,14 +1195,15 @@ class CheckIn extends Page implements HasTable
 
                         // Re-fetched server-side, never trusted from the
                         // submitted names/prices — same defense-in-depth as
-                        // everywhere else in this closure. Add-ons never go
-                        // through PricingService: they're a flat addition to
-                        // amount_paid, not comped or voucher-covered. Also
-                        // re-checked against add_ons_enabled -- a forged
-                        // selection from a session where the field was
-                        // hidden must be silently ignored, not honored.
+                        // everywhere else in this closure. A flat add-on
+                        // never goes through PricingService: it's a plain
+                        // addition to amount_paid, not comped or voucher-
+                        // covered. Also re-checked against add_ons_enabled
+                        // -- a forged selection from a session where the
+                        // field was hidden must be silently ignored, not
+                        // honored.
                         $selectedAddOns = MembershipSetting::current()->add_ons_enabled
-                            ? AddOn::whereIn('id', static::normalizeAddOnIds($pricingData['add_on_ids'] ?? null))->where('active', true)->get()
+                            ? AddOn::whereIn('id', static::normalizeAddOnIds($pricingData['add_on_ids'] ?? null))->where('active', true)->where('subscribable', false)->get()
                             : collect();
                         $addOnTotal = (float) $selectedAddOns->sum('price');
 
@@ -1195,6 +1268,13 @@ class CheckIn extends Page implements HasTable
                                 'price' => $addOn->price,
                                 'is_overnight' => $addOn->is_overnight,
                             ]);
+                        }
+
+                        // One row per subscribable add-on priced for this
+                        // event (Pool, at launch) -- coverage already
+                        // resolved by PricingService::build() above.
+                        foreach ($breakdown->addOnAttendanceRows() as $row) {
+                            AttendanceAddOn::create(['attendance_id' => $attendance->id, ...$row]);
                         }
 
                         if ($paymentMethod === 'venmo') {
@@ -1370,10 +1450,12 @@ class CheckIn extends Page implements HasTable
     }
 
     /**
-     * No point selling a pool day pass for an event that's already ended, or
-     * one with no pool component at all.
+     * No point selling a day pass for an event that's already ended, or one
+     * with no price for this add-on at all. Reads event.pool_fee directly,
+     * same limitation as AddOn::priceFor() — Pool is the only
+     * priced_per_event add-on today.
      */
-    protected static function poolDayPassEventOptionsQuery(): Builder
+    protected static function addOnDayPassEventOptionsQuery(AddOn $addOn): Builder
     {
         return Event::currentOrFutureQuery()->where('pool_fee', '>', 0);
     }

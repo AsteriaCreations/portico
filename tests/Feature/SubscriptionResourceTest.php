@@ -1,9 +1,10 @@
 <?php
 
-use App\Enums\PlanType;
+use App\Enums\AddOnKind;
 use App\Enums\Role;
 use App\Filament\Admin\Resources\Subscriptions\Pages\CreateSubscription;
 use App\Filament\Admin\Resources\Subscriptions\Pages\ListSubscriptions;
+use App\Models\AddOn;
 use App\Models\Member;
 use App\Models\Plan;
 use App\Models\Subscription;
@@ -15,6 +16,7 @@ uses(RefreshDatabase::class);
 
 beforeEach(function () {
     $this->actingAs(User::factory()->create(['active' => true]));
+    $this->entry = AddOn::create(['name' => AddOn::ENTRY_NAME, 'kind' => AddOnKind::Entry, 'subscribable' => true]);
 });
 
 test('subscriptions list page renders', function () {
@@ -29,7 +31,7 @@ test('a subscription can be created and covered_month is floored to the first of
     Livewire::test(CreateSubscription::class)
         ->fillForm([
             'member_id' => $member->id,
-            'plan_type' => PlanType::Regular->value,
+            'add_on_id' => $this->entry->id,
             'covered_month' => '2026-07-15',
             'amount_paid' => 60,
             'paid_on' => '2026-07-01',
@@ -48,7 +50,7 @@ test('a subscription cannot be created for a member who is not subscription-elig
     Livewire::test(CreateSubscription::class)
         ->fillForm([
             'member_id' => $member->id,
-            'plan_type' => PlanType::Regular->value,
+            'add_on_id' => $this->entry->id,
             'covered_month' => '2026-07-15',
             'amount_paid' => 60,
             'paid_on' => '2026-07-01',
@@ -60,14 +62,14 @@ test('a subscription cannot be created for a member who is not subscription-elig
 });
 
 test('the bulk-purchase action creates a correctly-split bundle', function () {
-    Plan::create(['code' => PlanType::Regular, 'duration_months' => 1, 'price' => 60, 'effective_from' => '2026-01-01']);
-    Plan::create(['code' => PlanType::Regular, 'duration_months' => 3, 'price' => 175, 'effective_from' => '2026-01-01']);
+    Plan::create(['add_on_id' => $this->entry->id, 'duration_months' => 1, 'price' => 60, 'effective_from' => '2026-01-01']);
+    Plan::create(['add_on_id' => $this->entry->id, 'duration_months' => 3, 'price' => 175, 'effective_from' => '2026-01-01']);
     $member = Member::factory()->create(['subscription_eligible' => true]);
 
     Livewire::test(ListSubscriptions::class)
         ->callAction('bulkPurchase', data: [
             'member_id' => $member->id,
-            'plan_type' => PlanType::Regular->value,
+            'add_on_id' => $this->entry->id,
             'desired_start' => '2026-07-01',
             'duration_months' => 3,
             'payment_method' => 'other',
@@ -83,14 +85,14 @@ test('the bulk-purchase action creates a correctly-split bundle', function () {
 });
 
 test('the bulk-purchase action rejects a non-subscription-eligible member', function () {
-    Plan::create(['code' => PlanType::Regular, 'duration_months' => 1, 'price' => 60, 'effective_from' => '2026-01-01']);
-    Plan::create(['code' => PlanType::Regular, 'duration_months' => 3, 'price' => 175, 'effective_from' => '2026-01-01']);
+    Plan::create(['add_on_id' => $this->entry->id, 'duration_months' => 1, 'price' => 60, 'effective_from' => '2026-01-01']);
+    Plan::create(['add_on_id' => $this->entry->id, 'duration_months' => 3, 'price' => 175, 'effective_from' => '2026-01-01']);
     $member = Member::factory()->create(['subscription_eligible' => false]);
 
     Livewire::test(ListSubscriptions::class)
         ->callAction('bulkPurchase', data: [
             'member_id' => $member->id,
-            'plan_type' => PlanType::Regular->value,
+            'add_on_id' => $this->entry->id,
             'desired_start' => '2026-07-01',
             'duration_months' => 3,
         ])

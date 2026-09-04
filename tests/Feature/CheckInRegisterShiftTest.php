@@ -1,8 +1,9 @@
 <?php
 
-use App\Enums\PlanType;
+use App\Enums\AddOnKind;
 use App\Enums\Role;
 use App\Filament\Admin\Pages\CheckIn;
+use App\Models\AddOn;
 use App\Models\Attendance;
 use App\Models\Category;
 use App\Models\Event;
@@ -26,8 +27,11 @@ beforeEach(function () {
     $this->user = User::factory()->create(['active' => true, 'role' => Role::Manager]);
     $this->actingAs($this->user);
 
-    Plan::create(['code' => PlanType::Regular, 'price' => 60, 'credit' => 25, 'effective_from' => '2026-01-01']);
-    Plan::create(['code' => PlanType::Pool, 'price' => 15, 'credit' => null, 'effective_from' => '2026-01-01']);
+    $this->entry = AddOn::create(['name' => AddOn::ENTRY_NAME, 'kind' => AddOnKind::Entry, 'subscribable' => true]);
+    $pool = AddOn::create(['name' => AddOn::POOL_NAME, 'subscribable' => true, 'priced_per_event' => true]);
+
+    Plan::create(['add_on_id' => $this->entry->id, 'price' => 60, 'credit' => 25, 'effective_from' => '2026-01-01']);
+    Plan::create(['add_on_id' => $pool->id, 'price' => 15, 'credit' => null, 'effective_from' => '2026-01-01']);
 
     $this->register = Register::factory()->create();
 });
@@ -189,7 +193,7 @@ test('a subscription paid at check-in also gets register_shift_id and payment_me
         ])
         ->assertHasNoActionErrors();
 
-    $subscription = Subscription::where('member_id', $member->id)->where('plan_type', PlanType::Regular)->firstOrFail();
+    $subscription = Subscription::where('member_id', $member->id)->where('add_on_id', $this->entry->id)->firstOrFail();
     $shift = app(RegisterShiftService::class)->currentOpenShift($this->register);
 
     expect($subscription->payment_method)->toBe('cash')

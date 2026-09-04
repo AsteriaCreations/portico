@@ -4,6 +4,7 @@ namespace App\Filament\Admin\Resources\Events\RelationManagers;
 
 use App\Enums\CompRequestStatus;
 use App\Models\Attendance;
+use App\Models\AttendanceAddOn;
 use App\Models\CompReason;
 use App\Models\CompRequest;
 use App\Services\CapacityService;
@@ -121,6 +122,14 @@ class CompRequestsRelationManager extends RelationManager
                     'notes' => $record->notes,
                     ...$breakdown->toAttendanceAttributes(),
                 ]);
+
+                // toAttendanceAttributes() above only covers entry -- each
+                // subscribable add-on's line (Pool, at launch, untouched by
+                // the comp) is its own attendance_add_ons row, same as
+                // CheckIn::checkInAction()'s own transaction.
+                foreach ($breakdown->addOnAttendanceRows() as $row) {
+                    AttendanceAddOn::create(['attendance_id' => $attendance->id, ...$row]);
+                }
 
                 $record->update([
                     'comp_reason_id' => $compReasonId,
