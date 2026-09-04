@@ -2,6 +2,24 @@
 
 namespace App\Providers\Filament;
 
+use App\Filament\Admin\Pages\Analytics;
+use App\Filament\Admin\Pages\Technical;
+use App\Filament\Admin\Resources\AddOns\AddOnResource;
+use App\Filament\Admin\Resources\Categories\CategoryResource;
+use App\Filament\Admin\Resources\CleaningTasks\CleaningTaskResource;
+use App\Filament\Admin\Resources\CompReasons\CompReasonResource;
+use App\Filament\Admin\Resources\Events\EventResource;
+use App\Filament\Admin\Resources\EventTypes\EventTypeResource;
+use App\Filament\Admin\Resources\Members\MemberResource;
+use App\Filament\Admin\Resources\PaymentMethods\PaymentMethodResource;
+use App\Filament\Admin\Resources\Plans\PlanResource;
+use App\Filament\Admin\Resources\Registers\RegisterResource;
+use App\Filament\Admin\Resources\RegisterShifts\RegisterShiftResource;
+use App\Filament\Admin\Resources\ShowrunnerPayoutTiers\ShowrunnerPayoutTierResource;
+use App\Filament\Admin\Resources\Skills\SkillResource;
+use App\Filament\Admin\Resources\Subscriptions\SubscriptionResource;
+use App\Filament\Admin\Resources\Users\UserResource;
+use App\Filament\Admin\Resources\Vouchers\VoucherResource;
 use App\Filament\Admin\Widgets\RecordDeparturesWidget;
 use App\Models\MembershipSetting;
 use Filament\Http\Middleware\Authenticate;
@@ -25,7 +43,7 @@ class AdminPanelProvider extends PanelProvider
 {
     public function panel(Panel $panel): Panel
     {
-        return $panel
+        $panel = $panel
             ->default()
             ->id('admin')
             ->path('admin')
@@ -65,5 +83,42 @@ class AdminPanelProvider extends PanelProvider
             ->authMiddleware([
                 Authenticate::class,
             ]);
+
+        // A collapsed "How to use this screen" panel on every resource/page that has
+        // no hand-written Blade view of its own to insert <x-screen-instructions>
+        // into directly (see CheckIn/ActivePatrons/FeatureFlags/RoleLabels/... for
+        // that other case). Scoping to a Resource class fires the hook on that
+        // resource's List/Create/Edit/View pages alike (Filament\Resources\Pages\
+        // Page::getRenderHookScopes() includes both the concrete page and its
+        // resource), so one entry per resource covers every one of its pages.
+        foreach ([
+            Dashboard::class => 'dashboard',
+            Analytics::class => 'analytics',
+            Technical::class => 'technical',
+            AddOnResource::class => 'add-ons',
+            CategoryResource::class => 'categories',
+            CleaningTaskResource::class => 'cleaning-tasks',
+            CompReasonResource::class => 'comp-reasons',
+            EventTypeResource::class => 'event-types',
+            EventResource::class => 'events',
+            MemberResource::class => 'members',
+            PaymentMethodResource::class => 'payment-methods',
+            PlanResource::class => 'plans',
+            RegisterShiftResource::class => 'register-shifts',
+            RegisterResource::class => 'registers',
+            ShowrunnerPayoutTierResource::class => 'showrunner-payout-tiers',
+            SkillResource::class => 'skills',
+            SubscriptionResource::class => 'subscriptions',
+            UserResource::class => 'users',
+            VoucherResource::class => 'vouchers',
+        ] as $scope => $view) {
+            $panel->renderHook(
+                PanelsRenderHook::CONTENT_START,
+                fn (): string => view("filament.admin.instructions.{$view}")->render(),
+                scopes: $scope,
+            );
+        }
+
+        return $panel;
     }
 }

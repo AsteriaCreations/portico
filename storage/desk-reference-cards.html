@@ -1,0 +1,448 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Desk Reference Cards</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#faf9f5;
+    --paper-raised:#ffffff;
+    --ink:#161f29;
+    --ink-soft:#4c5a68;
+    --line:#d9d4c4;
+    --accent:#1f5f5b;
+    --accent-ink:#0e3532;
+    --danger:#9c3327;
+    --danger-bg:#f7e9e5;
+    --warn:#8a5d17;
+    --warn-bg:#f7edd9;
+    --good:#3d6b3e;
+    --good-bg:#e9f0e5;
+  }
+
+  @media (prefers-color-scheme: dark){
+    :root{
+      --paper:#141a1f;
+      --paper-raised:#1b232a;
+      --ink:#eef1f0;
+      --ink-soft:#a8b3ba;
+      --line:#33404a;
+      --accent:#5ecfc7;
+      --accent-ink:#c9f3ee;
+      --danger:#e2897c;
+      --danger-bg:#3a221e;
+      --warn:#e4c169;
+      --warn-bg:#3a301a;
+      --good:#8fc48f;
+      --good-bg:#22301f;
+    }
+  }
+
+  *{ box-sizing:border-box; }
+
+  html, body{ margin:0; }
+
+  body{
+    background:var(--paper);
+    color:var(--ink);
+    font-family:"IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+    line-height:1.5;
+    padding: clamp(20px, 4vw, 56px);
+  }
+
+  h1,h2,h3{ font-family:"Fraunces", Georgia, serif; text-wrap:balance; margin:0; }
+
+  .intro{
+    max-width: 74ch;
+    margin: 0 auto 32px;
+  }
+  .eyebrow{
+    font-family:"IBM Plex Mono", ui-monospace, monospace;
+    font-size: 0.72rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--accent-ink);
+    display:flex;
+    align-items:center;
+    gap:10px;
+  }
+  .eyebrow::before{
+    content:"";
+    width:22px; height:1px;
+    background: var(--accent);
+    display:inline-block;
+  }
+  .intro h1{ font-size: clamp(1.7rem, 2.6vw, 2.3rem); font-weight:600; margin:10px 0 8px; }
+  .intro p{ color: var(--ink-soft); font-size:0.98rem; max-width:62ch; }
+
+  .toolbar{
+    display:flex; align-items:center; gap:14px; flex-wrap:wrap;
+    margin-top:18px;
+  }
+  button.print{
+    font-family:"IBM Plex Mono", monospace;
+    font-size:0.78rem;
+    letter-spacing:0.04em;
+    text-transform:uppercase;
+    background:var(--accent);
+    color:var(--paper);
+    border:none;
+    padding:10px 18px;
+    border-radius:2px;
+    cursor:pointer;
+  }
+  button.print:hover{ filter:brightness(1.08); }
+  button.print:focus-visible, a:focus-visible, .role-chip:focus-visible{
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+  .toolbar-note{ font-size:0.82rem; color:var(--ink-soft); }
+
+  .deck{
+    display:grid;
+    grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+    gap: 28px;
+    max-width: 1180px;
+    margin: 0 auto;
+    align-items: start;
+  }
+
+  .card{
+    background: var(--paper-raised);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    overflow: hidden;
+    box-shadow: 0 1px 2px rgba(20,20,10,0.05);
+  }
+
+  .card-head{
+    background: var(--accent);
+    color: var(--paper);
+    padding: 20px 24px;
+    position: relative;
+  }
+  .card-head .count{
+    font-family:"IBM Plex Mono", monospace;
+    font-size:0.72rem;
+    letter-spacing:0.14em;
+    text-transform:uppercase;
+    opacity:0.85;
+  }
+  .card-head h2{ font-size:1.5rem; font-weight:600; color:var(--paper); margin-top:4px; }
+  .card-head .path{
+    font-family:"IBM Plex Mono", monospace;
+    font-size:0.78rem;
+    opacity:0.85;
+    margin-top:4px;
+  }
+
+  .stub-row{
+    display:flex;
+    align-items:center;
+    padding: 0 6px;
+    background: var(--accent);
+  }
+  .stub-row .hole{
+    width:12px; height:12px;
+    border-radius:50%;
+    background: var(--paper-raised);
+    margin: 0 8px;
+    flex: 0 0 auto;
+  }
+  .stub-row .dash{
+    flex:1;
+    height:0;
+    border-top: 1.5px dashed color-mix(in srgb, var(--paper) 55%, transparent);
+  }
+
+  .card-body{ padding: 22px 24px 26px; }
+
+  .role-line{
+    display:flex; align-items:center; gap:8px; flex-wrap:wrap;
+    font-family:"IBM Plex Mono", monospace;
+    font-size:0.74rem;
+    color: var(--ink-soft);
+    margin-bottom:18px;
+    text-transform:uppercase;
+    letter-spacing:0.04em;
+  }
+  .role-chip{
+    border:1px solid var(--line);
+    border-radius:999px;
+    padding: 3px 10px;
+    color: var(--ink-soft);
+  }
+  .role-chip.active{
+    border-color: var(--accent);
+    color: var(--accent-ink);
+    background: color-mix(in srgb, var(--accent) 14%, transparent);
+    font-weight:600;
+  }
+
+  ol.steps{
+    list-style:none;
+    margin:0 0 20px;
+    padding:0;
+    display:flex;
+    flex-direction:column;
+    gap:14px;
+    counter-reset: step;
+  }
+  ol.steps li{
+    display:grid;
+    grid-template-columns: 30px 1fr;
+    gap:12px;
+    align-items:baseline;
+  }
+  ol.steps li::before{
+    counter-increment: step;
+    content: counter(step);
+    font-family:"IBM Plex Mono", monospace;
+    font-size:0.82rem;
+    font-weight:600;
+    color: var(--paper);
+    background: var(--ink);
+    width:26px; height:26px;
+    border-radius:50%;
+    display:flex; align-items:center; justify-content:center;
+  }
+  ol.steps li p{ margin:0; }
+  ol.steps li .label{ font-weight:600; }
+  ol.steps li .sub{ display:block; color:var(--ink-soft); font-size:0.9rem; margin-top:2px; }
+
+  .callouts{ display:flex; flex-direction:column; gap:10px; margin-bottom: 4px; }
+  .callout{
+    border-radius:4px;
+    padding: 10px 14px;
+    font-size:0.88rem;
+    display:grid;
+    grid-template-columns: auto 1fr;
+    gap:10px;
+    align-items:start;
+  }
+  .callout .tag{
+    font-family:"IBM Plex Mono", monospace;
+    font-size:0.68rem;
+    letter-spacing:0.08em;
+    text-transform:uppercase;
+    font-weight:600;
+    padding-top:2px;
+    white-space:nowrap;
+  }
+  .callout.danger{ background:var(--danger-bg); }
+  .callout.danger .tag{ color:var(--danger); }
+  .callout.warn{ background:var(--warn-bg); }
+  .callout.warn .tag{ color:var(--warn); }
+  .callout.good{ background:var(--good-bg); }
+  .callout.good .tag{ color:var(--good); }
+  .callout p{ margin:0; color:var(--ink); }
+
+  .card-foot{
+    border-top:1px solid var(--line);
+    margin-top:18px;
+    padding-top:14px;
+  }
+  .ladder{
+    display:flex; flex-wrap:wrap; gap:6px; align-items:center;
+    font-family:"IBM Plex Mono", monospace;
+    font-size:0.68rem;
+    letter-spacing:0.03em;
+  }
+  .ladder .rung{
+    border:1px solid var(--line);
+    border-radius:3px;
+    padding:3px 7px;
+    color: var(--ink-soft);
+  }
+  .ladder .rung.floor{
+    border-color: var(--accent);
+    color: var(--accent-ink);
+    background: color-mix(in srgb, var(--accent) 12%, transparent);
+    font-weight:600;
+  }
+  .ladder .sep{ color: var(--line); }
+  .ladder-cap{ font-size:0.7rem; color:var(--ink-soft); margin-top:6px; }
+
+  footer.page-note{
+    max-width:1180px; margin: 30px auto 0;
+    font-size:0.78rem; color:var(--ink-soft);
+    text-align:center;
+  }
+
+  @media (max-width: 760px){
+    ol.steps li{ grid-template-columns: 26px 1fr; }
+  }
+
+  @media print{
+    :root{
+      --paper:#ffffff; --paper-raised:#ffffff; --ink:#111820; --ink-soft:#3c4753;
+      --line:#c9c4b4; --accent:#1f5f5b; --accent-ink:#123634;
+      --danger:#8c2e23; --danger-bg:#f6e8e4; --warn:#7a521a; --warn-bg:#f6ecd6;
+      --good:#33592f; --good-bg:#e6efe1;
+    }
+    body{ padding:0; background:#fff; }
+    .intro, .toolbar{ display:none; }
+    .deck{ display:block; max-width:none; }
+    .card{
+      border:1px solid var(--line);
+      box-shadow:none;
+      border-radius:0;
+      page-break-after: always;
+      break-after: page;
+    }
+    .card:last-child{ page-break-after: auto; }
+    footer.page-note{ display:none; }
+  }
+</style>
+</head>
+<body>
+
+<div class="intro">
+  <p class="eyebrow">Portico — Desk Reference</p>
+  <h1>Check-In, Active Patrons &amp; Departures, at a glance</h1>
+  <p>Three laminate-ready cards for the screens staff live in most on a shift: the check-in desk, the floor roster, and logging who's left. Each covers the golden path plus the exceptions that actually come up — watchlist notes, capacity, guests, behavior notes. Print each card on its own sheet.</p>
+  <div class="toolbar">
+    <button class="print" onclick="window.print()">Print all three cards</button>
+    <span class="toolbar-note">Each card breaks to its own page.</span>
+  </div>
+</div>
+
+<div class="deck">
+
+  <article class="card" aria-labelledby="card1-title">
+    <div class="card-head">
+      <p class="count">Card 1 of 3</p>
+      <h2 id="card1-title">Check-In</h2>
+      <p class="path">/admin/check-in</p>
+    </div>
+    <div class="stub-row" aria-hidden="true"><span class="hole"></span><span class="dash"></span><span class="hole"></span></div>
+    <div class="card-body">
+      <p class="role-line">Who works this screen:
+        <span class="role-chip">Showrunner</span><span class="role-chip">Volunteer</span><span class="role-chip">DM</span>
+        <span class="role-chip active">Door +</span><span class="role-chip active">Manager</span><span class="role-chip active">Admin</span><span class="role-chip active">Owner</span>
+      </p>
+
+      <ol class="steps">
+        <li><p><span class="label">Find the member</span><span class="sub">Search by username, name, or member number. Status shows the instant they're selected — no event needed yet.</span></p></li>
+        <li><p><span class="label">Pick tonight's event</span><span class="sub">Unlocks pricing, comp/voucher/subscription options, and the Due total.</span></p></li>
+        <li><p><span class="label">Clear anything flagged</span><span class="sub">Prospective sign-up, missing paperwork, or a watchlist acknowledgment — see below.</span></p></li>
+        <li><p><span class="label">Set the pricing options</span><span class="sub">Subscription month, comp entry, voucher, add-ons. The Due total updates as you go.</span></p></li>
+        <li><p><span class="label">Check In</span><span class="sub">Records payment and admits them. Done.</span></p></li>
+      </ol>
+
+      <div class="callouts">
+        <div class="callout danger"><span class="tag">Blocked</span><p>Banned or deceased members can't be checked in — no override here. A granted one-event exception still shows as a warning below, not a block.</p></div>
+        <div class="callout warn"><span class="tag">Watchlist</span><p>Notify the staff channel first, then check the acknowledgment box — Check In won't submit without it.</p></div>
+        <div class="callout good"><span class="tag">No event needed</span><p>Buying a subscription or a one-night day pass is its own transaction — pick it straight from the member panel. Which add-ons offer these depends on this club's catalog.</p></div>
+        <div class="callout good"><span class="tag">Guests</span><p>"Register a guest" appears once the host is checked in tonight and isn't on probation. Collects name, username, email, DOB if under 21.</p></div>
+        <div class="callout warn"><span class="tag">At capacity</span><p>Check In hides once the room is full. Send someone to Active Patrons to log a departure and it reopens.</p></div>
+      </div>
+
+      <div class="card-foot">
+        <div class="ladder">
+          <span class="rung">Showrunner</span><span class="sep">⊂</span>
+          <span class="rung">Volunteer</span><span class="sep">⊂</span>
+          <span class="rung">DM</span><span class="sep">⊂</span>
+          <span class="rung floor">Door</span><span class="sep">⊂</span>
+          <span class="rung">Manager</span><span class="sep">⊂</span>
+          <span class="rung">Admin</span><span class="sep">⊂</span>
+          <span class="rung">Owner</span>
+        </div>
+        <p class="ladder-cap">Filled rung = minimum role for this screen. Everything above it can use it too. A club may display these under different names (see Role Labels) — the ranking is unchanged.</p>
+      </div>
+    </div>
+  </article>
+
+  <article class="card" aria-labelledby="card2-title">
+    <div class="card-head">
+      <p class="count">Card 2 of 3</p>
+      <h2 id="card2-title">Active Patrons</h2>
+      <p class="path">/admin/active-patrons</p>
+    </div>
+    <div class="stub-row" aria-hidden="true"><span class="hole"></span><span class="dash"></span><span class="hole"></span></div>
+    <div class="card-body">
+      <p class="role-line">Who works this screen:
+        <span class="role-chip">Showrunner</span><span class="role-chip active">Volunteer +</span>
+        <span class="role-chip active">DM</span><span class="role-chip active">Door</span>
+        <span class="role-chip active">Manager</span><span class="role-chip active">Admin</span><span class="role-chip active">Owner</span>
+      </p>
+
+      <ol class="steps">
+        <li><p><span class="label">Read the room</span><span class="sub">Everyone checked in and not yet departed, across every event running right now — not just one.</span></p></li>
+        <li><p><span class="label">Depart people as they leave</span><span class="sub">Click a username, or its Depart button. Capacity frees up immediately for the next walk-in.</span></p></li>
+        <li><p><span class="label">Leave a visit note</span><span class="sub">Temporary — e.g. a clothing description to help spot someone tonight. Gone once the event's over.</span></p></li>
+        <li><p><span class="label">Leave a behavior note</span><span class="sub">Permanent, on the member's record — for anything staff should know later, not just tonight.</span></p></li>
+        <li><p><span class="label">Watch the watchlist</span><span class="sub">Toggle "Watchlist only" to filter the room down to flagged patrons.</span></p></li>
+      </ol>
+
+      <div class="callouts">
+        <div class="callout good"><span class="tag">Overnight</span><p>A guest staying over (an add-on flagged Overnight, e.g. private room/sleepover) keeps showing here past their event's window, until someone departs them.</p></div>
+        <div class="callout warn"><span class="tag">Who sees what</span><p>Behavior notes: you always see your own in full. Volunteer sees a count of others'. DM and Door see every note's text. Manager+ also sees who wrote it.</p></div>
+        <div class="callout good"><span class="tag">Also in the building</span><p>The header lists signed-in Volunteer+ staff too — not just patrons — so you can tell who else is on site.</p></div>
+      </div>
+
+      <div class="card-foot">
+        <div class="ladder">
+          <span class="rung">Showrunner</span><span class="sep">⊂</span>
+          <span class="rung floor">Volunteer</span><span class="sep">⊂</span>
+          <span class="rung floor">DM</span><span class="sep">⊂</span>
+          <span class="rung floor">Door</span><span class="sep">⊂</span>
+          <span class="rung floor">Manager</span><span class="sep">⊂</span>
+          <span class="rung floor">Admin</span><span class="sep">⊂</span>
+          <span class="rung floor">Owner</span>
+        </div>
+        <p class="ladder-cap">Filled rung = minimum role for this screen. Everything above it can use it too.</p>
+      </div>
+    </div>
+  </article>
+
+  <article class="card" aria-labelledby="card3-title">
+    <div class="card-head">
+      <p class="count">Card 3 of 3</p>
+      <h2 id="card3-title">Record Departures</h2>
+      <p class="path">/admin (Dashboard)</p>
+    </div>
+    <div class="stub-row" aria-hidden="true"><span class="hole"></span><span class="dash"></span><span class="hole"></span></div>
+    <div class="card-body">
+      <p class="role-line">Who works this screen:
+        <span class="role-chip">Showrunner</span><span class="role-chip active">Volunteer +</span>
+        <span class="role-chip active">DM</span><span class="role-chip active">Door</span>
+        <span class="role-chip active">Manager</span><span class="role-chip active">Admin</span><span class="role-chip active">Owner</span>
+      </p>
+
+      <ol class="steps">
+        <li><p><span class="label">Open Record Departures</span><span class="sub">A widget right on the Dashboard — the first thing you see after logging in.</span></p></li>
+        <li><p><span class="label">Enter a headcount</span><span class="sub">How many people left without a formal checkout. A reason is optional.</span></p></li>
+        <li><p><span class="label">Submit</span><span class="sub">Tonight's occupancy count drops immediately, freeing up room for the next walk-in.</span></p></li>
+      </ol>
+
+      <div class="callouts">
+        <div class="callout good"><span class="tag">Anonymous</span><p>This is a headcount, not a per-person record — use it when you know people left but not exactly who. To depart one specific, known person instead, use Active Patrons.</p></div>
+        <div class="callout warn"><span class="tag">Capacity only</span><p>This doesn't touch any individual attendance row — it only adjusts the building's occupancy count against its capacity limit, if one's set.</p></div>
+      </div>
+
+      <div class="card-foot">
+        <div class="ladder">
+          <span class="rung">Showrunner</span><span class="sep">⊂</span>
+          <span class="rung floor">Volunteer</span><span class="sep">⊂</span>
+          <span class="rung floor">DM</span><span class="sep">⊂</span>
+          <span class="rung floor">Door</span><span class="sep">⊂</span>
+          <span class="rung floor">Manager</span><span class="sep">⊂</span>
+          <span class="rung floor">Admin</span><span class="sep">⊂</span>
+          <span class="rung floor">Owner</span>
+        </div>
+        <p class="ladder-cap">Filled rung = minimum role for this screen. Everything above it can use it too.</p>
+      </div>
+    </div>
+  </article>
+
+</div>
+
+<footer class="page-note">Portico desk reference — matches the in-app "How to use this screen" panels on Check-In, Active Patrons, and the Dashboard.</footer>
+
+</body>
+</html>
