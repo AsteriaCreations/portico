@@ -23,7 +23,8 @@ class UsersTable
                     ->label('Email address')
                     ->searchable(),
                 TextColumn::make('role')
-                    ->badge(),
+                    ->badge()
+                    ->formatStateUsing(fn (Role $state): string => $state->displayLabel()),
                 TextColumn::make('member.username')
                     ->label('Member')
                     ->toggleable(),
@@ -41,7 +42,7 @@ class UsersTable
             ])
             ->filters([
                 SelectFilter::make('role')
-                    ->options(Role::class),
+                    ->options(fn () => collect(Role::cases())->mapWithKeys(fn (Role $role) => [$role->value => $role->displayLabel()])->all()),
             ])
             ->recordActions([
                 EditAction::make(),

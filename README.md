@@ -69,7 +69,7 @@ php vendor/bin/pint        # code style
 
 ## Roles
 
-Seven nested tiers — `Showrunner ⊂ Volunteer ⊂ DM ⊂ Door ⊂ Manager ⊂ Admin ⊂ Owner` — enforced with plain Laravel policies/gates keyed on `users.role` (`app/Policies/`, plus gates like `view-sensitive-member-fields`, `grant-manager-subscription-perk`, `grant-event-comp`, `record-departures`, and several feature-flag-backed gates in `AppServiceProvider`). No permissions package.
+Seven nested tiers — `Showrunner ⊂ Volunteer ⊂ DM ⊂ Door ⊂ Manager ⊂ Admin ⊂ Owner` — enforced with plain Laravel policies/gates keyed on `users.role` (`app/Policies/`, plus gates like `view-sensitive-member-fields`, `grant-manager-subscription-perk`, `grant-event-comp`, `record-departures`, and several feature-flag-backed gates in `AppServiceProvider`). No permissions package. These names are the code's own case names, not fixed display text — a Manager+ can relabel any of the seven per install (`/admin/role-labels`) without touching the hierarchy or a single gate; Showrunner and DM ship with generic defaults ("Event Lead"/"Monitor") precisely so a club that prefers that jargon can alias it right back.
 
 | Capability | Showrunner | Volunteer | DM | Door | Manager | Admin | Owner |
 |---|:--:|:--:|:--:|:--:|:--:|:--:|:--:|

@@ -30,7 +30,10 @@ class UserForm
                     ->dehydrated(fn ($state) => filled($state))
                     ->helperText('Leave blank to keep the current password.'),
                 Select::make('role')
-                    ->options(Role::class)
+                    // Not ->options(Role::class) -- that resolves labels via
+                    // Role::getLabel() only, which never consults a club's
+                    // own per-role alias. See Role::displayLabel().
+                    ->options(fn () => collect(Role::cases())->mapWithKeys(fn (Role $role) => [$role->value => $role->displayLabel()])->all())
                     ->default(Role::Door)
                     ->required(),
                 Select::make('member_id')

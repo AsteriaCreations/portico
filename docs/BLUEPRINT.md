@@ -560,6 +560,8 @@ Comp status affects **price**, not admission. The **decision** is public; the **
 
 Seven tiers: Showrunner ⊂ Volunteer ⊂ DM ⊂ Door ⊂ Manager ⊂ Admin ⊂ Owner — each strictly containing the one below, simple to enforce with plain Laravel policies (no permissions package needed) — **except** the Manager/Owner subscription perk, the one deliberate hole in that hierarchy (see the dagger below). Showrunner, Volunteer, and DM all sit below Door and are deliberately narrow: Showrunner can only submit Admin-approved comp requests for the one event they're running; Volunteer can only record building departures from the Dashboard (see the "Record known departures" row below); DM is a further level of trusted volunteer — everything Volunteer can do, plus seeing a behavior note's full text regardless of who wrote it (see the § row below) — none of the three reaches check-in, payment, or anything else Door and up can do.
 
+These are `App\Enums\Role`'s case names — the actual permission tier, gates, and everything the rest of this document means by "Manager+" etc. never changes. What staff *see* is separate: `Role::getLabel()` ships generic defaults for the two that read as one club's own jargon ("Showrunner" → "Event Lead", "DM" → "Monitor"; the other five are generic already), and any of the seven can be aliased per install — `App\Filament\Admin\Pages\RoleLabels` (Manager+), read back via `Role::displayLabel()`. A club that already uses "Showrunner"/"DM" (or wants something else entirely) sets its own label there; nothing about the hierarchy, a gate check, or the `users.role` column changes.
+
 | Capability | Door | Manager | Admin | Owner |
 |---|:--:|:--:|:--:|:--:|
 | Check members in, take payment | ✓ | ✓ | ✓ | ✓ |

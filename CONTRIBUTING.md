@@ -55,7 +55,10 @@ disagree, the blueprint wins.
 
 Seven nested roles: `showrunner` ⊂ `volunteer` ⊂ `dm` ⊂ `door` ⊂ `manager` ⊂ `admin` ⊂
 `owner`. Plain Laravel policies/gates keyed on `users.role` (`app/Policies/`, plus gates
-in `AppServiceProvider`). No permissions package.
+in `AppServiceProvider`). No permissions package. These are the enum case names, not
+display text — `Role::getLabel()` gives Showrunner/DM generic defaults ("Event Lead"/
+"Monitor"), and any of the seven can be aliased per install without touching the
+hierarchy (`App\Filament\Admin\Pages\RoleLabels`, `Role::displayLabel()`).
 
 - **Showrunner** — the narrowest role. Can only submit Admin-approved comp requests for
   the one event they're assigned to run (`events.showrunner_id`). Must not reach
