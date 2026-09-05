@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Collection;
 
-#[Fillable(['label', 'code', 'requires_register_shift', 'sort_order', 'active'])]
+#[Fillable(['label', 'code', 'requires_register_shift', 'one_time_only', 'sort_order', 'active'])]
 class PaymentMethod extends Model
 {
     /** @use HasFactory<PaymentMethodFactory> */
@@ -20,6 +20,7 @@ class PaymentMethod extends Model
     {
         return [
             'requires_register_shift' => 'boolean',
+            'one_time_only' => 'boolean',
             'sort_order' => 'integer',
             'active' => 'boolean',
         ];
@@ -47,6 +48,21 @@ class PaymentMethod extends Model
     {
         return static::query()
             ->where('requires_register_shift', true)
+            ->pluck('code');
+    }
+
+    /**
+     * The codes for methods a member may select only once, ever — using one
+     * appends a dated note to their hospitality_note and disables all such
+     * methods for them thereafter (Member::hasUsedOneTimeMethod()). E.g.
+     * Venmo, PayPal.
+     *
+     * @return Collection<int, string>
+     */
+    public static function oneTimeCodes(): Collection
+    {
+        return static::query()
+            ->where('one_time_only', true)
             ->pluck('code');
     }
 }

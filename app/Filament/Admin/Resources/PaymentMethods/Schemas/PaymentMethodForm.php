@@ -36,6 +36,11 @@ class PaymentMethodForm
                     ->helperText('Only selectable while a shift is open, and counted toward box reconciliation — e.g. Cash.')
                     ->required()
                     ->default(false),
+                Toggle::make('one_time_only')
+                    ->label('One-time use per member')
+                    ->helperText('A member may select this method only once, ever — doing so appends a dated note to their hospitality note and disables every one-time method for them afterward. E.g. Venmo, PayPal.')
+                    ->required()
+                    ->default(false),
                 TextInput::make('sort_order')
                     ->required()
                     ->numeric()

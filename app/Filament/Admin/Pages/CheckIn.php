@@ -14,6 +14,7 @@ use App\Models\Event;
 use App\Models\Member;
 use App\Models\MembershipSetting;
 use App\Models\MiscellaneousPayment;
+use App\Models\PaperworkType;
 use App\Models\PaymentMethod;
 use App\Models\Plan;
 use App\Models\Register;
@@ -377,8 +378,8 @@ class CheckIn extends Page implements HasTable
                                 .(($event && ! $addOn->hasRoomOn($event->event_date)) ? ' (full for tonight)' : ''),
                         ])
                         ->all())
-                    // Rebuilt fresh on every submit, same as the venmo
-                    // payment-method option above -- Filament's own "in:"
+                    // Rebuilt fresh on every submit, same as the one-time
+                    // payment-method options above -- Filament's own "in:"
                     // validation is built from enabled options only
                     // (CheckboxList::getInValidationRuleValues()), so a
                     // forged selection of a now-full add-on is rejected
@@ -435,6 +436,89 @@ class CheckIn extends Page implements HasTable
     public function canSeeReason(): bool
     {
         return Gate::allows('view-sensitive-member-fields');
+    }
+
+    /**
+     * Active PaperworkTypes that gate an add-on and that the selected member
+     * has no valid signing for -- the Pool Waiver, at launch. Backs both the
+     * warning lines below and recordGatedPaperworkAction().
+     *
+     * @return Collection<int, PaperworkType>
+     */
+    public function gatedPaperworkTypesMissing(?Member $member): Collection
+    {
+        if (! $member) {
+            return collect();
+        }
+
+        return PaperworkType::query()
+            ->where('active', true)
+            ->whereNotNull('gates_add_on_id')
+            ->with('addOn')
+            ->get()
+            ->reject(fn (PaperworkType $type) => ! $type->addOn || $member->hasValidPaperwork($type))
+            ->values();
+    }
+
+    /**
+     * One warning line per subscribable add-on the selected member can't
+     * currently use because a gating PaperworkType (e.g. the Pool Waiver)
+     * is missing or expired -- shown in the member-only section so staff
+     * know why the add-on's line and charge are absent. See
+     * Member::canUseAddOn() / PricingService.
+     *
+     * @return string[]
+     */
+    public function getGatedAddOnWarnings(): array
+    {
+        return $this->gatedPaperworkTypesMissing($this->getSelectedMember())
+            ->map(fn (PaperworkType $type) => "{$type->addOn->name} unavailable — {$type->name} missing or expired. Not charged; do not admit to {$type->addOn->name} until it is renewed.")
+            ->all();
+    }
+
+    // A member who wants a gated add-on (e.g. Pool) but has no valid waiver
+    // for it can sign it right at the desk -- mirrors confirmPaperworkAction
+    // (standard paperwork on file) and saveAndPromoteAction (Prospective
+    // identity). Records a member_paperwork signing as of the chosen date;
+    // the add-on's line returns to pricing on the next render. Door+ (the
+    // whole page is Door+), same trust level as confirming standard
+    // paperwork.
+    public function recordGatedPaperworkAction(): Action
+    {
+        $missing = $this->gatedPaperworkTypesMissing($this->getSelectedMember());
+
+        return Action::make('recordGatedPaperwork')
+            ->label('Record a waiver signature')
+            ->visible(fn (): bool => $missing->isNotEmpty())
+            ->schema([
+                Select::make('paperwork_type_id')
+                    ->label('Waiver')
+                    ->options($missing->pluck('name', 'id')->all())
+                    ->default($missing->count() === 1 ? $missing->first()->id : null)
+                    ->required(),
+                DatePicker::make('signed_on')
+                    ->label('Signed on')
+                    ->default(now())
+                    ->required(),
+            ])
+            ->action(function (array $data): void {
+                $member = $this->getSelectedMember();
+                abort_unless($member, 404);
+
+                // Re-checked server-side: the submitted type must still be an
+                // active gating type this member actually lacks valid
+                // paperwork for -- a forged id can't create an arbitrary row.
+                $type = $this->gatedPaperworkTypesMissing($member)->firstWhere('id', (int) $data['paperwork_type_id']);
+                abort_unless($type, 403);
+
+                $member->paperwork()->create([
+                    'paperwork_type_id' => $type->id,
+                    'signed_on' => $data['signed_on'],
+                    'recorded_by' => auth()->id(),
+                ]);
+
+                Notification::make()->title("{$type->name} recorded")->success()->send();
+            });
     }
 
     public function getOccupancy(): int
@@ -655,7 +739,8 @@ class CheckIn extends Page implements HasTable
 
     // A plain confirmation, not a data-collection form like
     // saveAndPromoteAction() -- staff have physically seen the waiver on
-    // file, so this just clears the flag. AdmissionPolicy::
+    // file, so this clears the flag and records a Standard Paperwork
+    // signing (member_paperwork) as of today. AdmissionPolicy::
     // needsPaperworkCapture() decides visibility, member-only for the same
     // reason as saveAndPromoteAction().
     public function confirmPaperworkAction(): Action
@@ -666,6 +751,14 @@ class CheckIn extends Page implements HasTable
             ->action(function (): void {
                 $member = $this->getSelectedMember();
                 abort_unless($member, 404);
+
+                if ($standard = PaperworkType::where('name', 'Standard Paperwork')->first()) {
+                    $member->paperwork()->create([
+                        'paperwork_type_id' => $standard->id,
+                        'signed_on' => today(),
+                        'recorded_by' => auth()->id(),
+                    ]);
+                }
 
                 $member->update(['missing_paperwork' => false]);
 
@@ -690,7 +783,7 @@ class CheckIn extends Page implements HasTable
     {
         $member = $this->getSelectedMember();
         $openShift = $this->getOpenShift();
-        $venmoAlreadyUsed = $member?->hasUsedVenmo() ?? false;
+        $lockedOneTimeCodes = $member?->hasUsedOneTimeMethod() ? PaymentMethod::oneTimeCodes()->all() : [];
 
         return Action::make('purchaseSubscription')
             ->label('Buy Subscription')
@@ -730,9 +823,9 @@ class CheckIn extends Page implements HasTable
                     ->required(),
                 Select::make('payment_method')
                     ->options(collect($this->paymentMethodOptions($openShift))
-                        ->map(fn (string $label, string $code) => $code === 'venmo' && $venmoAlreadyUsed ? 'Venmo (cannot use — already used)' : $label)
+                        ->map(fn (string $label, string $code) => in_array($code, $lockedOneTimeCodes, true) ? "{$label} (cannot use — already used)" : $label)
                         ->all())
-                    ->disableOptionWhen(fn (string $value): bool => $value === 'venmo' && $venmoAlreadyUsed),
+                    ->disableOptionWhen(fn (string $value): bool => in_array($value, $lockedOneTimeCodes, true)),
             ])
             ->action(function (array $data): void {
                 $member = $this->getSelectedMember();
@@ -763,8 +856,8 @@ class CheckIn extends Page implements HasTable
                     $this->getOpenShift(),
                 );
 
-                if ($paymentMethod === 'venmo') {
-                    $member->recordVenmoUsage();
+                if (in_array($paymentMethod, PaymentMethod::oneTimeCodes()->all(), true)) {
+                    $member->recordOneTimeMethodUsage(PaymentMethod::where('code', $paymentMethod)->value('label'));
                 }
 
                 $first = $rows->first();
@@ -795,9 +888,13 @@ class CheckIn extends Page implements HasTable
     {
         $member = $this->getSelectedMember();
         $openShift = $this->getOpenShift();
-        $venmoAlreadyUsed = $member?->hasUsedVenmo() ?? false;
+        $lockedOneTimeCodes = $member?->hasUsedOneTimeMethod() ? PaymentMethod::oneTimeCodes()->all() : [];
         $dayPassableAddOns = AddOn::subscribable()->where('priced_per_event', true)->orderBy('sort_order')->get()
-            ->filter(fn (AddOn $addOn) => $addOn->isCurrentlyPurchasable());
+            ->filter(fn (AddOn $addOn) => $addOn->isCurrentlyPurchasable())
+            // A member without valid paperwork for a gated add-on (e.g. a
+            // lapsed Pool Waiver) can't buy a day pass for it -- a day pass
+            // is pool use. Re-checked server-side in the closure too.
+            ->filter(fn (AddOn $addOn) => $member && $member->canUseAddOn($addOn));
         $defaultAddOnId = $dayPassableAddOns->count() === 1 ? $dayPassableAddOns->first()->id : null;
 
         return Action::make('purchaseAddOnDayPass')
@@ -827,9 +924,9 @@ class CheckIn extends Page implements HasTable
                     ->searchable(),
                 Select::make('payment_method')
                     ->options(collect($this->paymentMethodOptions($openShift))
-                        ->map(fn (string $label, string $code) => $code === 'venmo' && $venmoAlreadyUsed ? 'Venmo (cannot use — already used)' : $label)
+                        ->map(fn (string $label, string $code) => in_array($code, $lockedOneTimeCodes, true) ? "{$label} (cannot use — already used)" : $label)
                         ->all())
-                    ->disableOptionWhen(fn (string $value): bool => $value === 'venmo' && $venmoAlreadyUsed),
+                    ->disableOptionWhen(fn (string $value): bool => in_array($value, $lockedOneTimeCodes, true)),
             ])
             ->action(function (array $data): void {
                 $member = $this->getSelectedMember();
@@ -841,6 +938,10 @@ class CheckIn extends Page implements HasTable
                 // above -- same defense-in-depth as purchaseSubscriptionAction().
                 $dayPassablePurchasableIds = AddOn::subscribable()->where('priced_per_event', true)->get()->filter(fn (AddOn $a) => $a->isCurrentlyPurchasable())->pluck('id');
                 abort_unless($dayPassablePurchasableIds->contains($addOn->id), 403);
+                // Paperwork gate (e.g. a valid Pool Waiver), re-checked
+                // server-side -- a forged add_on_id can't route around the
+                // filtered options above.
+                abort_unless($member->canUseAddOn($addOn), 403);
 
                 $event = Event::find($data['event_id']);
                 abort_unless($event, 404);
@@ -870,8 +971,8 @@ class CheckIn extends Page implements HasTable
                     return;
                 }
 
-                if ($paymentMethod === 'venmo') {
-                    $member->recordVenmoUsage();
+                if (in_array($paymentMethod, PaymentMethod::oneTimeCodes()->all(), true)) {
+                    $member->recordOneTimeMethodUsage(PaymentMethod::where('code', $paymentMethod)->value('label'));
                 }
 
                 Notification::make()
@@ -1023,7 +1124,7 @@ class CheckIn extends Page implements HasTable
         $event = $this->getSelectedEvent();
         $requiresAcknowledgement = $this->getDecision()?->requiresAcknowledgement() ?? false;
         $openShift = $this->getOpenShift();
-        $venmoAlreadyUsed = $member?->hasUsedVenmo() ?? false;
+        $lockedOneTimeCodes = $member?->hasUsedOneTimeMethod() ? PaymentMethod::oneTimeCodes()->all() : [];
 
         return Action::make('checkIn')
             ->label('Check in')
@@ -1043,9 +1144,9 @@ class CheckIn extends Page implements HasTable
                     ->visible(fn (): bool => ! $event || $event->isCurrentlyActive()),
                 Select::make('payment_method')
                     ->options(collect($this->paymentMethodOptions($openShift))
-                        ->map(fn (string $label, string $code) => $code === 'venmo' && $venmoAlreadyUsed ? 'Venmo (cannot use — already used)' : $label)
+                        ->map(fn (string $label, string $code) => in_array($code, $lockedOneTimeCodes, true) ? "{$label} (cannot use — already used)" : $label)
                         ->all())
-                    ->disableOptionWhen(fn (string $value): bool => $value === 'venmo' && $venmoAlreadyUsed),
+                    ->disableOptionWhen(fn (string $value): bool => in_array($value, $lockedOneTimeCodes, true)),
                 TextInput::make('on_behalf_note')
                     ->label('On behalf of / guest note')
                     ->maxLength(120),
@@ -1277,8 +1378,8 @@ class CheckIn extends Page implements HasTable
                             AttendanceAddOn::create(['attendance_id' => $attendance->id, ...$row]);
                         }
 
-                        if ($paymentMethod === 'venmo') {
-                            $member->recordVenmoUsage();
+                        if (in_array($paymentMethod, PaymentMethod::oneTimeCodes()->all(), true)) {
+                            $member->recordOneTimeMethodUsage(PaymentMethod::where('code', $paymentMethod)->value('label'));
                         }
 
                         if ($voucherApplied > 0 && $voucherPayer) {

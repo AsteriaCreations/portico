@@ -11,8 +11,9 @@ use App\Models\Member;
  * Age is resolved against the event's date, not "today", so a member who
  * prepays for a future event is judged as of that event rather than now.
  *
- * on_probation and missing_paperwork deliberately do not affect this
- * decision — the blueprint flags them as reporting-only.
+ * on_probation deliberately does not affect this decision — the blueprint
+ * flags it as reporting-only. The manual missing_paperwork flag does: it
+ * produces a Capture, resolved by CheckIn::confirmPaperworkAction().
  */
 class AdmissionPolicy
 {
@@ -74,7 +75,8 @@ class AdmissionPolicy
     // needsCapture(): that one's resolving action (saveAndPromoteAction)
     // collects identity fields and promotes Prospective -> Irregular, which
     // is wrong for an already-Irregular member who just needs their
-    // paperwork confirmed.
+    // paperwork confirmed (CheckIn::confirmPaperworkAction, which also
+    // records a Standard Paperwork signing in member_paperwork).
     public function needsPaperworkCapture(Member $member): bool
     {
         return $member->missing_paperwork;

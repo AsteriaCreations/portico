@@ -69,7 +69,10 @@ class MemberForm
                             ->helperText('The member responsible for this guest, if this record is a Guest.'),
                         DatePicker::make('date_vetted'),
                         DatePicker::make('dob'),
-                        DatePicker::make('paperwork_date'),
+                        // Signed paperwork/waiver dates live in the
+                        // "Paperwork & waivers" relation manager now, one
+                        // row per signing (a renewable waiver like the Pool
+                        // Waiver needs a history, not a single field).
                         Toggle::make('is_active')
                             ->required(),
                         Toggle::make('subscription_eligible')
