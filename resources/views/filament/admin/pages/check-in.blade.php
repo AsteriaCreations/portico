@@ -11,6 +11,14 @@
     rare render where the table's own copy also shows up. --}}
     <x-filament-actions::modals />
 
+    <x-screen-instructions title="How to check someone in">
+        <p>1. Search for the <strong>member</strong> first, by username, name, or member number. Their status (banned, watchlist, subscription eligibility, sign-up steps needed) shows immediately — you don't need an event picked yet.</p>
+        <p>2. Pick tonight's <strong>event</strong> to see what's due and any comp/voucher/subscription options for it.</p>
+        <p>3. If a watchlist note asks for a staff-channel message, send it first, then check the acknowledgement box — you can't proceed without it.</p>
+        <p>4. Review the <strong>Due</strong> total, then click <strong>Check in</strong> to record payment and admit them.</p>
+        <p>Buying a subscription or a one-night day pass doesn't require an event to be selected — those are separate, standalone transactions. Which add-ons offer a subscription or day pass depends on how this club's catalog is configured.</p>
+    </x-screen-instructions>
+
     {{-- No wire:poll here on purpose: this whole section shares one Livewire message-bus
     scope with the page's own actions (Open/Close Box, record a drop). A poll request in
     flight when an action is clicked gets Livewire's own request cancelled in favor of the

@@ -1,4 +1,12 @@
 <x-filament-panels::page>
+    <x-screen-instructions title="How to use Active Patrons">
+        <p>This lists everyone currently checked in and not yet departed, across every event running right now — not just one event at a time.</p>
+        <p>Click a member's <strong>username</strong> (or the <strong>Depart</strong> button on their row) the moment they leave the building. This immediately frees up capacity for the next walk-in.</p>
+        <p><strong>Visit note</strong> is temporary — use it for something like a clothing description to help spot someone tonight. It's not kept after the event.</p>
+        <p><strong>Behavior note</strong> is permanent and goes on the member's record — use it for anything staff should know about later, not just tonight.</p>
+        <p>Use the <strong>Watchlist only</strong> filter to keep an eye on flagged patrons still in the room.</p>
+    </x-screen-instructions>
+
     <x-filament::section>
         <div class="flex items-center justify-between gap-4">
             {{-- role="status" -- the table below polls every 15s (->poll('15s')),

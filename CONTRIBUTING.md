@@ -109,6 +109,20 @@ everywhere a `subscriptions` row gets created.
   via Livewire (a running total, a polling count) needs `role="status"` so the change is
   announced; (2) `IconColumn::boolean()` renders a bare icon with no accessible name —
   add `->tooltip()`. A hand-rolled `<table>` needs `scope="col"` on its header cells.
+- **Every admin-panel screen ships an in-app "How to use this screen" panel** —
+  `<x-screen-instructions title="...">` (`resources/views/components/screen-instructions.blade.php`,
+  a collapsed `<details>/<summary>`), grounded in that screen's actual gates/behavior, not
+  filler. For a page with a hand-written Blade view (a custom `Filament\Pages\Page`, e.g.
+  `CheckIn`/`ActivePatrons`/`FeatureFlags`/`RoleLabels`), insert it directly at the top of
+  that view. For a Resource or a default-schema page with no hand-written view (every
+  entry in `app/Filament/Admin/Resources/`, plus `Analytics`/`Technical`/the stock
+  `Dashboard`), add one line to the `foreach` loop in `AdminPanelProvider::panel()` —
+  `PanelsRenderHook::CONTENT_START` scoped to that Resource/Page class fires the hook on
+  every one of its pages (List/Create/Edit/View) from a single registration — and drop
+  the copy in its own `resources/views/filament/admin/instructions/{name}.blade.php`. A
+  screen staff actually operate live during a shift (check-in, floor rosters, departures)
+  also gets an entry on the printable desk-reference card set in
+  `storage/desk-reference-cards.html` — settings/catalog screens don't need a card.
 - Filament resources/pages/widgets live under `App\Filament\Admin\{Resources,Pages,Widgets}`
   (not the default `app/Filament/...`) — `AdminPanelProvider` discovers them there.
   Generate with `php artisan make:filament-resource ... --panel=admin`.
