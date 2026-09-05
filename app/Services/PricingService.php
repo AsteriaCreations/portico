@@ -24,7 +24,12 @@ class PricingService
     {
         $month = $event->event_date->clone()->startOfMonth();
         $entry = AddOn::entry();
-        $subscribable = AddOn::subscribable()->get();
+        // A subscribable add-on the member can't currently use (e.g. Pool
+        // with a lapsed Pool Waiver — see PaperworkType::gates_add_on_id and
+        // Member::canUseAddOn()) drops out entirely: no line, no charge.
+        $subscribable = AddOn::subscribable()->get()
+            ->filter(fn (AddOn $addOn) => $member->canUseAddOn($addOn))
+            ->values();
 
         return $this->build(
             $member,
@@ -51,7 +56,11 @@ class PricingService
     {
         $month = $event->event_date->clone()->startOfMonth();
         $entry = AddOn::entry();
-        $subscribable = AddOn::subscribable()->get();
+        // See price() — a gated add-on the member can't currently use is
+        // filtered out here too, so the live preview matches the charge.
+        $subscribable = AddOn::subscribable()->get()
+            ->filter(fn (AddOn $addOn) => $member->canUseAddOn($addOn))
+            ->values();
 
         return $this->build(
             $member,

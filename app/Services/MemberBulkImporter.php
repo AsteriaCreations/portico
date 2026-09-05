@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Category;
 use App\Models\Member;
+use App\Models\PaperworkType;
 use App\Services\Concerns\ParsesSpreadsheetValues;
 use Illuminate\Database\QueryException;
 use PhpOffice\PhpSpreadsheet\IOFactory;
@@ -30,6 +31,7 @@ class MemberBulkImporter
 
         $created = 0;
         $log = [];
+        $standardPaperworkTypeId = PaperworkType::where('name', 'Standard Paperwork')->value('id');
 
         for ($row = 2; $row <= $sheet->getHighestRow(); $row++) {
             $username = trim((string) $sheet->getCell("A{$row}")->getValue());
@@ -130,7 +132,7 @@ class MemberBulkImporter
             }
 
             try {
-                Member::create([
+                $member = Member::create([
                     'username' => $username,
                     'first_name' => $firstName !== '' ? $firstName : null,
                     'last_name' => $lastName !== '' ? $lastName : null,
@@ -142,7 +144,6 @@ class MemberBulkImporter
                     'member_number' => $memberNumber,
                     'date_vetted' => $dateVetted,
                     'dob' => $dob,
-                    'paperwork_date' => $paperworkDate,
                     'is_active' => $isActive,
                     'subscription_eligible' => $subscriptionEligible,
                     'on_watchlist' => $onWatchlist,
@@ -159,6 +160,16 @@ class MemberBulkImporter
                 $log[] = "row {$row}: username or member_number already taken, skipped";
 
                 continue;
+            }
+
+            // Column L is a "Standard Paperwork" signing date -- recorded in
+            // member_paperwork now, not a members column.
+            if ($paperworkDate !== null && $standardPaperworkTypeId !== null) {
+                $member->paperwork()->create([
+                    'paperwork_type_id' => $standardPaperworkTypeId,
+                    'signed_on' => $paperworkDate,
+                    'recorded_by' => null,
+                ]);
             }
 
             $created++;

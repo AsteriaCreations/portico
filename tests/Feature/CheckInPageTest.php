@@ -1240,7 +1240,7 @@ test('venmo can be used once per member; a second attempt is rejected and the fi
         ->assertHasNoActionErrors();
 
     $member->refresh();
-    expect($member->hasUsedVenmo())->toBeTrue()
+    expect($member->hasUsedOneTimeMethod())->toBeTrue()
         ->and($member->hospitality_note)->toContain('Venmo used '.now()->toDateString());
 
     Livewire::test(CheckIn::class)
@@ -1252,6 +1252,50 @@ test('venmo can be used once per member; a second attempt is rejected and the fi
         ->assertHasActionErrors(['payment_method']);
 
     expect(Attendance::where('member_id', $member->id)->where('event_id', $eventTwo->id)->exists())->toBeFalse();
+});
+
+test('using one one-time method (venmo) also locks out the others (paypal)', function () {
+    $member = clearMember($this->irregular);
+    $eventOne = Event::factory()->create(['event_date' => now()->toDateString(), 'entry_fee' => 20, 'pool_fee' => 0]);
+    $eventTwo = Event::factory()->create(['event_date' => '2026-07-26', 'entry_fee' => 20, 'pool_fee' => 0]);
+
+    Livewire::test(CheckIn::class)
+        ->fillForm(['event_id' => $eventOne->id, 'member_id' => $member->id])
+        ->callAction('checkIn', data: [
+            'checked_in_at' => now(),
+            'payment_method' => 'venmo',
+        ])
+        ->assertHasNoActionErrors();
+
+    Livewire::test(CheckIn::class)
+        ->fillForm(['event_id' => $eventTwo->id, 'member_id' => $member->id])
+        ->callAction('checkIn', data: [
+            'checked_in_at' => now(),
+            'payment_method' => 'paypal',
+        ])
+        ->assertHasActionErrors(['payment_method']);
+
+    expect(Attendance::where('member_id', $member->id)->where('event_id', $eventTwo->id)->exists())->toBeFalse();
+});
+
+test('a non-one-time method (cash) never locks anything out', function () {
+    $member = clearMember($this->irregular);
+    $eventOne = Event::factory()->create(['event_date' => now()->toDateString(), 'entry_fee' => 20, 'pool_fee' => 0]);
+    $eventTwo = Event::factory()->create(['event_date' => '2026-07-26', 'entry_fee' => 20, 'pool_fee' => 0]);
+
+    foreach ([$eventOne, $eventTwo] as $event) {
+        Livewire::test(CheckIn::class)
+            ->fillForm(['event_id' => $event->id, 'member_id' => $member->id])
+            ->callAction('checkIn', data: [
+                'checked_in_at' => now(),
+                'payment_method' => 'other',
+            ])
+            ->assertHasNoActionErrors();
+    }
+
+    $member->refresh();
+    expect($member->hasUsedOneTimeMethod())->toBeFalse()
+        ->and(Attendance::where('member_id', $member->id)->count())->toBe(2);
 });
 
 test('the register-guest action is hidden until the host has been checked in tonight', function () {

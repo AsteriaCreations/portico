@@ -37,7 +37,6 @@ class MemberFactory extends Factory
             'dob' => fake()->dateTimeBetween('-70 years', '-18 years')->format('Y-m-d'),
             'is_active' => true,
             'subscription_eligible' => false,
-            'paperwork_date' => null,
             'on_watchlist' => false,
             'watchlist_reason' => null,
             'is_banned' => false,

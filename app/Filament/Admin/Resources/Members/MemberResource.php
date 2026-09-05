@@ -8,6 +8,7 @@ use App\Filament\Admin\Resources\Members\Pages\ListMembers;
 use App\Filament\Admin\Resources\Members\RelationManagers\AttendanceRelationManager;
 use App\Filament\Admin\Resources\Members\RelationManagers\BanExceptionsRelationManager;
 use App\Filament\Admin\Resources\Members\RelationManagers\BehaviorNotesRelationManager;
+use App\Filament\Admin\Resources\Members\RelationManagers\MemberPaperworkRelationManager;
 use App\Filament\Admin\Resources\Members\RelationManagers\MemberStatusChangesRelationManager;
 use App\Filament\Admin\Resources\Members\RelationManagers\MemberUsernameChangesRelationManager;
 use App\Filament\Admin\Resources\Members\Schemas\MemberForm;
@@ -41,6 +42,7 @@ class MemberResource extends Resource
             AttendanceRelationManager::class,
             BanExceptionsRelationManager::class,
             BehaviorNotesRelationManager::class,
+            MemberPaperworkRelationManager::class,
             MemberStatusChangesRelationManager::class,
             MemberUsernameChangesRelationManager::class,
         ];

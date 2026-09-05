@@ -12,10 +12,11 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Support\Carbon;
 
 #[Fillable([
     'member_number', 'username', 'preferred_name', 'first_name', 'last_name', 'email', 'email_opt_in',
-    'category_id', 'sponsor_id', 'date_vetted', 'dob', 'is_active', 'subscription_eligible', 'paperwork_date',
+    'category_id', 'sponsor_id', 'date_vetted', 'dob', 'is_active', 'subscription_eligible',
     'on_watchlist', 'watchlist_reason', 'is_banned', 'ban_reason', 'banned_until', 'probation_override_start',
     'missing_paperwork', 'is_deceased', 'hospitality_note', 'notes',
 ])]
@@ -32,7 +33,6 @@ class Member extends Model
             'is_active' => 'boolean',
             'email_opt_in' => 'boolean',
             'subscription_eligible' => 'boolean',
-            'paperwork_date' => 'date',
             'on_watchlist' => 'boolean',
             'is_banned' => 'boolean',
             'banned_until' => 'date',
@@ -95,6 +95,15 @@ class Member extends Model
     public function usernameChanges(): HasMany
     {
         return $this->hasMany(MemberUsernameChange::class);
+    }
+
+    /**
+     * Append-only log of every paperwork/waiver signing -- see
+     * hasValidPaperwork() for the read side and PaperworkType.
+     */
+    public function paperwork(): HasMany
+    {
+        return $this->hasMany(MemberPaperwork::class);
     }
 
     /**
@@ -168,6 +177,46 @@ class Member extends Model
     }
 
     /**
+     * True when the member has signed this paperwork type and, if the type
+     * renews (renewal_months set), the latest signing is still within that
+     * window. Same "derived, never stored" shape as isSubscriptionEligible().
+     */
+    public function hasValidPaperwork(PaperworkType $type): bool
+    {
+        $latest = $this->paperwork()
+            ->where('paperwork_type_id', $type->id)
+            ->max('signed_on');
+
+        if (! $latest) {
+            return false;
+        }
+
+        if ($type->renewal_months === null) {
+            return true;
+        }
+
+        return Carbon::parse($latest)
+            ->addMonths($type->renewal_months)
+            ->isFuture();
+    }
+
+    /**
+     * Whether the member may use a given add-on -- false only when an active
+     * PaperworkType gates that add-on (gates_add_on_id) and the member lacks
+     * valid paperwork for it (e.g. an expired Pool Waiver blocks Pool).
+     * PricingService drops a gated add-on's line for a member this returns
+     * false for; CheckIn blocks a day-pass purchase.
+     */
+    public function canUseAddOn(AddOn $addOn): bool
+    {
+        return PaperworkType::query()
+            ->where('active', true)
+            ->where('gates_add_on_id', $addOn->id)
+            ->get()
+            ->every(fn (PaperworkType $type) => $this->hasValidPaperwork($type));
+    }
+
+    /**
      * is_banned alone means "was placed in a banned state" -- the historical
      * record, never auto-flipped back (no cron: an automated change would
      * need a changed_by on the audit row with no authenticated user to
@@ -183,28 +232,32 @@ class Member extends Model
     }
 
     /**
-     * Venmo is a one-time payment method per member (house policy) — computed
-     * from actual payment history across both entry and subscription payments,
-     * the same "derived, never stored" shape as subscription eligibility,
-     * rather than trusting a flag that could drift from what was actually
-     * charged.
+     * A one-time-only payment method (Venmo, PayPal — any row flagged
+     * payment_methods.one_time_only) may be used once per member, ever,
+     * across both entry and subscription payments. Computed from actual
+     * payment history rather than a stored flag, the same "derived, never
+     * stored" shape as subscription eligibility. Using any one of them
+     * locks out all of them (house rule: one electronic payment per
+     * member, not one per brand).
      */
-    public function hasUsedVenmo(): bool
+    public function hasUsedOneTimeMethod(): bool
     {
-        return $this->attendance()->where('payment_method', 'venmo')->exists()
-            || $this->subscriptions()->where('payment_method', 'venmo')->exists();
+        $codes = PaymentMethod::oneTimeCodes();
+
+        return $this->attendance()->whereIn('payment_method', $codes)->exists()
+            || $this->subscriptions()->whereIn('payment_method', $codes)->exists();
     }
 
     /**
-     * Appends a dated marker to hospitality_note when the member's one-time
-     * Venmo use is spent, so staff glancing at the member record see it
-     * without digging through payment history. Prior content is kept, not
-     * overwritten — the column is a short VARCHAR, so it's trimmed from the
-     * front (oldest first) to fit rather than dropping the new note.
+     * Appends a dated marker to hospitality_note when a member's one-time
+     * payment method is spent, so staff glancing at the member record see
+     * it without digging through payment history. Prior content is kept,
+     * not overwritten — the column is a short VARCHAR, so it's trimmed from
+     * the front (oldest first) to fit rather than dropping the new note.
      */
-    public function recordVenmoUsage(): void
+    public function recordOneTimeMethodUsage(string $label): void
     {
-        $note = 'Venmo used '.now()->toDateString();
+        $note = "{$label} used ".now()->toDateString();
         $combined = $this->hospitality_note ? "{$this->hospitality_note}; {$note}" : $note;
 
         $this->update(['hospitality_note' => mb_substr($combined, -120)]);

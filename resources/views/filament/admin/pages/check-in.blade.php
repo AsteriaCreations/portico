@@ -140,6 +140,17 @@
                     {{ $this->confirmPaperworkAction }}
                 </div>
             @endif
+
+            {{-- A gating waiver (e.g. Pool Waiver) is missing/expired: the
+            add-on is dropped from pricing entirely, so staff need to know why
+            and that the member must not be admitted to it. If they sign it
+            now, staff record it here and the add-on returns to pricing. --}}
+            @foreach ($this->getGatedAddOnWarnings() as $gatedWarning)
+                <p class="mt-4 text-danger-600">{{ $gatedWarning }}</p>
+            @endforeach
+            <div class="mt-2">
+                {{ $this->recordGatedPaperworkAction }}
+            </div>
         </x-filament::section>
     @endif
 
