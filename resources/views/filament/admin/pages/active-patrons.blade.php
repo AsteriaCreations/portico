@@ -8,7 +8,7 @@
     </x-screen-instructions>
 
     <x-filament::section>
-        <div class="flex items-center justify-between gap-4">
+        <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
             {{-- role="status" -- the table below polls every 15s (->poll('15s')),
             which re-renders this whole page component including this count, so it
             changes silently as people arrive/depart from other terminals. --}}

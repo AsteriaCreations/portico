@@ -14,8 +14,13 @@ use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
+use Filament\Support\Enums\Alignment;
+use Filament\Support\Enums\FontWeight;
+use Filament\Support\Enums\TextSize;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\IconColumn;
+use Filament\Tables\Columns\Layout\Split;
+use Filament\Tables\Columns\Layout\Stack;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Concerns\InteractsWithTable;
 use Filament\Tables\Contracts\HasTable;
@@ -93,44 +98,74 @@ class ActivePatrons extends Page implements HasTable
                     ->whereIn('event_id', $eventIds)
                     ->orWhereHas('addOns', fn ($addOns) => $addOns->where('is_overnight', true)))
                 ->with(['addOns', 'behaviorNotes.createdBy', 'member.skills']))
+            // Filament layout components (Split/Stack), not a flat column
+            // list -- each patron renders as one stacked card on a phone and
+            // a single row at sm+ width, so the page never needs the
+            // left/right horizontal scroll a 10-wide table forced. A layout
+            // component drops the column-header row, so each field carries
+            // its own icon/label on the card instead.
             ->columns([
-                TextColumn::make('member.username')
-                    ->label('Member')
-                    ->action($this->departAction()),
-                TextColumn::make('event.name')
-                    ->label('Event'),
-                TextColumn::make('checked_in_at')
-                    ->label('Checked in')
-                    ->dateTime('M j, g:i A'),
-                TextColumn::make('member.skills.name')
-                    ->label('Skills')
-                    ->badge()
-                    ->placeholder('—'),
-                IconColumn::make('overnight')
-                    ->label('Overnight')
-                    ->boolean()
-                    ->getStateUsing(fn (Attendance $record): bool => $record->isOvernightStay())
-                    ->tooltip(fn (bool $state): string => $state ? 'Staying overnight' : 'Same-night guest'),
-                IconColumn::make('member.on_watchlist')
-                    ->label('Watchlist')
-                    ->boolean()
-                    ->color(fn (?bool $state): string => $state ? 'warning' : 'gray')
-                    ->tooltip(fn (?bool $state): string => $state ? 'On watchlist' : 'Not on watchlist'),
-                TextColumn::make('member.watchlist_reason')
-                    ->label('Watchlist reason')
-                    ->visible(fn (): bool => Gate::allows('view-sensitive-member-fields')),
-                TextColumn::make('visit_note')
-                    ->label('Visit note')
-                    ->placeholder('— add —')
-                    ->visible(fn (): bool => Gate::allows('manage-visit-notes'))
-                    ->action($this->editVisitNoteAction()),
-                TextColumn::make('behaviorNotesSummary')
-                    ->label('Behavior notes')
-                    ->placeholder('— add —')
-                    ->wrap()
-                    ->visible(fn (): bool => Gate::allows('manage-behavior-notes'))
-                    ->getStateUsing(fn (Attendance $record): ?string => $this->behaviorNotesSummary($record))
-                    ->action($this->addBehaviorNoteAction()),
+                Split::make([
+                    Stack::make([
+                        TextColumn::make('member.username')
+                            ->label('Member')
+                            ->weight(FontWeight::Bold)
+                            ->searchable()
+                            ->action($this->departAction()),
+                        TextColumn::make('event.name')
+                            ->label('Event')
+                            ->color('gray')
+                            ->size(TextSize::Small)
+                            ->icon(Heroicon::OutlinedCalendarDays),
+                        TextColumn::make('checked_in_at')
+                            ->label('Checked in')
+                            ->dateTime('M j, g:i A')
+                            ->color('gray')
+                            ->size(TextSize::Small)
+                            ->icon(Heroicon::OutlinedClock),
+                    ])->space(1),
+
+                    Stack::make([
+                        IconColumn::make('overnight')
+                            ->label('Overnight')
+                            ->boolean()
+                            ->getStateUsing(fn (Attendance $record): bool => $record->isOvernightStay())
+                            ->tooltip(fn (bool $state): string => $state ? 'Staying overnight' : 'Same-night guest'),
+                        IconColumn::make('member.on_watchlist')
+                            ->label('Watchlist')
+                            ->boolean()
+                            ->color(fn (?bool $state): string => $state ? 'warning' : 'gray')
+                            ->tooltip(fn (?bool $state): string => $state ? 'On watchlist' : 'Not on watchlist'),
+                    ])->space(1)->alignment(Alignment::End)->grow(false),
+                ])->from('sm'),
+
+                Stack::make([
+                    TextColumn::make('member.skills.name')
+                        ->label('Skills')
+                        ->badge()
+                        ->placeholder('—'),
+                    TextColumn::make('member.watchlist_reason')
+                        ->label('Watchlist reason')
+                        ->color('warning')
+                        ->icon(Heroicon::OutlinedExclamationTriangle)
+                        ->wrap()
+                        ->visible(fn (): bool => Gate::allows('view-sensitive-member-fields')),
+                    TextColumn::make('visit_note')
+                        ->label('Visit note')
+                        ->icon(Heroicon::OutlinedPencilSquare)
+                        ->placeholder('— add visit note —')
+                        ->wrap()
+                        ->visible(fn (): bool => Gate::allows('manage-visit-notes'))
+                        ->action($this->editVisitNoteAction()),
+                    TextColumn::make('behaviorNotesSummary')
+                        ->label('Behavior notes')
+                        ->icon(Heroicon::OutlinedFlag)
+                        ->placeholder('— add behavior note —')
+                        ->wrap()
+                        ->visible(fn (): bool => Gate::allows('manage-behavior-notes'))
+                        ->getStateUsing(fn (Attendance $record): ?string => $this->behaviorNotesSummary($record))
+                        ->action($this->addBehaviorNoteAction()),
+                ])->space(2),
             ])
             ->filters([
                 Filter::make('watchlist_only')

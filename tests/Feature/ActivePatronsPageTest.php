@@ -114,6 +114,18 @@ test('departing marks departed_at on exactly that attendance row and it drops of
         ->assertCanSeeTableRecords([$otherAttendance]);
 });
 
+test('the roster renders as a responsive stacked layout, not one wide row of columns', function () {
+    $this->actingAs(User::factory()->create(['active' => true, 'role' => Role::Volunteer]));
+
+    $event = Event::factory()->create(['event_date' => today()->toDateString()]);
+    $member = clearMemberForActivePatrons($this->irregular, ['username' => 'layout-check']);
+    Attendance::factory()->for($member)->for($event)->create(['checked_in_at' => now()]);
+
+    // Split::make() emits a `fi-ta-split` wrapper; a plain ->columns([TextColumn, ...])
+    // table never does. This is what keeps the phone view off a 10-wide horizontal scroll.
+    expect(Livewire::test(ActivePatrons::class)->html())->toContain('fi-ta-split');
+});
+
 test('clicking the member column dispatches the depart action, not a nonexistent depart() method', function () {
     $volunteer = User::factory()->create(['active' => true, 'role' => Role::Volunteer]);
     $this->actingAs($volunteer);
@@ -124,13 +136,15 @@ test('clicking the member column dispatches the depart action, not a nonexistent
 
     $html = Livewire::test(ActivePatrons::class)->html();
 
-    // Column::action() with a bare Action instance renders a
-    // mountTableAction(...) wire:click, the same working mechanism
-    // recordActions() uses. Passing a string instead (the original bug)
-    // renders callTableColumnAction(...), which calls $this->depart($record)
-    // as a literal method — nonexistent here — and throws
-    // BadMethodCallException the moment a real click reaches the server.
-    expect($html)->toContain('mountTableAction(&#039;depart&#039;')
+    // Column::action() with a bare Action instance renders a real action
+    // mount on click -- mountAction('depart', ...) for a column nested in a
+    // Split/Stack layout (the record-action Depart button separately renders
+    // mountTableAction('depart', ...); both dispatch to the same table
+    // action). Passing a string instead (the original bug) renders
+    // callTableColumnAction(...), which calls $this->depart($record) as a
+    // literal method — nonexistent here — and throws BadMethodCallException
+    // the moment a real click reaches the server.
+    expect($html)->toContain("mountAction('depart'")
         ->not->toContain('callTableColumnAction');
 });
 
