@@ -60,7 +60,7 @@ class MonthlyRevenueChartWidget extends ChartWidget
                 [
                     'label' => 'Subscription',
                     'data' => $months->map(fn ($month) => (float) Subscription::query()
-                        ->whereBetween('paid_on', [$month->toDateString(), $month->copy()->endOfMonth()->toDateString()])
+                        ->whereBetween('paid_on', [$month, $month->copy()->endOfMonth()])
                         ->sum('amount_paid'))->all(),
                 ],
                 [

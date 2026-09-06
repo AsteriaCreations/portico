@@ -26,7 +26,7 @@ class WeeklySummaryWidget extends StatsOverviewWidget
             ->join('events', 'events.id', '=', 'attendance.event_id')
             ->join('event_types', 'event_types.id', '=', 'events.event_type_id')
             ->whereNotNull('attendance.checked_in_at')
-            ->whereBetween('events.event_date', [now()->startOfWeek()->toDateString(), now()->endOfWeek()->toDateString()])
+            ->whereBetween('events.event_date', [now()->startOfWeek(), now()->endOfWeek()])
             ->groupBy('event_types.id', 'event_types.name', 'event_types.sort_order')
             ->orderBy('event_types.sort_order')
             ->selectRaw('event_types.name as name, COUNT(*) as visits, SUM(attendance.amount_paid) as revenue')
