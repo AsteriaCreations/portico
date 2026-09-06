@@ -6,6 +6,7 @@ use App\Enums\Role;
 use App\Models\MembershipSetting;
 use BackedEnum;
 use Filament\Actions\Action;
+use Filament\Forms\Components\CheckboxList;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Notifications\Notification;
@@ -53,6 +54,7 @@ class MembershipSettings extends Page
             'default_opening_float',
             'event_window_buffer_minutes',
             'org_name',
+            'member_search_fields',
             'hide_member_pii_by_default',
             'showrunner_door_includes_pool',
             'showrunner_door_includes_addons',
@@ -98,6 +100,18 @@ class MembershipSettings extends Page
                     ->helperText('Shown across the admin panel (header, browser tab, login page) in place of "'.config('app.name').'". Leave blank to use that default. Owner only.')
                     ->maxLength(255)
                     ->visible(fn (): bool => Gate::allows('manage-org-name')),
+                CheckboxList::make('member_search_fields')
+                    ->label('Searchable member fields')
+                    ->helperText('Which fields staff can search on in every member picker — the check-in desk, the Showrunner/Host selects, subscriptions, vouchers, and the rest. Username is the desk\'s primary lookup; add others only if staff actually need them.')
+                    ->options([
+                        'username' => 'Username',
+                        'name' => 'Name (first & last)',
+                        'member_number' => 'Member number',
+                        'preferred_name' => 'Preferred name',
+                        'email' => 'Email',
+                    ])
+                    ->minItems(1)
+                    ->required(),
                 Toggle::make('hide_member_pii_by_default')
                     ->label('Hide personal info by default on the Members list')
                     ->helperText('Controls the starting state of the "Hide personal info" toggle on the Members list (first/last name, DOB, email). Staff can still flip it for their own session either way.')

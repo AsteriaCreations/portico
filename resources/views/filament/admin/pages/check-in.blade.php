@@ -12,7 +12,7 @@
     <x-filament-actions::modals />
 
     <x-screen-instructions title="How to check someone in">
-        <p>1. Search for the <strong>member</strong> first, by username, name, or member number. Their status (banned, watchlist, subscription eligibility, sign-up steps needed) shows immediately — you don't need an event picked yet.</p>
+        <p>1. Search for the <strong>member</strong> first, by {{ $this->memberSearchFieldsLabel() }}. Their status (banned, watchlist, subscription eligibility, sign-up steps needed) shows immediately — you don't need an event picked yet.</p>
         <p>2. Pick tonight's <strong>event</strong> to see what's due and any comp/voucher/subscription options for it.</p>
         <p>3. If a watchlist note asks for a staff-channel message, send it first, then check the acknowledgement box — you can't proceed without it.</p>
         <p>4. Review the <strong>Due</strong> total, then click <strong>Check in</strong> to record payment and admit them.</p>

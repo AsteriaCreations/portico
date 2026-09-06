@@ -104,11 +104,7 @@ class ShowrunnerCompRequests extends Page implements HasTable
                         $event = $this->getSelectedEvent();
 
                         return Member::query()
-                            ->where(fn ($query) => $query
-                                ->where('username', 'like', "%{$search}%")
-                                ->orWhere('first_name', 'like', "%{$search}%")
-                                ->orWhere('last_name', 'like', "%{$search}%")
-                                ->orWhere('member_number', 'like', "%{$search}%"))
+                            ->where(fn ($query) => $query->matchingSearch($search))
                             ->where(fn ($query) => $query
                                 // "Not currently banned" -- excludes a
                                 // permanent ban or an active suspension, but

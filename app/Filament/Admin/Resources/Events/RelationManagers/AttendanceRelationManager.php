@@ -97,7 +97,7 @@ class AttendanceRelationManager extends RelationManager
                             ->getOptionLabelFromRecordUsing(
                                 fn (Member $record) => "{$record->last_name}, {$record->first_name} ({$record->username})"
                             )
-                            ->searchable(['username', 'first_name', 'last_name', 'member_number'])
+                            ->searchable(Member::searchableColumns())
                             ->preload()
                             ->unique(
                                 table: 'attendance',
