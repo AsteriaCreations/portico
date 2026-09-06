@@ -72,7 +72,6 @@ class DatabaseSeeder extends Seeder
             AddOnSeeder::class,
             PlanSeeder::class, // depends on AddOnSeeder (Entry/Pool rows)
             PaperworkTypeSeeder::class, // depends on AddOnSeeder (Pool row, for the Pool Waiver gate)
-            CompReasonSeeder::class,
             ShowrunnerPayoutTierSeeder::class,
             InstructorPayRateSeeder::class,
         ]);

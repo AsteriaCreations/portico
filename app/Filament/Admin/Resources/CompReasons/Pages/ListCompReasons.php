@@ -46,7 +46,7 @@ class ListCompReasons extends ListRecords
                 return response()->streamDownload(function (): void {
                     $handle = fopen('php://output', 'w');
                     fputcsv($handle, ['name', 'description', 'grants_voucher_amount', 'sort_order', 'active']);
-                    fputcsv($handle, ['House Sub', 'Worked the event in place of staff', '25', '10', 'Y']);
+                    fputcsv($handle, ['Presenter', 'Presented at this event', '25', '10', 'Y']);
                     fclose($handle);
                 }, 'comp-reason-upload-template-'.now()->toDateString().'.csv');
             });
