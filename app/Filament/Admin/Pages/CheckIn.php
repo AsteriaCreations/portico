@@ -62,8 +62,12 @@ class CheckIn extends Page implements HasTable
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedClipboardDocumentCheck;
 
-    protected static ?string $navigationLabel = 'Check In';
+    protected static ?string $navigationLabel = 'Check-In Desk';
 
+    protected static ?string $title = 'Check-In Desk';
+
+    // Sits directly under Dashboard, above every navigation group -- the
+    // single most-used page in the panel.
     protected static ?int $navigationSort = -1;
 
     /**

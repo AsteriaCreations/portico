@@ -26,6 +26,7 @@ use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
 use Filament\Http\Middleware\DispatchServingFilamentEvent;
+use Filament\Navigation\NavigationGroup;
 use Filament\Pages\Dashboard;
 use Filament\Panel;
 use Filament\PanelProvider;
@@ -57,6 +58,17 @@ class AdminPanelProvider extends PanelProvider
             ])
             ->discoverResources(in: app_path('Filament/Admin/Resources'), for: 'App\Filament\Admin\Resources')
             ->discoverPages(in: app_path('Filament/Admin/Pages'), for: 'App\Filament\Admin\Pages')
+            // Explicit order for the left rail. Dashboard, the Check-In Desk,
+            // and Analytics stay ungrouped and render above all of these.
+            // The three catalog/config groups are collapsed by default so the
+            // rail isn't a wall of text -- the two operational groups are not.
+            ->navigationGroups([
+                NavigationGroup::make('Front of House'),
+                NavigationGroup::make('Records'),
+                NavigationGroup::make('Desk & Money')->collapsed(),
+                NavigationGroup::make('Members & Events')->collapsed(),
+                NavigationGroup::make('System')->collapsed(),
+            ])
             ->databaseNotifications()
             ->renderHook(
                 PanelsRenderHook::FOOTER,

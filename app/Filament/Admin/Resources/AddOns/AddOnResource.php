@@ -21,7 +21,9 @@ class AddOnResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedPlusCircle;
 
-    protected static string|UnitEnum|null $navigationGroup = 'Settings';
+    protected static string|UnitEnum|null $navigationGroup = 'Desk & Money';
+
+    protected static ?int $navigationSort = 3;
 
     protected static ?string $recordTitleAttribute = 'name';
 

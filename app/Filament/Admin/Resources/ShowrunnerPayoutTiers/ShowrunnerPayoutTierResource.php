@@ -21,7 +21,9 @@ class ShowrunnerPayoutTierResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleStack;
 
-    protected static string|UnitEnum|null $navigationGroup = 'Settings';
+    protected static string|UnitEnum|null $navigationGroup = 'Members & Events';
+
+    protected static ?int $navigationSort = 5;
 
     protected static ?string $navigationLabel = 'Showrunner Payout Tiers';
 

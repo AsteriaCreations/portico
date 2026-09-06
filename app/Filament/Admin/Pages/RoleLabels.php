@@ -30,7 +30,9 @@ class RoleLabels extends Page
 
     protected static ?string $navigationLabel = 'Role Labels';
 
-    protected static string|UnitEnum|null $navigationGroup = 'Settings';
+    protected static string|UnitEnum|null $navigationGroup = 'System';
+
+    protected static ?int $navigationSort = 4;
 
     /**
      * @var array<string, mixed>

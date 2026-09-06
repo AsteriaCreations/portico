@@ -21,7 +21,9 @@ class PlanResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedCurrencyDollar;
 
-    protected static string|UnitEnum|null $navigationGroup = 'Settings';
+    protected static string|UnitEnum|null $navigationGroup = 'Desk & Money';
+
+    protected static ?int $navigationSort = 1;
 
     protected static ?string $navigationLabel = 'Subscription Plans';
 

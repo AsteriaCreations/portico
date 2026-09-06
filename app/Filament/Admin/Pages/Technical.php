@@ -26,7 +26,9 @@ class Technical extends Page
 
     protected static ?string $navigationLabel = 'Technical';
 
-    protected static string|UnitEnum|null $navigationGroup = 'Settings';
+    protected static string|UnitEnum|null $navigationGroup = 'System';
+
+    protected static ?int $navigationSort = 5;
 
     public static function canAccess(): bool
     {

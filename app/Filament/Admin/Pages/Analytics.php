@@ -33,6 +33,11 @@ class Analytics extends Page
 
     protected static ?string $navigationLabel = 'Analytics';
 
+    // Ungrouped, pinned near the top alongside Dashboard and the Check-In
+    // Desk rather than buried in a group -- it's a landing page, not a
+    // record type or a setting.
+    protected static ?int $navigationSort = 0;
+
     public static function canAccess(): bool
     {
         return auth()->user()->role->atLeast(Role::Manager);

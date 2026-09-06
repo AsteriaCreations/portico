@@ -11,6 +11,7 @@ use BackedEnum;
 use Filament\Resources\Resource;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
+use UnitEnum;
 
 // List + view only: a shift is opened/closed only through CheckIn's page
 // actions via RegisterShiftService, never a generic Filament form (see
@@ -24,6 +25,10 @@ class RegisterShiftResource extends Resource
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedCalculator;
 
     protected static ?string $navigationLabel = 'Register Shifts';
+
+    protected static string|UnitEnum|null $navigationGroup = 'Front of House';
+
+    protected static ?int $navigationSort = 2;
 
     public static function table(Table $table): Table
     {

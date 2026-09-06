@@ -30,6 +30,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
+use UnitEnum;
 
 /**
  * Who's actually still in the building right now, across every currently
@@ -47,6 +48,10 @@ class ActivePatrons extends Page implements HasTable
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedUserGroup;
 
     protected static ?string $navigationLabel = 'Active Patrons';
+
+    protected static string|UnitEnum|null $navigationGroup = 'Front of House';
+
+    protected static ?int $navigationSort = 1;
 
     public static function canAccess(): bool
     {

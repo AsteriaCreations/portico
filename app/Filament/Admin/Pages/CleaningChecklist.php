@@ -14,6 +14,7 @@ use Filament\Tables\Concerns\InteractsWithTable;
 use Filament\Tables\Contracts\HasTable;
 use Filament\Tables\Table;
 use Illuminate\Support\Facades\Gate;
+use UnitEnum;
 
 /**
  * The Cleaning Crew's recurring weekly checklist -- gated entirely by the
@@ -33,6 +34,10 @@ class CleaningChecklist extends Page implements HasTable
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedSparkles;
 
     protected static ?string $navigationLabel = 'Cleaning Checklist';
+
+    protected static string|UnitEnum|null $navigationGroup = 'Front of House';
+
+    protected static ?int $navigationSort = 3;
 
     public static function canAccess(): bool
     {
