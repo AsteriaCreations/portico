@@ -86,18 +86,14 @@ class EventForm
                 Select::make('showrunner_id')
                     ->label('Showrunner')
                     ->relationship('showrunner', 'username')
-                    ->getOptionLabelFromRecordUsing(
-                        fn (Member $record) => "{$record->last_name}, {$record->first_name} ({$record->username})"
-                    )
+                    ->getOptionLabelFromRecordUsing(fn (Member $record) => Member::pickerLabel($record))
                     ->searchable(Member::searchableColumns())
                     ->preload()
                     ->helperText('The member running this event — lets their linked login submit comp-list requests for it, subject to Admin+ approval.'),
                 Select::make('host_id')
                     ->label('Host')
                     ->relationship('host', 'username')
-                    ->getOptionLabelFromRecordUsing(
-                        fn (Member $record) => "{$record->last_name}, {$record->first_name} ({$record->username})"
-                    )
+                    ->getOptionLabelFromRecordUsing(fn (Member $record) => Member::pickerLabel($record))
                     ->searchable(Member::searchableColumns())
                     ->preload()
                     ->helperText('Automatically checked in free of charge when they attend this event — no comp request needed.'),

@@ -102,9 +102,7 @@ class PrepayListRelationManager extends RelationManager
                         Select::make('member_id')
                             ->label('Member')
                             ->relationship('member', 'username')
-                            ->getOptionLabelFromRecordUsing(
-                                fn (Member $record) => "{$record->last_name}, {$record->first_name} ({$record->username})"
-                            )
+                            ->getOptionLabelFromRecordUsing(fn (Member $record) => Member::pickerLabel($record))
                             ->searchable(Member::searchableColumns())
                             ->preload()
                             ->unique(
