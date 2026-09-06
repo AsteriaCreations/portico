@@ -5,6 +5,7 @@ use App\Enums\Role;
 use App\Models\AddOn;
 use App\Models\Category;
 use App\Models\EventType;
+use App\Models\CompReason;
 use App\Models\InstructorPayRate;
 use App\Models\Plan;
 use App\Models\ShowrunnerPayoutTier;
@@ -42,6 +43,14 @@ test('categories are seeded with the correct comp flags', function () {
 
     expect(Category::where('is_comped', true)->pluck('name')->sort()->values()->all())
         ->toBe(['Emeritus', 'Manager', 'Owner', 'Staff']);
+});
+
+test('no comp reasons are seeded by default', function () {
+    $this->seed();
+
+    // comp_reasons is editable settings data the club fills in itself --
+    // nothing ships as a default. See docs/BLUEPRINT.md "Per-event comp".
+    expect(CompReason::count())->toBe(0);
 });
 
 test('event types are seeded', function () {
