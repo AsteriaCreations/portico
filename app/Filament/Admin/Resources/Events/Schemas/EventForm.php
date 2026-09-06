@@ -89,7 +89,7 @@ class EventForm
                     ->getOptionLabelFromRecordUsing(
                         fn (Member $record) => "{$record->last_name}, {$record->first_name} ({$record->username})"
                     )
-                    ->searchable(['username', 'first_name', 'last_name', 'member_number'])
+                    ->searchable(Member::searchableColumns())
                     ->preload()
                     ->helperText('The member running this event — lets their linked login submit comp-list requests for it, subject to Admin+ approval.'),
                 Select::make('host_id')
@@ -98,7 +98,7 @@ class EventForm
                     ->getOptionLabelFromRecordUsing(
                         fn (Member $record) => "{$record->last_name}, {$record->first_name} ({$record->username})"
                     )
-                    ->searchable(['username', 'first_name', 'last_name', 'member_number'])
+                    ->searchable(Member::searchableColumns())
                     ->preload()
                     ->helperText('Automatically checked in free of charge when they attend this event — no comp request needed.'),
                 TextInput::make('notes')

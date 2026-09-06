@@ -1839,6 +1839,9 @@ test('two guests registered with the same name but different usernames both regi
 });
 
 test('member search matches on username before falling back to name', function () {
+    // Name search is off by default — enable it so the fallback tier has something to do.
+    MembershipSetting::current()->update(['member_search_fields' => ['username', 'name']]);
+
     $usernameMatch = clearMember($this->irregular, ['username' => 'nightowl', 'first_name' => 'Alex', 'last_name' => 'Fox']);
     $nameMatch = clearMember($this->irregular, ['username' => 'jsmith99', 'first_name' => 'Owlvia', 'last_name' => 'Nightengale']);
     $unrelated = clearMember($this->irregular, ['username' => 'someoneelse', 'first_name' => 'No', 'last_name' => 'Match']);
@@ -1855,12 +1858,19 @@ test('member search matches on username before falling back to name', function (
 });
 
 test('member search caps total results and still fills remaining slots from name matches', function () {
+    MembershipSetting::current()->update(['member_search_fields' => ['username', 'name']]);
+
     clearMember($this->irregular, ['username' => 'zzzmatch1']);
-    clearMember($this->irregular, ['username' => 'zzzmatch2', 'first_name' => 'Zzz']);
+    clearMember($this->irregular, ['username' => 'someoneelse', 'first_name' => 'Zzz']);
 
     $method = (new ReflectionClass(CheckIn::class))->getMethod('searchMembers');
     $method->setAccessible(true);
-    $results = $method->invoke(null, 'zzz', 1);
 
-    expect($results)->toHaveCount(1);
+    // Limit 1: the username match alone fills it, the name match is capped out.
+    expect($method->invoke(null, 'zzz', 1))->toHaveCount(1);
+
+    // Limit 2: the remaining slot is filled from the name-match tier.
+    $both = $method->invoke(null, 'zzz', 2);
+    expect($both)->toHaveCount(2)
+        ->and($both->first()->username)->toBe('zzzmatch1');
 });

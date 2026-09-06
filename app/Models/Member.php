@@ -5,6 +5,7 @@ namespace App\Models;
 use Carbon\CarbonInterface;
 use Database\Factories\MemberFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -294,5 +295,91 @@ class Member extends Model
     public static function nextMemberNumber(): int
     {
         return (int) (static::max('member_number') ?? 0) + 1;
+    }
+
+    /**
+     * The field keys a club can enable for member search, mapped to the real
+     * DB columns each one covers. "name" is one user-facing choice covering
+     * both name columns. Drives every member picker in the app -- see
+     * searchableColumns() / scopeMatchingSearch().
+     *
+     * @var array<string, string[]>
+     */
+    public const SEARCH_FIELD_COLUMNS = [
+        'username' => ['username'],
+        'name' => ['first_name', 'last_name'],
+        'member_number' => ['member_number'],
+        'preferred_name' => ['preferred_name'],
+        'email' => ['email'],
+    ];
+
+    /**
+     * The real DB columns member search should match on, per the club's
+     * MembershipSetting::member_search_fields. Falls back to username-only
+     * for a null/empty/all-unknown setting, so a picker is never left with
+     * nothing to search.
+     *
+     * @return string[]
+     */
+    public static function searchableColumns(): array
+    {
+        $selected = MembershipSetting::current()->member_search_fields ?: ['username'];
+
+        $columns = collect($selected)
+            ->flatMap(fn (string $key): array => static::SEARCH_FIELD_COLUMNS[$key] ?? [])
+            ->unique()
+            ->values()
+            ->all();
+
+        return $columns ?: ['username'];
+    }
+
+    /**
+     * A "%search%"-across-every-configured-column OR group, for pickers that
+     * build their own where clause (e.g. ShowrunnerCompRequests, which ANDs
+     * this with a not-banned filter). Filament relationship selects use
+     * ->searchable(Member::searchableColumns()) directly instead.
+     */
+    public function scopeMatchingSearch(Builder $query, string $search): void
+    {
+        $columns = static::searchableColumns();
+
+        $query->where(function (Builder $query) use ($columns, $search): void {
+            foreach ($columns as $column) {
+                $query->orWhere($column, 'like', "%{$search}%");
+            }
+        });
+    }
+
+    /**
+     * A human "username, name, or member number"-style list of the enabled
+     * search fields, for the check-in help text.
+     */
+    public static function searchableFieldsLabel(): string
+    {
+        $labels = [
+            'username' => 'username',
+            'name' => 'name',
+            'member_number' => 'member number',
+            'preferred_name' => 'preferred name',
+            'email' => 'email',
+        ];
+
+        $parts = collect(MembershipSetting::current()->member_search_fields ?: ['username'])
+            ->map(fn (string $key): string => $labels[$key] ?? $key)
+            ->values()
+            ->all();
+
+        if (count($parts) <= 1) {
+            return $parts[0] ?? 'username';
+        }
+
+        if (count($parts) === 2) {
+            return "{$parts[0]} or {$parts[1]}";
+        }
+
+        $last = array_pop($parts);
+
+        return implode(', ', $parts).", or {$last}";
     }
 }

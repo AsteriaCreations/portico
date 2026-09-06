@@ -438,6 +438,13 @@ class CheckIn extends Page implements HasTable
         return Gate::allows('view-sensitive-member-fields');
     }
 
+    // Reflects MembershipSetting::member_search_fields so the help text never
+    // promises a lookup the search box won't actually do.
+    public function memberSearchFieldsLabel(): string
+    {
+        return Member::searchableFieldsLabel();
+    }
+
     /**
      * Active PaperworkTypes that gate an add-on and that the selected member
      * has no valid signing for -- the Pool Waiver, at launch. Backs both the
@@ -1578,34 +1585,39 @@ class CheckIn extends Page implements HasTable
     }
 
     /**
-     * Username is the desk's primary lookup — most staff search a member by
-     * the value on their card/tag. Name and member number are only a
-     * fallback for the remaining result slots, not equal-weight criteria.
+     * Which member fields are searchable is club-configurable
+     * (MembershipSetting::member_search_fields, default username-only) — see
+     * Member::searchableColumns(). Username, when enabled, stays the desk's
+     * primary lookup: its matches come first, and the other enabled columns
+     * only fill the remaining result slots rather than competing head-on.
      *
      * @return Collection<int, Member>
      */
     protected static function searchMembers(string $search, int $limit = 50): Collection
     {
-        $usernameMatches = Member::query()
-            ->where('username', 'like', "%{$search}%")
-            ->limit($limit)
-            ->get();
+        $columns = Member::searchableColumns();
 
-        $remaining = $limit - $usernameMatches->count();
+        $primary = in_array('username', $columns, true)
+            ? Member::query()->where('username', 'like', "%{$search}%")->limit($limit)->get()
+            : new Collection;
 
-        if ($remaining <= 0) {
-            return $usernameMatches;
+        $remaining = $limit - $primary->count();
+        $fallbackColumns = array_values(array_diff($columns, ['username']));
+
+        if ($remaining <= 0 || $fallbackColumns === []) {
+            return $primary;
         }
 
-        $nameMatches = Member::query()
-            ->whereNotIn('id', $usernameMatches->pluck('id'))
-            ->where(fn ($query) => $query
-                ->where('first_name', 'like', "%{$search}%")
-                ->orWhere('last_name', 'like', "%{$search}%")
-                ->orWhere('member_number', 'like', "%{$search}%"))
+        $fallback = Member::query()
+            ->whereNotIn('id', $primary->pluck('id'))
+            ->where(function ($query) use ($fallbackColumns, $search): void {
+                foreach ($fallbackColumns as $column) {
+                    $query->orWhere($column, 'like', "%{$search}%");
+                }
+            })
             ->limit($remaining)
             ->get();
 
-        return $usernameMatches->concat($nameMatches);
+        return $primary->concat($fallback);
     }
 }
