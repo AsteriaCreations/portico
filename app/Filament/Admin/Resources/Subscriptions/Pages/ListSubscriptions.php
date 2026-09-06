@@ -50,18 +50,12 @@ class ListSubscriptions extends ListRecords
                     ->label('Member')
                     ->searchable()
                     ->getSearchResultsUsing(fn (string $search) => Member::query()
-                        ->where(fn ($query) => $query
-                            ->where('username', 'like', "%{$search}%")
-                            ->orWhere('first_name', 'like', "%{$search}%")
-                            ->orWhere('last_name', 'like', "%{$search}%")
-                            ->orWhere('member_number', 'like', "%{$search}%"))
+                        ->where(fn ($query) => $query->matchingSearch($search))
                         ->limit(50)
                         ->get()
-                        ->mapWithKeys(fn (Member $member) => [$member->id => "{$member->last_name}, {$member->first_name} ({$member->username})"])
+                        ->mapWithKeys(fn (Member $member) => [$member->id => Member::pickerLabel($member)])
                         ->all())
-                    ->getOptionLabelUsing(fn ($value) => ($member = Member::find($value))
-                        ? "{$member->last_name}, {$member->first_name} ({$member->username})"
-                        : null)
+                    ->getOptionLabelUsing(fn ($value) => ($member = Member::find($value)) ? Member::pickerLabel($member) : null)
                     ->required()
                     ->rule(function () {
                         return function (string $attribute, $value, $fail) {
@@ -150,18 +144,12 @@ class ListSubscriptions extends ListRecords
                     ->label('Member')
                     ->searchable()
                     ->getSearchResultsUsing(fn (string $search) => Member::query()
-                        ->where(fn ($query) => $query
-                            ->where('username', 'like', "%{$search}%")
-                            ->orWhere('first_name', 'like', "%{$search}%")
-                            ->orWhere('last_name', 'like', "%{$search}%")
-                            ->orWhere('member_number', 'like', "%{$search}%"))
+                        ->where(fn ($query) => $query->matchingSearch($search))
                         ->limit(50)
                         ->get()
-                        ->mapWithKeys(fn (Member $member) => [$member->id => "{$member->last_name}, {$member->first_name} ({$member->username})"])
+                        ->mapWithKeys(fn (Member $member) => [$member->id => Member::pickerLabel($member)])
                         ->all())
-                    ->getOptionLabelUsing(fn ($value) => ($member = Member::find($value))
-                        ? "{$member->last_name}, {$member->first_name} ({$member->username})"
-                        : null)
+                    ->getOptionLabelUsing(fn ($value) => ($member = Member::find($value)) ? Member::pickerLabel($member) : null)
                     ->required()
                     ->rule(function () {
                         return function (string $attribute, $value, $fail) {

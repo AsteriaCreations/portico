@@ -1574,14 +1574,13 @@ class CheckIn extends Page implements HasTable
     }
 
     /**
-     * Username is what staff search on (searchMembers() above), so the
-     * dropdown must echo it back — a preferred-name label here reads as
-     * unrelated to what was just typed, especially when a name match (not a
-     * username match) put the row in the results.
+     * The dropdown echoes back exactly the fields staff can search on
+     * (Member::searchableColumns()) — username alone by default, more only
+     * where the club has opted in. See Member::pickerLabel().
      */
     protected static function memberLabel(Member $member): string
     {
-        return $member->username;
+        return Member::pickerLabel($member);
     }
 
     /**

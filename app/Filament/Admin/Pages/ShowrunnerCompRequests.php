@@ -119,12 +119,10 @@ class ShowrunnerCompRequests extends Page implements HasTable
                                 )))
                             ->limit(50)
                             ->get()
-                            ->mapWithKeys(fn (Member $record) => [$record->id => "{$record->last_name}, {$record->first_name} ({$record->username})"])
+                            ->mapWithKeys(fn (Member $record) => [$record->id => Member::pickerLabel($record)])
                             ->all();
                     })
-                    ->getOptionLabelUsing(fn ($value) => ($record = Member::find($value))
-                        ? "{$record->last_name}, {$record->first_name} ({$record->username})"
-                        : null)
+                    ->getOptionLabelUsing(fn ($value) => ($record = Member::find($value)) ? Member::pickerLabel($record) : null)
                     ->rule(fn (): Closure => function (string $attribute, mixed $value, Closure $fail): void {
                         $event = $this->getSelectedEvent();
                         if (! $event) {

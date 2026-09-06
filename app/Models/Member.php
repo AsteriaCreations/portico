@@ -382,4 +382,45 @@ class Member extends Model
 
         return implode(', ', $parts).", or {$last}";
     }
+
+    /**
+     * A member picker's display label, built from ONLY the fields the club
+     * has enabled for member search (MembershipSetting::member_search_fields,
+     * default username-only). Name, preferred name, and email never appear in
+     * a dropdown unless the club deliberately turned that field on -- the
+     * label echoes exactly what staff can search on, nothing more, so PII is
+     * exposed only where it's actually needed. Falls back to the username (or
+     * the id) if the member has no value for any enabled field, so a row is
+     * never blank.
+     */
+    public static function pickerLabel(self $member): string
+    {
+        $fields = MembershipSetting::current()->member_search_fields ?: ['username'];
+        $enabled = fn (string $field): bool => in_array($field, $fields, true);
+
+        $name = trim(implode(', ', array_filter([$member->last_name, $member->first_name])), ', ');
+        $hasName = $enabled('name') && $name !== '';
+        $hasUsername = $enabled('username') && (bool) $member->username;
+
+        $parts = [];
+        if ($hasName && $hasUsername) {
+            $parts[] = "{$name} ({$member->username})";
+        } elseif ($hasName) {
+            $parts[] = $name;
+        } elseif ($hasUsername) {
+            $parts[] = $member->username;
+        }
+
+        if ($enabled('preferred_name') && $member->preferred_name) {
+            $parts[] = "\"{$member->preferred_name}\"";
+        }
+        if ($enabled('member_number') && $member->member_number) {
+            $parts[] = "#{$member->member_number}";
+        }
+        if ($enabled('email') && $member->email) {
+            $parts[] = $member->email;
+        }
+
+        return $parts === [] ? ($member->username ?: "#{$member->id}") : implode(' · ', $parts);
+    }
 }
