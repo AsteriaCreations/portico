@@ -30,6 +30,7 @@ use Filament\Tables\Contracts\HasTable;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Notification as LaravelNotification;
+use UnitEnum;
 
 /**
  * A showrunner's own scoped view onto the comp list — they can nominate a
@@ -46,6 +47,10 @@ class ShowrunnerCompRequests extends Page implements HasTable
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedGift;
 
     protected static ?string $navigationLabel = 'Comp Requests';
+
+    protected static string|UnitEnum|null $navigationGroup = 'Front of House';
+
+    protected static ?int $navigationSort = 4;
 
     /**
      * @var array<string, mixed>

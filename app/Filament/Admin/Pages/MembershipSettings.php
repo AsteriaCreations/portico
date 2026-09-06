@@ -30,7 +30,9 @@ class MembershipSettings extends Page
 
     protected static ?string $navigationLabel = 'Membership Settings';
 
-    protected static string|UnitEnum|null $navigationGroup = 'Settings';
+    protected static string|UnitEnum|null $navigationGroup = 'System';
+
+    protected static ?int $navigationSort = 3;
 
     /**
      * @var array<string, mixed>

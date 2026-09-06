@@ -28,7 +28,9 @@ class FeatureFlags extends Page
 
     protected static ?string $navigationLabel = 'Feature Flags';
 
-    protected static string|UnitEnum|null $navigationGroup = 'Settings';
+    protected static string|UnitEnum|null $navigationGroup = 'System';
+
+    protected static ?int $navigationSort = 2;
 
     /**
      * @var array<string, mixed>
