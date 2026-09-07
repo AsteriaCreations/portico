@@ -8,8 +8,10 @@ use App\Models\Member;
 use App\Models\MembershipSetting;
 use App\Models\User;
 use App\Observers\MemberObserver;
+use App\Observers\UserObserver;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
+use Illuminate\Validation\Rules\Password;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -26,6 +28,13 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // Staff logins are the keys to check-in, payments, and member PII, so
+        // hold every set/reset password to a real strength bar. No
+        // ->uncompromised() (HIBP) check: the target deployment is a LAN box
+        // with no guaranteed outbound internet, where that rule fails open
+        // silently -- worse than not claiming the check at all.
+        Password::defaults(fn (): Password => Password::min(12)->mixedCase()->numbers()->symbols());
+
         Gate::define('view-sensitive-member-fields', fn (User $user): bool => $user->role->atLeast(Role::Manager));
 
         // Manager and Owner, not Admin — the deliberate exception to the
@@ -72,5 +81,6 @@ class AppServiceProvider extends ServiceProvider
         Gate::define('access-cleaning-checklist', fn (User $user): bool => $user->hasCapability(Capability::CleaningCrew));
 
         Member::observe(MemberObserver::class);
+        User::observe(UserObserver::class);
     }
 }
