@@ -244,6 +244,22 @@ test('the status line reads "Check ID" for an under-21 member at an event', func
         ->assertSee('Check ID');
 });
 
+test('the status line refreshes when the selected member changes, without any other action', function () {
+    $clear = clearMember($this->irregular);
+    $banned = clearMember($this->irregular, ['username' => 'banned-one', 'is_banned' => true, 'ban_reason' => 'x']);
+
+    $component = Livewire::test(CheckIn::class)->set('data.member_id', $clear->id);
+    $component->assertSee('No flags yet')->assertDontSee('Do not admit');
+
+    // Just the member select changing -- no event picked, no check-in.
+    $component->set('data.member_id', $banned->id);
+    $component->assertSee('Do not admit')->assertDontSee('No flags yet');
+
+    // The strip's wire:key must move with the member, or morphdom leaves the
+    // previous verdict on screen (the bug this guards).
+    expect($component->html())->toContain('status-strip-'.$banned->id.'-');
+});
+
 test('the save and promote action is visible for an incomplete Prospective member, with no event picked', function () {
     $member = clearMember($this->prospective, ['first_name' => null, 'last_name' => null, 'email' => null]);
 
