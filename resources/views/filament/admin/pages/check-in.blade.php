@@ -11,6 +11,28 @@
     rare render where the table's own copy also shows up. --}}
     <x-filament-actions::modals />
 
+    {{-- Training mode: every write action on this page short-circuits while
+    it's on (CheckIn::haltForTraining()), so a new volunteer can rehearse the
+    whole flow with nothing persisted. Inline CSS variables, not Tailwind
+    bg-warning-* utilities -- those aren't in this panel theme's compiled CSS,
+    same convention as the status strip and register picker below. --}}
+    @if ($this->trainingMode)
+        <div
+            role="status"
+            class="rounded-xl px-5 py-4"
+            style="border-left: 5px solid var(--warning-600, #d97706); background-color: color-mix(in srgb, var(--warning-600, #d97706) 12%, transparent);"
+        >
+            <p class="text-base font-semibold" style="color: var(--warning-600, #d97706);">
+                Training mode — practice freely. Nothing you do here is saved.
+            </p>
+            <p class="mt-1 text-sm" style="opacity: .75;">
+                The screen behaves exactly as normal — status line, Due total, confirmations —
+                but no records are created, so nothing appears on the roster afterward.
+                Use the <strong>Exit training mode</strong> button above for real check-ins.
+            </p>
+        </div>
+    @endif
+
     <x-screen-instructions title="How to check someone in">
         <p>1. Search for the <strong>member</strong> first, by {{ $this->memberSearchFieldsLabel() }}.</p>
         <p>2. Read the <strong>status line</strong> — green means go, amber means do one thing first, red means stop and get a manager. It shows before you pick an event.</p>
