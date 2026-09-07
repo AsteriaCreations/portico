@@ -11,15 +11,18 @@ return new class extends Migration
      */
     public function up(): void
     {
-        // A "3-month Regular subscription bundle" is just another plans row: same
-        // code, duration_months = 3, its own bulk price. Every existing row
+        // A "3-month Regular subscription bundle" is just another plans row for the
+        // same target: duration_months = 3, its own bulk price. Every existing row
         // becomes duration 1 (today's monthly rate) via the default — the
         // per-visit entry credit always comes from the duration-1 row
         // regardless of what duration a member actually purchased under
         // (see Plan::currentFor()'s default parameter and
         // App\Services\SubscriptionBundleService).
         Schema::table('plans', function (Blueprint $table) {
-            $table->unsignedSmallInteger('duration_months')->default(1)->after('code');
+            // AFTER 'credit': the plans table has no 'code' column (it gains
+            // 'add_on_id' in a later migration). MySQL/MariaDB errors on an
+            // AFTER referencing a missing column; SQLite silently ignores it.
+            $table->unsignedSmallInteger('duration_months')->default(1)->after('credit');
         });
     }
 
