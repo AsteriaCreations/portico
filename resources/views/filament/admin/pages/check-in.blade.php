@@ -28,6 +28,26 @@
     isolated register-box-summary component with its own poll and its own scope, which can
     never again collide with a click here. --}}
     @if (\App\Models\MembershipSetting::current()->register_shifts_enabled)
+        {{-- This register picker is a hand-rolled <select> (Filament's page
+        schema doesn't offer a bare select, and id="registerId" has to stay
+        stable for the register_shifts_enabled visibility tests), so it needs
+        its own dark-mode colours -- the dark: Tailwind utilities on it don't
+        resolve in this panel's compiled CSS, same gap the status strip hit.
+        color-scheme also switches the native dropdown popup. --}}
+        <style>
+            #registerId {
+                color-scheme: light;
+                background-color: var(--gray-50, #f9fafb);
+                color: var(--gray-950, #030712);
+                border-color: var(--gray-300, #d1d5db);
+            }
+            .dark #registerId {
+                color-scheme: dark;
+                background-color: var(--gray-800, #1f2937);
+                color: var(--gray-100, #f3f4f6);
+                border-color: var(--gray-600, #4b5563);
+            }
+        </style>
         <x-filament::section>
             <div class="flex flex-wrap items-center justify-between gap-4">
                 <div class="flex items-center gap-2">
@@ -35,7 +55,7 @@
                     <select
                         id="registerId"
                         wire:model.live="registerId"
-                        class="fi-input block rounded-lg border-gray-300 text-sm shadow-sm dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                        class="fi-input block rounded-lg border text-sm shadow-sm"
                     >
                         <option value="">— none —</option>
                         @foreach ($this->getRegisterOptions() as $id => $name)
