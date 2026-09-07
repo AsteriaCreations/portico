@@ -130,6 +130,22 @@ test('staff can record a gating waiver signature at the desk, unlocking the add-
         ->and(app(PricingService::class)->price($this->member, $event)->amountPaid)->toBe(25.0);
 });
 
+test('the day-pass fold explains that a pool day pass needs the waiver, and drops the note once signed', function () {
+    $this->actingAs(User::factory()->create(['active' => true, 'role' => Role::Door]));
+
+    Livewire::test(CheckIn::class)
+        ->fillForm(['member_id' => $this->member->id])
+        ->assertSee('Pool day pass — requires a signed Pool Waiver')
+        ->assertActionHidden('purchaseAddOnDayPass')
+        ->callAction('recordGatedPaperwork', data: [
+            'paperwork_type_id' => $this->poolWaiver->id,
+            'signed_on' => now()->toDateString(),
+        ])
+        ->assertHasNoActionErrors()
+        ->assertDontSee('Pool day pass — requires a signed Pool Waiver')
+        ->assertActionVisible('purchaseAddOnDayPass');
+});
+
 test('recordGatedPaperwork is hidden when the member has every gating waiver', function () {
     $this->actingAs(User::factory()->create(['active' => true, 'role' => Role::Door]));
     signPaperwork($this->member, $this->poolWaiver, now()->toDateString());

@@ -12,11 +12,12 @@
     <x-filament-actions::modals />
 
     <x-screen-instructions title="How to check someone in">
-        <p>1. Search for the <strong>member</strong> first, by {{ $this->memberSearchFieldsLabel() }}. Their status (banned, watchlist, subscription eligibility, sign-up steps needed) shows immediately — you don't need an event picked yet.</p>
-        <p>2. Pick tonight's <strong>event</strong> to see what's due and any comp/voucher/subscription options for it.</p>
-        <p>3. If a watchlist note asks for a staff-channel message, send it first, then check the acknowledgement box — you can't proceed without it.</p>
-        <p>4. Review the <strong>Due</strong> total, then click <strong>Check in</strong> to record payment and admit them.</p>
-        <p>Buying a subscription or a one-night day pass doesn't require an event to be selected — those are separate, standalone transactions. Which add-ons offer a subscription or day pass depends on how this club's catalog is configured.</p>
+        <p>1. Search for the <strong>member</strong> first, by {{ $this->memberSearchFieldsLabel() }}.</p>
+        <p>2. Read the <strong>status line</strong> — green means go, amber means do one thing first, red means stop and get a manager. It shows before you pick an event.</p>
+        <p>3. Pick tonight's <strong>event</strong> to see what's due.</p>
+        <p>4. Take payment for the amount on the <strong>Due</strong> line, then click <strong>Check in</strong>.</p>
+        <p>If a watchlist note asks for a staff-channel message, send it first, then tick the acknowledgement — you can't proceed without it.</p>
+        <p>Everything folded away — selling a subscription or day pass, add-ons / vouchers / comps, the cash box — is still here, one click open, and never needed for a normal check-in.</p>
     </x-screen-instructions>
 
     {{-- No wire:poll here on purpose: this whole section shares one Livewire message-bus
@@ -55,11 +56,6 @@
                         button's click handler wired to stale Alpine/action state so it silently no-ops. --}}
                         <div wire:key="register-shift-open-{{ $openShift->id }}" class="flex flex-wrap items-center gap-4">
                             <livewire:register-box-summary :register-id="$this->registerId" :key="'register-box-summary-'.$this->registerId" />
-                            <div class="flex gap-2">
-                                {{ $this->recordDropAction }}
-                                {{ $this->recordMiscPaymentAction }}
-                                {{ $this->closeShiftAction }}
-                            </div>
                         </div>
                     @else
                         <div wire:key="register-shift-closed-{{ $this->getCurrentRegister()->id }}">
@@ -68,6 +64,19 @@
                     @endif
                 @endif
             </div>
+
+            {{-- Once a shift is open, only the box summary stays on the check-in screen;
+            drops, other payments, and closing the box are one click away in here -- a
+            start/end-of-night task, not a per-member one. --}}
+            @if ($this->getCurrentRegister() && $this->getOpenShift())
+                <x-desk-fold class="mt-4" title="Cash box" summary="Record a drop, take an off-book payment, or close the box">
+                    <div class="flex flex-wrap gap-2">
+                        {{ $this->recordDropAction }}
+                        {{ $this->recordMiscPaymentAction }}
+                        {{ $this->closeShiftAction }}
+                    </div>
+                </x-desk-fold>
+            @endif
         </x-filament::section>
     @endif
 
@@ -76,54 +85,52 @@
     @php
         $member = $this->getSelectedMember();
         $event = $this->getSelectedEvent();
+        $strip = $this->statusStrip();
     @endphp
 
-    {{-- Member-only: everything here derives from the member alone (raw status
-    flags, subscription eligibility, Prospective identity-capture) and its own
-    actions (save & promote, buy subscription) genuinely don't need an event -- see
-    docs/BLUEPRINT.md "Check-in desk flow". Admission's actual
-    per-event outcome (ban exceptions, age relative to the event) and anything
-    that touches an attendance row still need $event too, below. --}}
+    {{-- The one thing a volunteer has to read. Colour and headline carry the
+    decision; the raw flags stay underneath as supporting detail. Pre-event
+    it mirrors AdmissionPolicy's own priority order; once an event is picked
+    it relabels the real AdmissionDecision. See CheckIn::statusStrip(). --}}
+    @if ($strip)
+        @php
+            // Filament's semantic palette CSS vars (with hex fallbacks) --
+            // the Tailwind colour utilities (text-danger-600, bg-*-50, ...)
+            // aren't in this build's compiled CSS, so colour is set inline.
+            $toneColor = [
+                'go' => 'var(--success-600, #16a34a)',
+                'check' => 'var(--warning-600, #d97706)',
+                'stop' => 'var(--danger-600, #dc2626)',
+            ][$strip['tone']];
+        @endphp
+        <div
+            role="status"
+            class="rounded-xl px-5 py-4"
+            style="border-left: 5px solid {{ $toneColor }}; background-color: color-mix(in srgb, {{ $toneColor }} 10%, transparent);"
+        >
+            <p class="text-base" style="color: {{ $toneColor }}; font-weight: 600;">{{ $strip['headline'] }}</p>
+            @if ($strip['detail'])
+                <p class="mt-1 text-sm" style="opacity: .75;">{{ $strip['detail'] }}</p>
+            @endif
+            @if (filled($strip['flags']))
+                <ul class="mt-2 space-y-0.5 text-sm" style="opacity: .75;">
+                    @foreach ($strip['flags'] as $flag)
+                        <li>{{ $flag }}</li>
+                    @endforeach
+                </ul>
+            @endif
+        </div>
+    @endif
+
+    {{-- Member-only: name, the sign-up prompts that block admission until
+    they're done (these stay inline, never folded), and -- folded away --
+    the standalone subscription / day-pass sale. Everything here derives
+    from the member alone; the per-event outcome is handled below once an
+    event is picked. See docs/BLUEPRINT.md "Check-in desk flow". --}}
     @if ($member)
         <x-filament::section>
             <p class="font-medium">{{ $member->preferred_name ?: $member->username }}</p>
             <p class="text-sm text-gray-500">{{ $member->category->name }}</p>
-
-            @if ($member->is_deceased)
-                <p class="mt-2 text-danger-600">Deceased — blocks admission everywhere.</p>
-            @endif
-
-            @if ($member->is_banned)
-                <p class="mt-2 text-danger-600">Banned</p>
-                @if ($member->ban_reason && $this->canSeeReason())
-                    <p class="text-sm text-gray-500">{{ $member->ban_reason }}</p>
-                @endif
-            @endif
-
-            @if ($member->on_watchlist)
-                <p class="mt-2 text-danger-600">On watchlist</p>
-                @if ($member->watchlist_reason && $this->canSeeReason())
-                    <p class="text-sm text-gray-500">{{ $member->watchlist_reason }}</p>
-                @endif
-            @endif
-
-            @if ($member->isSubscriptionEligible())
-                <div class="mt-4">
-                    {{ $this->purchaseSubscriptionAction }}
-                </div>
-            @else
-                @php
-                    $attendedCount = $member->attendance()->whereNotNull('checked_in_at')->count();
-                    $subscriptionThreshold = \App\Models\MembershipSetting::current()->subscription_eligibility_threshold;
-                @endphp
-                <p class="text-sm text-gray-500">Not yet subscription-eligible ({{ $attendedCount }}/{{ $subscriptionThreshold }} events attended)</p>
-            @endif
-
-            {{-- Unlike Buy Subscription above, not gated by isSubscriptionEligible() --
-            a one-time add-on day pass is revenue, not a membership perk. --}}
-            <div class="mt-4">
-                {{ $this->purchaseAddOnDayPassAction }}
-            </div>
 
             @if (app(\App\Services\AdmissionPolicy::class)->needsCapture($member))
                 <p class="mt-4 font-medium">Prospective — complete sign-up to promote to Irregular.</p>
@@ -151,6 +158,41 @@
             <div class="mt-2">
                 {{ $this->recordGatedPaperworkAction }}
             </div>
+
+            {{-- Folded: standalone transactions, not part of a normal check-in.
+            Buying a subscription or day pass here doesn't require an event to
+            be selected. --}}
+            <x-desk-fold class="mt-4" title="Sell a subscription or day pass" summary="Standalone — no event or check-in needed">
+                @if ($member->isSubscriptionEligible())
+                    <div>
+                        {{ $this->purchaseSubscriptionAction }}
+                    </div>
+                @else
+                    @php
+                        $attendedCount = $member->attendance()->whereNotNull('checked_in_at')->count();
+                        $subscriptionThreshold = \App\Models\MembershipSetting::current()->subscription_eligibility_threshold;
+                    @endphp
+                    <p class="text-sm text-gray-500">Not yet subscription-eligible ({{ $attendedCount }}/{{ $subscriptionThreshold }} events attended)</p>
+                @endif
+
+                {{-- Unlike Buy Subscription above, not gated by isSubscriptionEligible() --
+                a one-time add-on day pass is revenue, not a membership perk.
+                Only rendered when actually buyable -- otherwise Filament shows
+                it disabled, which reads as broken; the note below explains why
+                it's absent. --}}
+                @if ($this->purchaseAddOnDayPassAction->isVisible())
+                    <div>
+                        {{ $this->purchaseAddOnDayPassAction }}
+                    </div>
+                @endif
+
+                {{-- A day pass for a waiver-gated add-on (Pool) isn't offered
+                until the signature is on file -- say so, rather than just
+                showing nothing where the button would be. --}}
+                @foreach ($this->getDayPassPaperworkNotes() as $note)
+                    <p class="text-sm" style="opacity: .7;">{{ $note }}</p>
+                @endforeach
+            </x-desk-fold>
         </x-filament::section>
     @endif
 
@@ -179,53 +221,42 @@
                 <p class="font-medium">Prepaid — not yet arrived. Paid ${{ number_format($attendance->amount_paid, 2) }}.</p>
 
                 @if ($decision?->blocksCheckIn())
-                    <p class="mt-2 text-danger-600">{{ $decision->message }}</p>
-                    @if ($decision->reason && $this->canSeeReason())
-                        <p class="text-sm text-gray-500">{{ $decision->reason }}</p>
-                    @endif
+                    {{-- The status line above already says "Do not admit"; markArrived
+                    is withheld so a blocked prepay can't be waved through. --}}
                 @else
                     <div class="mt-4">
                         {{ $this->markArrivedAction }}
                     </div>
                 @endif
             </x-filament::section>
-        @elseif ($decision)
+        @elseif ($decision && ! $decision->blocksCheckIn() && $decision->outcome !== \App\Enums\AdmissionOutcome::Capture)
+            {{-- A blocked member or one needing sign-up is fully covered by the
+            status line and the member-only prompts above -- no section here. --}}
             <x-filament::section>
-                <p class="font-medium">{{ $decision->message }}</p>
+                @php
+                    $hasRoom = app(\App\Services\CapacityService::class)->hasRoom($event->event_date);
+                @endphp
 
-                @if ($decision->reason && $this->canSeeReason())
-                    <p class="text-sm text-gray-500">{{ $decision->reason }}</p>
-                @endif
+                {{-- Folded: adjustments to what's owed. Closed by default so a
+                normal walk-in is just Due + Check in. The Due line below stays
+                outside the fold and reacts live to anything changed in here. --}}
+                <x-desk-fold title="Payment options" summary="Subscription, add-ons, voucher, comp">
+                    {{ $this->pricingForm }}
+                </x-desk-fold>
 
-                @if ($decision->outcome === \App\Enums\AdmissionOutcome::Capture)
-                    {{-- Handled above, in the member-only section -- neither
-                    saveAndPromoteAction nor confirmPaperworkAction need an
-                    event, so whichever applies is already visible there. --}}
-                @elseif (! $decision->blocksCheckIn())
-                    @php
-                        $hasRoom = app(\App\Services\CapacityService::class)->hasRoom($event->event_date);
-                    @endphp
+                {{-- role="status" (implicit aria-live="polite" + aria-atomic) so this
+                announces itself to screen readers as pricingForm() selections
+                change it, without staff needing to re-navigate to it after every toggle. --}}
+                <p role="status" class="mt-3 text-xl font-bold">Due: ${{ number_format($this->getLivePriceBreakdown()->amountPaid + $this->getLiveAddOnTotal(), 2) }}</p>
 
-                    {{-- Subscription/comp/voucher choices, live -- see the pricingData property
-                    comment on CheckIn.php. The Due line below reacts to every change here. --}}
+                @if ($hasRoom)
                     <div class="mt-4">
-                        {{ $this->pricingForm }}
+                        {{ $this->checkInAction }}
                     </div>
-
-                    {{-- role="status" (implicit aria-live="polite" + aria-atomic) so this
-                    announces itself to screen readers as pricingForm() selections above
-                    change it, without staff needing to re-navigate to it after every toggle. --}}
-                    <p role="status" class="mt-2 text-lg font-semibold">Due: ${{ number_format($this->getLivePriceBreakdown()->amountPaid + $this->getLiveAddOnTotal(), 2) }}</p>
-
-                    @if ($hasRoom)
-                        <div class="mt-4">
-                            {{ $this->checkInAction }}
-                        </div>
-                    @else
-                        <p class="mt-2 text-danger-600">
-                            At capacity ({{ $this->getOccupancy() }}/{{ $this->getCapacity() }}) — no new walk-in check-ins until someone leaves.
-                        </p>
-                    @endif
+                @else
+                    <p class="mt-2 text-danger-600">
+                        At capacity ({{ $this->getOccupancy() }}/{{ $this->getCapacity() }}) — no new walk-in check-ins until someone leaves.
+                    </p>
                 @endif
             </x-filament::section>
         @endif

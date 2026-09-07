@@ -226,6 +226,24 @@ test('the watchlist reason on the member status card is hidden from a door volun
         ->assertDontSee('See manager first');
 });
 
+test('the status line reads "Ready to admit" for a clear member at an event', function () {
+    $member = clearMember($this->irregular);
+    $event = Event::factory()->create(['event_date' => now()->toDateString(), 'entry_fee' => 20, 'pool_fee' => 0]);
+
+    Livewire::test(CheckIn::class)
+        ->fillForm(['member_id' => $member->id, 'event_id' => $event->id])
+        ->assertSee('Ready to admit');
+});
+
+test('the status line reads "Check ID" for an under-21 member at an event', function () {
+    $member = clearMember($this->irregular, ['dob' => now()->subYears(19)->toDateString()]);
+    $event = Event::factory()->create(['event_date' => now()->toDateString(), 'entry_fee' => 20, 'pool_fee' => 0]);
+
+    Livewire::test(CheckIn::class)
+        ->fillForm(['member_id' => $member->id, 'event_id' => $event->id])
+        ->assertSee('Check ID');
+});
+
 test('the save and promote action is visible for an incomplete Prospective member, with no event picked', function () {
     $member = clearMember($this->prospective, ['first_name' => null, 'last_name' => null, 'email' => null]);
 
