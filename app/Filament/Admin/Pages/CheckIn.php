@@ -442,6 +442,78 @@ class CheckIn extends Page implements HasTable
         return Gate::allows('view-sensitive-member-fields');
     }
 
+    /**
+     * Presentation-only: one colour-coded verdict line for the desk, so a
+     * volunteer reads a decision ("Ready to admit" / "Check ID" / "Do not
+     * admit") rather than parsing raw flags. No policy logic lives here --
+     * member-only mode mirrors AdmissionPolicy::decide()'s own priority
+     * order minus the age checks (which need the event), and member+event
+     * mode just relabels getDecision()'s existing outcome. AdmissionPolicy
+     * / AdmissionDecision are untouched, so the decision->message copy
+     * consumed by markArrivedAction's notifications and by ActivePatrons is
+     * unaffected. `flags` keeps the underlying labels visible as supporting
+     * detail (reason text still gated by canSeeReason()).
+     *
+     * @return array{tone: string, headline: string, detail: string|null, flags: list<string>}|null
+     */
+    public function statusStrip(): ?array
+    {
+        $member = $this->getSelectedMember();
+
+        if (! $member) {
+            return null;
+        }
+
+        $showReason = $this->canSeeReason();
+        $policy = app(AdmissionPolicy::class);
+
+        $flags = [];
+        if ($member->is_deceased) {
+            $flags[] = 'Deceased';
+        }
+        if ($member->isCurrentlyBanned()) {
+            $flags[] = 'Banned'.($showReason && $member->ban_reason ? ' — '.$member->ban_reason : '');
+        }
+        if ($member->on_watchlist) {
+            $flags[] = 'On watchlist'.($showReason && $member->watchlist_reason ? ' — '.$member->watchlist_reason : '');
+        }
+        if ($policy->needsCapture($member)) {
+            $flags[] = 'Prospective — sign-up incomplete';
+        }
+        if ($policy->needsPaperworkCapture($member)) {
+            $flags[] = 'Paperwork not confirmed';
+        }
+
+        $event = $this->getSelectedEvent();
+
+        if (! $event) {
+            $provisional = match (true) {
+                $member->is_deceased, $member->isCurrentlyBanned() => ['stop', 'Do not admit'],
+                $member->on_watchlist => ['check', 'Watchlist — notify '.config('membership.watchlist_notify_label').', then confirm at check-in'],
+                $policy->needsCapture($member) => ['check', 'Prospective — finish sign-up to admit'],
+                $policy->needsPaperworkCapture($member) => ['check', 'Missing paperwork — confirm on file to admit'],
+                default => ['go', "No flags yet — pick tonight's event"],
+            };
+
+            return ['tone' => $provisional[0], 'headline' => $provisional[1], 'detail' => null, 'flags' => $flags];
+        }
+
+        $decision = $this->getDecision();
+
+        $detail = $decision->message;
+        if ($showReason && $decision->reason) {
+            $detail .= ' — '.$decision->reason;
+        }
+
+        return match ($decision->outcome) {
+            AdmissionOutcome::Block => ['tone' => 'stop', 'headline' => 'Do not admit', 'detail' => $detail, 'flags' => $flags],
+            AdmissionOutcome::Warn => ['tone' => 'check', 'headline' => 'Acknowledge before admitting', 'detail' => $detail, 'flags' => $flags],
+            AdmissionOutcome::Capture => ['tone' => 'check', 'headline' => 'Finish sign-up to admit', 'detail' => $detail, 'flags' => $flags],
+            AdmissionOutcome::Flag => ['tone' => 'check', 'headline' => 'Check ID — under 21, no alcohol, mark hand', 'detail' => null, 'flags' => $flags],
+            AdmissionOutcome::Ok => ['tone' => 'go', 'headline' => 'Ready to admit', 'detail' => null, 'flags' => $flags],
+        };
+    }
+
     // Reflects MembershipSetting::member_search_fields so the help text never
     // promises a lookup the search box won't actually do.
     public function memberSearchFieldsLabel(): string
