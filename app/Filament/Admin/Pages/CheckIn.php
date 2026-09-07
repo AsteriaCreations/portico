@@ -500,15 +500,13 @@ class CheckIn extends Page implements HasTable
 
         $decision = $this->getDecision();
 
-        $detail = $decision->message;
-        if ($showReason && $decision->reason) {
-            $detail .= ' — '.$decision->reason;
-        }
-
+        // detail carries the actionable instruction only; the ban/watchlist
+        // reason already appears in $flags below (reason-gated), so it's not
+        // re-appended here.
         return match ($decision->outcome) {
-            AdmissionOutcome::Block => ['tone' => 'stop', 'headline' => 'Do not admit', 'detail' => $detail, 'flags' => $flags],
-            AdmissionOutcome::Warn => ['tone' => 'check', 'headline' => 'Acknowledge before admitting', 'detail' => $detail, 'flags' => $flags],
-            AdmissionOutcome::Capture => ['tone' => 'check', 'headline' => 'Finish sign-up to admit', 'detail' => $detail, 'flags' => $flags],
+            AdmissionOutcome::Block => ['tone' => 'stop', 'headline' => 'Do not admit', 'detail' => null, 'flags' => $flags],
+            AdmissionOutcome::Warn => ['tone' => 'check', 'headline' => 'Acknowledge before admitting', 'detail' => $decision->message, 'flags' => $flags],
+            AdmissionOutcome::Capture => ['tone' => 'check', 'headline' => 'Finish sign-up to admit', 'detail' => $decision->message, 'flags' => $flags],
             AdmissionOutcome::Flag => ['tone' => 'check', 'headline' => 'Check ID — under 21, no alcohol, mark hand', 'detail' => null, 'flags' => $flags],
             AdmissionOutcome::Ok => ['tone' => 'go', 'headline' => 'Ready to admit', 'detail' => null, 'flags' => $flags],
         };
@@ -556,6 +554,25 @@ class CheckIn extends Page implements HasTable
     {
         return $this->gatedPaperworkTypesMissing($this->getSelectedMember())
             ->map(fn (PaperworkType $type) => "{$type->addOn->name} unavailable — {$type->name} missing or expired. Not charged; do not admit to {$type->addOn->name} until it is renewed.")
+            ->all();
+    }
+
+    /**
+     * Note lines for the "Sell a subscription or day pass" fold: a day pass
+     * for a priced_per_event add-on (Pool) is only offered once its gating
+     * waiver is on file, so purchaseAddOnDayPassAction is simply hidden
+     * without it. Rather than leave staff wondering where the button went,
+     * this spells out that a signature is the prerequisite -- recorded via
+     * recordGatedPaperworkAction in the member section above.
+     *
+     * @return string[]
+     */
+    public function getDayPassPaperworkNotes(): array
+    {
+        return $this->gatedPaperworkTypesMissing($this->getSelectedMember())
+            ->filter(fn (PaperworkType $type) => $type->addOn->subscribable && $type->addOn->priced_per_event)
+            ->map(fn (PaperworkType $type) => "{$type->addOn->name} day pass — requires a signed {$type->name} first. Record the signature above to enable it.")
+            ->values()
             ->all();
     }
 

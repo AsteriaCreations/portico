@@ -94,19 +94,26 @@
     it relabels the real AdmissionDecision. See CheckIn::statusStrip(). --}}
     @if ($strip)
         @php
-            $tone = [
-                'go' => 'border-success-600 bg-success-50 text-success-700 dark:bg-success-400/10 dark:text-success-400',
-                'check' => 'border-warning-600 bg-warning-50 text-warning-700 dark:bg-warning-400/10 dark:text-warning-400',
-                'stop' => 'border-danger-600 bg-danger-50 text-danger-700 dark:bg-danger-400/10 dark:text-danger-400',
+            // Filament's semantic palette CSS vars (with hex fallbacks) --
+            // the Tailwind colour utilities (text-danger-600, bg-*-50, ...)
+            // aren't in this build's compiled CSS, so colour is set inline.
+            $toneColor = [
+                'go' => 'var(--success-600, #16a34a)',
+                'check' => 'var(--warning-600, #d97706)',
+                'stop' => 'var(--danger-600, #dc2626)',
             ][$strip['tone']];
         @endphp
-        <div role="status" class="rounded-lg border-l-4 px-4 py-3 {{ $tone }}">
-            <p class="text-base font-semibold">{{ $strip['headline'] }}</p>
+        <div
+            role="status"
+            class="rounded-xl px-5 py-4"
+            style="border-left: 5px solid {{ $toneColor }}; background-color: color-mix(in srgb, {{ $toneColor }} 10%, transparent);"
+        >
+            <p class="text-base" style="color: {{ $toneColor }}; font-weight: 600;">{{ $strip['headline'] }}</p>
             @if ($strip['detail'])
-                <p class="mt-1 text-sm">{{ $strip['detail'] }}</p>
+                <p class="mt-1 text-sm" style="opacity: .75;">{{ $strip['detail'] }}</p>
             @endif
             @if (filled($strip['flags']))
-                <ul class="mt-2 space-y-0.5 text-sm">
+                <ul class="mt-2 space-y-0.5 text-sm" style="opacity: .75;">
                     @foreach ($strip['flags'] as $flag)
                         <li>{{ $flag }}</li>
                     @endforeach
@@ -169,10 +176,22 @@
                 @endif
 
                 {{-- Unlike Buy Subscription above, not gated by isSubscriptionEligible() --
-                a one-time add-on day pass is revenue, not a membership perk. --}}
-                <div>
-                    {{ $this->purchaseAddOnDayPassAction }}
-                </div>
+                a one-time add-on day pass is revenue, not a membership perk.
+                Only rendered when actually buyable -- otherwise Filament shows
+                it disabled, which reads as broken; the note below explains why
+                it's absent. --}}
+                @if ($this->purchaseAddOnDayPassAction->isVisible())
+                    <div>
+                        {{ $this->purchaseAddOnDayPassAction }}
+                    </div>
+                @endif
+
+                {{-- A day pass for a waiver-gated add-on (Pool) isn't offered
+                until the signature is on file -- say so, rather than just
+                showing nothing where the button would be. --}}
+                @foreach ($this->getDayPassPaperworkNotes() as $note)
+                    <p class="text-sm" style="opacity: .7;">{{ $note }}</p>
+                @endforeach
             </x-desk-fold>
         </x-filament::section>
     @endif
