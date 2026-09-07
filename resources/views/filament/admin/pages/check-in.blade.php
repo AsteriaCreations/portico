@@ -71,7 +71,7 @@
             }
         </style>
         <x-filament::section>
-            <div class="flex flex-wrap items-center justify-between gap-4">
+            <div class="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-4">
                 <div class="flex items-center gap-2">
                     <label for="registerId" class="text-sm font-medium">Register</label>
                     <select

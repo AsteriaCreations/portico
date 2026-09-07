@@ -1811,6 +1811,21 @@ test('the back check-in table lists unarrived attendance for the selected event 
     expect($attendance->refresh()->checked_in_at)->not->toBeNull();
 });
 
+test('the back check-in table renders as a responsive stacked layout, not one wide row of columns', function () {
+    $member = clearMember($this->irregular, ['username' => 'layout-check']);
+    $event = Event::factory()->create(['event_date' => now()->toDateString(), 'entry_fee' => 40]);
+    Attendance::factory()->for($member)->for($event)->create([
+        'checked_in_at' => null,
+        'entry_fee' => 40,
+        'amount_paid' => 40,
+    ]);
+
+    // Split::make() emits a `fi-ta-split` wrapper; a plain ->columns([TextColumn, ...])
+    // table never does. This is what keeps the phone view off a horizontal scroll.
+    expect(Livewire::test(CheckIn::class)->fillForm(['event_id' => $event->id])->html())
+        ->toContain('fi-ta-split');
+});
+
 test('the back check-in table requires acknowledgement for a watchlisted row and blocks a banned one', function () {
     $watchlisted = clearMember($this->irregular, ['on_watchlist' => true, 'watchlist_reason' => 'See manager first']);
     $banned = clearMember($this->irregular, ['is_banned' => true, 'ban_reason' => 'Banned reason']);

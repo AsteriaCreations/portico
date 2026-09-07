@@ -42,7 +42,12 @@ use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
+use Filament\Support\Enums\Alignment;
+use Filament\Support\Enums\FontWeight;
+use Filament\Support\Enums\TextSize;
 use Filament\Support\Icons\Heroicon;
+use Filament\Tables\Columns\Layout\Split;
+use Filament\Tables\Columns\Layout\Stack;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Concerns\InteractsWithTable;
 use Filament\Tables\Contracts\HasTable;
@@ -1715,10 +1720,29 @@ class CheckIn extends Page implements HasTable
         return $table
             ->query(Attendance::query()->whereNull('checked_in_at')->where('event_id', $event?->id ?? 0))
             ->heading('Prepaid, awaiting arrival')
+            // Split/Stack layout, not a flat column list -- each prepay row
+            // renders as one stacked card on a phone and a single row at sm+,
+            // so the desk never needs a sideways scroll to reach the amount
+            // or the "Mark arrived" button. Mirrors ActivePatrons::table().
             ->columns([
-                TextColumn::make('member.username')->label('Member'),
-                TextColumn::make('amount_paid')->money(),
-                TextColumn::make('notes'),
+                Split::make([
+                    Stack::make([
+                        TextColumn::make('member.username')
+                            ->label('Member')
+                            ->weight(FontWeight::Bold),
+                        TextColumn::make('notes')
+                            ->color('gray')
+                            ->size(TextSize::Small)
+                            ->placeholder('—')
+                            ->wrap(),
+                    ])->space(1),
+
+                    Stack::make([
+                        TextColumn::make('amount_paid')
+                            ->money()
+                            ->icon(Heroicon::OutlinedBanknotes),
+                    ])->space(1)->alignment(Alignment::End)->grow(false),
+                ])->from('sm'),
             ])
             ->recordActions([$this->markArrivedRowAction()]);
     }

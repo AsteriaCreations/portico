@@ -42,33 +42,46 @@ new class extends Component
             <span role="status">Checked in tonight ({{ $this->attendances->count() }})</span>
         </x-slot>
 
-        <div class="fi-ta-content overflow-x-auto">
-            <table class="fi-ta-table w-full text-start">
-                <thead>
-                    <tr>
-                        <th scope="col" class="px-3 py-2 text-start text-xs font-medium text-gray-500 dark:text-gray-400">Member</th>
-                        <th scope="col" class="px-3 py-2 text-start text-xs font-medium text-gray-500 dark:text-gray-400">Event</th>
-                        <th scope="col" class="px-3 py-2 text-start text-xs font-medium text-gray-500 dark:text-gray-400">Date</th>
-                        <th scope="col" class="px-3 py-2 text-start text-xs font-medium text-gray-500 dark:text-gray-400">Checked in</th>
-                        <th scope="col" class="px-3 py-2 text-start text-xs font-medium text-gray-500 dark:text-gray-400">Paid</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @forelse ($this->attendances as $checkedInAttendance)
-                        <tr class="border-t border-gray-200 dark:border-white/10">
-                            <td class="px-3 py-2 text-sm">{{ $checkedInAttendance->member->preferred_name ?: $checkedInAttendance->member->username }}</td>
-                            <td class="px-3 py-2 text-sm">{{ $this->event->name }}</td>
-                            <td class="px-3 py-2 text-sm">{{ $this->event->event_date->toFormattedDateString() }}</td>
-                            <td class="px-3 py-2 text-sm">{{ $checkedInAttendance->checked_in_at->format('g:i A') }}</td>
-                            <td class="px-3 py-2 text-sm">${{ number_format($checkedInAttendance->amount_paid, 2) }}</td>
-                        </tr>
-                    @empty
+        @if ($this->attendances->isEmpty())
+            <p class="px-3 py-2 text-sm text-gray-500 dark:text-gray-400">No one checked in yet.</p>
+        @else
+            {{-- Below sm: one stacked card per person, so a phone at the desk
+            never needs the sideways scroll the 5-column table forces. --}}
+            <div class="sm:hidden">
+                @foreach ($this->attendances as $checkedInAttendance)
+                    <div class="border-t border-gray-200 py-2 text-sm dark:border-white/10">
+                        <p class="font-medium">{{ $checkedInAttendance->member->preferred_name ?: $checkedInAttendance->member->username }}</p>
+                        <p class="text-gray-500 dark:text-gray-400">{{ $this->event->name }} &middot; {{ $this->event->event_date->toFormattedDateString() }}</p>
+                        <p class="text-gray-500 dark:text-gray-400">{{ $checkedInAttendance->checked_in_at->format('g:i A') }} &middot; ${{ number_format($checkedInAttendance->amount_paid, 2) }}</p>
+                    </div>
+                @endforeach
+            </div>
+
+            {{-- sm and up: the full columnar table, unchanged. --}}
+            <div class="fi-ta-content hidden overflow-x-auto sm:block">
+                <table class="fi-ta-table w-full text-start">
+                    <thead>
                         <tr>
-                            <td colspan="5" class="px-3 py-2 text-sm text-gray-500 dark:text-gray-400">No one checked in yet.</td>
+                            <th scope="col" class="px-3 py-2 text-start text-xs font-medium text-gray-500 dark:text-gray-400">Member</th>
+                            <th scope="col" class="px-3 py-2 text-start text-xs font-medium text-gray-500 dark:text-gray-400">Event</th>
+                            <th scope="col" class="px-3 py-2 text-start text-xs font-medium text-gray-500 dark:text-gray-400">Date</th>
+                            <th scope="col" class="px-3 py-2 text-start text-xs font-medium text-gray-500 dark:text-gray-400">Checked in</th>
+                            <th scope="col" class="px-3 py-2 text-start text-xs font-medium text-gray-500 dark:text-gray-400">Paid</th>
                         </tr>
-                    @endforelse
-                </tbody>
-            </table>
-        </div>
+                    </thead>
+                    <tbody>
+                        @foreach ($this->attendances as $checkedInAttendance)
+                            <tr class="border-t border-gray-200 dark:border-white/10">
+                                <td class="px-3 py-2 text-sm">{{ $checkedInAttendance->member->preferred_name ?: $checkedInAttendance->member->username }}</td>
+                                <td class="px-3 py-2 text-sm">{{ $this->event->name }}</td>
+                                <td class="px-3 py-2 text-sm">{{ $this->event->event_date->toFormattedDateString() }}</td>
+                                <td class="px-3 py-2 text-sm">{{ $checkedInAttendance->checked_in_at->format('g:i A') }}</td>
+                                <td class="px-3 py-2 text-sm">${{ number_format($checkedInAttendance->amount_paid, 2) }}</td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+        @endif
     </x-filament::section>
 </div>
