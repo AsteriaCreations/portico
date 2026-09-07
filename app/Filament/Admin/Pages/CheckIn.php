@@ -99,6 +99,16 @@ class CheckIn extends Page implements HasTable
     // "Sleepover", and the underlying state became literally `true`.
     public ?array $pricingData = ['add_on_ids' => []];
 
+    // Training mode: a new volunteer can rehearse the whole desk flow —
+    // search, status line, Due total, Check in, the folded subscription /
+    // day-pass / cash-box actions — without persisting anything. Every write
+    // closure on this page short-circuits through haltForTraining() while
+    // this is on; the real AdmissionPolicy / PricingService / capacity logic
+    // still runs and renders exactly as normal. Public so it survives
+    // Livewire round-trips; seeded from the session in mount() (session-
+    // scoped, so it clears on logout) and toggled via getHeaderActions().
+    public bool $trainingMode = false;
+
     // Every other role floor in this app has been Door-and-up, so nothing
     // else ever needed to gate this page explicitly. Showrunner now ranks
     // below Door and must not reach check-in/payment at all. See
@@ -115,12 +125,85 @@ class CheckIn extends Page implements HasTable
         ]);
 
         $this->registerId = auth()->user()->default_register_id;
+
+        $this->trainingMode = (bool) session('checkin.training_mode', false);
+    }
+
+    /**
+     * The header toggle for training mode (see the $trainingMode property).
+     * Available to anyone who can reach this page — the whole page is already
+     * Door+ via canAccess(), so no extra gate. Session-scoped: the flag is
+     * mirrored into the session here so it survives navigation and reloads
+     * but clears on logout.
+     *
+     * @return array<int, Action>
+     */
+    protected function getHeaderActions(): array
+    {
+        return [
+            Action::make('toggleTrainingMode')
+                ->label($this->trainingMode ? 'Exit training mode' : 'Enter training mode')
+                ->icon(Heroicon::OutlinedAcademicCap)
+                ->color($this->trainingMode ? 'warning' : 'gray')
+                // Confirm only when switching it on — leaving it is always safe.
+                ->requiresConfirmation(! $this->trainingMode)
+                ->modalHeading('Enter training mode')
+                ->modalDescription('While training mode is on, nothing you do on this page is saved — it is for practice only.')
+                ->modalSubmitActionLabel('Enter training mode')
+                ->action(function (): void {
+                    $this->trainingMode = ! $this->trainingMode;
+                    session(['checkin.training_mode' => $this->trainingMode]);
+
+                    // Drop any half-entered transaction so real work never
+                    // bleeds into practice or vice versa — same reset the
+                    // updated* hooks below do when member/event changes.
+                    $this->pricingData = ['add_on_ids' => []];
+                    $this->form->fill(['event_id' => static::defaultEventId()]);
+
+                    $notification = Notification::make();
+
+                    if ($this->trainingMode) {
+                        $notification->title('Training mode on — nothing will be saved')->warning();
+                    } else {
+                        $notification->title('Training mode off — check-ins are live again')->success();
+                    }
+
+                    $notification->send();
+                }),
+        ];
+    }
+
+    /**
+     * With training mode on, every write action on this page stops here: the
+     * real admission / pricing / decision logic has already run and is on
+     * screen, but nothing is persisted. Returns true when the caller must
+     * return without writing.
+     */
+    protected function haltForTraining(string $practiceMessage): bool
+    {
+        if (! $this->trainingMode) {
+            return false;
+        }
+
+        Notification::make()
+            ->title('Practice only — nothing saved')
+            ->body($practiceMessage)
+            ->warning()
+            ->send();
+
+        return true;
     }
 
     // Sticky per user: fires automatically off wire:model.live="registerId"
-    // in the Blade view, so the next visit to this page pre-selects it.
+    // in the Blade view, so the next visit to this page pre-selects it. Skipped
+    // in training mode — the picker still moves on screen, it just isn't
+    // persisted as the user's default.
     public function updatedRegisterId(?int $value): void
     {
+        if ($this->trainingMode) {
+            return;
+        }
+
         auth()->user()->update(['default_register_id' => $value]);
     }
 
@@ -602,6 +685,10 @@ class CheckIn extends Page implements HasTable
                     ->required(),
             ])
             ->action(function (array $data): void {
+                if ($this->haltForTraining('Practice: waiver signature simulated.')) {
+                    return;
+                }
+
                 $member = $this->getSelectedMember();
                 abort_unless($member, 404);
 
@@ -690,6 +777,10 @@ class CheckIn extends Page implements HasTable
             ])
             ->visible(fn (): bool => $this->getCurrentRegister() && ! $this->getOpenShift())
             ->action(function (array $data): void {
+                if ($this->haltForTraining('Practice: cash-box action simulated.')) {
+                    return;
+                }
+
                 abort_unless(MembershipSetting::current()->register_shifts_enabled, 403);
 
                 $register = $this->getCurrentRegister();
@@ -716,6 +807,10 @@ class CheckIn extends Page implements HasTable
             ])
             ->visible(fn (): bool => (bool) $this->getOpenShift())
             ->action(function (array $data): void {
+                if ($this->haltForTraining('Practice: cash-box action simulated.')) {
+                    return;
+                }
+
                 abort_unless(MembershipSetting::current()->register_shifts_enabled, 403);
 
                 $shift = $this->getOpenShift();
@@ -752,6 +847,10 @@ class CheckIn extends Page implements HasTable
             ])
             ->visible(fn (): bool => (bool) $this->getOpenShift())
             ->action(function (array $data): void {
+                if ($this->haltForTraining('Practice: cash-box action simulated.')) {
+                    return;
+                }
+
                 abort_unless(MembershipSetting::current()->register_shifts_enabled, 403);
 
                 $shift = $this->getOpenShift();
@@ -785,6 +884,10 @@ class CheckIn extends Page implements HasTable
             ])
             ->visible(fn (): bool => (bool) $this->getOpenShift())
             ->action(function (array $data): void {
+                if ($this->haltForTraining('Practice: cash-box action simulated.')) {
+                    return;
+                }
+
                 abort_unless(MembershipSetting::current()->register_shifts_enabled, 403);
 
                 $shift = $this->getOpenShift();
@@ -820,6 +923,10 @@ class CheckIn extends Page implements HasTable
             // before any event is picked (AdmissionPolicy::needsCapture()).
             ->visible(fn (): bool => ($member = $this->getSelectedMember()) && app(AdmissionPolicy::class)->needsCapture($member))
             ->action(function (array $data): void {
+                if ($this->haltForTraining('Practice: promote to Irregular simulated.')) {
+                    return;
+                }
+
                 $member = $this->getSelectedMember();
                 abort_unless($member, 404);
 
@@ -849,6 +956,10 @@ class CheckIn extends Page implements HasTable
             ->label('Confirm paperwork on file')
             ->visible(fn (): bool => ($member = $this->getSelectedMember()) && app(AdmissionPolicy::class)->needsPaperworkCapture($member))
             ->action(function (): void {
+                if ($this->haltForTraining('Practice: paperwork confirmation simulated.')) {
+                    return;
+                }
+
                 $member = $this->getSelectedMember();
                 abort_unless($member, 404);
 
@@ -928,6 +1039,10 @@ class CheckIn extends Page implements HasTable
                     ->disableOptionWhen(fn (string $value): bool => in_array($value, $lockedOneTimeCodes, true)),
             ])
             ->action(function (array $data): void {
+                if ($this->haltForTraining('Practice: subscription purchase simulated.')) {
+                    return;
+                }
+
                 $member = $this->getSelectedMember();
                 abort_unless($member, 404);
 
@@ -1029,6 +1144,10 @@ class CheckIn extends Page implements HasTable
                     ->disableOptionWhen(fn (string $value): bool => in_array($value, $lockedOneTimeCodes, true)),
             ])
             ->action(function (array $data): void {
+                if ($this->haltForTraining('Practice: day pass simulated.')) {
+                    return;
+                }
+
                 $member = $this->getSelectedMember();
                 abort_unless($member, 404);
 
@@ -1110,6 +1229,10 @@ class CheckIn extends Page implements HasTable
                 && $attendance?->checked_in_at
                 && ! $sponsor->isOnProbation())
             ->action(function (array $data) use ($sponsor): void {
+                if ($this->haltForTraining('Practice: guest registration simulated.')) {
+                    return;
+                }
+
                 abort_unless($sponsor && ! $sponsor->isOnProbation(), 403);
 
                 $guestCategory = Category::where('name', 'Guest')->firstOrFail();
@@ -1258,6 +1381,10 @@ class CheckIn extends Page implements HasTable
                 && $this->getDecision()?->outcome !== AdmissionOutcome::Capture
                 && ($event === null || app(CapacityService::class)->hasRoom($event->event_date)))
             ->action(function (array $data): void {
+                if ($this->haltForTraining('Practice check-in complete — $'.number_format(($this->getLivePriceBreakdown()?->amountPaid ?? 0) + $this->getLiveAddOnTotal(), 2).' would have been charged. Nothing was saved.')) {
+                    return;
+                }
+
                 $member = $this->getSelectedMember();
                 $event = $this->getSelectedEvent();
                 abort_unless($member && $event, 404);
@@ -1549,6 +1676,10 @@ class CheckIn extends Page implements HasTable
             ] : [])
             ->visible(fn (): bool => (bool) ($attendance && is_null($attendance->checked_in_at)))
             ->action(function (): void {
+                if ($this->haltForTraining('Practice: marked arrived.')) {
+                    return;
+                }
+
                 $attendance = $this->getExistingAttendance();
                 $member = $this->getSelectedMember();
                 $event = $this->getSelectedEvent();
@@ -1607,6 +1738,10 @@ class CheckIn extends Page implements HasTable
                 ] : [];
             })
             ->action(function (Attendance $record): void {
+                if ($this->haltForTraining('Practice: marked arrived.')) {
+                    return;
+                }
+
                 $decision = app(AdmissionPolicy::class)->decide($record->member, $record->event);
 
                 if ($decision->blocksCheckIn()) {
