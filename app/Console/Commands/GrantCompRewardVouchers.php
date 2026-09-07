@@ -22,10 +22,11 @@ class GrantCompRewardVouchers extends Command
 {
     public function handle(): int
     {
-        $systemUser = User::where('email', 'system@portico.internal')->first();
+        $systemEmail = config('membership.system_user_email');
+        $systemUser = User::where('email', $systemEmail)->first();
 
         if (! $systemUser) {
-            $this->error('The system user (system@portico.internal) was not found — run the database seeder first.');
+            $this->error("The system user ({$systemEmail}) was not found — run the database seeder first.");
             CommandRun::recordFailure('vouchers:grant-comp-rewards', 'system user not found');
 
             return self::FAILURE;

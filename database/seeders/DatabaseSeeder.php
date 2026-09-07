@@ -57,7 +57,7 @@ class DatabaseSeeder extends Seeder
         // it exists purely as a valid recorded_by FK target. See
         // docs/BLUEPRINT.md "Comp list".
         User::updateOrCreate(
-            ['email' => 'system@portico.internal'],
+            ['email' => config('membership.system_user_email')],
             [
                 'name' => 'System',
                 'role' => Role::Admin,

@@ -38,6 +38,36 @@ test('grants a voucher for a comped, arrived attendee once the event has ended',
         ->and($voucher->reason)->toContain($reason->name);
 });
 
+test('the system user address is resolved from config', function () {
+    config(['membership.system_user_email' => 'robot@myclub.example']);
+    $customSystemUser = User::factory()->create([
+        'email' => 'robot@myclub.example',
+        'role' => Role::Admin,
+        'active' => false,
+    ]);
+
+    $reason = CompReason::factory()->create(['grants_voucher_amount' => 25]);
+    $event = Event::factory()->create(['ends_at' => now()->subHour()]);
+    $attendance = Attendance::factory()->for($event)->create([
+        'checked_in_at' => now()->subHours(2),
+        'comp_reason_id' => $reason->id,
+    ]);
+
+    $this->artisan('vouchers:grant-comp-rewards')->assertSuccessful();
+
+    $voucher = Voucher::where('attendance_id', $attendance->id)->firstOrFail();
+    expect($voucher->recorded_by)->toBe($customSystemUser->id);
+});
+
+test('the missing-system-user error names the configured address', function () {
+    config(['membership.system_user_email' => 'robot@myclub.example']);
+    // beforeEach seeded the default-address user, not this one.
+
+    $this->artisan('vouchers:grant-comp-rewards')
+        ->expectsOutputToContain('robot@myclub.example')
+        ->assertFailed();
+});
+
 test('does not grant before the event ends', function () {
     $reason = CompReason::factory()->create(['grants_voucher_amount' => 25]);
     $event = Event::factory()->create(['ends_at' => now()->addHour()]);

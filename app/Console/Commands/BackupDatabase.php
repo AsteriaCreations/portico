@@ -28,7 +28,8 @@ class BackupDatabase extends Command
         File::ensureDirectoryExists($monthlyDir);
 
         $today = now();
-        $dailyPath = $dailyDir.DIRECTORY_SEPARATOR."portico-{$today->toDateString()}.sql.gz";
+        $prefix = config('backup.prefix');
+        $dailyPath = $dailyDir.DIRECTORY_SEPARATOR."{$prefix}-{$today->toDateString()}.sql.gz";
 
         $result = Process::env(['MYSQL_PWD' => $connection['password']])
             ->timeout(300)
@@ -57,7 +58,7 @@ class BackupDatabase extends Command
         $this->info("Wrote {$dailyPath}");
 
         if ($today->isLastOfMonth()) {
-            $monthlyPath = $monthlyDir.DIRECTORY_SEPARATOR."portico-{$today->format('Y-m')}-monthly.sql.gz";
+            $monthlyPath = $monthlyDir.DIRECTORY_SEPARATOR."{$prefix}-{$today->format('Y-m')}-monthly.sql.gz";
             File::copy($dailyPath, $monthlyPath);
             $this->info("Wrote {$monthlyPath}");
         }

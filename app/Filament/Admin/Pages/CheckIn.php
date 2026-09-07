@@ -1359,7 +1359,7 @@ class CheckIn extends Page implements HasTable
             ->schema([
                 ...($requiresAcknowledgement ? [
                     Checkbox::make('acknowledged')
-                        ->label('I have notified the staff channel per the watchlist note.')
+                        ->label('I have notified '.config('membership.watchlist_notify_label').' per the watchlist note.')
                         ->accepted()
                         ->required(),
                 ] : []),
@@ -1675,7 +1675,7 @@ class CheckIn extends Page implements HasTable
             ->label('Mark arrived')
             ->schema($requiresAcknowledgement ? [
                 Checkbox::make('acknowledged')
-                    ->label('I have notified the staff channel per the watchlist note.')
+                    ->label('I have notified '.config('membership.watchlist_notify_label').' per the watchlist note.')
                     ->accepted()
                     ->required(),
             ] : [])
@@ -1756,7 +1756,7 @@ class CheckIn extends Page implements HasTable
 
                 return $decision->requiresAcknowledgement() ? [
                     Checkbox::make('acknowledged')
-                        ->label('I have notified the staff channel per the note.')
+                        ->label('I have notified '.config('membership.watchlist_notify_label').' per the note.')
                         ->accepted()
                         ->required(),
                 ] : [];
