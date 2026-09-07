@@ -45,4 +45,17 @@ return [
 
     'mysqldump_path' => env('MYSQLDUMP_PATH', 'mysqldump'),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Backup filename prefix
+    |--------------------------------------------------------------------------
+    |
+    | Dump files are named "<prefix>-<date>.sql.gz". Per-install so an
+    | existing deployment keeps the prefix its backup history already uses;
+    | override in .env.
+    |
+    */
+
+    'prefix' => env('BACKUP_PREFIX', 'portico'),
+
 ];

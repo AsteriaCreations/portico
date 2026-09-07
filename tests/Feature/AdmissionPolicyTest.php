@@ -69,6 +69,20 @@ test('a watchlisted adult is warned with the watchlist reason', function () {
         ->and($decision->requiresAcknowledgement())->toBeTrue();
 });
 
+test('the watchlist warning message uses the configured notify-channel label', function () {
+    config(['membership.watchlist_notify_label' => 'the Signal group']);
+
+    $member = memberAgedAsOf($this->irregular, '1990-01-01', [
+        'on_watchlist' => true,
+        'watchlist_reason' => 'Prior incident',
+    ]);
+    $event = Event::factory()->create(['event_date' => '2026-07-19']);
+
+    $decision = $this->policy->decide($member, $event);
+
+    expect($decision->message)->toBe('Notify the Signal group');
+});
+
 test('a prospective member with incomplete identity requires capture', function () {
     $member = memberAgedAsOf($this->prospective, '1990-01-01', ['first_name' => null]);
     $event = Event::factory()->create(['event_date' => '2026-07-19']);

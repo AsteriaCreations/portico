@@ -30,6 +30,16 @@ test('it dumps, compresses, and writes a daily backup', function () {
     expect(trim(gzdecode(File::get($expectedPath))))->toBe('-- fake sql dump contents');
 });
 
+test('the backup filename prefix is configurable', function () {
+    config(['backup.prefix' => 'acme']);
+    Process::fake(['*' => Process::result(output: '-- fake sql dump contents')]);
+
+    $this->artisan('backup:database')->assertSuccessful();
+
+    $expectedPath = $this->backupDir.'/daily/acme-'.now()->toDateString().'.sql.gz';
+    expect(File::exists($expectedPath))->toBeTrue();
+});
+
 test('a successful run records a CommandRun success', function () {
     Process::fake(['*' => Process::result(output: '-- fake sql dump contents')]);
 

@@ -78,4 +78,33 @@ return [
 
     'event_window_buffer_minutes' => (int) env('EVENT_WINDOW_BUFFER_MINUTES', 15),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Watchlist notification channel label
+    |--------------------------------------------------------------------------
+    |
+    | The name of wherever staff post a heads-up about a watchlisted member
+    | before admitting them — a Slack/Discord channel, a group text, etc.
+    | Substituted into AdmissionPolicy's warning message and the check-in
+    | acknowledgement checkbox labels ("Notify <label>", "I have notified
+    | <label> per the watchlist note."). Per-install; override in .env.
+    |
+    */
+
+    'watchlist_notify_label' => env('WATCHLIST_NOTIFY_LABEL', 'the staff channel'),
+
+    /*
+    |--------------------------------------------------------------------------
+    | System user email
+    |--------------------------------------------------------------------------
+    |
+    | The address of the non-login "System" user that automated grants
+    | (vouchers:grant-comp-rewards) are attributed to. Seeded by
+    | DatabaseSeeder and looked up by the command. Per-install; override in
+    | .env so the address matches this deployment's own domain.
+    |
+    */
+
+    'system_user_email' => env('SYSTEM_USER_EMAIL', 'system@portico.internal'),
+
 ];
