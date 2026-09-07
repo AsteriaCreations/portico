@@ -49,7 +49,11 @@ class UsersTable
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
-                    DeleteBulkAction::make(),
+                    // Per-row check so bulk delete honours UserPolicy::delete()'s
+                    // self-account and last-active-Owner guards, not just the
+                    // resource-level Admin+ gate.
+                    DeleteBulkAction::make()
+                        ->authorizeIndividualRecords('delete'),
                 ]),
             ]);
     }

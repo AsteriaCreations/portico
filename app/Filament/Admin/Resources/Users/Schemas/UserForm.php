@@ -9,6 +9,7 @@ use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Schema;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\Rules\Password;
 
 class UserForm
 {
@@ -25,10 +26,12 @@ class UserForm
                     ->unique(ignoreRecord: true),
                 TextInput::make('password')
                     ->password()
+                    ->revealable()
+                    ->rule(Password::default())
                     ->required(fn (string $operation): bool => $operation === 'create')
                     ->dehydrateStateUsing(fn ($state) => Hash::make($state))
                     ->dehydrated(fn ($state) => filled($state))
-                    ->helperText('Leave blank to keep the current password.'),
+                    ->helperText('At least 12 characters with upper and lower case, a number, and a symbol. Leave blank to keep the current password.'),
                 Select::make('role')
                     // Not ->options(Role::class) -- that resolves labels via
                     // Role::getLabel() only, which never consults a club's

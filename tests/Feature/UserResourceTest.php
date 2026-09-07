@@ -21,7 +21,7 @@ test('an admin can create a volunteer account with a hashed password', function 
         ->fillForm([
             'name' => 'New Volunteer',
             'email' => 'volunteer@example.com',
-            'password' => 'super-secret-password',
+            'password' => 'Sup3r-Secret-Passw0rd',
             'role' => Role::Door->value,
             'active' => true,
         ])
@@ -33,8 +33,8 @@ test('an admin can create a volunteer account with a hashed password', function 
     expect($user->name)->toBe('New Volunteer')
         ->and($user->role)->toBe(Role::Door)
         ->and($user->active)->toBeTrue()
-        ->and($user->password)->not->toBe('super-secret-password')
-        ->and(Hash::check('super-secret-password', $user->password))->toBeTrue();
+        ->and($user->password)->not->toBe('Sup3r-Secret-Passw0rd')
+        ->and(Hash::check('Sup3r-Secret-Passw0rd', $user->password))->toBeTrue();
 });
 
 test('leaving the password blank on edit keeps the existing password', function () {
@@ -62,7 +62,7 @@ test('an admin can link a volunteer account to a member record', function () {
         ->fillForm([
             'name' => 'Staff Volunteer',
             'email' => 'staff@example.com',
-            'password' => 'super-secret-password',
+            'password' => 'Sup3r-Secret-Passw0rd',
             'role' => Role::Door->value,
             'member_id' => $member->id,
             'active' => true,
@@ -82,7 +82,7 @@ test('a volunteer account can be created without a linked member', function () {
         ->fillForm([
             'name' => 'No Member Link',
             'email' => 'nolink@example.com',
-            'password' => 'super-secret-password',
+            'password' => 'Sup3r-Secret-Passw0rd',
             'role' => Role::Door->value,
             'active' => true,
         ])
@@ -102,7 +102,7 @@ test('a member cannot be linked to two different volunteer accounts', function (
         ->fillForm([
             'name' => 'Duplicate Link',
             'email' => 'duplicate@example.com',
-            'password' => 'super-secret-password',
+            'password' => 'Sup3r-Secret-Passw0rd',
             'role' => Role::Door->value,
             'member_id' => $member->id,
             'active' => true,
