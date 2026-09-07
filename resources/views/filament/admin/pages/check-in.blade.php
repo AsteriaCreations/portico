@@ -103,7 +103,12 @@
                 'stop' => 'var(--danger-600, #dc2626)',
             ][$strip['tone']];
         @endphp
+        {{-- wire:key keyed on the member/event/verdict: without it, morphdom
+        drifts this bare conditional <div> against the neighbouring conditional
+        sections when the Member select changes, and the strip keeps showing the
+        previous member's verdict until some other action forces a full render. --}}
         <div
+            wire:key="status-strip-{{ $member?->id }}-{{ $event?->id }}-{{ $strip['tone'] }}"
             role="status"
             class="rounded-xl px-5 py-4"
             style="border-left: 5px solid {{ $toneColor }}; background-color: color-mix(in srgb, {{ $toneColor }} 10%, transparent);"
