@@ -44,6 +44,60 @@ jobs:
       - name: Run tests
         run: php artisan test --compact
 
+  migrate-mariadb:
+    name: Migrate + seed (MariaDB)
+    runs-on: ubuntu-latest
+
+    services:
+      mariadb:
+        image: mariadb:11
+        env:
+          MARIADB_ALLOW_EMPTY_ROOT_PASSWORD: 'yes'
+          MARIADB_DATABASE: portico
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="healthcheck.sh --connect --innodb_initialized"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: curl, fileinfo, gd, intl, mbstring, openssl, pdo_mysql, exif, zip, bcmath
+          coverage: none
+
+      - name: Cache Composer packages
+        uses: actions/cache@v4
+        with:
+          path: vendor
+          key: composer-8.4-${{ hashFiles('composer.lock') }}
+          restore-keys: composer-8.4-
+
+      - name: Install dependencies
+        run: composer install --prefer-dist --no-interaction --no-progress
+
+      - name: Copy environment file
+        run: cp .env.example .env
+
+      - name: Generate application key
+        run: php artisan key:generate
+
+      # The test suite always runs on in-memory SQLite (phpunit.xml). This job is
+      # the only place a migration is exercised on MariaDB — the documented
+      # production stack — so a MySQL-only issue (a bad column AFTER clause, an
+      # enum change, an index name collision) fails CI instead of a new install.
+      - name: Rebuild the database from scratch on MariaDB
+        run: php artisan migrate:fresh --seed --no-interaction
+
+      - name: Seed the local-development demo dataset
+        run: php artisan db:seed --class=DemoDataSeeder --no-interaction
+
   pint:
     name: Pint (code style)
     runs-on: ubuntu-latest
