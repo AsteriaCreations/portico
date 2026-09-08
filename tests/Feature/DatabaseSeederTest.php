@@ -45,12 +45,16 @@ test('categories are seeded with the correct comp flags', function () {
         ->toBe(['Emeritus', 'Manager', 'Owner', 'Staff']);
 });
 
-test('no comp reasons are seeded by default', function () {
+test('a starter set of comp reasons is seeded', function () {
     $this->seed();
 
-    // comp_reasons is editable settings data the club fills in itself --
-    // nothing ships as a default. See docs/BLUEPRINT.md "Per-event comp".
-    expect(CompReason::count())->toBe(0);
+    // A small starter list, editable at runtime like event_types/plans --
+    // see docs/BLUEPRINT.md "Per-event comp".
+    expect(CompReason::orderBy('sort_order')->pluck('name')->all())
+        ->toBe(['Presenter', 'Volunteer', 'Guest of a staff member']);
+
+    expect(CompReason::where('name', 'Presenter')->value('grants_voucher_amount'))
+        ->toEqual(25.00);
 });
 
 test('event types are seeded', function () {

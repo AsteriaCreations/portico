@@ -42,6 +42,14 @@ class DemoDataSeeder extends Seeder
 {
     public function run(): void
     {
+        // Additive, not idempotent — a second run collides on the demo
+        // usernames/emails. Bail out cleanly instead of throwing.
+        if (User::where('email', 'like', 'demo-%')->exists()) {
+            $this->command?->warn('Demo data is already present. Run `php artisan migrate:fresh --seed` first to reset, then re-seed.');
+
+            return;
+        }
+
         $categories = Category::all()->keyBy('name');
         $eventTypes = EventType::all();
         $compReasons = CompReason::all();
