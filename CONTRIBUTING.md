@@ -175,6 +175,20 @@ hand against a disposable `database/testing.sqlite`.
 - `npm run dev` / `npm run build` — Vite / Tailwind assets
 - `./vendor/bin/pint` — code style
 
+## Versioning & releases
+
+- Versions are **annotated git tags on `main`**, `vMAJOR.MINOR.PATCH`. There is no
+  `version` field in `composer.json` — the tag is the source of truth.
+- Portico is **`0.x`**: a minor release may carry a database migration and small breaking
+  changes; a patch release is fixes only.
+- Keep [`CHANGELOG.md`](CHANGELOG.md) current **in the same PR as the change it
+  documents** — new entries go under `## [Unreleased]`. Don't batch changelog edits for
+  release time.
+- To cut a release: move the `[Unreleased]` entries into a new dated `## [X.Y.Z]` section,
+  leave a fresh empty `[Unreleased]` above it, and merge that PR. Then
+  `git tag -a vX.Y.Z <merge commit> -m "Portico vX.Y.Z"`, push the tag, and open a GitHub
+  Release from it with that changelog section as the body.
+
 ## Do NOT
 
 - Do NOT put business logic in Filament resources or Blade views.
