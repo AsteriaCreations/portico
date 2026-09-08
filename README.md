@@ -6,6 +6,8 @@ of ~1,000 members), replacing a single shared spreadsheet. It solves one core pr
 checking members in at the door simultaneously, on the same night, without stepping on
 each other's data.
 
+![The Portico check-in desk](docs/screenshots/check-in-desk.jpg)
+
 Full schema, fee logic, admission rules, and role permissions are specified in
 [`docs/BLUEPRINT.md`](docs/BLUEPRINT.md) — read that first if you're changing business
 logic. [`CONTRIBUTING.md`](CONTRIBUTING.md) has the working conventions for this codebase.
@@ -59,6 +61,16 @@ After `migrate:fresh --seed`, with the app served (see [Production / LAN deploym
 - **Check-In Desk** shows the member/event pickers; **Analytics**, **Members**, and **Feature Flags** all render (empty until you add data, or run `DemoDataSeeder`).
 - **Membership Settings** shows the tunables seeded from their defaults (eligibility threshold 5, probation 90 days, event window 15 min).
 
+## Configuring Portico for your club
+
+The seed is deliberately minimal. Nearly everything a club sets — plan prices, categories,
+event types, comp reasons, payment methods, role display names, the operational tunables,
+and which optional features are even on — is edited in the admin panel at runtime by a
+Manager, Admin, or Owner, with no code change and no redeploy.
+
+**[`docs/CONFIGURING.md`](docs/CONFIGURING.md)** walks through the `.env` values, every
+settings screen, the feature flags, and a first-week checklist.
+
 ## Testing
 
 ```bash
@@ -106,6 +118,18 @@ Showrunner's entire surface is the comp-request page, and Door's entire surface 
 This table covers the roles' distinguishing capabilities, not an exhaustive feature-by-feature matrix — for the full, continuously-updated picture (feature flags, per-event payouts, member skill tracking, and everything else added since), see `CONTRIBUTING.md` and the commit history.
 
 **Subscription eligibility** (`Member::isSubscriptionEligible()`) gates who can subscribe at all, independent of role — including the monthly Manager & Owner perk, which waives price but not this rule: 5+ attended events all-time, or `subscription_eligible` manually set on the member (Manager+, via the Members resource, or set automatically by the historical import below). Threshold is `config('membership.subscription_eligibility_threshold')`, default 5.
+
+## Screens
+
+Populated with `DemoDataSeeder`'s sample data.
+
+**Analytics** — attendance, revenue, and outstanding voucher liability, for tonight, this week, and a rolling 12 months.
+
+![Analytics](docs/screenshots/analytics.jpg)
+
+**Members** — the roster, with personal detail masked until you ask for it, CSV export, and bulk upload.
+
+![Members](docs/screenshots/members.jpg)
 
 ## Production / LAN deployment
 
