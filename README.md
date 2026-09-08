@@ -35,7 +35,7 @@ Set `DB_DATABASE`, `DB_USERNAME`, `DB_PASSWORD` in `.env` for your local MariaDB
 php artisan migrate:fresh --seed
 ```
 
-This seeds membership categories, a starter `event_types` list (Social, Pool Social, Class, Munch, Private Rental, Meeting, Special), example subscription plans (regular $60 / $25 credit, pool $15 / full coverage — all editable at runtime via the Plans and Membership Settings screens), and a starter `comp_reasons` list. In `local`/`testing` the shipped `DatabaseSeeder` also creates an admin at `test@example.com` / `password`; outside those environments it instead requires `ADMIN_EMAIL` and `ADMIN_PASSWORD` in `.env` and refuses to seed a guessable credential.
+This seeds membership categories, a starter `event_types` list (Social, Pool Social, Class, Munch, Private Rental, Meeting, Special, Yoga), example subscription plans (regular $60 / $25 credit, pool $15 / full coverage — all editable at runtime via the Plans and Membership Settings screens), and a starter `comp_reasons` list (Presenter, Volunteer, Guest of a staff member). Every one of those is ordinary settings data you edit, rename, or deactivate to match your club. In `local`/`testing` the shipped `DatabaseSeeder` also creates an admin at `test@example.com` / `password`; outside those environments it instead requires `ADMIN_EMAIL` and `ADMIN_PASSWORD` in `.env` and refuses to seed a guessable credential.
 
 Visit `/admin` to log in. `/admin/check-in` is the primary door-facing screen; everything else (Members, Events, Subscriptions, Plans, Event Types, Users, reports) is gated to Manager/Admin per the roles table below.
 
@@ -47,7 +47,17 @@ Visit `/admin` to log in. `/admin/check-in` is the primary door-facing screen; e
 php artisan db:seed --class=DemoDataSeeder
 ```
 
-Adds ~70 members across every category (including a few banned/watchlisted/under-21/incomplete-Prospective ones), a dozen events spanning the last two months plus two upcoming, ~200 attendance rows, subscriptions, vouchers, comp requests (including a freeform one), and a couple of register shifts — plus login-capable users for every role (`demo-<role>@example.com` / `password`, except the Showrunner login at `demo-showrunner@example.com`). Not run by default, and never touches the minimal seed set `DatabaseSeeder` provides — safe to run any time after `migrate:fresh --seed`, and safe to skip entirely for a production install.
+Adds ~70 members across every category (including a few banned/watchlisted/under-21/incomplete-Prospective ones), a dozen events spanning the last two months plus two upcoming, ~200 attendance rows, subscriptions, vouchers, comp requests (including a freeform one), and a couple of register shifts — plus login-capable users for every role (`demo-<role>@example.com` / `password`, except the Showrunner login at `demo-showrunner@example.com`). Not run by default, and never touches the minimal seed set `DatabaseSeeder` provides — safe to skip entirely for a production install. It's additive, not idempotent: run it once on a fresh database, and to re-seed, run `migrate:fresh --seed` first (a second run on an already-seeded database just prints a notice and does nothing).
+
+### Verify your install
+
+After `migrate:fresh --seed`, with the app served (see [Production / LAN deployment](#production--lan-deployment), or `php artisan serve` for a quick local look):
+
+- `/admin/login` shows the sign-in page, styled — no `npm` build is needed for the panel.
+- Log in: `test@example.com` / `password` in `local`, or your `ADMIN_EMAIL` / `ADMIN_PASSWORD` otherwise.
+- The **Dashboard** loads with an empty "in the building" widget.
+- **Check-In Desk** shows the member/event pickers; **Analytics**, **Members**, and **Feature Flags** all render (empty until you add data, or run `DemoDataSeeder`).
+- **Membership Settings** shows the tunables seeded from their defaults (eligibility threshold 5, probation 90 days, event window 15 min).
 
 ## Testing
 

@@ -69,6 +69,7 @@ class DatabaseSeeder extends Seeder
         $this->call([
             CategorySeeder::class,
             EventTypeSeeder::class,
+            CompReasonSeeder::class,
             AddOnSeeder::class,
             PlanSeeder::class, // depends on AddOnSeeder (Entry/Pool rows)
             PaperworkTypeSeeder::class, // depends on AddOnSeeder (Pool row, for the Pool Waiver gate)

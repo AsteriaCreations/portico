@@ -77,7 +77,7 @@ MAIL_MAILER=log        # until you wire a transactional provider (see §5)
 Then:
 
 ```bash
-php artisan migrate:fresh --seed
+php artisan migrate:fresh --seed --force   # --force: no interactive prompt in production
 php artisan optimize
 ```
 
