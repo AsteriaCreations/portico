@@ -97,6 +97,7 @@ ROLES & PERMISSIONS
 - DM — a further level of trusted volunteer above Volunteer, still short of Door's check-in/payment access; sees full behavior-note text on Active Patrons without authorship
 - Server-side policy enforcement (not just UI hiding)
 - Monthly Manager & Owner subscription perk (non-monotonic exception)
+- Forced password change — an Admin+ can flag a user account so its next sign-in is redirected to a dedicated change-password screen before anything else in the panel is reachable
 
 REPORTING & ANALYTICS
 ------------------------

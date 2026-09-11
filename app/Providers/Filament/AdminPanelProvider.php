@@ -21,6 +21,7 @@ use App\Filament\Admin\Resources\Subscriptions\SubscriptionResource;
 use App\Filament\Admin\Resources\Users\UserResource;
 use App\Filament\Admin\Resources\Vouchers\VoucherResource;
 use App\Filament\Admin\Widgets\RecordDeparturesWidget;
+use App\Http\Middleware\RequirePasswordChange;
 use App\Models\MembershipSetting;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
@@ -94,6 +95,7 @@ class AdminPanelProvider extends PanelProvider
             ])
             ->authMiddleware([
                 Authenticate::class,
+                RequirePasswordChange::class,
             ]);
 
         // A collapsed "How to use this screen" panel on every resource/page that has
