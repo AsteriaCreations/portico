@@ -50,6 +50,10 @@ class UserForm
                 Toggle::make('active')
                     ->default(true)
                     ->required(),
+                Toggle::make('must_change_password')
+                    ->label('Require password change at next login')
+                    ->default(false)
+                    ->helperText('Forces this user to set a new password the next time they sign in, before they can do anything else in the panel — e.g. after a temporary or shared password.'),
             ]);
     }
 }

@@ -66,7 +66,7 @@ All are Manager+ unless noted. They're grouped in the left nav exactly as listed
 
 | Screen | What it's for |
 |---|---|
-| **Users** | Staff accounts and their role. Password strength is enforced; you can't lock yourself or the last Owner out. |
+| **Users** | Staff accounts and their role. Password strength is enforced; you can't lock yourself or the last Owner out. "Require password change at next login" forces a user to set a new password before doing anything else in the panel. |
 | **Feature Flags** | Turn optional features on/off — see below. |
 | **Membership Settings** | The operational tunables — see below. |
 | **Role Labels** | Per-role display-name aliases — see "Roles" above. |

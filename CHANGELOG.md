@@ -9,6 +9,12 @@ is fixes only.
 
 ## [Unreleased]
 
+### Added
+
+- Forced password change: an Admin+ can flag a user account ("Require password change at
+  next login" on the Users form) so its next sign-in is redirected to a dedicated
+  change-password screen before anything else in the panel is reachable.
+
 ## [0.1.0] — 2026-09-08
 
 ### Added
