@@ -60,6 +60,7 @@ class FeatureFlags extends Page
             'instructor_payouts_enabled',
             'visit_notes_enabled',
             'behavior_notes_enabled',
+            'upstream_check_enabled',
         ]));
     }
 
@@ -115,6 +116,10 @@ class FeatureFlags extends Page
                 Toggle::make('behavior_notes_enabled')
                     ->label('Patron behavior notes enabled')
                     ->helperText('Turns off adding new behavior notes on Active Patrons. Notes already written stay reviewable by Manager+ on the member\'s profile regardless of this setting. Leave on unless this club doesn\'t want this kind of accountability record.')
+                    ->required(),
+                Toggle::make('upstream_check_enabled')
+                    ->label('Upstream update checking enabled')
+                    ->helperText('Turns on the Upstream Updates page and its scheduled git fetch. Only useful if this fork tracks an upstream remote -- see Membership Settings for the remote/branch to configure, and docs/DEPLOYMENT.md for the required manual `git remote add` step. Off by default: unlike other flags here, there\'s no existing behavior to preserve.')
                     ->required(),
             ]);
     }

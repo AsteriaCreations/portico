@@ -17,6 +17,10 @@ is fixes only.
 - `scripts/deploy.ps1` automates pulling down an update on a Windows box: stop the web
   server, `git pull --ff-only`, reinstall dependencies, migrate, rebuild caches, restart —
   see `docs/DEPLOYMENT.md` §7.
+- Upstream update visibility: an opt-in `upstream:check` scheduled command periodically
+  `git fetch`es a configured remote, and a new Admin+ "Upstream Updates" page shows which
+  commits are pending — locally, no network call per page load. Useful for any fork
+  tracking an upstream remote; inert and invisible until configured.
 
 ## [0.1.0] — 2026-09-08
 

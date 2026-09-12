@@ -62,6 +62,8 @@ class MembershipSettings extends Page
             'hide_member_pii_by_default',
             'showrunner_door_includes_pool',
             'showrunner_door_includes_addons',
+            'upstream_remote',
+            'upstream_branch',
         ]));
     }
 
@@ -136,6 +138,19 @@ class MembershipSettings extends Page
                 Toggle::make('showrunner_door_includes_addons')
                     ->label('Showrunner commission includes add-on revenue')
                     ->helperText('Turn this on to also count Event Add-On revenue (private room rental, sleepover, etc.) from the same qualifying attendees toward the showrunner\'s commission base.')
+                    ->required(),
+                TextInput::make('upstream_remote')
+                    ->label('Upstream git remote name')
+                    // Keep this pattern identical to
+                    // UpstreamUpdateChecker::SAFE_REF_PATTERN.
+                    ->rule('regex:/^[A-Za-z0-9](?:[A-Za-z0-9._\/-]*[A-Za-z0-9])?$/')
+                    ->helperText('The name of a git remote already added on this server (`git remote add <name> <url>`) that this fork tracks for updates -- this app never adds one itself. Leave blank if this fork doesn\'t track an upstream. Turn on "Upstream update checking enabled" on Feature Flags once set.')
+                    ->maxLength(255),
+                TextInput::make('upstream_branch')
+                    ->label('Upstream branch')
+                    ->rule('regex:/^[A-Za-z0-9](?:[A-Za-z0-9._\/-]*[A-Za-z0-9])?$/')
+                    ->helperText('The branch on the upstream remote to compare against -- usually "main".')
+                    ->maxLength(255)
                     ->required(),
             ]);
     }
