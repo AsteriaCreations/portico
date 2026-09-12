@@ -80,6 +80,21 @@ class AppServiceProvider extends ServiceProvider
         // its own. See App\Enums\Capability.
         Gate::define('access-cleaning-checklist', fn (User $user): bool => $user->hasCapability(Capability::CleaningCrew));
 
+        // Same "role + flag(s) baked into the gate itself" shape as
+        // manage-visit-notes/manage-behavior-notes above -- triggerDeployAction()
+        // on App\Filament\Admin\Pages\UpstreamUpdates is a standalone action
+        // whose entire purpose is this feature, so a forged call gets a hard
+        // 403 via abort_unless(Gate::allows(...)), not a silent no-op. Same
+        // role floor as the rest of that page (Admin+) -- deliberately not
+        // stricter, unlike manage-org-name. Also requires upstream_check_enabled
+        // since this only makes sense once that's already configured, and a
+        // configured deploy_task_name since an unconfigured fork has nothing
+        // to run. See App\Services\DeployTrigger.
+        Gate::define('trigger-deploy', fn (User $user): bool => $user->role->atLeast(Role::Admin)
+            && MembershipSetting::current()->upstream_check_enabled
+            && MembershipSetting::current()->deploy_trigger_enabled
+            && filled(MembershipSetting::current()->deploy_task_name));
+
         Member::observe(MemberObserver::class);
         User::observe(UserObserver::class);
     }

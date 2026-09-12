@@ -64,6 +64,7 @@ class MembershipSettings extends Page
             'showrunner_door_includes_addons',
             'upstream_remote',
             'upstream_branch',
+            'deploy_task_name',
         ]));
     }
 
@@ -152,6 +153,15 @@ class MembershipSettings extends Page
                     ->helperText('The branch on the upstream remote to compare against -- usually "main".')
                     ->maxLength(255)
                     ->required(),
+                TextInput::make('deploy_task_name')
+                    ->label('Deploy Scheduled Task name')
+                    // Keep this pattern identical to
+                    // App\Services\DeployTrigger::assertSafeTaskName() -- unlike
+                    // upstream_remote/upstream_branch above, a task name may
+                    // contain spaces, so this only blocks a leading '-'/'/'.
+                    ->rule('regex:/^[^\s\/-][^\r\n]*$/')
+                    ->helperText('The exact name of a Windows Scheduled Task, already registered on this server to run scripts/deploy.ps1, that "Run update now" on Upstream Updates should fire -- this app never registers one itself. Leave blank if you don\'t want a web-triggered deploy. Turn on "Web-triggered deploy enabled" on Feature Flags once set.')
+                    ->maxLength(255),
             ]);
     }
 

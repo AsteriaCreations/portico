@@ -62,6 +62,7 @@ class FeatureFlags extends Page
             'visit_notes_enabled',
             'behavior_notes_enabled',
             'upstream_check_enabled',
+            'deploy_trigger_enabled',
         ]));
     }
 
@@ -139,6 +140,10 @@ class FeatureFlags extends Page
                         Toggle::make('upstream_check_enabled')
                             ->label('Upstream update checking enabled')
                             ->helperText('Turns on the Upstream Updates page and its scheduled git fetch. Only useful if this fork tracks an upstream remote -- see Membership Settings for the remote/branch to configure, and docs/DEPLOYMENT.md for the required manual `git remote add` step. Off by default: unlike other flags here, there\'s no existing behavior to preserve.')
+                            ->required(),
+                        Toggle::make('deploy_trigger_enabled')
+                            ->label('Web-triggered deploy enabled')
+                            ->helperText('Turns on the "Run update now" button on the Upstream Updates page, which hands off to a Windows Scheduled Task running scripts/deploy.ps1 -- see docs/DEPLOYMENT.md §7. Also needs a configured deploy task name on Membership Settings and a one-time Scheduled Task registration on the server; this app never registers one itself. Off by default: this is a new, high-risk capability, not existing behavior to preserve.')
                             ->required(),
                     ]),
             ]);
