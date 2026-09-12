@@ -16,7 +16,7 @@ use Illuminate\Database\Eloquent\Model;
  * supplies the initial defaults for a fresh install — it's just no longer
  * read anywhere else in the app afterward.
  */
-#[Fillable(['subscription_eligibility_threshold', 'probation_period_days', 'venue_capacity', 'default_opening_float', 'event_window_buffer_minutes', 'org_name', 'role_labels', 'member_search_fields', 'hide_member_pii_by_default', 'vouchers_enabled', 'add_ons_enabled', 'showrunner_comp_requests_enabled', 'manager_perk_enabled', 'suspensions_enabled', 'pool_enabled', 'prepay_enabled', 'register_shifts_enabled', 'showrunner_payouts_enabled', 'instructor_payouts_enabled', 'showrunner_door_includes_pool', 'showrunner_door_includes_addons', 'visit_notes_enabled', 'behavior_notes_enabled'])]
+#[Fillable(['subscription_eligibility_threshold', 'probation_period_days', 'venue_capacity', 'default_opening_float', 'event_window_buffer_minutes', 'org_name', 'role_labels', 'member_search_fields', 'checkin_display_name_field', 'hide_member_pii_by_default', 'vouchers_enabled', 'add_ons_enabled', 'showrunner_comp_requests_enabled', 'manager_perk_enabled', 'suspensions_enabled', 'pool_enabled', 'prepay_enabled', 'register_shifts_enabled', 'showrunner_payouts_enabled', 'instructor_payouts_enabled', 'showrunner_door_includes_pool', 'showrunner_door_includes_addons', 'visit_notes_enabled', 'behavior_notes_enabled'])]
 class MembershipSetting extends Model
 {
     protected function casts(): array
@@ -68,6 +68,10 @@ class MembershipSetting extends Model
             // name / member number / etc. search on the Membership Settings
             // page. See Member::searchableColumns().
             'member_search_fields' => ['username'],
+            // What the desk shows once a member is selected -- preserves the
+            // app's original hardcoded behavior exactly, so upgrading never
+            // silently changes what staff see. See Member::displayName().
+            'checkin_display_name_field' => 'preferred_name',
             // Default true so an install upgrading to this version keeps a
             // feature it may already rely on; a fresh install turns off what
             // it doesn't need on the Feature Flags page.

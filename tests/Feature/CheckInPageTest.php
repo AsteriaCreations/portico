@@ -200,11 +200,21 @@ test('member status shows immediately once a member is selected, with no event p
 
     Livewire::test(CheckIn::class)
         ->fillForm(['member_id' => $member->id])
-        ->assertSee($member->preferred_name ?: $member->username)
+        ->assertSee($member->displayName())
         ->assertSee('Banned')
         ->assertSee('On watchlist')
         ->assertSee('Watchlist reason')
         ->assertSee('Not yet subscription-eligible');
+});
+
+test('the check-in desk display name setting controls what the member header shows', function () {
+    MembershipSetting::current()->update(['checkin_display_name_field' => 'username']);
+    $member = clearMember($this->irregular, ['username' => 'jsmith99', 'preferred_name' => 'Johnny']);
+
+    Livewire::test(CheckIn::class)
+        ->fillForm(['member_id' => $member->id])
+        ->assertSee('jsmith99')
+        ->assertDontSee('Johnny');
 });
 
 test('a deceased member shows a status flag with no event picked', function () {

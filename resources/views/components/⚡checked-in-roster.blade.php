@@ -50,7 +50,7 @@ new class extends Component
             <div class="sm:hidden">
                 @foreach ($this->attendances as $checkedInAttendance)
                     <div class="border-t border-gray-200 py-2 text-sm dark:border-white/10">
-                        <p class="font-medium">{{ $checkedInAttendance->member->preferred_name ?: $checkedInAttendance->member->username }}</p>
+                        <p class="font-medium">{{ $checkedInAttendance->member->displayName() }}</p>
                         <p class="text-gray-500 dark:text-gray-400">{{ $this->event->name }} &middot; {{ $this->event->event_date->toFormattedDateString() }}</p>
                         <p class="text-gray-500 dark:text-gray-400">{{ $checkedInAttendance->checked_in_at->format('g:i A') }} &middot; ${{ number_format($checkedInAttendance->amount_paid, 2) }}</p>
                     </div>
@@ -72,7 +72,7 @@ new class extends Component
                     <tbody>
                         @foreach ($this->attendances as $checkedInAttendance)
                             <tr class="border-t border-gray-200 dark:border-white/10">
-                                <td class="px-3 py-2 text-sm">{{ $checkedInAttendance->member->preferred_name ?: $checkedInAttendance->member->username }}</td>
+                                <td class="px-3 py-2 text-sm">{{ $checkedInAttendance->member->displayName() }}</td>
                                 <td class="px-3 py-2 text-sm">{{ $this->event->name }}</td>
                                 <td class="px-3 py-2 text-sm">{{ $this->event->event_date->toFormattedDateString() }}</td>
                                 <td class="px-3 py-2 text-sm">{{ $checkedInAttendance->checked_in_at->format('g:i A') }}</td>

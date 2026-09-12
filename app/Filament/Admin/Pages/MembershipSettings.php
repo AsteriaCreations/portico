@@ -7,6 +7,7 @@ use App\Models\MembershipSetting;
 use BackedEnum;
 use Filament\Actions\Action;
 use Filament\Forms\Components\CheckboxList;
+use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Notifications\Notification;
@@ -57,6 +58,7 @@ class MembershipSettings extends Page
             'event_window_buffer_minutes',
             'org_name',
             'member_search_fields',
+            'checkin_display_name_field',
             'hide_member_pii_by_default',
             'showrunner_door_includes_pool',
             'showrunner_door_includes_addons',
@@ -113,6 +115,15 @@ class MembershipSettings extends Page
                         'email' => 'Email',
                     ])
                     ->minItems(1)
+                    ->required(),
+                Select::make('checkin_display_name_field')
+                    ->label('Check-in desk display name')
+                    ->helperText('Which field the Check-In Desk shows once a member is selected -- the greeting line, the checked-in roster, voucher labels, and the guest-registration sponsor note. Falls back to username if the chosen field is blank for a given member.')
+                    ->options([
+                        'preferred_name' => 'Preferred name',
+                        'full_name' => 'Full name',
+                        'username' => 'Username',
+                    ])
                     ->required(),
                 Toggle::make('hide_member_pii_by_default')
                     ->label('Hide personal info by default on the Members list')

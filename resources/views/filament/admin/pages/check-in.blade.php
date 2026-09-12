@@ -176,7 +176,7 @@
     event is picked. See docs/BLUEPRINT.md "Check-in desk flow". --}}
     @if ($member)
         <x-filament::section>
-            <p class="font-medium">{{ $member->preferred_name ?: $member->username }}</p>
+            <p class="font-medium">{{ $member->displayName() }}</p>
             <p class="text-sm text-gray-500">{{ $member->category->name }}</p>
 
             @if (app(\App\Services\AdmissionPolicy::class)->needsCapture($member))

@@ -448,7 +448,7 @@ class CheckIn extends Page implements HasTable
         $entryFee = $this->getPriceBreakdown()?->entryFee ?? 0.0;
         $ownBalance = $member?->voucherBalance() ?? 0.0;
         $voucherLabel = $member
-            ? "Apply voucher credit — \${$this->formatCurrency($ownBalance)} available on {$member->preferred_name}'s account"
+            ? "Apply voucher credit — \${$this->formatCurrency($ownBalance)} available on {$member->displayName()}'s account"
             : 'Apply voucher credit';
 
         return $schema
@@ -506,7 +506,7 @@ class CheckIn extends Page implements HasTable
                         ->mapWithKeys(fn (Member $payer) => [$payer->id => static::memberLabel($payer).' — $'.$this->formatCurrency($payer->voucherBalance()).' available'])
                         ->all())
                     ->getOptionLabelUsing(fn ($value) => ($payer = Member::find($value)) ? static::memberLabel($payer) : null)
-                    ->helperText("Leave blank to use {$member?->preferred_name}'s own balance.")
+                    ->helperText("Leave blank to use {$member?->displayName()}'s own balance.")
                     ->visible(fn (Get $get): bool => $canPreviewPricing && (bool) $get('apply_voucher')),
                 TextInput::make('voucher_amount')
                     ->label('Voucher amount to apply')
@@ -1251,7 +1251,7 @@ class CheckIn extends Page implements HasTable
                 abort_unless($sponsor && ! $sponsor->isOnProbation(), 403);
 
                 $guestCategory = Category::where('name', 'Guest')->firstOrFail();
-                $sponsorLabel = $sponsor->preferred_name ?: $sponsor->username;
+                $sponsorLabel = $sponsor->displayName();
 
                 // The unique() rule above already checked at validation time —
                 // this only catches the narrow race where two registers claim
