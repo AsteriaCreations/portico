@@ -2,7 +2,44 @@
     <x-screen-instructions title="How to use Upstream Updates">
         <p>Shows commits on the configured upstream remote/branch that aren't in this checkout yet — check here before running an update (see docs/DEPLOYMENT.md §7 "Updating").</p>
         <p>This page never contacts the network itself. A scheduled <code>upstream:check</code> command periodically fetches in the background; "Check for updates now" above runs that fetch on demand.</p>
+        <p>"Run update now" hands off to a Windows Scheduled Task that runs fully independently of this page — including restarting the web server — so the result below can take a few minutes to update.</p>
     </x-screen-instructions>
+
+    @php
+        $deployTrigger = $this->getLastDeployTrigger();
+        $deployResult = $this->getLastDeployResult();
+    @endphp
+
+    {{-- role="status" so the eventual result gets announced once it lands, not
+    just silently redrawn -- the same idiom as the checked-in roster's own
+    isolated polling heading. --}}
+    <div wire:poll.15s role="status">
+        <x-filament::section>
+            <x-slot name="heading">Last deploy</x-slot>
+
+            @if (! $deployTrigger)
+                <p class="text-sm text-gray-500 dark:text-gray-400">Never triggered from this page.</p>
+            @else
+                <p class="text-sm text-gray-500 dark:text-gray-400">
+                    @if ($deployTrigger->last_failure_at?->gt($deployTrigger->last_success_at ?? now()->subCentury()))
+                        Failed to trigger {{ $deployTrigger->last_failure_at->diffForHumans() }}: {{ $deployTrigger->last_failure_message }}
+                    @else
+                        Triggered {{ $deployTrigger->last_success_at->diffForHumans() }}.
+                    @endif
+                </p>
+
+                @if ($deployResult)
+                    <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                        @if ($deployResult->last_failure_at?->gt($deployResult->last_success_at ?? now()->subCentury()))
+                            Deploy failed {{ $deployResult->last_failure_at->diffForHumans() }}: {{ $deployResult->last_failure_message }}
+                        @else
+                            Deploy succeeded {{ $deployResult->last_success_at->diffForHumans() }}.
+                        @endif
+                    </p>
+                @endif
+            @endif
+        </x-filament::section>
+    </div>
 
     @php
         $settings = \App\Models\MembershipSetting::current();

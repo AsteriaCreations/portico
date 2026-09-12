@@ -207,6 +207,30 @@ php artisan migrate --force
 php artisan storage:link && php artisan config:clear && php artisan optimize
 ```
 
+### Web-triggered updates
+
+`scripts/deploy.ps1` stops the very web server that would be serving a button
+click, so an admin page can never run it in-process — it can only ask an
+already-registered Windows Scheduled Task to run it, fully detached from the
+request. To opt in:
+
+1. Register an on-demand Scheduled Task pointing at `scripts/run-deploy.bat`
+   (see docs/DEPLOYMENT_RUNBOOK.md for a concrete `schtasks /create` example
+   on Windows) — this app never registers one itself. It only ever fires the
+   task with `schtasks /run`, so the task can be configured with any trigger
+   (or none that fires on its own) as long as it's runnable on demand.
+2. Set **Deploy Scheduled Task name** on Membership Settings to the exact
+   task name you registered.
+3. Turn on **Web-triggered deploy enabled** on Feature Flags.
+
+Once configured, **Run update now** appears on the **Upstream Updates** page
+(Admin+). It only confirms Windows accepted the run request — the deploy
+itself happens out-of-band, and `deploy.ps1` reports its own outcome back via
+`php artisan deploy:record-result`, shown on that same page once it lands
+(the web server restarting mid-run means this can take a few minutes to show
+up). This exposes nothing `-MigrateFresh`/`-SkipNpm`/`-SkipMigrate` would
+change — those still need a manual run.
+
 ### Checking for upstream updates
 
 If this fork tracks an upstream remote (e.g. a fork of `AsteriaCreations/portico`) —

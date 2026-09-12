@@ -71,6 +71,7 @@ All are Manager+ unless noted. They're grouped in the left nav exactly as listed
 | **Membership Settings** | The operational tunables — see below. |
 | **Role Labels** | Per-role display-name aliases — see "Roles" above. |
 | **Technical** | Environment info and last-run status of the scheduled commands, with buttons to run the backup and comp-reward jobs on demand. |
+| **Upstream Updates** | Admin+, only shown if this fork tracks an upstream remote (see below). Shows pending upstream commits, and optionally a button to trigger a deploy. |
 
 ## Membership Settings
 
@@ -90,10 +91,14 @@ rarely need to touch most of them.
 | Searchable member fields | `Username` | Which fields the member search boxes match on, and what shows in member dropdown labels. |
 | Hide personal info by default on the Members list | on | Whether the Members table masks name/DOB/email until "Show personal info". |
 | Showrunner commission includes pool / add-on revenue | off / off | Whether those revenue lines count toward the Showrunner's door cut. |
+| Upstream remote / branch | *(blank)* / `main` | A git remote already added on the server (this app never runs `git remote add` itself) that this fork tracks for updates. |
+| Deploy Scheduled Task name | *(blank)* | The exact name of a Windows Scheduled Task, already registered on the server, that "Run update now" fires — see [`docs/DEPLOYMENT.md`](DEPLOYMENT.md) §7 "Web-triggered updates". |
 
 ## Feature Flags
 
-`/admin/feature-flags` (Manager+). Every flag defaults **on**. **A flag stops *new* writes
+`/admin/feature-flags` (Manager+). Every flag defaults **on** except the two upstream-update
+ones below, which default off since there's no existing behavior to preserve for a fresh
+install with no upstream remote configured. **A flag stops *new* writes
 — it never hides data already collected**, so turning one off after use leaves existing
 records intact and reviewable.
 
@@ -113,6 +118,8 @@ records intact and reviewable.
 | Instructor per-head pay | No Instructor Pay Rates tab on Event Types or instructor payout breakdown. |
 | Patron visit notes | No visit-note column on Active Patrons. |
 | Patron behavior notes | No adding new behavior notes on Active Patrons (existing ones stay reviewable by Manager+). |
+| Upstream update checking | *(default off)* No Upstream Updates page and no scheduled git fetch. Only useful if this fork tracks an upstream remote. |
+| Web-triggered deploy | *(default off)* No "Run update now" button on Upstream Updates. Also needs a Deploy Scheduled Task name configured and a Scheduled Task registered on the server — see [`docs/DEPLOYMENT.md`](DEPLOYMENT.md) §7 "Web-triggered updates". |
 
 ## `.env` you'll actually set
 

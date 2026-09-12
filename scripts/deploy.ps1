@@ -20,6 +20,12 @@
     tries to restart Apache in a `finally` block, even on failure, so a box
     is never left down because a later step errored.
 
+    Also reports its own outcome via `php artisan deploy:record-result` (skipped
+    under -WhatIf) -- this is what lets App\Filament\Admin\Pages\UpstreamUpdates
+    show whether a web-triggered run (see docs/DEPLOYMENT.md §7, "Web-triggered
+    updates") actually succeeded, since that page has no other way to know once
+    this script detaches from the request that fired it.
+
     Deliberately NOT automated: reading the sync-log entry for what actually
     changed (new .env keys, whether this update needs a migration/npm build at
     all), and the post-deploy smoke test. Both still need a human. Run this
@@ -114,63 +120,80 @@ try {
     }
 
     try {
-        # --- 2. pull -----------------------------------------------------------
+        # Reports the outcome of steps 2-5 via `php artisan deploy:record-result`
+        # so App\Filament\Admin\Pages\UpstreamUpdates can show it -- this is the
+        # only thing that lets a web-triggered run (see docs/DEPLOYMENT.md §7,
+        # "Web-triggered updates") report back, since it's fully detached from
+        # the request that fired it. Skipped entirely under -WhatIf: recording a
+        # result is itself a side effect, and nothing real happened to report.
+        try {
+            # --- 2. pull -----------------------------------------------------------
 
-        Write-Step 'git pull --ff-only'
-        $dirty = git status --porcelain
-        if ($dirty) {
-            throw "Working tree is not clean:`n$dirty`nCommit, stash, or discard before deploying -- a dirty tree can make --ff-only fail or, worse, silently mix local changes into what ships."
-        }
-        if ($PSCmdlet.ShouldProcess('origin/main', 'git pull --ff-only')) {
-            git pull --ff-only origin main
-            if ($LASTEXITCODE -ne 0) {
-                throw "git pull --ff-only failed (exit $LASTEXITCODE). If main diverged (e.g. someone committed on the box), resolve that by hand -- this script won't force or rebase for you."
+            Write-Step 'git pull --ff-only'
+            $dirty = git status --porcelain
+            if ($dirty) {
+                throw "Working tree is not clean:`n$dirty`nCommit, stash, or discard before deploying -- a dirty tree can make --ff-only fail or, worse, silently mix local changes into what ships."
             }
-        }
-        Write-Info "now at $(git rev-parse --short HEAD) ($(git log -1 --format=%s))"
-
-        # --- 3. dependencies ---------------------------------------------------
-
-        Write-Step 'composer install --no-dev --optimize-autoloader'
-        if ($PSCmdlet.ShouldProcess('composer.lock', 'composer install')) {
-            composer install --no-dev --optimize-autoloader
-            if ($LASTEXITCODE -ne 0) { throw "composer install failed (exit $LASTEXITCODE)." }
-        }
-
-        Write-Step 'npm install && npm run build'
-        if ($SkipNpm) {
-            Write-Skip '-SkipNpm'
-        } elseif ($PSCmdlet.ShouldProcess('public/build', 'npm install && npm run build')) {
-            npm install
-            if ($LASTEXITCODE -ne 0) { throw "npm install failed (exit $LASTEXITCODE)." }
-            npm run build
-            if ($LASTEXITCODE -ne 0) { throw "npm run build failed (exit $LASTEXITCODE)." }
-        }
-
-        # --- 4. database ---------------------------------------------------------
-
-        Write-Step 'database migration'
-        if ($SkipMigrate) {
-            Write-Skip '-SkipMigrate'
-        } elseif ($MigrateFresh) {
-            Write-Host '    -MigrateFresh: this destroys existing data. Only correct pre-launch.' -ForegroundColor Yellow
-            if ($PSCmdlet.ShouldProcess('database', 'migrate:fresh --seed --force')) {
-                php artisan migrate:fresh --seed --force
-                if ($LASTEXITCODE -ne 0) { throw "migrate:fresh failed (exit $LASTEXITCODE)." }
+            if ($PSCmdlet.ShouldProcess('origin/main', 'git pull --ff-only')) {
+                git pull --ff-only origin main
+                if ($LASTEXITCODE -ne 0) {
+                    throw "git pull --ff-only failed (exit $LASTEXITCODE). If main diverged (e.g. someone committed on the box), resolve that by hand -- this script won't force or rebase for you."
+                }
             }
-        } elseif ($PSCmdlet.ShouldProcess('database', 'migrate --force')) {
-            php artisan migrate --force
-            if ($LASTEXITCODE -ne 0) { throw "migrate failed (exit $LASTEXITCODE)." }
-        }
+            Write-Info "now at $(git rev-parse --short HEAD) ($(git log -1 --format=%s))"
 
-        # --- 5. caches -----------------------------------------------------------
+            # --- 3. dependencies ---------------------------------------------------
 
-        Write-Step 'storage:link / config:clear / optimize'
-        if ($PSCmdlet.ShouldProcess($ProjectRoot, 'artisan storage:link / config:clear / optimize')) {
-            php artisan storage:link
-            php artisan config:clear
-            php artisan optimize
-            if ($LASTEXITCODE -ne 0) { throw "php artisan optimize failed (exit $LASTEXITCODE)." }
+            Write-Step 'composer install --no-dev --optimize-autoloader'
+            if ($PSCmdlet.ShouldProcess('composer.lock', 'composer install')) {
+                composer install --no-dev --optimize-autoloader
+                if ($LASTEXITCODE -ne 0) { throw "composer install failed (exit $LASTEXITCODE)." }
+            }
+
+            Write-Step 'npm install && npm run build'
+            if ($SkipNpm) {
+                Write-Skip '-SkipNpm'
+            } elseif ($PSCmdlet.ShouldProcess('public/build', 'npm install && npm run build')) {
+                npm install
+                if ($LASTEXITCODE -ne 0) { throw "npm install failed (exit $LASTEXITCODE)." }
+                npm run build
+                if ($LASTEXITCODE -ne 0) { throw "npm run build failed (exit $LASTEXITCODE)." }
+            }
+
+            # --- 4. database ---------------------------------------------------------
+
+            Write-Step 'database migration'
+            if ($SkipMigrate) {
+                Write-Skip '-SkipMigrate'
+            } elseif ($MigrateFresh) {
+                Write-Host '    -MigrateFresh: this destroys existing data. Only correct pre-launch.' -ForegroundColor Yellow
+                if ($PSCmdlet.ShouldProcess('database', 'migrate:fresh --seed --force')) {
+                    php artisan migrate:fresh --seed --force
+                    if ($LASTEXITCODE -ne 0) { throw "migrate:fresh failed (exit $LASTEXITCODE)." }
+                }
+            } elseif ($PSCmdlet.ShouldProcess('database', 'migrate --force')) {
+                php artisan migrate --force
+                if ($LASTEXITCODE -ne 0) { throw "migrate failed (exit $LASTEXITCODE)." }
+            }
+
+            # --- 5. caches -----------------------------------------------------------
+
+            Write-Step 'storage:link / config:clear / optimize'
+            if ($PSCmdlet.ShouldProcess($ProjectRoot, 'artisan storage:link / config:clear / optimize')) {
+                php artisan storage:link
+                php artisan config:clear
+                php artisan optimize
+                if ($LASTEXITCODE -ne 0) { throw "php artisan optimize failed (exit $LASTEXITCODE)." }
+            }
+
+            if (-not $WhatIfPreference) {
+                php artisan deploy:record-result
+            }
+        } catch {
+            if (-not $WhatIfPreference) {
+                php artisan deploy:record-result --failed --message $_.Exception.Message
+            }
+            throw
         }
     } finally {
         # --- 6. restart the web server, even on failure above -----------------------

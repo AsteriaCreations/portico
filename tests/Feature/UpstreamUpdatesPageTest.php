@@ -1,10 +1,14 @@
 <?php
 
 use App\Enums\Role;
+use App\Filament\Admin\Pages\UpstreamUpdates;
+use App\Models\CommandRun;
 use App\Models\MembershipSetting;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Process;
+use Livewire\Livewire;
 
 uses(RefreshDatabase::class);
 
@@ -70,4 +74,86 @@ test('it shows an up-to-date message when the ref resolves with nothing pending'
         ->get('/admin/upstream-updates')
         ->assertSuccessful()
         ->assertSee('Up to date');
+});
+
+test('an admin can trigger the deploy once fully configured, recording a CommandRun success', function () {
+    MembershipSetting::current()->update([
+        'upstream_check_enabled' => true,
+        'deploy_trigger_enabled' => true,
+        'deploy_task_name' => 'Portico - Deploy Update',
+    ]);
+    $admin = User::factory()->create(['active' => true, 'role' => Role::Admin]);
+    Process::fake(['*' => Process::result(exitCode: 0)]);
+
+    Livewire::actingAs($admin)
+        ->test(UpstreamUpdates::class)
+        ->assertActionVisible('triggerDeploy')
+        ->callAction('triggerDeploy')
+        ->assertHasNoActionErrors();
+
+    Process::assertRan(fn ($process) => $process->command === ['schtasks', '/run', '/TN', 'Portico - Deploy Update']);
+
+    $run = CommandRun::firstWhere('command', 'deploy:trigger');
+    expect($run)->not->toBeNull()
+        ->and($run->last_success_at)->not->toBeNull();
+});
+
+test('a failed schtasks call records a CommandRun failure and never runs the deploy task twice', function () {
+    MembershipSetting::current()->update([
+        'upstream_check_enabled' => true,
+        'deploy_trigger_enabled' => true,
+        'deploy_task_name' => 'Portico - Deploy Update',
+    ]);
+    $admin = User::factory()->create(['active' => true, 'role' => Role::Admin]);
+    Process::fake(['*' => Process::result(errorOutput: 'ERROR: The specified task name does not exist.', exitCode: 1)]);
+
+    Livewire::actingAs($admin)
+        ->test(UpstreamUpdates::class)
+        ->callAction('triggerDeploy');
+
+    $run = CommandRun::firstWhere('command', 'deploy:trigger');
+    expect($run)->not->toBeNull()
+        ->and($run->last_failure_at)->not->toBeNull()
+        ->and($run->last_failure_message)->toContain('does not exist');
+});
+
+test('the trigger action is hidden when deploy_trigger_enabled is off', function () {
+    MembershipSetting::current()->update([
+        'upstream_check_enabled' => true,
+        'deploy_trigger_enabled' => false,
+        'deploy_task_name' => 'Portico - Deploy Update',
+    ]);
+    $admin = User::factory()->create(['active' => true, 'role' => Role::Admin]);
+
+    Livewire::actingAs($admin)
+        ->test(UpstreamUpdates::class)
+        ->assertActionHidden('triggerDeploy');
+});
+
+test('the trigger action is hidden when no deploy task name is configured', function () {
+    MembershipSetting::current()->update([
+        'upstream_check_enabled' => true,
+        'deploy_trigger_enabled' => true,
+        'deploy_task_name' => null,
+    ]);
+    $admin = User::factory()->create(['active' => true, 'role' => Role::Admin]);
+
+    Livewire::actingAs($admin)
+        ->test(UpstreamUpdates::class)
+        ->assertActionHidden('triggerDeploy');
+});
+
+test('the trigger-deploy gate denies a manager regardless of configuration', function () {
+    // Same "can't force-call a hidden Livewire action" convention as
+    // ManagerPerkActionTest's grant-manager-subscription-perk coverage --
+    // UpstreamUpdates::canAccess() already blocks a Manager from the page
+    // entirely, so the gate itself is what actually proves the floor.
+    MembershipSetting::current()->update([
+        'upstream_check_enabled' => true,
+        'deploy_trigger_enabled' => true,
+        'deploy_task_name' => 'Portico - Deploy Update',
+    ]);
+    $manager = User::factory()->create(['role' => Role::Manager]);
+
+    expect(Gate::forUser($manager)->allows('trigger-deploy'))->toBeFalse();
 });
