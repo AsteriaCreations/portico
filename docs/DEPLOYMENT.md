@@ -6,7 +6,8 @@ VLAN. It is **not** designed to be exposed to the public internet — it stores 
 birth, ban/watchlist reasons, and other sensitive member data. Keep it on the LAN.
 
 This is a checklist, not a script. Values in `<angle brackets>` are yours to choose.
-`scripts/apache/setup-apache.ps1` automates the Apache half on Windows.
+`scripts/apache/setup-apache.ps1` automates the Apache half on Windows, and
+`scripts/deploy.ps1` automates pulling down updates afterward (§7).
 
 ---
 
@@ -163,6 +164,47 @@ to `storage/logs/`. When you want real delivery, pick a transactional provider
 Plain HTTP over an isolated VLAN is a defensible choice for a closed LAN tool. If you
 want TLS anyway, stand up an internal CA or `mkcert` cert for `checkin.<club>.lan`, add
 an HTTPS vhost, and distribute the CA cert to the check-in devices.
+
+---
+
+## 7. Updating
+
+Pulling down an update is: stop the web server, `git pull`, reinstall
+dependencies, migrate, rebuild caches, restart. On Windows,
+`scripts/deploy.ps1` automates that sequence:
+
+```powershell
+# From an elevated PowerShell, in the project root:
+.\scripts\deploy.ps1
+```
+
+It stops the `Apache-Portico` service (rename with `-ServiceName`, or pass
+`-ServiceName ''` to skip entirely on a non-Apache / non-Windows setup),
+requires a clean working tree before pulling (`git pull --ff-only` — it
+refuses to guess through a diverged or dirty tree), runs
+`composer install --no-dev --optimize-autoloader`, `npm install && npm run
+build`, `php artisan migrate --force`, `storage:link` / `config:clear` /
+`optimize`, then restarts the service — in a `finally` block, so a failure
+partway through never leaves the box down. Flags for the common variations:
+
+- `-SkipNpm` — this update touched no front-end asset (most don't).
+- `-SkipMigrate` — this update has no schema change.
+- `-MigrateFresh` — **pre-launch only, destroys data** — rebuilds the schema
+  from scratch instead of a forward-only `migrate --force`.
+- `-WhatIf` — see what it would do without changing anything.
+
+It deliberately does **not** read the changelog for you or run a smoke test —
+check what actually changed before running it, and verify the app afterward.
+
+On other platforms, do the same steps by hand:
+
+```bash
+git pull --ff-only origin main
+composer install --no-dev --optimize-autoloader
+npm install && npm run build
+php artisan migrate --force
+php artisan storage:link && php artisan config:clear && php artisan optimize
+```
 
 ---
 
