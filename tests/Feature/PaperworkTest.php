@@ -132,6 +132,10 @@ test('staff can record a gating waiver signature at the desk, unlocking the add-
 
 test('the day-pass fold explains that a pool day pass needs the waiver, and drops the note once signed', function () {
     $this->actingAs(User::factory()->create(['active' => true, 'role' => Role::Door]));
+    // A qualifying event has to exist somewhere for the day-pass button to
+    // ever become visible -- see AddOnDayPassTest's "hidden when no event
+    // anywhere has a fee for the add-on" case.
+    Event::factory()->create(['event_date' => now()->toDateString(), 'pool_fee' => 15]);
 
     Livewire::test(CheckIn::class)
         ->fillForm(['member_id' => $this->member->id])

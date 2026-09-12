@@ -128,6 +128,7 @@ test('promoting a Prospective in training mode leaves the member untouched', fun
         ->set('trainingMode', true)
         ->fillForm(['event_id' => $event->id, 'member_id' => $member->id])
         ->callAction('saveAndPromote', data: [
+            'preferred_name' => 'Real',
             'first_name' => 'Real',
             'last_name' => 'Name',
             'email' => 'real@example.com',

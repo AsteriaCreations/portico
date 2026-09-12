@@ -43,10 +43,26 @@ function clearMemberForPoolDayPass(Category $category, array $overrides = []): M
 
 test('the buy day pass action is visible once a member is selected, with no event picked and regardless of subscription eligibility', function () {
     $member = clearMemberForPoolDayPass($this->irregular, ['subscription_eligible' => false]);
+    // A qualifying event exists somewhere in the system, but nothing is
+    // selected on the page itself -- the button works independent of
+    // whatever event is currently picked.
+    Event::factory()->create(['event_date' => now()->addWeek()->toDateString(), 'pool_fee' => 15]);
 
     Livewire::test(CheckIn::class)
         ->fillForm(['member_id' => $member->id])
         ->assertActionVisible('purchaseAddOnDayPass');
+});
+
+test('the buy day pass action is hidden when no event anywhere has a fee for the add-on', function () {
+    $member = clearMemberForPoolDayPass($this->irregular);
+    // Tonight's event has an entry fee but no pool component, and there's
+    // no other event (past or future) with a pool fee either -- there is
+    // genuinely nothing to sell a day pass for.
+    Event::factory()->create(['event_date' => now()->toDateString(), 'entry_fee' => 5, 'pool_fee' => 0]);
+
+    Livewire::test(CheckIn::class)
+        ->fillForm(['member_id' => $member->id])
+        ->assertActionHidden('purchaseAddOnDayPass');
 });
 
 test('a member who is not subscription-eligible can still buy a pool day pass', function () {

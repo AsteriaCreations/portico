@@ -569,7 +569,7 @@ These are `App\Enums\Role`'s case names — the actual permission tier, gates, a
 | Check members in, take payment | ✓ | ✓ | ✓ | ✓ |
 | See admit **decision** (block/warn/ok) | ✓ | ✓ | ✓ | ✓ |
 | See member name, category, under-21 status | ✓ | ✓ | ✓ | ✓ |
-| Complete a Prospective's name/email/**DOB**, promote to Irregular | ✓ | ✓ | ✓ | ✓ |
+| Complete a Prospective's preferred name/name/email/**DOB**, promote to Irregular | ✓ | ✓ | ✓ | ✓ |
 | Collect a subscription payment *during check-in* (member must be subscription-eligible; fixed at the current plan price) | ✓ | ✓ | ✓ | ✓ |
 | Redeem voucher credit *during check-in* (own or another member's balance; partial amounts allowed) | ✓ | ✓ | ✓ | ✓ |
 | Record a register-box transaction outside the normal event/subscription flow (vendor payment, rental, donation) | ✓ | ✓ | ✓ | ✓ |
@@ -616,7 +616,7 @@ Five subtleties this encodes: **Door has bounded write** (it may set the five id
 
 ## Prospective → Irregular (the sign-up transition)
 
-Per your definitions: Prospective = "vetted, never been here"; Irregular = "vetted, been here at least once." So the **first successful check-in is the transition.** At that check-in the Door volunteer captures first name, last name, email, and — only if under 21 — DOB; on save, the member's category flips to Irregular. This is why Door needs bounded write, and it's the one place Door touches DOB.
+Per your definitions: Prospective = "vetted, never been here"; Irregular = "vetted, been here at least once." So the **first successful check-in is the transition.** At that check-in the Door volunteer captures preferred name, first name, last name, email, and — only if under 21 — DOB; on save, the member's category flips to Irregular. This is why Door needs bounded write, and it's the one place Door touches DOB.
 
 ---
 
