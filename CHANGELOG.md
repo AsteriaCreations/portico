@@ -14,6 +14,9 @@ is fixes only.
 - Forced password change: an Admin+ can flag a user account ("Require password change at
   next login" on the Users form) so its next sign-in is redirected to a dedicated
   change-password screen before anything else in the panel is reachable.
+- `scripts/deploy.ps1` automates pulling down an update on a Windows box: stop the web
+  server, `git pull --ff-only`, reinstall dependencies, migrate, rebuild caches, restart —
+  see `docs/DEPLOYMENT.md` §7.
 
 ## [0.1.0] — 2026-09-08
 
