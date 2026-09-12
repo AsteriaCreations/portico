@@ -589,6 +589,7 @@ test('a prospective member with incomplete identity must be captured before chec
         ->assertActionHidden('checkIn')
         ->assertActionVisible('saveAndPromote')
         ->callAction('saveAndPromote', data: [
+            'preferred_name' => 'Newb',
             'first_name' => 'New',
             'last_name' => 'Member',
             'email' => 'new@example.com',
@@ -603,6 +604,7 @@ test('a prospective member with incomplete identity must be captured before chec
     $member->refresh();
     expect($member->category_id)->toBe($this->irregular->id)
         ->and($member->first_name)->toBe('New')
+        ->and($member->preferred_name)->toBe('Newb')
         ->and(Attendance::where('member_id', $member->id)->exists())->toBeTrue();
 });
 
@@ -641,6 +643,7 @@ test('save and promote requires dob once "appears to be under 21" is checked', f
     Livewire::test(CheckIn::class)
         ->fillForm(['member_id' => $member->id])
         ->callAction('saveAndPromote', data: [
+            'preferred_name' => 'Newb',
             'first_name' => 'New',
             'last_name' => 'Member',
             'email' => 'new@example.com',
@@ -657,6 +660,7 @@ test('save and promote captures dob when "appears to be under 21" is checked and
     Livewire::test(CheckIn::class)
         ->fillForm(['member_id' => $member->id])
         ->callAction('saveAndPromote', data: [
+            'preferred_name' => 'Newb',
             'first_name' => 'New',
             'last_name' => 'Member',
             'email' => 'new@example.com',
@@ -674,6 +678,7 @@ test('save and promote does not require dob when "appears to be under 21" is lef
     Livewire::test(CheckIn::class)
         ->fillForm(['member_id' => $member->id])
         ->callAction('saveAndPromote', data: [
+            'preferred_name' => 'Newb',
             'first_name' => 'New',
             'last_name' => 'Member',
             'email' => 'new@example.com',

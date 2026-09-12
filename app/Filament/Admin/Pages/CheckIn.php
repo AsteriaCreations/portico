@@ -912,6 +912,7 @@ class CheckIn extends Page implements HasTable
         return Action::make('saveAndPromote')
             ->label('Save & promote to Irregular')
             ->schema([
+                TextInput::make('preferred_name')->required()->maxLength(60),
                 TextInput::make('first_name')->required()->maxLength(60),
                 TextInput::make('last_name')->required()->maxLength(60),
                 TextInput::make('email')->required()->email()->maxLength(120),
@@ -938,6 +939,7 @@ class CheckIn extends Page implements HasTable
                 $irregular = Category::where('name', 'Irregular')->firstOrFail();
 
                 $member->update([
+                    'preferred_name' => $data['preferred_name'],
                     'first_name' => $data['first_name'],
                     'last_name' => $data['last_name'],
                     'email' => $data['email'],
@@ -1114,7 +1116,15 @@ class CheckIn extends Page implements HasTable
             // A member without valid paperwork for a gated add-on (e.g. a
             // lapsed Pool Waiver) can't buy a day pass for it -- a day pass
             // is pool use. Re-checked server-side in the closure too.
-            ->filter(fn (AddOn $addOn) => $member && $member->canUseAddOn($addOn));
+            ->filter(fn (AddOn $addOn) => $member && $member->canUseAddOn($addOn))
+            // Not tied to the event currently selected on the page (see
+            // above), but if literally no event anywhere -- today or
+            // future -- has a nonzero fee for this add-on, there's nothing
+            // to sell a pass for at all: the button would just open onto an
+            // empty Event Select. Real desk report: tonight's event had a
+            // $0 pool fee and staff were still offered "Buy Day Pass" with
+            // no qualifying event behind it.
+            ->filter(fn (AddOn $addOn) => static::addOnDayPassEventOptionsQuery($addOn)->exists());
         $defaultAddOnId = $dayPassableAddOns->count() === 1 ? $dayPassableAddOns->first()->id : null;
 
         return Action::make('purchaseAddOnDayPass')
