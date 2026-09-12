@@ -42,6 +42,7 @@ test('mount fills the form from the current singleton row', function () {
         'default_opening_float' => 200.50,
         'event_window_buffer_minutes' => 20,
         'hide_member_pii_by_default' => false,
+        'checkin_display_name_field' => 'username',
     ]);
 
     $this->actingAs(userWithRoleForSettings(Role::Manager));
@@ -54,6 +55,7 @@ test('mount fills the form from the current singleton row', function () {
             'default_opening_float' => 200.50,
             'event_window_buffer_minutes' => 20,
             'hide_member_pii_by_default' => false,
+            'checkin_display_name_field' => 'username',
         ]);
 });
 
@@ -68,6 +70,7 @@ test('saving updates the singleton row', function () {
             'default_opening_float' => 75.25,
             'event_window_buffer_minutes' => 10,
             'hide_member_pii_by_default' => false,
+            'checkin_display_name_field' => 'full_name',
         ])
         ->callAction('save')
         ->assertHasNoActionErrors();
@@ -79,7 +82,8 @@ test('saving updates the singleton row', function () {
         ->and($setting->venue_capacity)->toBe(200)
         ->and($setting->default_opening_float)->toBe(75.25)
         ->and($setting->event_window_buffer_minutes)->toBe(10)
-        ->and($setting->hide_member_pii_by_default)->toBeFalse();
+        ->and($setting->hide_member_pii_by_default)->toBeFalse()
+        ->and($setting->checkin_display_name_field)->toBe('full_name');
 });
 
 test('venue_capacity and default_opening_float can be cleared to null', function () {

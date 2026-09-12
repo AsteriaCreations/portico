@@ -423,4 +423,29 @@ class Member extends Model
 
         return $parts === [] ? ($member->username ?: "#{$member->id}") : implode(' · ', $parts);
     }
+
+    /**
+     * What the Check-In Desk shows for THIS member once they're selected --
+     * the greeting line, the checked-in roster, voucher labels, the guest
+     * sponsor note. Unlike pickerLabel() (a static helper for rendering many
+     * candidates in a search dropdown, deliberately gated by
+     * member_search_fields so PII is only exposed where staff actually
+     * search for it), this is an instance method for an already-selected
+     * member -- there's no picker/PII concern once the desk already knows
+     * exactly who this is. MembershipSetting::checkin_display_name_field
+     * picks the field; "full_name" is First Last (a natural greeting), not
+     * pickerLabel()'s "Last, First" (built for a sortable list). Never
+     * blank -- falls back to username if the chosen field has no value for
+     * this member.
+     */
+    public function displayName(): string
+    {
+        $value = match (MembershipSetting::current()->checkin_display_name_field ?: 'preferred_name') {
+            'full_name' => trim("{$this->first_name} {$this->last_name}"),
+            'username' => $this->username,
+            default => $this->preferred_name,
+        };
+
+        return filled($value) ? $value : $this->username;
+    }
 }
