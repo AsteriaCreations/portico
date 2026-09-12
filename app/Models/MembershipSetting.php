@@ -16,7 +16,7 @@ use Illuminate\Database\Eloquent\Model;
  * supplies the initial defaults for a fresh install — it's just no longer
  * read anywhere else in the app afterward.
  */
-#[Fillable(['subscription_eligibility_threshold', 'probation_period_days', 'venue_capacity', 'default_opening_float', 'event_window_buffer_minutes', 'org_name', 'role_labels', 'member_search_fields', 'checkin_display_name_field', 'hide_member_pii_by_default', 'vouchers_enabled', 'add_ons_enabled', 'showrunner_comp_requests_enabled', 'manager_perk_enabled', 'suspensions_enabled', 'pool_enabled', 'prepay_enabled', 'register_shifts_enabled', 'showrunner_payouts_enabled', 'instructor_payouts_enabled', 'showrunner_door_includes_pool', 'showrunner_door_includes_addons', 'visit_notes_enabled', 'behavior_notes_enabled'])]
+#[Fillable(['subscription_eligibility_threshold', 'probation_period_days', 'venue_capacity', 'default_opening_float', 'event_window_buffer_minutes', 'org_name', 'role_labels', 'member_search_fields', 'checkin_display_name_field', 'hide_member_pii_by_default', 'vouchers_enabled', 'add_ons_enabled', 'showrunner_comp_requests_enabled', 'manager_perk_enabled', 'suspensions_enabled', 'pool_enabled', 'prepay_enabled', 'register_shifts_enabled', 'showrunner_payouts_enabled', 'instructor_payouts_enabled', 'showrunner_door_includes_pool', 'showrunner_door_includes_addons', 'visit_notes_enabled', 'behavior_notes_enabled', 'upstream_check_enabled', 'upstream_remote', 'upstream_branch'])]
 class MembershipSetting extends Model
 {
     protected function casts(): array
@@ -44,6 +44,7 @@ class MembershipSetting extends Model
             'showrunner_door_includes_addons' => 'boolean',
             'visit_notes_enabled' => 'boolean',
             'behavior_notes_enabled' => 'boolean',
+            'upstream_check_enabled' => 'boolean',
         ];
     }
 
@@ -100,6 +101,12 @@ class MembershipSetting extends Model
             // had; a fresh install can turn these off on the Feature Flags page.
             'visit_notes_enabled' => true,
             'behavior_notes_enabled' => true,
+            // Off and unconfigured -- a fresh install has no upstream remote
+            // at all, and this never silently starts running git commands.
+            // See App\Services\UpstreamUpdateChecker.
+            'upstream_check_enabled' => false,
+            'upstream_remote' => null,
+            'upstream_branch' => 'main',
         ]);
     }
 }

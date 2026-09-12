@@ -131,6 +131,7 @@ register on a timer (Windows Task Scheduler, or cron). Wrappers live in `scripts
 | `backup:database` | nightly, low-traffic hour | `scripts/run-backup.bat` |
 | `events:notify-ended` | hourly | `scripts/run-notify-event-ended.bat` |
 | `vouchers:grant-comp-rewards` | hourly | `scripts/run-vouchers-grant-comp-rewards.bat` |
+| `upstream:check` | hourly, or your preference | `scripts/run-upstream-check.bat` — optional, only relevant if this fork tracks an upstream remote (§7) |
 
 For each Task Scheduler task: run whether the user is logged on or not, as the account
 that owns the project's `.env`; **Start in** = the project root; action = the `.bat`.
@@ -205,6 +206,17 @@ npm install && npm run build
 php artisan migrate --force
 php artisan storage:link && php artisan config:clear && php artisan optimize
 ```
+
+### Checking for upstream updates
+
+If this fork tracks an upstream remote (e.g. a fork of `AsteriaCreations/portico`) —
+a **second** remote, distinct from `origin` above — run `git remote add <name> <url>`
+on the server first; this app never adds a remote itself. Then set **Upstream
+remote** / **Upstream branch** on Membership Settings and turn on **Upstream update
+checking enabled** on Feature Flags. A scheduled `upstream:check` command (see §3)
+periodically `git fetch`es that remote; the **Upstream Updates** admin page (Admin+)
+then shows which commits are pending, entirely from local git state — no network
+call on page load. Check it before running `scripts/deploy.ps1`.
 
 ---
 

@@ -4,6 +4,7 @@ namespace App\Filament\Admin\Widgets;
 
 use App\Enums\Role;
 use App\Models\CommandRun;
+use App\Models\MembershipSetting;
 use Filament\Widgets\StatsOverviewWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
 
@@ -33,10 +34,16 @@ class ScheduledJobsWidget extends StatsOverviewWidget
 
     protected function getStats(): array
     {
-        return [
+        $stats = [
             $this->statFor('backup:database', 'Database backup'),
             $this->statFor('vouchers:grant-comp-rewards', 'Comp reward vouchers'),
         ];
+
+        if (MembershipSetting::current()->upstream_check_enabled) {
+            $stats[] = $this->statFor('upstream:check', 'Upstream check');
+        }
+
+        return $stats;
     }
 
     private function statFor(string $command, string $label): Stat
