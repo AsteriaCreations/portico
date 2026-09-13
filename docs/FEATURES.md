@@ -45,6 +45,7 @@ MEMBER MANAGEMENT
 - Members, Categories, Plans, Event Types as full CRUD resources
 - System-assigned member numbers
 - Ban / watchlist / deceased / missing-paperwork status tracking
+- Bulk "Require paperwork" action on the Members table (e.g. rolling out a new waiver) — flags each selected member individually so the audit trail still logs every change
 - Time-boxed suspensions (banned_until) with auto-expiry
 - One-time per-event ban exceptions
 - Computed probation status (derived, not stored)

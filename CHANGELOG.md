@@ -21,6 +21,9 @@ is fixes only.
   `git fetch`es a configured remote, and a new Admin+ "Upstream Updates" page shows which
   commits are pending — locally, no network call per page load. Useful for any fork
   tracking an upstream remote; inert and invisible until configured.
+- Members table gains a "Require paperwork" bulk action, so a club rolling out a new
+  waiver can flag a selected group as needing it re-confirmed, instead of toggling each
+  member individually — each flip is still logged to the member status audit trail.
 
 ## [0.1.0] — 2026-09-08
 
