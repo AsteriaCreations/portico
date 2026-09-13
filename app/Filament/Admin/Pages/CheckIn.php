@@ -1718,6 +1718,40 @@ class CheckIn extends Page implements HasTable
             });
     }
 
+    // The reverse of ActivePatrons::departAction() -- a departed attendance
+    // row drops off that page's own query entirely (whereNull('departed_at')),
+    // so there's no undo surface there; this is where staff would naturally
+    // notice someone's back anyway, since they'd search for the member here
+    // the same way as any other arrival. Clears departed_at on the same row
+    // rather than creating a new one -- they already paid for tonight, so
+    // this is "still here," not a second visit. Same gate as Depart itself.
+    public function markAsReturnedAction(): Action
+    {
+        $attendance = $this->getExistingAttendance();
+
+        return Action::make('markAsReturned')
+            ->label('Mark as returned')
+            ->color('success')
+            ->visible(fn (): bool => (bool) ($attendance?->departed_at) && Gate::allows('record-departures'))
+            ->action(function (): void {
+                if ($this->haltForTraining('Practice: mark-as-returned simulated.')) {
+                    return;
+                }
+
+                // Re-checked here, not just via ->visible() -- same
+                // defensive pattern as ActivePatrons::departAction() and
+                // every other standalone action on this page.
+                abort_unless(Gate::allows('record-departures'), 403);
+
+                $attendance = $this->getExistingAttendance();
+                abort_unless($attendance && $attendance->departed_at !== null, 404);
+
+                $attendance->update(['departed_at' => null]);
+
+                Notification::make()->title('Marked as returned')->success()->send();
+            });
+    }
+
     /**
      * Back check-in: everyone still on the prepay list for the selected
      * event, with a one-click "mark arrived" per row — a second entry point

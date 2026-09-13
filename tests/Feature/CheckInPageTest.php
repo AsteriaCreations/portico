@@ -1808,6 +1808,38 @@ test('markArrivedAction is never blocked by capacity', function () {
     expect($attendance->refresh()->checked_in_at)->not->toBeNull();
 });
 
+test('markAsReturnedAction is hidden for an ordinary checked-in, non-departed attendance', function () {
+    $member = clearMember($this->irregular);
+    $event = Event::factory()->create(['event_date' => now()->toDateString(), 'entry_fee' => 20]);
+    Attendance::factory()->for($member)->for($event)->create(['checked_in_at' => now(), 'departed_at' => null]);
+
+    Livewire::test(CheckIn::class)
+        ->fillForm(['event_id' => $event->id, 'member_id' => $member->id])
+        ->assertActionHidden('markAsReturned');
+});
+
+test('markAsReturnedAction is visible once departed and clears departed_at without touching checked_in_at or amount_paid', function () {
+    $member = clearMember($this->irregular);
+    $event = Event::factory()->create(['event_date' => now()->toDateString(), 'entry_fee' => 20]);
+    $checkedInAt = now()->subHour();
+    $attendance = Attendance::factory()->for($member)->for($event)->create([
+        'checked_in_at' => $checkedInAt,
+        'departed_at' => now()->subMinutes(10),
+        'amount_paid' => 20,
+    ]);
+
+    Livewire::test(CheckIn::class)
+        ->fillForm(['event_id' => $event->id, 'member_id' => $member->id])
+        ->assertActionVisible('markAsReturned')
+        ->callAction('markAsReturned')
+        ->assertHasNoActionErrors();
+
+    $attendance->refresh();
+    expect($attendance->departed_at)->toBeNull()
+        ->and($attendance->checked_in_at->timestamp)->toBe($checkedInAt->timestamp)
+        ->and((float) $attendance->amount_paid)->toEqual(20.0);
+});
+
 test('the back check-in table lists unarrived attendance for the selected event and marks arrived per row', function () {
     $member = clearMember($this->irregular);
     $event = Event::factory()->create(['event_date' => now()->toDateString(), 'entry_fee' => 40]);
