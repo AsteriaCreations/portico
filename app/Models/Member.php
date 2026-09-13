@@ -234,19 +234,24 @@ class Member extends Model
 
     /**
      * A one-time-only payment method (Venmo, PayPal — any row flagged
-     * payment_methods.one_time_only) may be used once per member, ever,
-     * across both entry and subscription payments. Computed from actual
-     * payment history rather than a stored flag, the same "derived, never
-     * stored" shape as subscription eligibility. Using any one of them
-     * locks out all of them (house rule: one electronic payment per
-     * member, not one per brand).
+     * payment_methods.one_time_only) may be used once per member, ever, but
+     * only for entry-tier payments — check-in itself and a per-event add-on
+     * day pass. It is deliberately NOT restricted for a subscription/
+     * membership purchase (purchaseSubscriptionAction, the Subscriptions
+     * resource's bulk purchase, or the Manager/Owner perk): a member can pay
+     * their membership by Venmo/PayPal as many times as they like, it's only
+     * a gate on using it for entry. Computed from actual payment history
+     * rather than a stored flag, the same "derived, never stored" shape as
+     * subscription eligibility. Using any one of them locks out all of them
+     * (house rule: one electronic entry payment per member, not one per
+     * brand).
      */
     public function hasUsedOneTimeMethod(): bool
     {
         $codes = PaymentMethod::oneTimeCodes();
 
         return $this->attendance()->whereIn('payment_method', $codes)->exists()
-            || $this->subscriptions()->whereIn('payment_method', $codes)->exists();
+            || $this->addOnDayPasses()->whereIn('payment_method', $codes)->exists();
     }
 
     /**

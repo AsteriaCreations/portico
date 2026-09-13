@@ -84,6 +84,51 @@ test('the bulk-purchase action creates a correctly-split bundle', function () {
         ->and((float) $rows->sum('amount_paid'))->toEqual(175.0);
 });
 
+test('the bulk-purchase action adds the venmo transaction fee onto the first covered month', function () {
+    Plan::create(['add_on_id' => $this->entry->id, 'duration_months' => 1, 'price' => 60, 'effective_from' => '2026-01-01']);
+    Plan::create(['add_on_id' => $this->entry->id, 'duration_months' => 3, 'price' => 175, 'effective_from' => '2026-01-01']);
+    $member = Member::factory()->create(['subscription_eligible' => true]);
+
+    Livewire::test(ListSubscriptions::class)
+        ->callAction('bulkPurchase', data: [
+            'member_id' => $member->id,
+            'add_on_id' => $this->entry->id,
+            'desired_start' => '2026-07-01',
+            'duration_months' => 3,
+            'payment_method' => 'venmo',
+            'paid_on' => '2026-07-01',
+        ])
+        ->assertHasNoActionErrors();
+
+    $rows = Subscription::where('member_id', $member->id)->orderBy('covered_month')->get();
+
+    // $175 split 3 ways is 58.34/58.33/58.33 (splitCents() puts the extra
+    // cent on the first row); the $2 venmo fee is folded onto that same
+    // first row.
+    expect((float) $rows->sum('amount_paid'))->toEqual(177.0)
+        ->and((float) $rows->first()->amount_paid)->toEqual(58.34 + 2.0);
+});
+
+test('the bulk-purchase action is never one-time-restricted, even for venmo used twice', function () {
+    Plan::create(['add_on_id' => $this->entry->id, 'duration_months' => 1, 'price' => 60, 'effective_from' => '2026-01-01']);
+    $member = Member::factory()->create(['subscription_eligible' => true]);
+
+    foreach (['2026-07-01', '2026-08-01'] as $desiredStart) {
+        Livewire::test(ListSubscriptions::class)
+            ->callAction('bulkPurchase', data: [
+                'member_id' => $member->id,
+                'add_on_id' => $this->entry->id,
+                'desired_start' => $desiredStart,
+                'duration_months' => 1,
+                'payment_method' => 'venmo',
+                'paid_on' => $desiredStart,
+            ])
+            ->assertHasNoActionErrors();
+    }
+
+    expect(Subscription::where('member_id', $member->id)->count())->toBe(2);
+});
+
 test('the bulk-purchase action rejects a non-subscription-eligible member', function () {
     Plan::create(['add_on_id' => $this->entry->id, 'duration_months' => 1, 'price' => 60, 'effective_from' => '2026-01-01']);
     Plan::create(['add_on_id' => $this->entry->id, 'duration_months' => 3, 'price' => 175, 'effective_from' => '2026-01-01']);

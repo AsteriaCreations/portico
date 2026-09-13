@@ -1347,6 +1347,113 @@ test('a non-one-time method (cash) never locks anything out', function () {
         ->and(Attendance::where('member_id', $member->id)->count())->toBe(2);
 });
 
+test('a venmo check-in adds the configured transaction fee to amount_paid', function () {
+    $member = clearMember($this->irregular);
+    $event = Event::factory()->create(['event_date' => now()->toDateString(), 'entry_fee' => 20, 'pool_fee' => 0]);
+
+    Livewire::test(CheckIn::class)
+        ->fillForm(['event_id' => $event->id, 'member_id' => $member->id])
+        ->callAction('checkIn', data: [
+            'checked_in_at' => now(),
+            'payment_method' => 'venmo',
+        ])
+        ->assertHasNoActionErrors();
+
+    $attendance = Attendance::where('member_id', $member->id)->where('event_id', $event->id)->firstOrFail();
+    expect((float) $attendance->amount_paid)->toEqual(22.0);
+});
+
+test('the one-time lock never applies to a subscription purchase — venmo can be used repeatedly for membership', function () {
+    $member = clearMember($this->irregular, ['subscription_eligible' => true]);
+
+    Livewire::test(CheckIn::class)
+        ->fillForm(['member_id' => $member->id])
+        ->callAction('purchaseSubscription', data: [
+            'add_on_id' => $this->entry->id,
+            'desired_start' => now()->startOfMonth(),
+            'duration_months' => '1',
+            'payment_method' => 'venmo',
+        ])
+        ->assertHasNoActionErrors();
+
+    $member->refresh();
+    // Buying membership by Venmo never stamps hospitality_note or locks the
+    // method out — that gate is entry-only (see Member::hasUsedOneTimeMethod()).
+    expect($member->hasUsedOneTimeMethod())->toBeFalse()
+        ->and($member->hospitality_note)->toBeNull();
+
+    // A second month, still by Venmo, is likewise unrestricted.
+    Livewire::test(CheckIn::class)
+        ->fillForm(['member_id' => $member->id])
+        ->callAction('purchaseSubscription', data: [
+            'add_on_id' => $this->entry->id,
+            'desired_start' => now()->addMonthNoOverflow()->startOfMonth(),
+            'duration_months' => '1',
+            'payment_method' => 'venmo',
+        ])
+        ->assertHasNoActionErrors();
+
+    expect(Subscription::where('member_id', $member->id)->count())->toBe(2);
+
+    // But the entry check-in field is still gated by the desk's own
+    // one-time history (empty here), and unrelated to the subscription
+    // purchases above.
+    $event = Event::factory()->create(['event_date' => now()->toDateString(), 'entry_fee' => 20]);
+    Livewire::test(CheckIn::class)
+        ->fillForm(['event_id' => $event->id, 'member_id' => $member->id])
+        ->callAction('checkIn', data: ['checked_in_at' => now(), 'payment_method' => 'venmo'])
+        ->assertHasNoActionErrors();
+});
+
+test('a standalone venmo subscription purchase adds the transaction fee to the recorded amount', function () {
+    $member = clearMember($this->irregular, ['subscription_eligible' => true]);
+
+    Livewire::test(CheckIn::class)
+        ->fillForm(['member_id' => $member->id])
+        ->callAction('purchaseSubscription', data: [
+            'add_on_id' => $this->entry->id,
+            'desired_start' => now()->startOfMonth(),
+            'duration_months' => '1',
+            'payment_method' => 'venmo',
+        ])
+        ->assertHasNoActionErrors();
+
+    $subscription = Subscription::where('member_id', $member->id)->firstOrFail();
+    expect((float) $subscription->amount_paid)->toEqual(62.0);
+});
+
+test('a venmo day pass is still one-time-restricted (entry-tier) and includes the transaction fee', function () {
+    $member = clearMember($this->irregular);
+    $eventOne = Event::factory()->create(['event_date' => now()->toDateString(), 'pool_fee' => 15]);
+    $eventTwo = Event::factory()->create(['event_date' => '2026-07-26', 'pool_fee' => 15]);
+
+    Livewire::test(CheckIn::class)
+        ->fillForm(['member_id' => $member->id])
+        ->callAction('purchaseAddOnDayPass', data: [
+            'add_on_id' => $this->pool->id,
+            'event_id' => $eventOne->id,
+            'payment_method' => 'venmo',
+        ])
+        ->assertHasNoActionErrors();
+
+    $pass = AddOnDayPass::where('member_id', $member->id)->where('event_id', $eventOne->id)->firstOrFail();
+    expect((float) $pass->amount_paid)->toEqual(17.0);
+
+    $member->refresh();
+    expect($member->hasUsedOneTimeMethod())->toBeTrue();
+
+    Livewire::test(CheckIn::class)
+        ->fillForm(['member_id' => $member->id])
+        ->callAction('purchaseAddOnDayPass', data: [
+            'add_on_id' => $this->pool->id,
+            'event_id' => $eventTwo->id,
+            'payment_method' => 'venmo',
+        ])
+        ->assertHasActionErrors(['payment_method']);
+
+    expect(AddOnDayPass::where('member_id', $member->id)->where('event_id', $eventTwo->id)->exists())->toBeFalse();
+});
+
 test('the register-guest action is hidden until the host has been checked in tonight', function () {
     $member = clearMember($this->irregular);
     $event = Event::factory()->create(['event_date' => now()->toDateString(), 'entry_fee' => 20]);

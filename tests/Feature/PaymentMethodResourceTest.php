@@ -35,6 +35,27 @@ test('a manager can create a payment method', function () {
     expect(PaymentMethod::where('code', 'check')->exists())->toBeTrue();
 });
 
+test('venmo, paypal, and electronic are seeded with a $2 transaction fee; cash and other are not', function () {
+    expect(PaymentMethod::feeFor('venmo'))->toEqual(2.0)
+        ->and(PaymentMethod::feeFor('paypal'))->toEqual(2.0)
+        ->and(PaymentMethod::feeFor('electronic'))->toEqual(2.0)
+        ->and(PaymentMethod::feeFor('cash'))->toEqual(0.0)
+        ->and(PaymentMethod::feeFor('other'))->toEqual(0.0)
+        ->and(PaymentMethod::feeFor(null))->toEqual(0.0);
+});
+
+test('a manager can set a transaction fee on a payment method', function () {
+    $this->actingAs(User::factory()->create(['active' => true, 'role' => Role::Manager]));
+    $method = PaymentMethod::where('code', 'cash')->firstOrFail();
+
+    Livewire::test(EditPaymentMethod::class, ['record' => $method->getKey()])
+        ->fillForm(['transaction_fee' => 1.50])
+        ->call('save')
+        ->assertHasNoFormErrors();
+
+    expect((float) $method->refresh()->transaction_fee)->toEqual(1.5);
+});
+
 test('a door volunteer has no access to the payment methods resource', function () {
     $this->actingAs(User::factory()->create(['active' => true, 'role' => Role::Door]));
 

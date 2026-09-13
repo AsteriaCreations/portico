@@ -21,6 +21,8 @@ class PaymentMethodFactory extends Factory
             'label' => fake()->unique()->word(),
             'code' => fake()->unique()->slug(2),
             'requires_register_shift' => false,
+            'one_time_only' => false,
+            'transaction_fee' => 0,
             'sort_order' => 0,
             'active' => true,
         ];
