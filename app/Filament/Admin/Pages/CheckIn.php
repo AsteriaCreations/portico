@@ -436,7 +436,7 @@ class CheckIn extends Page implements HasTable
                 $options = ($member && $event && $eligible) ? $this->subscriptionOptions($addOn, $member, $event) : ['none' => 'No subscription payment'];
 
                 return Select::make("subscription_addon_{$addOn->id}_duration")
-                    ->label("{$addOn->name} Subscription")
+                    ->label("{$addOn->name} Subscription (covers tonight)")
                     ->live()
                     ->options($options)
                     ->default('none')
@@ -480,7 +480,7 @@ class CheckIn extends Page implements HasTable
                     ->live()
                     ->visible($canPreviewPricing && MembershipSetting::current()->add_ons_enabled),
                 Select::make('subscription_regular_duration')
-                    ->label('Regular Subscription')
+                    ->label('Regular Subscription (covers tonight)')
                     ->live()
                     ->options($regularOptions)
                     ->default('none')
@@ -1004,7 +1004,8 @@ class CheckIn extends Page implements HasTable
         $lockedOneTimeCodes = $member?->hasUsedOneTimeMethod() ? PaymentMethod::oneTimeCodes()->all() : [];
 
         return Action::make('purchaseSubscription')
-            ->label('Buy Subscription')
+            ->label('Buy Subscription (no check-in)')
+            ->modalDescription('This purchases coverage on its own — it does not check the member in or apply to any event tonight. To cover tonight\'s entry with a subscription instead, use the Regular/Pool Subscription options under Payment options below.')
             ->visible(fn (): bool => (bool) $member?->isSubscriptionEligible())
             ->schema([
                 Select::make('add_on_id')

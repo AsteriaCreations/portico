@@ -40,6 +40,7 @@
         <p>4. Take payment for the amount on the <strong>Due</strong> line, then click <strong>Check in</strong>.</p>
         <p>If a watchlist note asks for a staff-channel message, send it first, then tick the acknowledgement — you can't proceed without it.</p>
         <p>Everything folded away — selling a subscription or day pass, add-ons / vouchers / comps, the cash box — is still here, one click open, and never needed for a normal check-in.</p>
+        <p>Two different things say "subscription": <strong>Payment options</strong> below uses one to cover tonight's entry fee, as part of this same check-in. <strong>Sell a subscription or day pass</strong> is a separate, standalone sale that doesn't check anyone in.</p>
     </x-screen-instructions>
 
     {{-- No wire:poll here on purpose: this whole section shares one Livewire message-bus
@@ -287,7 +288,7 @@
                 {{-- Folded: adjustments to what's owed. Closed by default so a
                 normal walk-in is just Due + Check in. The Due line below stays
                 outside the fold and reacts live to anything changed in here. --}}
-                <x-desk-fold title="Payment options" summary="Subscription, add-ons, voucher, comp">
+                <x-desk-fold title="Payment options" summary="Cover tonight — subscription, add-ons, voucher, comp">
                     {{ $this->pricingForm }}
                 </x-desk-fold>
 
