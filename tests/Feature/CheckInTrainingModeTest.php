@@ -202,6 +202,23 @@ test('marking a prepaid patron arrived in training mode does not check them in',
     expect($attendance->fresh()->checked_in_at)->toBeNull();
 });
 
+test('marking a departed patron as returned in training mode does not clear departed_at', function () {
+    $member = trainingClearMember($this->irregular);
+    $event = Event::factory()->create(['event_date' => now()->toDateString(), 'entry_fee' => 20]);
+    $attendance = Attendance::factory()->for($member)->for($event)->create([
+        'checked_in_at' => now(),
+        'departed_at' => now(),
+    ]);
+
+    Livewire::test(CheckIn::class)
+        ->set('trainingMode', true)
+        ->fillForm(['event_id' => $event->id, 'member_id' => $member->id])
+        ->callAction('markAsReturned')
+        ->assertHasNoActionErrors();
+
+    expect($attendance->fresh()->departed_at)->not->toBeNull();
+});
+
 test('changing the register picker in training mode does not persist the user default', function () {
     Livewire::test(CheckIn::class)
         ->set('trainingMode', true)

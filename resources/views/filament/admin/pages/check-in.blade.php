@@ -252,16 +252,27 @@
 
         @if ($attendance && $attendance->checked_in_at)
             <x-filament::section>
-                <p class="font-medium text-success-600">
-                    Checked in at {{ $attendance->checked_in_at->format('g:i A') }} — paid ${{ number_format($attendance->amount_paid, 2) }}
-                </p>
+                @if ($attendance->departed_at)
+                    <p class="font-medium text-warning-600">
+                        Checked in at {{ $attendance->checked_in_at->format('g:i A') }} — paid ${{ number_format($attendance->amount_paid, 2) }}.
+                        Marked departed at {{ $attendance->departed_at->format('g:i A') }}.
+                    </p>
 
-                @if ($member->isOnProbation())
-                    <p class="mt-2 text-sm text-gray-500">On probation — cannot bring a guest yet.</p>
-                @else
                     <div class="mt-4">
-                        {{ $this->registerGuestAction }}
+                        {{ $this->markAsReturnedAction }}
                     </div>
+                @else
+                    <p class="font-medium text-success-600">
+                        Checked in at {{ $attendance->checked_in_at->format('g:i A') }} — paid ${{ number_format($attendance->amount_paid, 2) }}
+                    </p>
+
+                    @if ($member->isOnProbation())
+                        <p class="mt-2 text-sm text-gray-500">On probation — cannot bring a guest yet.</p>
+                    @else
+                        <div class="mt-4">
+                            {{ $this->registerGuestAction }}
+                        </div>
+                    @endif
                 @endif
             </x-filament::section>
         @elseif ($attendance)
