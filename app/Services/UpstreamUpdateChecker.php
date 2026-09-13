@@ -34,7 +34,7 @@ class UpstreamUpdateChecker
 
         $result = Process::path(base_path())
             ->timeout(30)
-            ->run(['git', 'fetch', $remote]);
+            ->run([...$this->gitPrefix(), 'fetch', $remote]);
 
         if ($result->failed()) {
             throw new RuntimeException("git fetch {$remote} failed: {$result->errorOutput()}");
@@ -58,7 +58,7 @@ class UpstreamUpdateChecker
 
         $resolved = Process::path(base_path())
             ->timeout(10)
-            ->run(['git', 'rev-parse', '--verify', '--quiet', $ref]);
+            ->run([...$this->gitPrefix(), 'rev-parse', '--verify', '--quiet', $ref]);
 
         if ($resolved->failed()) {
             return null;
@@ -66,13 +66,30 @@ class UpstreamUpdateChecker
 
         $log = Process::path(base_path())
             ->timeout(10)
-            ->run(['git', 'log', "HEAD..{$ref}", '--format=%H%x1f%h%x1f%s%x1f%an%x1f%aI', '-n', (string) $limit]);
+            ->run([...$this->gitPrefix(), 'log', "HEAD..{$ref}", '--format=%H%x1f%h%x1f%s%x1f%an%x1f%aI', '-n', (string) $limit]);
 
         if ($log->failed()) {
             throw new RuntimeException("git log HEAD..{$ref} failed: {$log->errorOutput()}");
         }
 
         return $this->parseLog($log->output());
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function gitPrefix(): array
+    {
+        // A web-request-triggered call (the "Check for updates now" button)
+        // can run as a different OS account than whoever owns this checkout
+        // -- e.g. Apache running as LocalSystem against a repo owned by a
+        // dedicated deploy account -- and git's "dubious ownership" check
+        // (CVE-2022-24765) then refuses to operate at all unless that exact
+        // directory is allow-listed. Scoping the exception to just this
+        // invocation (rather than requiring a one-time `git config --system
+        // --add safe.directory ...` on every box) means this works out of
+        // the box for any fork, with no manual setup step to forget.
+        return ['git', '-c', 'safe.directory='.base_path()];
     }
 
     private function assertSafeRef(string $ref): void

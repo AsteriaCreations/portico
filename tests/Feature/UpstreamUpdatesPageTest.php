@@ -43,10 +43,10 @@ test('it shows a list of pending commits when the ref resolves with some ahead',
 
     $line = "abc123full\x1fabc123\x1fFix the widget rendering bug\x1fJane Doe\x1f2026-09-01T12:00:00-05:00";
     Process::fake(function ($process) use ($line) {
-        if ($process->command[1] === 'rev-parse') {
+        if ($process->command[3] === 'rev-parse') {
             return Process::result(exitCode: 0);
         }
-        if ($process->command[1] === 'log') {
+        if ($process->command[3] === 'log') {
             return Process::result(output: $line."\n");
         }
 
