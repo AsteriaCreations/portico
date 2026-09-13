@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\MemberStatusField;
 use App\Enums\Role;
 use App\Filament\Admin\Resources\Members\Pages\CreateMember;
 use App\Filament\Admin\Resources\Members\Pages\EditMember;
@@ -7,6 +8,7 @@ use App\Filament\Admin\Resources\Members\Pages\ListMembers;
 use App\Models\Category;
 use App\Models\Member;
 use App\Models\MembershipSetting;
+use App\Models\MemberStatusChange;
 use App\Models\Skill;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -74,6 +76,30 @@ test('a manager can bulk-change the category for selected members, leaving unsel
 
     expect($selected->fresh()->pluck('category_id')->unique()->all())->toBe([$newCategory->id])
         ->and($untouched->fresh()->category_id)->toBe($this->category->id);
+});
+
+test('a manager can bulk-require paperwork for selected members, leaving unselected members untouched and logging an audit row each', function () {
+    $selected = Member::factory()->count(2)->create(['category_id' => $this->category->id, 'missing_paperwork' => false]);
+    $untouched = Member::factory()->create(['category_id' => $this->category->id, 'missing_paperwork' => false]);
+
+    Livewire::test(ListMembers::class)
+        ->callTableBulkAction('requirePaperwork', $selected)
+        ->assertHasNoTableBulkActionErrors();
+
+    expect($selected->fresh()->pluck('missing_paperwork')->unique()->all())->toBe([true])
+        ->and($untouched->fresh()->missing_paperwork)->toBeFalse()
+        ->and(MemberStatusChange::where('status', MemberStatusField::MissingPaperwork)->whereIn('member_id', $selected->pluck('id'))->count())->toBe(2);
+});
+
+test('bulk-requiring paperwork for an already-flagged member does not duplicate the audit row', function () {
+    $member = Member::factory()->create(['category_id' => $this->category->id, 'missing_paperwork' => true]);
+
+    Livewire::test(ListMembers::class)
+        ->callTableBulkAction('requirePaperwork', collect([$member]))
+        ->assertHasNoTableBulkActionErrors();
+
+    expect($member->fresh()->missing_paperwork)->toBeTrue()
+        ->and(MemberStatusChange::where('status', MemberStatusField::MissingPaperwork)->where('member_id', $member->id)->count())->toBe(0);
 });
 
 test('the email list export is empty when no member is opted in with an email', function () {

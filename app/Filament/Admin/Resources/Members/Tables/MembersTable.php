@@ -144,6 +144,31 @@ class MembersTable
                                 ->success()
                                 ->send();
                         }),
+                    // Flags a member as needing paperwork again (e.g. the
+                    // club rolled out a new waiver text and wants everyone
+                    // re-confirmed), regardless of what member_paperwork
+                    // already has on file for them -- Standard Paperwork has
+                    // no renewal_months/version concept of its own, so this
+                    // is the mass equivalent of toggling missing_paperwork
+                    // on the plain edit form one member at a time. Routes
+                    // through the same per-record ->update() (not a mass
+                    // query-builder update) so MemberObserver still logs
+                    // each change to member_status_changes.
+                    BulkAction::make('requirePaperwork')
+                        ->label('Require paperwork')
+                        ->icon('heroicon-o-document-text')
+                        ->requiresConfirmation()
+                        ->modalDescription('Flags each selected member as missing paperwork. They\'ll be prompted to reconfirm it (e.g. sign the new waiver) the next time they\'re selected at the Check-In Desk.')
+                        ->authorizeIndividualRecords('update')
+                        ->deselectRecordsAfterCompletion()
+                        ->action(function (Collection $records): void {
+                            $records->each(fn (Member $record) => $record->update(['missing_paperwork' => true]));
+
+                            Notification::make()
+                                ->title('Paperwork required for '.$records->count().' member(s)')
+                                ->success()
+                                ->send();
+                        }),
                 ]),
             ]);
     }
