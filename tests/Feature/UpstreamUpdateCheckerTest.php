@@ -8,7 +8,7 @@ uses(RefreshDatabase::class);
 
 test('pendingCommits returns null when the ref cannot be resolved', function () {
     Process::fake(function ($process) {
-        if ($process->command[1] === 'rev-parse') {
+        if ($process->command[3] === 'rev-parse') {
             return Process::result(exitCode: 1);
         }
 
@@ -20,10 +20,10 @@ test('pendingCommits returns null when the ref cannot be resolved', function () 
 
 test('pendingCommits returns an empty array when the ref resolves with nothing pending', function () {
     Process::fake(function ($process) {
-        if ($process->command[1] === 'rev-parse') {
+        if ($process->command[3] === 'rev-parse') {
             return Process::result(exitCode: 0);
         }
-        if ($process->command[1] === 'log') {
+        if ($process->command[3] === 'log') {
             return Process::result(output: '');
         }
 
@@ -37,10 +37,10 @@ test('pendingCommits parses git log output into commit rows', function () {
     $line = "abc123full\x1fabc123\x1fFix the thing\x1fJane Doe\x1f2026-09-01T12:00:00-05:00";
 
     Process::fake(function ($process) use ($line) {
-        if ($process->command[1] === 'rev-parse') {
+        if ($process->command[3] === 'rev-parse') {
             return Process::result(exitCode: 0);
         }
-        if ($process->command[1] === 'log') {
+        if ($process->command[3] === 'log') {
             return Process::result(output: $line."\n");
         }
 
@@ -79,4 +79,16 @@ test('an unsafe branch name is rejected before any process runs', function () {
         ->toThrow(InvalidArgumentException::class);
 
     Process::assertNothingRan();
+});
+
+test('every git call scopes a safe.directory exception to this checkout', function () {
+    // A web-request-triggered call can run as a different OS account than
+    // whoever owns the checkout (e.g. a service account vs. Apache running
+    // as LocalSystem), which trips git's "dubious ownership" protection
+    // unless this exact directory is allow-listed for that invocation.
+    Process::fake(['*' => Process::result(exitCode: 0)]);
+
+    app(UpstreamUpdateChecker::class)->fetch('portico');
+
+    Process::assertRan(fn ($process) => $process->command === ['git', '-c', 'safe.directory='.base_path(), 'fetch', 'portico']);
 });
