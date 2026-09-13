@@ -1001,7 +1001,6 @@ class CheckIn extends Page implements HasTable
     {
         $member = $this->getSelectedMember();
         $openShift = $this->getOpenShift();
-        $lockedOneTimeCodes = $member?->hasUsedOneTimeMethod() ? PaymentMethod::oneTimeCodes()->all() : [];
 
         return Action::make('purchaseSubscription')
             ->label('Buy Subscription (no check-in)')
@@ -1040,11 +1039,14 @@ class CheckIn extends Page implements HasTable
                             ->all();
                     })
                     ->required(),
+                // Never one-time-restricted, even for a Venmo/PayPal/electronic
+                // method — that gate only applies to entry (check-in) and day
+                // passes; a member may pay for their membership by the same
+                // method any number of times. See Member::hasUsedOneTimeMethod().
                 Select::make('payment_method')
-                    ->options(collect($this->paymentMethodOptions($openShift))
-                        ->map(fn (string $label, string $code) => in_array($code, $lockedOneTimeCodes, true) ? "{$label} (cannot use — already used)" : $label)
-                        ->all())
-                    ->disableOptionWhen(fn (string $value): bool => in_array($value, $lockedOneTimeCodes, true)),
+                    ->live()
+                    ->options($this->paymentMethodOptions($openShift))
+                    ->helperText(fn (Get $get): ?string => PaymentMethod::feeHelperText($get('payment_method'))),
             ])
             ->action(function (array $data): void {
                 if ($this->haltForTraining('Practice: subscription purchase simulated.')) {
@@ -1079,11 +1081,19 @@ class CheckIn extends Page implements HasTable
                     $this->getOpenShift(),
                 );
 
-                if (in_array($paymentMethod, PaymentMethod::oneTimeCodes()->all(), true)) {
-                    $member->recordOneTimeMethodUsage(PaymentMethod::where('code', $paymentMethod)->value('label'));
+                // Folded onto the first covered month's row rather than
+                // tracked as its own ledger — one flat fee per transaction,
+                // not per month, and this is the same "fold into the
+                // existing column" choice already made for Event Add-Ons.
+                // Deliberately never calls recordOneTimeMethodUsage() here:
+                // a subscription/membership purchase is never one-time-
+                // restricted, so there's nothing to stamp.
+                $first = $rows->first();
+                $transactionFee = $rows->sum('amount_paid') > 0 ? PaymentMethod::feeFor($paymentMethod) : 0.0;
+                if ($transactionFee > 0) {
+                    $first->update(['amount_paid' => $first->amount_paid + $transactionFee]);
                 }
 
-                $first = $rows->first();
                 $last = $rows->last();
                 $rangeLabel = $first->covered_month->isSameMonth($last->covered_month)
                     ? $first->covered_month->format('F Y')
@@ -1154,10 +1164,12 @@ class CheckIn extends Page implements HasTable
                     ->required()
                     ->searchable(),
                 Select::make('payment_method')
+                    ->live()
                     ->options(collect($this->paymentMethodOptions($openShift))
                         ->map(fn (string $label, string $code) => in_array($code, $lockedOneTimeCodes, true) ? "{$label} (cannot use — already used)" : $label)
                         ->all())
-                    ->disableOptionWhen(fn (string $value): bool => in_array($value, $lockedOneTimeCodes, true)),
+                    ->disableOptionWhen(fn (string $value): bool => in_array($value, $lockedOneTimeCodes, true))
+                    ->helperText(fn (Get $get): ?string => PaymentMethod::feeHelperText($get('payment_method'))),
             ])
             ->action(function (array $data): void {
                 if ($this->haltForTraining('Practice: day pass simulated.')) {
@@ -1185,13 +1197,14 @@ class CheckIn extends Page implements HasTable
                 abort_unless($price !== null, 422);
 
                 $paymentMethod = $data['payment_method'] ?? null;
+                $transactionFee = $price > 0 ? PaymentMethod::feeFor($paymentMethod) : 0.0;
 
                 try {
                     $pass = AddOnDayPass::create([
                         'member_id' => $member->id,
                         'event_id' => $event->id,
                         'add_on_id' => $addOn->id,
-                        'amount_paid' => $price,
+                        'amount_paid' => $price + $transactionFee,
                         'payment_method' => $paymentMethod,
                         'register_shift_id' => $this->getOpenShift()?->id,
                         'recorded_by' => auth()->id(),
@@ -1382,10 +1395,12 @@ class CheckIn extends Page implements HasTable
                     // forced null for it below regardless of what's submitted.
                     ->visible(fn (): bool => ! $event || $event->isCurrentlyActive()),
                 Select::make('payment_method')
+                    ->live()
                     ->options(collect($this->paymentMethodOptions($openShift))
                         ->map(fn (string $label, string $code) => in_array($code, $lockedOneTimeCodes, true) ? "{$label} (cannot use — already used)" : $label)
                         ->all())
-                    ->disableOptionWhen(fn (string $value): bool => in_array($value, $lockedOneTimeCodes, true)),
+                    ->disableOptionWhen(fn (string $value): bool => in_array($value, $lockedOneTimeCodes, true))
+                    ->helperText(fn (Get $get): ?string => PaymentMethod::feeHelperText($get('payment_method'))),
                 TextInput::make('on_behalf_note')
                     ->label('On behalf of / guest note')
                     ->maxLength(120),
@@ -1580,6 +1595,17 @@ class CheckIn extends Page implements HasTable
                             }
                         }
 
+                        // Folded onto the attendance row rather than tracked
+                        // separately, same as add-ons above -- one flat fee
+                        // for the whole transaction (entry plus whatever
+                        // subscription was bundled in via the same payment_
+                        // method), zero when nothing is actually changing
+                        // hands (e.g. a fully comped/vouchered entry with no
+                        // bundled subscription).
+                        $transactionFee = ($breakdown->amountPaid + $addOnTotal + $subscriptionTotal) > 0
+                            ? PaymentMethod::feeFor($paymentMethod)
+                            : 0.0;
+
                         $attendance = Attendance::create([
                             'member_id' => $member->id,
                             'event_id' => $event->id,
@@ -1597,11 +1623,12 @@ class CheckIn extends Page implements HasTable
                             'comp_reason_id' => $compReasonId,
                             ...$breakdown->toAttendanceAttributes(),
                             // Overrides the breakdown's own amount_paid so
-                            // add-ons land in the same column the register
-                            // reconciliation already sums (RegisterShiftService::
-                            // cashReceived()/revenueBreakdown()) — no changes
-                            // needed there.
-                            'amount_paid' => $breakdown->amountPaid + $addOnTotal,
+                            // add-ons and the transaction fee land in the
+                            // same column the register reconciliation
+                            // already sums (RegisterShiftService::
+                            // cashReceived()/revenueBreakdown()) — no
+                            // changes needed there.
+                            'amount_paid' => $breakdown->amountPaid + $addOnTotal + $transactionFee,
                         ]);
 
                         foreach ($selectedAddOns as $addOn) {

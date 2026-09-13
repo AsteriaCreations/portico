@@ -38,9 +38,18 @@ class PaymentMethodForm
                     ->default(false),
                 Toggle::make('one_time_only')
                     ->label('One-time use per member')
-                    ->helperText('A member may select this method only once, ever — doing so appends a dated note to their hospitality note and disables every one-time method for them afterward. E.g. Venmo, PayPal.')
+                    ->helperText('A member may select this method only once, ever, for entry (check-in) or a day pass — doing so appends a dated note to their hospitality note and disables every one-time method for them afterward. E.g. Venmo, PayPal. A subscription/membership purchase is never restricted by this, regardless of the flag.')
                     ->required()
                     ->default(false),
+                TextInput::make('transaction_fee')
+                    ->label('Transaction fee')
+                    ->helperText('A flat surcharge added to the total whenever this method is selected, e.g. $2 for Venmo/PayPal to cover the processor cost. Leave at 0 for no fee.')
+                    ->numeric()
+                    ->minValue(0)
+                    ->step(0.01)
+                    ->prefix('$')
+                    ->required()
+                    ->default(0),
                 TextInput::make('sort_order')
                     ->required()
                     ->numeric()

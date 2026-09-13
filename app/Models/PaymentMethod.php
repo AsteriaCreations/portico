@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Collection;
 
-#[Fillable(['label', 'code', 'requires_register_shift', 'one_time_only', 'sort_order', 'active'])]
+#[Fillable(['label', 'code', 'requires_register_shift', 'one_time_only', 'transaction_fee', 'sort_order', 'active'])]
 class PaymentMethod extends Model
 {
     /** @use HasFactory<PaymentMethodFactory> */
@@ -21,6 +21,7 @@ class PaymentMethod extends Model
         return [
             'requires_register_shift' => 'boolean',
             'one_time_only' => 'boolean',
+            'transaction_fee' => 'decimal:2',
             'sort_order' => 'integer',
             'active' => 'boolean',
         ];
@@ -64,5 +65,34 @@ class PaymentMethod extends Model
         return static::query()
             ->where('one_time_only', true)
             ->pluck('code');
+    }
+
+    /**
+     * The flat per-transaction surcharge configured for a method (0 for no
+     * code, an unknown code, or a method with none set) — e.g. $2 for
+     * Venmo/PayPal/electronic, modelling the real processor cost of
+     * accepting that method. Folded straight into amount_paid by the
+     * caller; this method never touches the database beyond the lookup.
+     */
+    public static function feeFor(?string $code): float
+    {
+        if (! $code) {
+            return 0.0;
+        }
+
+        return (float) (static::where('code', $code)->value('transaction_fee') ?? 0);
+    }
+
+    /**
+     * A short note for staff (e.g. "A $2.00 transaction fee will be added
+     * to the total.") shown live next to a payment_method Select so the fee
+     * is visible before the total is charged, not just baked silently into
+     * the recorded amount. Null when the method carries no fee.
+     */
+    public static function feeHelperText(?string $code): ?string
+    {
+        $fee = static::feeFor($code);
+
+        return $fee > 0 ? 'A $'.number_format($fee, 2).' transaction fee will be added to the total.' : null;
     }
 }

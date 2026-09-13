@@ -99,8 +99,14 @@ class ListSubscriptions extends ListRecords
                             ->all();
                     })
                     ->required(),
+                // Never one-time-restricted -- see Member::hasUsedOneTimeMethod():
+                // a subscription/membership purchase is exempt from the
+                // Venmo/PayPal/electronic one-time gate, that rule only
+                // applies to entry (check-in) and day passes.
                 Select::make('payment_method')
-                    ->options(PaymentMethod::options()),
+                    ->live()
+                    ->options(PaymentMethod::options())
+                    ->helperText(fn (Get $get): ?string => PaymentMethod::feeHelperText($get('payment_method'))),
                 DatePicker::make('paid_on')
                     ->default(now()),
             ])
@@ -110,17 +116,27 @@ class ListSubscriptions extends ListRecords
                 $months = (int) $data['duration_months'];
                 $desiredStart = Carbon::parse($data['desired_start']);
 
+                $paymentMethod = $data['payment_method'] ?? null;
+
                 $rows = app(SubscriptionBundleService::class)->purchase(
                     $member,
                     $addOn,
                     $months,
                     $desiredStart,
                     Auth::user(),
-                    $data['payment_method'] ?? null,
+                    $paymentMethod,
                     null,
                 );
 
+                // Folded onto the first covered month's row, same as
+                // CheckIn::purchaseSubscriptionAction() -- one flat fee per
+                // transaction, not per month.
                 $first = $rows->first();
+                $transactionFee = $rows->sum('amount_paid') > 0 ? PaymentMethod::feeFor($paymentMethod) : 0.0;
+                if ($transactionFee > 0) {
+                    $first->update(['amount_paid' => $first->amount_paid + $transactionFee]);
+                }
+
                 $last = $rows->last();
                 $rangeLabel = $first->covered_month->isSameMonth($last->covered_month)
                     ? $first->covered_month->format('F Y')
