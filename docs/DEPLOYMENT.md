@@ -179,10 +179,16 @@ dependencies, migrate, rebuild caches, restart. On Windows,
 .\scripts\deploy.ps1
 ```
 
-It stops the `Apache-Portico` service (rename with `-ServiceName`, or pass
+It stops the `Apache-Portico` service (rename with `-ServiceName`, set a
+persistent default with the `PORTICO_APACHE_SERVICE` machine environment
+variable if your box's service is named differently — important for the
+web-triggered path below, which never passes `-ServiceName` — or pass
 `-ServiceName ''` to skip entirely on a non-Apache / non-Windows setup),
-requires a clean working tree before pulling (`git pull --ff-only` — it
-refuses to guess through a diverged or dirty tree), runs
+requires a clean working tree of **tracked files** before pulling
+(`git pull --ff-only` — it refuses to guess through a diverged or dirty tree;
+an untracked file like an npm-generated `package-lock.json` or something
+staged under `storage/` doesn't count, since pulling can't touch what git
+doesn't already track), runs
 `composer install --no-dev --optimize-autoloader`, `npm install && npm run
 build`, `php artisan migrate --force`, `storage:link` / `config:clear` /
 `optimize`, then restarts the service — in a `finally` block, so a failure
@@ -214,14 +220,19 @@ click, so an admin page can never run it in-process — it can only ask an
 already-registered Windows Scheduled Task to run it, fully detached from the
 request. To opt in:
 
-1. Register an on-demand Scheduled Task pointing at `scripts/run-deploy.bat`
+1. If your box's Apache service isn't named `Apache-Portico`, set the
+   `PORTICO_APACHE_SERVICE` machine environment variable first (see §7 above)
+   — `scripts/run-deploy.bat` calls `deploy.ps1` with no `-ServiceName` at
+   all, so this is the only way the web-triggered path knows which service to
+   cycle.
+2. Register an on-demand Scheduled Task pointing at `scripts/run-deploy.bat`
    (see docs/DEPLOYMENT_RUNBOOK.md for a concrete `schtasks /create` example
    on Windows) — this app never registers one itself. It only ever fires the
    task with `schtasks /run`, so the task can be configured with any trigger
    (or none that fires on its own) as long as it's runnable on demand.
-2. Set **Deploy Scheduled Task name** on Membership Settings to the exact
+3. Set **Deploy Scheduled Task name** on Membership Settings to the exact
    task name you registered.
-3. Turn on **Web-triggered deploy enabled** on Feature Flags.
+4. Turn on **Web-triggered deploy enabled** on Feature Flags.
 
 Once configured, **Run update now** appears on the **Upstream Updates** page
 (Admin+). It only confirms Windows accepted the run request — the deploy

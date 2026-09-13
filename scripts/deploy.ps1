@@ -39,10 +39,16 @@
 
 .PARAMETER ServiceName
     Windows service name to stop/restart. Default "Apache-Portico" (matches
-    setup-apache.ps1's default). Pass your box's actual service name if you
-    renamed it. Pass -ServiceName '' (empty string) to skip the service
-    stop/restart entirely (e.g. a non-Windows / non-Apache deployment) --
-    useful with -WhatIf too, since a real service restart is not simulated.
+    setup-apache.ps1's default), unless the PORTICO_APACHE_SERVICE environment
+    variable is set, in which case that wins -- set it once as a machine-level
+    variable (`setx PORTICO_APACHE_SERVICE YourService /M`) on a box whose
+    service isn't named the default, and both an interactive run and the
+    Task-Scheduler-triggered "Web-triggered updates" path (which never passes
+    -ServiceName at all -- see scripts\run-deploy.bat) pick it up automatically.
+    Pass -ServiceName explicitly to override either for one run. Pass
+    -ServiceName '' (empty string) to skip the service stop/restart entirely
+    (e.g. a non-Windows / non-Apache deployment) -- useful with -WhatIf too,
+    since a real service restart is not simulated.
 
 .PARAMETER MigrateFresh
     Run `migrate:fresh --seed --force` instead of `migrate --force`. Only
@@ -77,7 +83,7 @@
 [CmdletBinding(SupportsShouldProcess = $true)]
 param(
     [string]$ProjectRoot = (Split-Path -Path $PSScriptRoot -Parent),
-    [string]$ServiceName = 'Apache-Portico',
+    [string]$ServiceName = $(if ($env:PORTICO_APACHE_SERVICE) { $env:PORTICO_APACHE_SERVICE } else { 'Apache-Portico' }),
     [switch]$MigrateFresh,
     [switch]$SkipNpm,
     [switch]$SkipMigrate
@@ -130,9 +136,15 @@ try {
             # --- 2. pull -----------------------------------------------------------
 
             Write-Step 'git pull --ff-only'
-            $dirty = git status --porcelain
+            # --untracked-files=no deliberately: this check exists to catch an
+            # uncommitted CHANGE to a tracked file (the real "--ff-only fails or
+            # silently mixes local changes into what ships" risk) -- a stray
+            # untracked file (an npm-generated package-lock.json, a manually
+            # staged import spreadsheet under storage/) can't do either, since
+            # pulling never touches something git doesn't already track.
+            $dirty = git status --porcelain --untracked-files=no
             if ($dirty) {
-                throw "Working tree is not clean:`n$dirty`nCommit, stash, or discard before deploying -- a dirty tree can make --ff-only fail or, worse, silently mix local changes into what ships."
+                throw "Working tree has uncommitted changes to tracked files:`n$dirty`nCommit, stash, or discard before deploying -- a dirty tree can make --ff-only fail or, worse, silently mix local changes into what ships."
             }
             if ($PSCmdlet.ShouldProcess('origin/main', 'git pull --ff-only')) {
                 git pull --ff-only origin main
