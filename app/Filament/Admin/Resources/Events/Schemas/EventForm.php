@@ -2,6 +2,7 @@
 
 namespace App\Filament\Admin\Resources\Events\Schemas;
 
+use App\Models\AddOn;
 use App\Models\Event;
 use App\Models\Member;
 use App\Models\MembershipSetting;
@@ -28,8 +29,17 @@ class EventForm
      * table row's own record into that modal too (Action::getRecord()), so
      * without this flag an ended event's Summary section would confusingly
      * render while duplicating it into a brand new, blank event.
+     *
+     * $includeAddOnSelection is also false there, for a different reason: a
+     * multiple ->relationship() Select is unconditionally dehydrated(false)
+     * (Filament's own Select::relationship(), regardless of context), so it
+     * only ever saves via a page's saveRelationships() lifecycle hook
+     * (CreateRecord/EditRecord) -- duplicateAction()'s plain Action::make()
+     * has no such hook, so the field would render but silently discard
+     * whatever the user picks. duplicateAction() instead copies the source
+     * event's current add-ons onto the new one directly, unconditionally.
      */
-    public static function configure(Schema $schema, bool $includeSummary = true): Schema
+    public static function configure(Schema $schema, bool $includeSummary = true, bool $includeAddOnSelection = true): Schema
     {
         return $schema
             ->components([
@@ -97,6 +107,18 @@ class EventForm
                     ->searchable(Member::searchableColumns())
                     ->preload()
                     ->helperText('Automatically checked in free of charge when they attend this event — no comp request needed.'),
+                Select::make('add_on_ids')
+                    ->label('Available add-ons')
+                    ->relationship('addOns', 'name')
+                    ->multiple()
+                    ->preload()
+                    // Only flat, non-subscribable add-ons (room rental,
+                    // sleepover, …) -- Pool's per-event availability is
+                    // already governed by pool_fee above, so it's never a
+                    // candidate here.
+                    ->options(fn () => AddOn::where('active', true)->where('subscribable', false)->orderBy('sort_order')->pluck('name', 'id'))
+                    ->helperText('Which flat, checkbox-style add-ons the check-in desk can offer for this event.')
+                    ->visible(fn (): bool => $includeAddOnSelection && MembershipSetting::current()->add_ons_enabled),
                 TextInput::make('notes')
                     ->maxLength(255)
                     ->default(null),

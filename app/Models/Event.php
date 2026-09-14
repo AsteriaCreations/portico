@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 #[Fillable(['event_date', 'starts_at', 'ends_at', 'ended_notification_sent_at', 'comp_list_due_at', 'name', 'event_type_id', 'entry_fee', 'pool_fee', 'door_prepay_enabled', 'showrunner_id', 'host_id', 'notes', 'created_by'])]
@@ -63,6 +64,17 @@ class Event extends Model
     public function addOnDayPasses(): HasMany
     {
         return $this->hasMany(AddOnDayPass::class);
+    }
+
+    /**
+     * Flat, non-subscribable add-ons (Sleepover, Private room rental, …)
+     * this event actually offers at check-in -- see AddOn::events().
+     *
+     * @return BelongsToMany<AddOn, $this>
+     */
+    public function addOns(): BelongsToMany
+    {
+        return $this->belongsToMany(AddOn::class);
     }
 
     /**

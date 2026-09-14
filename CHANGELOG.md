@@ -24,6 +24,9 @@ is fixes only.
 - Members table gains a "Require paperwork" bulk action, so a club rolling out a new
   waiver can flag a selected group as needing it re-confirmed, instead of toggling each
   member individually — each flip is still logged to the member status audit trail.
+- Flat, non-subscribable add-ons (room rental, sleepover, …) can now be bound to specific
+  events instead of being offered everywhere: a new "Available add-ons" field on the Event
+  form (Admin+) controls which ones the Check-In Desk offers for that event.
 
 ## [0.1.0] — 2026-09-08
 
