@@ -99,7 +99,7 @@ class EventsTable
         return Action::make('duplicate')
             ->label('Duplicate')
             ->icon(Heroicon::OutlinedDocumentDuplicate)
-            ->schema(fn (Schema $schema): Schema => EventForm::configure($schema, includeSummary: false))
+            ->schema(fn (Schema $schema): Schema => EventForm::configure($schema, includeSummary: false, includeAddOnSelection: false))
             ->fillForm(fn (Event $record): array => [
                 ...$record->only([
                     'name', 'event_type_id', 'entry_fee',
@@ -112,8 +112,14 @@ class EventsTable
                 'pool_fee' => MembershipSetting::current()->pool_enabled ? $record->pool_fee : 0,
                 'created_by' => Auth::id(),
             ])
-            ->action(function (array $data): void {
-                Event::create($data);
+            ->action(function (array $data, Event $record): void {
+                $event = Event::create($data);
+                // add_on_ids isn't in the schema here (includeAddOnSelection:
+                // false above) -- copy the source's bindings directly instead
+                // of relying on the field, which wouldn't save through this
+                // plain Action anyway. See EventForm::configure()'s own
+                // comment on $includeAddOnSelection.
+                $event->addOns()->sync($record->addOns->pluck('id'));
 
                 Notification::make()
                     ->title('Event duplicated')

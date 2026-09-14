@@ -394,8 +394,8 @@ class CheckIn extends Page implements HasTable
             return 0.0;
         }
 
-        return (float) AddOn::whereIn('id', static::normalizeAddOnIds($this->pricingData['add_on_ids'] ?? null))
-            ->where('active', true)
+        return (float) static::eligibleAddOnsQuery($this->getSelectedEvent())
+            ->whereIn('id', static::normalizeAddOnIds($this->pricingData['add_on_ids'] ?? null))
             ->sum('price');
     }
 
@@ -412,6 +412,23 @@ class CheckIn extends Page implements HasTable
     private static function normalizeAddOnIds(mixed $ids): array
     {
         return is_array($ids) ? $ids : [];
+    }
+
+    /**
+     * Flat, non-subscribable add-ons eligible for the given event -- bound
+     * via add_on_event (EventForm's "Available add-ons" field). With no
+     * event selected yet, resolves to none rather than every add-on, since
+     * every caller of this only matters once an event is chosen anyway.
+     *
+     * @return Builder<AddOn>
+     */
+    private static function eligibleAddOnsQuery(?Event $event): Builder
+    {
+        $query = AddOn::where('active', true)->where('subscribable', false);
+
+        return $event
+            ? $query->whereHas('events', fn (Builder $q) => $q->where('events.id', $event->id))
+            : $query->whereRaw('1 = 0');
     }
 
     // Subscription/comp/voucher choices, split out of checkInAction()'s own schema so
@@ -460,9 +477,10 @@ class CheckIn extends Page implements HasTable
                     // they're priced automatically via PricingService
                     // whenever the event has a price for them, the same
                     // "no checkbox needed" behavior pool_fee always had.
-                    // Only flat, non-subscribable extras are opt-in here.
-                    ->options(fn () => AddOn::where('active', true)
-                        ->where('subscribable', false)
+                    // Only flat, non-subscribable extras bound to this event
+                    // (EventForm's "Available add-ons" field) are opt-in
+                    // here.
+                    ->options(fn () => static::eligibleAddOnsQuery($event)
                         ->orderBy('sort_order')
                         ->get()
                         ->mapWithKeys(fn (AddOn $addOn) => [
@@ -1558,11 +1576,12 @@ class CheckIn extends Page implements HasTable
                         // never goes through PricingService: it's a plain
                         // addition to amount_paid, not comped or voucher-
                         // covered. Also re-checked against add_ons_enabled
-                        // -- a forged selection from a session where the
-                        // field was hidden must be silently ignored, not
-                        // honored.
+                        // and this event's own add_on_event bindings -- a
+                        // forged selection from a session where the field
+                        // was hidden, or for an add-on this event doesn't
+                        // even offer, must be silently ignored, not honored.
                         $selectedAddOns = MembershipSetting::current()->add_ons_enabled
-                            ? AddOn::whereIn('id', static::normalizeAddOnIds($pricingData['add_on_ids'] ?? null))->where('active', true)->where('subscribable', false)->get()
+                            ? static::eligibleAddOnsQuery($event)->whereIn('id', static::normalizeAddOnIds($pricingData['add_on_ids'] ?? null))->get()
                             : collect();
                         $addOnTotal = (float) $selectedAddOns->sum('price');
 

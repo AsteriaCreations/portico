@@ -1124,6 +1124,7 @@ test('selecting an add-on adds its price to amount_paid and records a snapshotte
     $addOn = AddOn::factory()->create(['name' => 'Private room rental', 'price' => 50]);
     $member = clearMember($this->irregular);
     $event = Event::factory()->create(['event_date' => now()->toDateString(), 'entry_fee' => 20, 'pool_fee' => 0]);
+    $event->addOns()->attach($addOn->id);
 
     Livewire::test(CheckIn::class)
         ->fillForm(['event_id' => $event->id, 'member_id' => $member->id])
@@ -1140,6 +1141,36 @@ test('selecting an add-on adds its price to amount_paid and records a snapshotte
     expect($addOnRow->add_on_id)->toBe($addOn->id)
         ->and($addOnRow->name)->toBe('Private room rental')
         ->and($addOnRow->price)->toEqual(50);
+});
+
+test('an add-on not bound to the selected event is neither offered nor charged, even via a forged payload', function () {
+    $addOn = AddOn::factory()->create(['name' => 'Sleepover', 'price' => 25]);
+    $member = clearMember($this->irregular);
+    $event = Event::factory()->create(['event_date' => now()->toDateString(), 'entry_fee' => 20, 'pool_fee' => 0]);
+    // Deliberately never attached to $event.
+
+    Livewire::test(CheckIn::class)
+        ->fillForm(['event_id' => $event->id, 'member_id' => $member->id])
+        ->assertDontSee('Sleepover')
+        ->set('pricingData.add_on_ids', [$addOn->id])
+        ->callAction('checkIn', data: [
+            'checked_in_at' => now(),
+        ])
+        ->assertHasErrors(['pricingData.add_on_ids.0']);
+
+    expect(Attendance::where('member_id', $member->id)->where('event_id', $event->id)->exists())->toBeFalse();
+});
+
+test('an add-on bound to a different event does not carry over once that other event is selected', function () {
+    $addOn = AddOn::factory()->create(['name' => 'Sleepover', 'price' => 25]);
+    $boundEvent = Event::factory()->create(['event_date' => now()->toDateString()]);
+    $boundEvent->addOns()->attach($addOn->id);
+    $member = clearMember($this->irregular);
+    $unboundEvent = Event::factory()->create(['event_date' => now()->toDateString(), 'entry_fee' => 20, 'pool_fee' => 0]);
+
+    Livewire::test(CheckIn::class)
+        ->fillForm(['event_id' => $unboundEvent->id, 'member_id' => $member->id])
+        ->assertDontSee('Sleepover');
 });
 
 test('selecting an add-on does nothing when add-ons are disabled, even via a forged payload', function () {
@@ -1167,6 +1198,7 @@ test('comping an entry does not comp an add-on charge', function () {
     $addOn = AddOn::factory()->create(['price' => 50]);
     $member = clearMember($this->irregular);
     $event = Event::factory()->create(['event_date' => now()->toDateString(), 'entry_fee' => 40, 'pool_fee' => 0]);
+    $event->addOns()->attach($addOn->id);
 
     Livewire::test(CheckIn::class)
         ->fillForm(['event_id' => $event->id, 'member_id' => $member->id])
@@ -1193,6 +1225,7 @@ test('a door volunteer can select an add-on at check-in, unlike per-event comp',
     $addOn = AddOn::factory()->create(['price' => 25]);
     $member = clearMember($this->irregular);
     $event = Event::factory()->create(['event_date' => now()->toDateString(), 'entry_fee' => 20, 'pool_fee' => 0]);
+    $event->addOns()->attach($addOn->id);
 
     Livewire::test(CheckIn::class)
         ->fillForm(['event_id' => $event->id, 'member_id' => $member->id])

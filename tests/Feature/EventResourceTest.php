@@ -4,6 +4,7 @@ use App\Enums\Role;
 use App\Filament\Admin\Resources\Events\Pages\CreateEvent;
 use App\Filament\Admin\Resources\Events\Pages\EditEvent;
 use App\Filament\Admin\Resources\Events\Pages\ListEvents;
+use App\Models\AddOn;
 use App\Models\Attendance;
 use App\Models\Event;
 use App\Models\EventType;
@@ -190,6 +191,63 @@ test('an event can be edited', function () {
         ->assertHasNoFormErrors();
 
     expect($event->refresh()->name)->toBe('Renamed');
+});
+
+test('an admin can bind which add-ons an event offers, and unbind them again', function () {
+    $addOn = AddOn::factory()->create(['name' => 'Sleepover', 'subscribable' => false]);
+    $event = Event::factory()->create();
+
+    Livewire::test(EditEvent::class, ['record' => $event->getRouteKey()])
+        ->fillForm(['add_on_ids' => [$addOn->id]])
+        ->call('save')
+        ->assertHasNoFormErrors();
+
+    expect($event->addOns()->pluck('add_ons.id')->all())->toBe([$addOn->id]);
+
+    Livewire::test(EditEvent::class, ['record' => $event->getRouteKey()])
+        ->fillForm(['add_on_ids' => []])
+        ->call('save')
+        ->assertHasNoFormErrors();
+
+    expect($event->addOns()->exists())->toBeFalse();
+});
+
+test('a subscribable add-on (Pool) is never offered as an option to bind to an event', function () {
+    AddOn::factory()->create(['name' => 'Pool', 'subscribable' => true]);
+    $event = Event::factory()->create();
+
+    Livewire::test(EditEvent::class, ['record' => $event->getRouteKey()])
+        ->assertSchemaComponentExists('add_on_ids', checkComponentUsing: fn ($component) => ! in_array('Pool', $component->getOptions(), true));
+});
+
+test('the add_on_ids field is hidden once add_ons_enabled is off, and visible again once restored', function () {
+    MembershipSetting::current()->update(['add_ons_enabled' => false]);
+    $event = Event::factory()->create();
+
+    Livewire::test(EditEvent::class, ['record' => $event->getRouteKey()])
+        ->assertSchemaComponentExists('add_on_ids', checkComponentUsing: fn ($component) => ! $component->isVisible());
+
+    MembershipSetting::current()->update(['add_ons_enabled' => true]);
+
+    Livewire::test(EditEvent::class, ['record' => $event->getRouteKey()])
+        ->assertSchemaComponentExists('add_on_ids', checkComponentUsing: fn ($component) => $component->isVisible());
+});
+
+test('duplicating an event copies its bound add-ons onto the new event', function () {
+    $addOn = AddOn::factory()->create(['subscribable' => false]);
+    $original = Event::factory()->create(['name' => 'Weekly Social']);
+    $original->addOns()->attach($addOn->id);
+
+    Livewire::test(ListEvents::class)
+        ->callTableAction('duplicate', $original, data: [
+            'event_date' => '2026-09-01',
+            'starts_at' => '2026-09-01 20:00:00',
+            'ends_at' => '2026-09-01 23:00:00',
+        ])
+        ->assertHasNoTableActionErrors();
+
+    $duplicate = Event::where('id', '!=', $original->id)->where('name', 'Weekly Social')->firstOrFail();
+    expect($duplicate->addOns()->pluck('add_ons.id')->all())->toBe([$addOn->id]);
 });
 
 test('the pool_fee field is hidden on the event form once pool_enabled is off, and visible again once restored', function () {

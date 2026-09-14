@@ -60,6 +60,11 @@ class DemoDataSeeder extends Seeder
         $users = $this->seedUsers();
         $members = $this->seedMembers($categories);
         $events = $this->seedEvents($eventTypes, $members, $users);
+        // Every event offers every flat add-on in the demo data -- realistic
+        // per-event curation is a real decision an actual Manager makes, not
+        // something worth faking here; this just keeps the Check-In Desk's
+        // add-on checkboxes populated for local testing.
+        $events->each(fn (Event $event) => $event->addOns()->sync($addOns->pluck('id')));
         $this->seedAttendance($events, $members, $users, $compReasons, $addOns);
         $this->seedSubscriptions($members, $users);
         $this->seedVouchers($members, $users);

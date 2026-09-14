@@ -63,6 +63,7 @@ EVENTS
 - Midnight-spanning event detection (buffered window)
 - Door-prepay flag for future-dated events
 - Showrunner assignment per event
+- Per-event add-on binding — which flat, non-subscribable add-ons (room rental, sleepover, …) the Check-In Desk offers for a given event
 - Comp List (Manager-added comped attendees) distinct from Prepay List
 - Comp-list due-date reminder + overdue indicator
 - Event-ended notification (email + in-app) to Owner(s) and the assigned Showrunner, with an attendance/revenue summary (events:notify-ended, timer-driven, idempotent)
