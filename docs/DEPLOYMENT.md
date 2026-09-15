@@ -163,8 +163,25 @@ to `storage/logs/`. When you want real delivery, pick a transactional provider
 ## 6. TLS (optional)
 
 Plain HTTP over an isolated VLAN is a defensible choice for a closed LAN tool. If you
-want TLS anyway, stand up an internal CA or `mkcert` cert for `checkin.<club>.lan`, add
-an HTTPS vhost, and distribute the CA cert to the check-in devices.
+want TLS anyway:
+
+1. Issue a cert/key pair for your host — [mkcert](https://github.com/FiloSottile/mkcert)
+   is the easiest: `mkcert -install` (once, on whichever machine issues it) then
+   `mkcert checkin.<club>.lan <lan-ip>`.
+2. Base your overlay conf on `scripts/apache/portico-tls-example.conf` instead of
+   `scripts/apache/portico.conf` — it's the same shape plus a `:443` vhost (`SSLEngine`,
+   `SSLCertificateFile`/`SSLCertificateKeyFile`) and a `:80` block that redirects to
+   `https://` instead of serving the app.
+3. Run `setup-apache.ps1` with `-ConfFile '<your overlay>.conf' -EnableTls -CertFile
+   '<cert>' -KeyFile '<key>'` — it copies the cert/key into place, adds `Listen <ip>:443`
+   to `httpd.conf`, and opens the firewall for 443 alongside the existing 80 rule.
+4. Set `APP_URL=https://...` and `SESSION_SECURE_COOKIE=true` in `.env`, then
+   `config:clear && optimize`.
+5. On each device that will reach the app, trust the CA with
+   `scripts/client/install-local-ca.ps1` (copy over that CA's root cert — `mkcert -CAROOT`
+   prints where to find it — and run the script elevated). A self-issued CA has to be
+   trusted explicitly on every device; a public CA wouldn't need this step, but isn't an
+   option for a `.lan` hostname with no public DNS.
 
 ---
 

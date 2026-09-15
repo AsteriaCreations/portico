@@ -1,7 +1,7 @@
 #Requires -Version 5.1
 <#
 .SYNOPSIS
-    Install Apache + mod_php as the "Apache-Portico" Windows service for a
+    Install Apache + mod_php (optionally + mod_ssl) as a Windows service for a
     Portico production LAN check-in server.
 
 .DESCRIPTION
@@ -10,20 +10,28 @@
 
       - extract the Apache Lounge httpd zip to -ApacheDir
       - point Define SRVROOT at -ApacheDir, change "Listen 80" to the LAN IP,
-        and add  Include conf/extra/portico.conf  to httpd.conf
-      - copy scripts/apache/portico.conf into conf/extra/
+        and add  Include conf/extra/<ConfFile>  to httpd.conf
+      - copy scripts/apache/<ConfFile> into conf/extra/
       - httpd -t, then install + configure + start the service
-      - open an inbound firewall rule for TCP 80 from the LAN CIDR
+      - open an inbound firewall rule for TCP 80 (and TCP 443 with -EnableTls)
+        from the LAN CIDR
 
-    The LAN IP, hostname, and CIDR are read from portico.conf (its
-    Define SITE_IP / SITE_HOST / SITE_LAN lines), so that file stays the single
-    source of truth -- this script never second-guesses it.
+    The LAN IP, hostname, and CIDR are read from -ConfFile (its
+    Define SITE_IP / SITE_HOST / SITE_LAN lines -- or your fork's own Define
+    names, as long as they follow the same SITE_* shape), so that file stays
+    the single source of truth -- this script never second-guesses it. This
+    is also how a fork with its own overlay vhost file (e.g. a club's
+    ix-membership.conf) points this same generic script at its own real
+    values instead of the generic template.
 
     Idempotent: safe to re-run. Skips work already done and reports it.
 
     NOT in scope (do these separately, per docs/DEPLOYMENT.md):
       - installing PHP 8.4 -- this script only checks it is present, at the
-        path portico.conf's LoadModule line points to
+        path -ConfFile's LoadModule line points to
+      - generating a TLS certificate -- -CertFile/-KeyFile take an
+        already-issued cert/key pair (e.g. from mkcert); this script only
+        wires it into Apache
       - editing .env / running artisan
 
 .PARAMETER ApacheZip
@@ -38,6 +46,13 @@
 .PARAMETER ApacheDir
     Where Apache lives / will be extracted. Default C:\Apache24. The zip's
     top-level folder must be "Apache24"; the script extracts to the parent.
+
+.PARAMETER ConfFile
+    Filename (not a path) of the tracked vhost conf to use, resolved next to
+    this script and deployed to conf\extra\<ConfFile> with a matching
+    Include line. Default "portico.conf" (the generic template). A fork with
+    its own overlay file (real IP/hostname/CIDR already filled in) passes its
+    own filename here instead, e.g. "ix-membership.conf".
 
 .PARAMETER ServiceName
     Windows service name. Default "Apache-Portico".
@@ -54,6 +69,26 @@
     Plaintext password for -ServiceAccount. Prefer the interactive prompt;
     passing this puts the password in your shell history and the process list.
 
+.PARAMETER EnableTls
+    Wire up an HTTPS vhost on :443 (Listen line, cert placement, firewall
+    rule). The actual :443 vhost + :80-redirects-to-https directives come
+    from -ConfFile itself -- see scripts/apache/portico-tls-example.conf for
+    a ready-to-copy starting point; the plain scripts/apache/portico.conf
+    default has no :443 block at all. Requires -CertFile/-KeyFile the first
+    time it's enabled (not on a later re-run, once the cert is already in
+    place at conf\ssl\).
+
+.PARAMETER CertFile
+    Path to an already-issued TLS certificate (PEM). Only needed the first
+    time -EnableTls is used, or to replace the cert already in place -- e.g. a
+    fresh mkcert output after the old one expires or the LAN hostname/IP
+    changes. Copied to conf\ssl\site.pem (a fixed name, independent of
+    whatever your cert tool names its output).
+
+.PARAMETER KeyFile
+    Path to the private key (PEM) matching -CertFile. Copied to
+    conf\ssl\site-key.pem.
+
 .PARAMETER Force
     Re-extract Apache even if -ApacheDir already contains bin\httpd.exe.
 
@@ -65,14 +100,24 @@
 .EXAMPLE
     # Re-run after editing portico.conf -- repatches, revalidates, restarts:
     .\setup-apache.ps1
+
+.EXAMPLE
+    # Add HTTPS to an already-running box, using a fork's own overlay conf and
+    # an mkcert-issued cert/key:
+    .\setup-apache.ps1 -ConfFile 'ix-membership.conf' -ServiceName 'Apache-IX' `
+        -EnableTls -CertFile 'C:\Users\you\checkin.ix.lan+1.pem' -KeyFile 'C:\Users\you\checkin.ix.lan+1-key.pem'
 #>
 [CmdletBinding(SupportsShouldProcess = $true)]
 param(
     [string]$ApacheZip,
     [string]$ApacheDir = 'C:\Apache24',
+    [string]$ConfFile = 'portico.conf',
     [string]$ServiceName = 'Apache-Portico',
     [string]$ServiceAccount,
     [string]$ServiceAccountPassword,
+    [switch]$EnableTls,
+    [string]$CertFile,
+    [string]$KeyFile,
     [switch]$Force
 )
 
@@ -91,9 +136,9 @@ if (-not $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administra
     throw 'Run this from an elevated PowerShell (Administrator). Installing a Windows service and a firewall rule both need it.'
 }
 
-$confSource = Join-Path $PSScriptRoot 'portico.conf'
+$confSource = Join-Path $PSScriptRoot $ConfFile
 if (-not (Test-Path $confSource)) {
-    throw "Cannot find portico.conf next to this script (looked in $PSScriptRoot)."
+    throw "Cannot find $ConfFile next to this script (looked in $PSScriptRoot)."
 }
 $confText = Get-Content -Path $confSource -Raw
 
@@ -103,7 +148,7 @@ foreach ($line in ($confText -split "`r?`n")) {
     if ($line -match '^\s*Define\s+(SITE_[A-Z]+)\s+"([^"]+)"') { $defs[$Matches[1]] = $Matches[2] }
 }
 foreach ($key in 'SITE_IP', 'SITE_HOST', 'SITE_LAN') {
-    if (-not $defs.ContainsKey($key)) { throw "portico.conf is missing its 'Define $key' line." }
+    if (-not $defs.ContainsKey($key)) { throw "$ConfFile is missing its 'Define $key' line." }
 }
 $bindIp     = $defs['SITE_IP']
 $serverName = $defs['SITE_HOST']
@@ -112,18 +157,20 @@ $lanCidr    = $defs['SITE_LAN']
 if ($confText -match '(?m)^\s*LoadModule\s+php_module\s+"([^"]+)"') {
     $phpApacheDll = $Matches[1]
 } else {
-    throw "portico.conf has no 'LoadModule php_module' line to locate the PHP Apache SAPI."
+    throw "$ConfFile has no 'LoadModule php_module' line to locate the PHP Apache SAPI."
 }
 if (-not (Test-Path $phpApacheDll)) {
     throw "PHP Apache SAPI not found at $phpApacheDll. Install the Thread Safe PHP 8.4 build to C:\php before running this."
 }
 
+Write-Info "Conf file    : $ConfFile"
 Write-Info "LAN bind IP  : $bindIp"
 Write-Info "Server name  : $serverName"
 Write-Info "LAN CIDR     : $lanCidr"
 Write-Info "PHP SAPI DLL : $phpApacheDll"
 Write-Info "Apache dir   : $ApacheDir"
 Write-Info "Service      : $ServiceName$(if ($ServiceAccount) { " (as $ServiceAccount)" } else { ' (LocalSystem)' })"
+Write-Info "TLS          : $(if ($EnableTls) { 'enabled' } else { 'not enabled (use -EnableTls to add HTTPS)' })"
 
 $httpd = Join-Path $ApacheDir 'bin\httpd.exe'
 
@@ -149,7 +196,51 @@ if ((Test-Path $httpd) -and -not $Force) {
     }
 }
 
-# --- 2. patch httpd.conf -----------------------------------------------------
+# --- 2. TLS certificate ------------------------------------------------------
+
+$certDest = Join-Path $ApacheDir 'conf\ssl\site.pem'
+$keyDest  = Join-Path $ApacheDir 'conf\ssl\site-key.pem'
+
+if ($EnableTls) {
+    Write-Step 'TLS certificate + mod_ssl'
+
+    $sslModule = Join-Path $ApacheDir 'modules\mod_ssl.so'
+    if (-not (Test-Path $sslModule)) {
+        throw "mod_ssl not found at $sslModule. Apache Lounge's default VS17 builds bundle it -- if it's missing, re-extract the zip (or re-run with -Force)."
+    }
+    $opensslDlls = Get-ChildItem -Path (Join-Path $ApacheDir 'bin') -Filter 'libssl*.dll' -ErrorAction SilentlyContinue
+    if (-not $opensslDlls) {
+        Write-Info "warning: no libssl*.dll found under $ApacheDir\bin -- mod_ssl may fail to load. Apache Lounge builds normally bundle OpenSSL; verify the zip wasn't a stripped-down variant."
+    }
+
+    $sslDir = Split-Path -Path $certDest -Parent
+    if (-not (Test-Path $sslDir)) { New-Item -ItemType Directory -Path $sslDir -Force | Out-Null }
+
+    $certInPlace = (Test-Path $certDest) -and (Test-Path $keyDest)
+    if (-not $CertFile -or -not $KeyFile) {
+        if (-not $certInPlace) {
+            throw "-EnableTls needs -CertFile and -KeyFile the first time -- no cert yet at $sslDir. Pass the PEM cert/key from mkcert (or another CA) and re-run."
+        }
+        Write-Skip "using existing cert/key at $sslDir (pass -CertFile/-KeyFile to replace them)"
+    } else {
+        if (-not (Test-Path $CertFile)) { throw "-CertFile not found: $CertFile" }
+        if (-not (Test-Path $KeyFile)) { throw "-KeyFile not found: $KeyFile" }
+
+        $certUnchanged = $certInPlace -and
+            ((Get-FileHash $CertFile).Hash -eq (Get-FileHash $certDest).Hash) -and
+            ((Get-FileHash $KeyFile).Hash -eq (Get-FileHash $keyDest).Hash)
+        if ($certUnchanged) {
+            Write-Skip "$certDest / $keyDest already match -CertFile/-KeyFile"
+        } elseif ($PSCmdlet.ShouldProcess($sslDir, 'Copy cert/key')) {
+            Copy-Item -Path $CertFile -Destination $certDest -Force
+            Copy-Item -Path $KeyFile -Destination $keyDest -Force
+            Write-Info "copied cert to $certDest"
+            Write-Info "copied key to $keyDest"
+        }
+    }
+}
+
+# --- 3. patch httpd.conf -----------------------------------------------------
 
 Write-Step 'httpd.conf (server root / Listen / Include)'
 $mainConf = Join-Path $ApacheDir 'conf\httpd.conf'
@@ -159,7 +250,8 @@ $text = Get-Content -Path $mainConf -Raw
 $original = $text
 $srvRoot = ($ApacheDir -replace '\\', '/')
 $listenLine = "Listen ${bindIp}:80"
-$includeLine = 'Include conf/extra/portico.conf'
+$listenTlsLine = "Listen ${bindIp}:443"
+$includeLine = "Include conf/extra/$ConfFile"
 
 # Point the server root at where we actually extracted. Older Apache Lounge
 # builds carry  Define SRVROOT "..."  + ${SRVROOT} everywhere; 2.4.66+ dropped
@@ -192,10 +284,19 @@ if ($text -match [regex]::Escape($listenLine)) {
     throw "Could not find a stock 'Listen 80' line in $mainConf to rewrite, and '$listenLine' is not present. Fix the Listen directive by hand and re-run."
 }
 
+if ($EnableTls) {
+    if ($text -match [regex]::Escape($listenTlsLine)) {
+        Write-Skip $listenTlsLine
+    } else {
+        $text = $text.TrimEnd() + "`r`n$listenTlsLine`r`n"
+        Write-Info "added: $listenTlsLine"
+    }
+}
+
 if ($text -match [regex]::Escape($includeLine)) {
     Write-Skip $includeLine
 } else {
-    $text = $text.TrimEnd() + "`r`n`r`n# Portico -- vhost + mod_php, tracked at scripts/apache/portico.conf`r`n$includeLine`r`n"
+    $text = $text.TrimEnd() + "`r`n`r`n# Portico -- vhost + mod_php, tracked at scripts/apache/$ConfFile`r`n$includeLine`r`n"
     Write-Info "appended: $includeLine"
 }
 
@@ -210,19 +311,19 @@ if ($text -ne $original) {
     Write-Skip 'httpd.conf already patched'
 }
 
-# --- 3. drop in the vhost file ---------------------------------------------
+# --- 4. drop in the vhost file ---------------------------------------------
 
-Write-Step 'conf\extra\portico.conf'
-$confDest = Join-Path $ApacheDir 'conf\extra\portico.conf'
+Write-Step "conf\extra\$ConfFile"
+$confDest = Join-Path $ApacheDir "conf\extra\$ConfFile"
 $destText = if (Test-Path $confDest) { Get-Content -Path $confDest -Raw } else { '' }
 if ($destText -eq $confText) {
     Write-Skip "$confDest is up to date"
-} elseif ($PSCmdlet.ShouldProcess($confDest, 'Copy portico.conf')) {
+} elseif ($PSCmdlet.ShouldProcess($confDest, "Copy $ConfFile")) {
     Copy-Item -Path $confSource -Destination $confDest -Force
     Write-Info "copied from $confSource"
 }
 
-# --- 4. validate the config ----------------------------------------------------
+# --- 5. validate the config ----------------------------------------------------
 
 Write-Step 'httpd -t (config syntax check)'
 if ($WhatIfPreference) {
@@ -234,7 +335,7 @@ if ($WhatIfPreference) {
     }
 }
 
-# --- 5. install / configure the service ----------------------------------------
+# --- 6. install / configure the service ----------------------------------------
 
 Write-Step "Windows service '$ServiceName'"
 $svc = Get-Service -Name $ServiceName -ErrorAction SilentlyContinue
@@ -263,7 +364,7 @@ if ($ServiceAccount -and -not $WhatIfPreference) {
     $ServiceAccountPassword = $null
 }
 
-# --- 6. firewall -------------------------------------------------------------
+# --- 7. firewall -------------------------------------------------------------
 
 Write-Step 'inbound firewall rule (TCP 80 from the LAN)'
 $ruleName = 'Portico HTTP (LAN)'
@@ -275,7 +376,19 @@ if (Get-NetFirewallRule -DisplayName $ruleName -ErrorAction SilentlyContinue) {
     Write-Info "allow TCP 80 from $lanCidr"
 }
 
-# --- 7. (re)start ----------------------------------------------------------------
+if ($EnableTls) {
+    Write-Step 'inbound firewall rule (TCP 443 from the LAN)'
+    $tlsRuleName = 'Portico HTTPS (LAN)'
+    if (Get-NetFirewallRule -DisplayName $tlsRuleName -ErrorAction SilentlyContinue) {
+        Write-Skip "rule '$tlsRuleName' exists"
+    } elseif ($PSCmdlet.ShouldProcess($tlsRuleName, 'New-NetFirewallRule')) {
+        New-NetFirewallRule -DisplayName $tlsRuleName -Direction Inbound -Action Allow `
+            -Protocol TCP -LocalPort 443 -RemoteAddress $lanCidr -Profile Any | Out-Null
+        Write-Info "allow TCP 443 from $lanCidr"
+    }
+}
+
+# --- 8. (re)start ----------------------------------------------------------------
 
 Write-Step "start / restart '$ServiceName'"
 if ($WhatIfPreference) {
@@ -296,9 +409,19 @@ if ($WhatIfPreference) {
 
 Write-Host ''
 Write-Host 'Apache is up. Remaining steps (this script does NOT do them):' -ForegroundColor Green
-Write-Host "  - .env -> APP_ENV=production / APP_DEBUG=false / APP_URL=http://$serverName"
-Write-Host '    then:  php artisan config:clear  &&  php artisan optimize'
-Write-Host "  - verify on the box:"
-Write-Host "        curl -H `"Host: $serverName`" http://$bindIp"
-Write-Host "    then load  http://$serverName  from a staff device on the staff Wi-Fi."
+if ($EnableTls) {
+    Write-Host "  - .env -> APP_ENV=production / APP_DEBUG=false / APP_URL=https://$serverName"
+    Write-Host '    then:  php artisan config:clear  &&  php artisan optimize'
+    Write-Host '  - install the local CA (mkcert -CAROOT) on every staff device -- see'
+    Write-Host '    scripts/client/install-local-ca.ps1'
+    Write-Host "  - verify on the box:"
+    Write-Host "        curl -k -H `"Host: $serverName`" https://$bindIp"
+    Write-Host "    then load  https://$serverName  from a staff device that has the CA trusted."
+} else {
+    Write-Host "  - .env -> APP_ENV=production / APP_DEBUG=false / APP_URL=http://$serverName"
+    Write-Host '    then:  php artisan config:clear  &&  php artisan optimize'
+    Write-Host "  - verify on the box:"
+    Write-Host "        curl -H `"Host: $serverName`" http://$bindIp"
+    Write-Host "    then load  http://$serverName  from a staff device on the staff Wi-Fi."
+}
 Write-Host '  - register the scheduled tasks (see docs/DEPLOYMENT.md).'
