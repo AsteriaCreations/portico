@@ -168,6 +168,16 @@ if (-not (Test-Path $phpApacheDll)) {
     throw "PHP Apache SAPI not found at $phpApacheDll. Install the Thread Safe PHP 8.4 build to C:\php before running this."
 }
 
+# A conf file that declares SSLEngine on (a TLS-only overlay like
+# ix-membership.conf, once the club committed to HTTPS) unconditionally
+# expects a cert at conf\ssl\ -- which only ever gets placed there when
+# -EnableTls runs. Catch a missing/dropped -EnableTls here, with a clear
+# message, instead of letting httpd -t fail later with a bare
+# "SSLCertificateFile ... does not exist" that gives no hint why.
+if (($confText -match '(?m)^\s*SSLEngine\s+on\s*$') -and -not $EnableTls) {
+    throw "$ConfFile declares 'SSLEngine on', so it needs -EnableTls (plus -CertFile/-KeyFile the first time) or httpd -t will fail with a missing-certificate error. Add -EnableTls to the command and re-run."
+}
+
 Write-Info "Conf file    : $ConfFile"
 Write-Info "LAN bind IP  : $bindIp"
 Write-Info "Server name  : $serverName"
