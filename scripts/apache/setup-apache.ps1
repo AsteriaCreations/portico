@@ -16,13 +16,14 @@
       - open an inbound firewall rule for TCP 80 (and TCP 443 with -EnableTls)
         from the LAN CIDR
 
-    The LAN IP, hostname, and CIDR are read from -ConfFile (its
-    Define SITE_IP / SITE_HOST / SITE_LAN lines -- or your fork's own Define
-    names, as long as they follow the same SITE_* shape), so that file stays
-    the single source of truth -- this script never second-guesses it. This
-    is also how a fork with its own overlay vhost file (e.g. a club's
-    ix-membership.conf) points this same generic script at its own real
-    values instead of the generic template.
+    The LAN IP, hostname, and CIDR are read from -ConfFile (any
+    "Define <prefix>_IP/_HOST/_LAN" lines, matched by suffix regardless of
+    prefix -- portico.conf's SITE_IP/SITE_HOST/SITE_LAN, a fork's own
+    IX_IP/IX_HOST/IX_LAN, whatever), so that file stays the single source of
+    truth -- this script never second-guesses it. This is also how a fork
+    with its own overlay vhost file (e.g. a club's ix-membership.conf) points
+    this same generic script at its own real values instead of the generic
+    template.
 
     Idempotent: safe to re-run. Skips work already done and reports it.
 
@@ -142,17 +143,21 @@ if (-not (Test-Path $confSource)) {
 }
 $confText = Get-Content -Path $confSource -Raw
 
-# Pull the LAN facts straight out of the vhost file so there's one source of truth.
+# Pull the LAN facts straight out of the vhost file so there's one source of
+# truth. Match on the _IP/_HOST/_LAN suffix, not a fixed "SITE_" prefix -- a
+# fork's own overlay file (e.g. ix-membership.conf's IX_IP/IX_HOST/IX_LAN)
+# uses a different prefix than the generic portico.conf's SITE_IP/SITE_HOST/
+# SITE_LAN, and -ConfFile exists precisely so this script can read either.
 $defs = @{}
 foreach ($line in ($confText -split "`r?`n")) {
-    if ($line -match '^\s*Define\s+(SITE_[A-Z]+)\s+"([^"]+)"') { $defs[$Matches[1]] = $Matches[2] }
+    if ($line -match '^\s*Define\s+\w+_(IP|HOST|LAN)\s+"([^"]+)"') { $defs[$Matches[1]] = $Matches[2] }
 }
-foreach ($key in 'SITE_IP', 'SITE_HOST', 'SITE_LAN') {
-    if (-not $defs.ContainsKey($key)) { throw "$ConfFile is missing its 'Define $key' line." }
+foreach ($key in 'IP', 'HOST', 'LAN') {
+    if (-not $defs.ContainsKey($key)) { throw "$ConfFile is missing a 'Define <prefix>_$key' line." }
 }
-$bindIp     = $defs['SITE_IP']
-$serverName = $defs['SITE_HOST']
-$lanCidr    = $defs['SITE_LAN']
+$bindIp     = $defs['IP']
+$serverName = $defs['HOST']
+$lanCidr    = $defs['LAN']
 
 if ($confText -match '(?m)^\s*LoadModule\s+php_module\s+"([^"]+)"') {
     $phpApacheDll = $Matches[1]
