@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Middleware\EnforceHsts;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -12,7 +13,10 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        //
+        // Global, not panel-scoped, so every response -- assets, the health
+        // check, the public welcome route -- carries it once served over
+        // HTTPS, not just the admin panel.
+        $middleware->append(EnforceHsts::class);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(
