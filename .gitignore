@@ -15,6 +15,10 @@
 /.vscode
 /.zed
 /auth.json
+# A cert/key pair issued while set up for local HTTPS (mkcert, etc.) lands
+# wherever the shell's current directory is -- easy to run from the repo
+# root by habit. Keep them from ever being staged even so.
+/*.pem
 /node_modules
 /package-lock.json
 /public/build
