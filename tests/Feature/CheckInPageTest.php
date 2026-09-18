@@ -254,6 +254,16 @@ test('the status line reads "Check ID" for an under-21 member at an event', func
         ->assertSee('Check ID');
 });
 
+test('the status line reflects a club-configured alcohol flag age, not a hardcoded 21', function () {
+    MembershipSetting::current()->update(['alcohol_flag_age' => 25]);
+    $member = clearMember($this->irregular, ['dob' => now()->subYears(23)->toDateString()]);
+    $event = Event::factory()->create(['event_date' => now()->toDateString(), 'entry_fee' => 20, 'pool_fee' => 0]);
+
+    Livewire::test(CheckIn::class)
+        ->fillForm(['member_id' => $member->id, 'event_id' => $event->id])
+        ->assertSee('Check ID — under 25, no alcohol, mark hand');
+});
+
 test('the status line refreshes when the selected member changes, without any other action', function () {
     $clear = clearMember($this->irregular);
     $banned = clearMember($this->irregular, ['username' => 'banned-one', 'is_banned' => true, 'ban_reason' => 'x']);
@@ -645,6 +655,19 @@ test('confirmPaperwork is hidden once paperwork is already on file', function ()
     Livewire::test(CheckIn::class)
         ->fillForm(['member_id' => $member->id])
         ->assertActionHidden('confirmPaperwork');
+});
+
+test('the "appears to be under" checkbox label reflects a club-configured alcohol flag age', function () {
+    MembershipSetting::current()->update(['alcohol_flag_age' => 19]);
+    $member = clearMember($this->prospective, ['first_name' => null]);
+
+    Livewire::test(CheckIn::class)
+        ->fillForm(['member_id' => $member->id])
+        ->mountAction('saveAndPromote')
+        ->assertSchemaComponentExists(
+            'appears_under_21',
+            checkComponentUsing: fn ($component) => $component->getLabel() === 'Appears to be under 19'
+        );
 });
 
 test('save and promote requires dob once "appears to be under 21" is checked', function () {

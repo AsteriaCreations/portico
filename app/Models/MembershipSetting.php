@@ -16,7 +16,7 @@ use Illuminate\Database\Eloquent\Model;
  * supplies the initial defaults for a fresh install — it's just no longer
  * read anywhere else in the app afterward.
  */
-#[Fillable(['subscription_eligibility_threshold', 'probation_period_days', 'venue_capacity', 'default_opening_float', 'event_window_buffer_minutes', 'org_name', 'role_labels', 'member_search_fields', 'checkin_display_name_field', 'hide_member_pii_by_default', 'vouchers_enabled', 'add_ons_enabled', 'showrunner_comp_requests_enabled', 'manager_perk_enabled', 'suspensions_enabled', 'pool_enabled', 'prepay_enabled', 'register_shifts_enabled', 'showrunner_payouts_enabled', 'instructor_payouts_enabled', 'showrunner_door_includes_pool', 'showrunner_door_includes_addons', 'visit_notes_enabled', 'behavior_notes_enabled', 'upstream_check_enabled', 'upstream_remote', 'upstream_branch', 'deploy_trigger_enabled', 'deploy_task_name'])]
+#[Fillable(['subscription_eligibility_threshold', 'probation_period_days', 'venue_capacity', 'default_opening_float', 'event_window_buffer_minutes', 'age_of_majority', 'alcohol_flag_age', 'org_name', 'role_labels', 'member_search_fields', 'checkin_display_name_field', 'hide_member_pii_by_default', 'vouchers_enabled', 'add_ons_enabled', 'showrunner_comp_requests_enabled', 'manager_perk_enabled', 'suspensions_enabled', 'pool_enabled', 'prepay_enabled', 'register_shifts_enabled', 'showrunner_payouts_enabled', 'instructor_payouts_enabled', 'showrunner_door_includes_pool', 'showrunner_door_includes_addons', 'visit_notes_enabled', 'behavior_notes_enabled', 'upstream_check_enabled', 'upstream_remote', 'upstream_branch', 'deploy_trigger_enabled', 'deploy_task_name'])]
 class MembershipSetting extends Model
 {
     protected function casts(): array
@@ -27,6 +27,8 @@ class MembershipSetting extends Model
             'venue_capacity' => 'integer',
             'default_opening_float' => 'float',
             'event_window_buffer_minutes' => 'integer',
+            'age_of_majority' => 'integer',
+            'alcohol_flag_age' => 'integer',
             'role_labels' => 'array',
             'member_search_fields' => 'array',
             'hide_member_pii_by_default' => 'boolean',
@@ -61,6 +63,13 @@ class MembershipSetting extends Model
             'venue_capacity' => config('membership.venue_capacity'),
             'default_opening_float' => config('membership.default_opening_float'),
             'event_window_buffer_minutes' => (int) config('membership.event_window_buffer_minutes'),
+            // No config/membership.php key -- these postdate that file's role
+            // as the seed source. Preserves the app's original hardcoded
+            // AdmissionPolicy behavior exactly (age of majority, and the
+            // no-alcohol/check-ID flag age); a club outside that convention
+            // adjusts them on the Membership Settings page.
+            'age_of_majority' => 18,
+            'alcohol_flag_age' => 21,
             // No config/membership.php key -- this setting postdates that
             // file's role as the seed source, so it's a plain hardcoded
             // default rather than a config() lookup.

@@ -613,7 +613,7 @@ class CheckIn extends Page implements HasTable
             AdmissionOutcome::Block => ['tone' => 'stop', 'headline' => 'Do not admit', 'detail' => null, 'flags' => $flags],
             AdmissionOutcome::Warn => ['tone' => 'check', 'headline' => 'Acknowledge before admitting', 'detail' => $decision->message, 'flags' => $flags],
             AdmissionOutcome::Capture => ['tone' => 'check', 'headline' => 'Finish sign-up to admit', 'detail' => $decision->message, 'flags' => $flags],
-            AdmissionOutcome::Flag => ['tone' => 'check', 'headline' => 'Check ID — under 21, no alcohol, mark hand', 'detail' => null, 'flags' => $flags],
+            AdmissionOutcome::Flag => ['tone' => 'check', 'headline' => 'Check ID — under '.MembershipSetting::current()->alcohol_flag_age.', no alcohol, mark hand', 'detail' => null, 'flags' => $flags],
             AdmissionOutcome::Ok => ['tone' => 'go', 'headline' => 'Ready to admit', 'detail' => null, 'flags' => $flags],
         };
     }
@@ -935,7 +935,7 @@ class CheckIn extends Page implements HasTable
                 TextInput::make('last_name')->required()->maxLength(60),
                 TextInput::make('email')->required()->email()->maxLength(120),
                 Checkbox::make('appears_under_21')
-                    ->label('Appears to be under 21')
+                    ->label('Appears to be under '.MembershipSetting::current()->alcohol_flag_age)
                     ->live(),
                 DatePicker::make('dob')
                     ->label('Date of birth')
@@ -1265,7 +1265,7 @@ class CheckIn extends Page implements HasTable
                 TextInput::make('last_name')->required()->maxLength(60),
                 TextInput::make('email')->email()->required()->maxLength(120),
                 Checkbox::make('appears_under_21')
-                    ->label('Appears to be under 21')
+                    ->label('Appears to be under '.MembershipSetting::current()->alcohol_flag_age)
                     ->live(),
                 DatePicker::make('dob')
                     ->label('Date of birth')

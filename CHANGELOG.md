@@ -9,6 +9,13 @@ is fixes only.
 
 ## [Unreleased]
 
+### Added
+
+- Age of majority and the check-ID/no-alcohol flag age (18/21 by default) are now
+  club-configurable on the Membership Settings page, instead of hardcoded in
+  `AdmissionPolicy` — both are jurisdiction-specific. Setting them equal disables the
+  flag outcome entirely.
+
 ## [0.2.0] — 2026-09-17
 
 ### Added

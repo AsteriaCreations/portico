@@ -5,6 +5,7 @@ use App\Models\BanException;
 use App\Models\Category;
 use App\Models\Event;
 use App\Models\Member;
+use App\Models\MembershipSetting;
 use App\Services\AdmissionPolicy;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
@@ -52,6 +53,38 @@ test('a member under 18 as of the event date is blocked', function () {
 
     expect($decision->outcome)->toBe(AdmissionOutcome::Block)
         ->and($decision->message)->toBe('Under 18 — no admittance');
+});
+
+test('a club-configured age of majority is respected, not the hardcoded 18', function () {
+    MembershipSetting::current()->update(['age_of_majority' => 21]);
+    $member = memberAgedAsOf($this->irregular, '2007-08-01'); // 18 on 2026-07-19
+    $event = Event::factory()->create(['event_date' => '2026-07-19']);
+
+    $decision = $this->policy->decide($member, $event);
+
+    expect($decision->outcome)->toBe(AdmissionOutcome::Block)
+        ->and($decision->message)->toBe('Under 21 — no admittance');
+});
+
+test('a club-configured alcohol flag age is respected, not the hardcoded 21', function () {
+    MembershipSetting::current()->update(['alcohol_flag_age' => 25]);
+    $member = memberAgedAsOf($this->irregular, '2003-08-01'); // 22 on 2026-07-19
+    $event = Event::factory()->create(['event_date' => '2026-07-19']);
+
+    $decision = $this->policy->decide($member, $event);
+
+    expect($decision->outcome)->toBe(AdmissionOutcome::Flag)
+        ->and($decision->message)->toBe('Under 25 — no alcohol, mark hand');
+});
+
+test('setting the alcohol flag age equal to the age of majority disables the flag entirely', function () {
+    MembershipSetting::current()->update(['age_of_majority' => 18, 'alcohol_flag_age' => 18]);
+    $member = memberAgedAsOf($this->irregular, '2003-08-01'); // 22 on 2026-07-19, clearly an adult
+    $event = Event::factory()->create(['event_date' => '2026-07-19']);
+
+    $decision = $this->policy->decide($member, $event);
+
+    expect($decision->outcome)->toBe(AdmissionOutcome::Ok);
 });
 
 test('a watchlisted adult is warned with the watchlist reason', function () {

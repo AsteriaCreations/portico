@@ -546,13 +546,15 @@ decide(member, event):
         if a ban_exceptions row exists for (member, event):
                                   WARN   "Banned — one-time exception granted for this event"   reason=ban_reason   (needs acknowledge)
         else:                     BLOCK  "Do not admit"          reason=ban_reason
-    if age != null and age < 18:  BLOCK  "Under 18 — no admittance"
+    if age != null and age < age_of_majority:     BLOCK  "Under {age_of_majority} — no admittance"
     if member.on_watchlist:       WARN   "Notify the staff channel"  reason=watchlist_reason   (needs acknowledge)
     if member is Prospective and identity incomplete:
                                   CAPTURE "Complete sign-up"      (Door fills fields → becomes Irregular)
-    if age != null and age < 21:  FLAG   "Under 21 — no alcohol, mark hand"
+    if age != null and age < alcohol_flag_age:     FLAG   "Under {alcohol_flag_age} — no alcohol, mark hand"
     otherwise:                    OK     "Cleared"
 ```
+
+`age_of_majority` (default `18`) and `alcohol_flag_age` (default `21`) are club-configurable on the Membership Settings page, not hardcoded — both are jurisdiction-specific. Setting them equal disables the FLAG outcome entirely (nobody below the majority threshold ever reaches the flag check, since they're already BLOCKed).
 
 Comp status affects **price**, not admission. The **decision** is public; the **reason string** is gated to Manager+. `on_probation` and `missing_paperwork` deliberately never appear here — they're reporting-only.
 
@@ -603,7 +605,7 @@ Five subtleties this encodes: **Door has bounded write** (it may set the five id
 
 - **Attended 2026** → `COUNT` of attendance rows joined to events in that year.
 - **Most recent subscription month** → `MAX(subscriptions.covered_month)` per member+type.
-- **Under 18 / Under 21** → from `dob` vs. today.
+- **Under age-of-majority / under alcohol-flag-age** (18/21 by default, both club-configurable) → from `dob` vs. today.
 - **Currently covered?** → does an active subscription of the matching type exist for the event's month.
 - **Tonight's occupancy / door take** → `COUNT` / `SUM(amount_paid)` over tonight's event(s), `CapacityService::occupancy()` — a `COUNT` of every attendance row (prepaid or arrived — a prepay counts immediately) across all of a night's concurrent events, plus the signed `SUM` of that night's `occupancy_adjustments` (known departures). Never a stored total.
 - **Attendance & revenue by event type** → `GROUP BY event_type_id` over attendance joined to events — the analytics the spreadsheet never captured.
