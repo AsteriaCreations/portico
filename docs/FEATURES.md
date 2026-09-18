@@ -28,6 +28,10 @@ CHECK-IN DESK
 - Register/cash box shift tracking (open/close, drops, misc. payments)
 - Miscellaneous (off-book) payment recording
 - Confirm-paperwork flow for missing-paperwork members
+- Mark-as-returned (undoes an accidental or premature "Depart" without a new attendance row)
+- Configurable per-method transaction fee (e.g. a processor surcharge), folded into
+  amount charged at check-in, subscription purchase, or day-pass purchase
+- Club-configurable member display name (preferred name / full name / username)
 
 ACTIVE PATRONS (LIVE FLOOR VIEW)
 ---------------------------------
@@ -66,6 +70,7 @@ EVENTS
 - Per-event add-on binding — which flat, non-subscribable add-ons (room rental, sleepover, …) the Check-In Desk offers for a given event
 - Comp List (Manager-added comped attendees) distinct from Prepay List
 - Comp-list due-date reminder + overdue indicator
+- Per-event comp list cost breakdown (foregone entry revenue by reason, arrived attendees only)
 - Event-ended notification (email + in-app) to Owner(s) and the assigned Showrunner, with an attendance/revenue summary (events:notify-ended, timer-driven, idempotent)
 
 SHOWRUNNER COMP REQUESTS
@@ -137,3 +142,11 @@ OPERATIONS
 - Nightly database backup job
 - Demo data seeder for local development
 - Windows Task Scheduler-driven commands (no Laravel scheduler)
+- `scripts/deploy.ps1` — one-command update on a Windows box (stop server, pull, install
+  dependencies, migrate, rebuild caches, restart)
+- Upstream Updates page (Admin+, opt-in) — shows pending commits from a configured
+  upstream remote; a "Run update now" button triggers a deploy via an already-registered
+  Windows Scheduled Task, fully detached from the request
+- Optional local-HTTPS support for the Apache deploy tooling (`-EnableTls` on
+  `setup-apache.ps1`, plus a client-side local-CA trust helper)
+- HSTS header sent automatically once a request is served over HTTPS
