@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Enums\AdmissionOutcome;
 use App\Models\Event;
 use App\Models\Member;
+use App\Models\MembershipSetting;
 
 /**
  * Whether a member gets in — separate from what they pay (see PricingService).
@@ -20,6 +21,7 @@ class AdmissionPolicy
     public function decide(Member $member, Event $event): AdmissionDecision
     {
         $age = $member->dob?->diffInYears($event->event_date);
+        $settings = MembershipSetting::current();
 
         if ($member->is_deceased) {
             return new AdmissionDecision(AdmissionOutcome::Block, 'Member marked deceased');
@@ -33,8 +35,8 @@ class AdmissionPolicy
             return new AdmissionDecision(AdmissionOutcome::Block, 'Do not admit', $member->ban_reason);
         }
 
-        if ($age !== null && $age < 18) {
-            return new AdmissionDecision(AdmissionOutcome::Block, 'Under 18 — no admittance');
+        if ($age !== null && $age < $settings->age_of_majority) {
+            return new AdmissionDecision(AdmissionOutcome::Block, "Under {$settings->age_of_majority} — no admittance");
         }
 
         if ($member->on_watchlist) {
@@ -49,8 +51,8 @@ class AdmissionPolicy
             return new AdmissionDecision(AdmissionOutcome::Capture, 'Missing paperwork — confirm on file before check-in');
         }
 
-        if ($age !== null && $age < 21) {
-            return new AdmissionDecision(AdmissionOutcome::Flag, 'Under 21 — no alcohol, mark hand');
+        if ($age !== null && $age < $settings->alcohol_flag_age) {
+            return new AdmissionDecision(AdmissionOutcome::Flag, "Under {$settings->alcohol_flag_age} — no alcohol, mark hand");
         }
 
         return new AdmissionDecision(AdmissionOutcome::Ok, 'Cleared');

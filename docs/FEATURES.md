@@ -5,7 +5,7 @@ commit history and [`BLUEPRINT.md`](BLUEPRINT.md).
 
 CORE ENGINES
 ------------
-- Admission Policy — single-source decision engine: bans, deceased status, watchlist warnings, under-18/under-21 age checks, ban exceptions, missing-paperwork capture
+- Admission Policy — single-source decision engine: bans, deceased status, watchlist warnings, club-configurable age-of-majority/alcohol-flag-age checks (18/21 by default), ban exceptions, missing-paperwork capture
 - Pricing Service — comp categories, subscription coverage (regular + pool), vouchers, per-event comp, add-ons, pool day passes
 - Capacity Service — building-wide occupancy tracking across concurrent events, configurable venue capacity
 

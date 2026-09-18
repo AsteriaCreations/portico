@@ -41,6 +41,8 @@ test('mount fills the form from the current singleton row', function () {
         'venue_capacity' => 150,
         'default_opening_float' => 200.50,
         'event_window_buffer_minutes' => 20,
+        'age_of_majority' => 19,
+        'alcohol_flag_age' => 20,
         'hide_member_pii_by_default' => false,
         'checkin_display_name_field' => 'username',
     ]);
@@ -54,6 +56,8 @@ test('mount fills the form from the current singleton row', function () {
             'venue_capacity' => 150,
             'default_opening_float' => 200.50,
             'event_window_buffer_minutes' => 20,
+            'age_of_majority' => 19,
+            'alcohol_flag_age' => 20,
             'hide_member_pii_by_default' => false,
             'checkin_display_name_field' => 'username',
         ]);
@@ -69,6 +73,8 @@ test('saving updates the singleton row', function () {
             'venue_capacity' => 200,
             'default_opening_float' => 75.25,
             'event_window_buffer_minutes' => 10,
+            'age_of_majority' => 19,
+            'alcohol_flag_age' => 20,
             'hide_member_pii_by_default' => false,
             'checkin_display_name_field' => 'full_name',
         ])
@@ -82,6 +88,8 @@ test('saving updates the singleton row', function () {
         ->and($setting->venue_capacity)->toBe(200)
         ->and($setting->default_opening_float)->toBe(75.25)
         ->and($setting->event_window_buffer_minutes)->toBe(10)
+        ->and($setting->age_of_majority)->toBe(19)
+        ->and($setting->alcohol_flag_age)->toBe(20)
         ->and($setting->hide_member_pii_by_default)->toBeFalse()
         ->and($setting->checkin_display_name_field)->toBe('full_name');
 });

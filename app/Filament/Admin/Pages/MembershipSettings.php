@@ -56,6 +56,8 @@ class MembershipSettings extends Page
             'venue_capacity',
             'default_opening_float',
             'event_window_buffer_minutes',
+            'age_of_majority',
+            'alcohol_flag_age',
             'org_name',
             'member_search_fields',
             'checkin_display_name_field',
@@ -99,6 +101,18 @@ class MembershipSettings extends Page
                 TextInput::make('event_window_buffer_minutes')
                     ->label('Event window buffer (minutes)')
                     ->helperText('Minutes of slack on either side of an event\'s start/end time when deciding whether it\'s "current" for the check-in page\'s event picker — lets staff pull an event up a little early and keep working it a little after it ends.')
+                    ->numeric()
+                    ->minValue(0)
+                    ->required(),
+                TextInput::make('age_of_majority')
+                    ->label('Age of majority')
+                    ->helperText('AdmissionPolicy blocks a member below this age outright. Jurisdiction-specific — adjust if your club isn\'t in an 18-is-adult jurisdiction.')
+                    ->numeric()
+                    ->minValue(0)
+                    ->required(),
+                TextInput::make('alcohol_flag_age')
+                    ->label('Check-ID / no-alcohol flag age')
+                    ->helperText('A member below this age (but at or above "Age of majority") is admitted but flagged to check ID / mark their hand. Set equal to "Age of majority" to disable the flag entirely.')
                     ->numeric()
                     ->minValue(0)
                     ->required(),
