@@ -17,6 +17,9 @@ permissions:
 jobs:
   analyze:
     name: Analyze (${{ matrix.language }})
+    # CodeQL is free on public repos only. On a private fork without GitHub Code
+    # Security the upload step fails on every run, so skip the job there instead.
+    if: github.event.repository.private == false
     runs-on: ubuntu-latest
 
     permissions:
