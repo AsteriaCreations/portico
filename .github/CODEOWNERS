@@ -1,0 +1,14 @@
+# Review is requested automatically from these owners for changes to the paths below.
+# Everything here is either an authorization boundary or something that runs with
+# elevated trust (CI, deploy scripts), so a change should never slip in unnoticed.
+# Forks: replace @AsteriaCreations with your own maintainer handle(s).
+
+/.github/            @AsteriaCreations
+/scripts/            @AsteriaCreations
+/app/Policies/       @AsteriaCreations
+/app/Providers/      @AsteriaCreations
+/app/Http/Middleware/ @AsteriaCreations
+/app/Services/AdmissionPolicy.php @AsteriaCreations
+/SECURITY.md         @AsteriaCreations
+/composer.json       @AsteriaCreations
+/composer.lock       @AsteriaCreations
