@@ -36,9 +36,9 @@ class DeployTrigger
     // Process's array-form command already avoids shell-string injection;
     // this is a second, independent defense against schtasks's own argument
     // parsing. Unlike a git ref, a task name can legitimately contain spaces
-    // (see the "IX Membership - Deploy Update" naming convention in
-    // docs/DEPLOYMENT_RUNBOOK.md), so this only rejects a dangerous leading
-    // character and embedded newlines, not the permissive git-ref pattern.
+    // (e.g. "Portico - Deploy Update"), so this only rejects a dangerous
+    // leading character and embedded newlines, not the permissive git-ref
+    // pattern.
     private function assertSafeTaskName(string $name): void
     {
         if (! preg_match('/^[^\s\/-][^\r\n]*$/', $name)) {

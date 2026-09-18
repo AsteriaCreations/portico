@@ -41,7 +41,7 @@ test('a task name starting with a slash is rejected before any process runs', fu
 test('a task name is allowed to contain spaces', function () {
     Process::fake(['*' => Process::result(exitCode: 0)]);
 
-    app(DeployTrigger::class)->trigger('IX Membership - Deploy Update');
+    app(DeployTrigger::class)->trigger('Portico - Deploy Update');
 
-    Process::assertRan(fn ($process) => $process->command === ['schtasks', '/run', '/TN', 'IX Membership - Deploy Update']);
+    Process::assertRan(fn ($process) => $process->command === ['schtasks', '/run', '/TN', 'Portico - Deploy Update']);
 });

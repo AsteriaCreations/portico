@@ -232,6 +232,6 @@ try {
 
 Write-Host ''
 Write-Host 'Deploy finished. This script does NOT do these -- do them now:' -ForegroundColor Green
-Write-Host '  - Read this update''s sync-log entry (docs/DEPLOYMENT_RUNBOOK.md or CHANGELOG.md) for anything it calls out by hand.'
+Write-Host '  - Read CHANGELOG.md (or your own fork''s ops notes) for anything this update calls out by hand.'
 Write-Host '  - Smoke test: load the app from a second device, confirm it looks and behaves right.'
 Write-Host '  - If -MigrateFresh was used, recreate any non-seeded staff logins -- they were wiped.'

@@ -242,11 +242,14 @@ request. To opt in:
    — `scripts/run-deploy.bat` calls `deploy.ps1` with no `-ServiceName` at
    all, so this is the only way the web-triggered path knows which service to
    cycle.
-2. Register an on-demand Scheduled Task pointing at `scripts/run-deploy.bat`
-   (see docs/DEPLOYMENT_RUNBOOK.md for a concrete `schtasks /create` example
-   on Windows) — this app never registers one itself. It only ever fires the
-   task with `schtasks /run`, so the task can be configured with any trigger
-   (or none that fires on its own) as long as it's runnable on demand.
+2. Register a Scheduled Task pointing at `scripts/run-deploy.bat`, same
+   general setup as §3 above, but with **no trigger** (or any trigger you
+   like — this app only ever fires it with `schtasks /run`, so it just needs
+   to be runnable on demand). Since `deploy.ps1` stops and restarts the web
+   server, this task needs a run-level with permission to control that
+   service — `/RL LIMITED` (the level the other jobs in §3 use) is not
+   enough; grant it `/RL HIGHEST` or run it as an account already permitted
+   to start/stop the service. This app never registers the task itself.
 3. Set **Deploy Scheduled Task name** on Membership Settings to the exact
    task name you registered.
 4. Turn on **Web-triggered deploy enabled** on Feature Flags.
