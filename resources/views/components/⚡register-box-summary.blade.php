@@ -48,13 +48,13 @@ re-find these lines after every refresh. --}}
     @if ($this->shift)
         <p role="status" class="text-sm text-gray-500">
             Open since {{ $this->shift->created_at->format('g:i A') }} by {{ $this->shift->openedBy->name }} —
-            opened ${{ number_format($this->shift->opening_count, 2) }},
-            expected now ${{ number_format($this->expected, 2) }}
+            opened {{ \App\Models\MembershipSetting::formatMoney($this->shift->opening_count) }},
+            expected now {{ \App\Models\MembershipSetting::formatMoney($this->expected) }}
         </p>
         <p role="status" class="text-sm text-gray-500">
-            Event ${{ number_format($this->breakdown['event'], 2) }} ·
-            Subscription ${{ number_format($this->breakdown['subscription'], 2) }} ·
-            Other ${{ number_format($this->breakdown['other'], 2) }}
+            Event {{ \App\Models\MembershipSetting::formatMoney($this->breakdown['event']) }} ·
+            Subscription {{ \App\Models\MembershipSetting::formatMoney($this->breakdown['subscription']) }} ·
+            Other {{ \App\Models\MembershipSetting::formatMoney($this->breakdown['other']) }}
         </p>
     @endif
 </div>

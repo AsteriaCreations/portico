@@ -16,14 +16,14 @@
                         <tr>
                             <td>{{ $lineItem->name }}</td>
                             <td class="text-right">{{ $lineItem->comps }}</td>
-                            <td class="text-right">${{ number_format($lineItem->foregone, 2) }}</td>
+                            <td class="text-right">{{ \App\Models\MembershipSetting::formatMoney($lineItem->foregone) }}</td>
                         </tr>
                     @endforeach
                 </tbody>
                 <tfoot>
                     <tr class="font-semibold">
                         <td colspan="2">Total</td>
-                        <td class="text-right">${{ number_format($lineItems->sum('foregone'), 2) }}</td>
+                        <td class="text-right">{{ \App\Models\MembershipSetting::formatMoney($lineItems->sum('foregone')) }}</td>
                     </tr>
                 </tfoot>
             </table>

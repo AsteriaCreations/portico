@@ -7,6 +7,7 @@ use App\Filament\Admin\Resources\Events\EventResource;
 use App\Mail\EventEndedSummary;
 use App\Models\CommandRun;
 use App\Models\Event;
+use App\Models\MembershipSetting;
 use App\Models\User;
 use App\Services\EventSummaryService;
 use Filament\Actions\Action;
@@ -58,7 +59,7 @@ class NotifyEventEnded extends Command
 
                 $notification = Notification::make()
                     ->title("Event ended: {$event->name}")
-                    ->body("{$summary['checked_in']} checked in, {$summary['prepaid_no_show']} prepaid but never arrived — \${$summary['revenue']} revenue.")
+                    ->body("{$summary['checked_in']} checked in, {$summary['prepaid_no_show']} prepaid but never arrived — ".MembershipSetting::formatMoney($summary['revenue']).' revenue.')
                     ->actions([
                         Action::make('view')
                             ->label('View event')

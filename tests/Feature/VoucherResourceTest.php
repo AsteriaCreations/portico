@@ -4,6 +4,7 @@ use App\Enums\Role;
 use App\Filament\Admin\Resources\Vouchers\Pages\CreateVoucher;
 use App\Filament\Admin\Resources\Vouchers\Pages\ListVouchers;
 use App\Models\Member;
+use App\Models\MembershipSetting;
 use App\Models\User;
 use App\Models\Voucher;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -16,6 +17,16 @@ test('a manager can browse the voucher ledger', function () {
     $this->actingAs(User::factory()->create(['role' => Role::Manager]));
 
     Livewire::test(ListVouchers::class)->assertSuccessful();
+});
+
+test('the voucher ledger amount column reflects a club-configured currency, not a hardcoded USD default', function () {
+    MembershipSetting::current()->update(['currency' => 'EUR']);
+    Voucher::factory()->create(['amount' => 25]);
+    $this->actingAs(User::factory()->create(['role' => Role::Manager]));
+
+    Livewire::test(ListVouchers::class)
+        ->assertSuccessful()
+        ->assertDontSee('$25.00');
 });
 
 test('a door volunteer has no access to the vouchers resource at all', function () {

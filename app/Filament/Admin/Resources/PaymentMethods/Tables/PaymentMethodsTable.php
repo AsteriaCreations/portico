@@ -30,7 +30,7 @@ class PaymentMethodsTable
                     ->tooltip(fn (bool $state): string => $state ? 'A member may use this method only once, ever, for entry/day passes (never restricted for a subscription purchase)' : 'A member may use this method any number of times'),
                 TextColumn::make('transaction_fee')
                     ->label('Fee')
-                    ->money('usd')
+                    ->money()
                     ->sortable(),
                 TextColumn::make('sort_order')
                     ->numeric()

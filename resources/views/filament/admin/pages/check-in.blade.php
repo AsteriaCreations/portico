@@ -254,7 +254,7 @@
             <x-filament::section>
                 @if ($attendance->departed_at)
                     <p class="font-medium text-warning-600">
-                        Checked in at {{ $attendance->checked_in_at->format('g:i A') }} — paid ${{ number_format($attendance->amount_paid, 2) }}.
+                        Checked in at {{ $attendance->checked_in_at->format('g:i A') }} — paid {{ \App\Models\MembershipSetting::formatMoney($attendance->amount_paid) }}.
                         Marked departed at {{ $attendance->departed_at->format('g:i A') }}.
                     </p>
 
@@ -263,7 +263,7 @@
                     </div>
                 @else
                     <p class="font-medium text-success-600">
-                        Checked in at {{ $attendance->checked_in_at->format('g:i A') }} — paid ${{ number_format($attendance->amount_paid, 2) }}
+                        Checked in at {{ $attendance->checked_in_at->format('g:i A') }} — paid {{ \App\Models\MembershipSetting::formatMoney($attendance->amount_paid) }}
                     </p>
 
                     @if ($member->isOnProbation())
@@ -277,7 +277,7 @@
             </x-filament::section>
         @elseif ($attendance)
             <x-filament::section>
-                <p class="font-medium">Prepaid — not yet arrived. Paid ${{ number_format($attendance->amount_paid, 2) }}.</p>
+                <p class="font-medium">Prepaid — not yet arrived. Paid {{ \App\Models\MembershipSetting::formatMoney($attendance->amount_paid) }}.</p>
 
                 @if ($decision?->blocksCheckIn())
                     {{-- The status line above already says "Do not admit"; markArrived
@@ -306,7 +306,7 @@
                 {{-- role="status" (implicit aria-live="polite" + aria-atomic) so this
                 announces itself to screen readers as pricingForm() selections
                 change it, without staff needing to re-navigate to it after every toggle. --}}
-                <p role="status" class="mt-3 text-xl font-bold">Due: ${{ number_format($this->getLivePriceBreakdown()->amountPaid + $this->getLiveAddOnTotal(), 2) }}</p>
+                <p role="status" class="mt-3 text-xl font-bold">Due: {{ \App\Models\MembershipSetting::formatMoney($this->getLivePriceBreakdown()->amountPaid + $this->getLiveAddOnTotal()) }}</p>
 
                 @if ($hasRoom)
                     <div class="mt-4">

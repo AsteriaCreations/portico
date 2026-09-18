@@ -4,6 +4,7 @@ namespace App\Filament\Admin\Widgets;
 
 use App\Enums\EntryCoverageSource;
 use App\Enums\Role;
+use App\Models\MembershipSetting;
 use Filament\Widgets\StatsOverviewWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
 use Illuminate\Support\Facades\DB;
@@ -45,7 +46,7 @@ class CompCostWidget extends StatsOverviewWidget
 
         return $rows
             ->map(fn ($row) => Stat::make($row->name, "{$row->comps} comps")
-                ->description('$'.number_format($row->foregone, 2).' foregone'))
+                ->description(MembershipSetting::formatMoney($row->foregone).' foregone'))
             ->all();
     }
 }

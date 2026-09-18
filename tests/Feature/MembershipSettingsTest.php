@@ -43,6 +43,7 @@ test('mount fills the form from the current singleton row', function () {
         'event_window_buffer_minutes' => 20,
         'age_of_majority' => 19,
         'alcohol_flag_age' => 20,
+        'currency' => 'EUR',
         'hide_member_pii_by_default' => false,
         'checkin_display_name_field' => 'username',
     ]);
@@ -58,6 +59,7 @@ test('mount fills the form from the current singleton row', function () {
             'event_window_buffer_minutes' => 20,
             'age_of_majority' => 19,
             'alcohol_flag_age' => 20,
+            'currency' => 'EUR',
             'hide_member_pii_by_default' => false,
             'checkin_display_name_field' => 'username',
         ]);
@@ -75,6 +77,7 @@ test('saving updates the singleton row', function () {
             'event_window_buffer_minutes' => 10,
             'age_of_majority' => 19,
             'alcohol_flag_age' => 20,
+            'currency' => 'EUR',
             'hide_member_pii_by_default' => false,
             'checkin_display_name_field' => 'full_name',
         ])
@@ -90,8 +93,32 @@ test('saving updates the singleton row', function () {
         ->and($setting->event_window_buffer_minutes)->toBe(10)
         ->and($setting->age_of_majority)->toBe(19)
         ->and($setting->alcohol_flag_age)->toBe(20)
+        ->and($setting->currency)->toBe('EUR')
         ->and($setting->hide_member_pii_by_default)->toBeFalse()
         ->and($setting->checkin_display_name_field)->toBe('full_name');
+});
+
+test('currency is uppercased on save and rejected if not a recognized code', function () {
+    $this->actingAs(userWithRoleForSettings(Role::Manager));
+
+    Livewire::test(MembershipSettings::class)
+        ->fillForm([
+            'subscription_eligibility_threshold' => 5,
+            'probation_period_days' => 90,
+            'event_window_buffer_minutes' => 15,
+            'age_of_majority' => 18,
+            'alcohol_flag_age' => 21,
+            'currency' => 'eur',
+        ])
+        ->callAction('save')
+        ->assertHasNoActionErrors();
+
+    expect(MembershipSetting::current()->currency)->toBe('EUR');
+
+    Livewire::test(MembershipSettings::class)
+        ->fillForm(['currency' => 'ZZZ'])
+        ->callAction('save')
+        ->assertHasActionErrors(['currency']);
 });
 
 test('venue_capacity and default_opening_float can be cleared to null', function () {

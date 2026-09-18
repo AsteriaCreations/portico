@@ -15,6 +15,11 @@ is fixes only.
   club-configurable on the Membership Settings page, instead of hardcoded in
   `AdmissionPolicy` — both are jurisdiction-specific. Setting them equal disables the
   flag outcome entirely.
+- Currency is now club-configurable on the Membership Settings page (a 3-letter ISO 4217
+  code, default `USD`) instead of every dollar figure assuming USD. Applies everywhere a
+  money figure is shown — the check-in desk's live totals and notifications, every
+  Analytics widget, and every `->money()` table column across the admin panel (set via one
+  panel-wide default rather than touching each column).
 
 ## [0.2.0] — 2026-09-17
 

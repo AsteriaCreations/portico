@@ -31,7 +31,7 @@ class VoucherLiabilityWidget extends StatsOverviewWidget
     protected function getStats(): array
     {
         return [
-            Stat::make('Outstanding voucher liability', '$'.number_format(Voucher::sum('amount'), 2)),
+            Stat::make('Outstanding voucher liability', MembershipSetting::formatMoney(Voucher::sum('amount'))),
         ];
     }
 }

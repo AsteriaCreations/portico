@@ -5,6 +5,7 @@ namespace App\Filament\Admin\Resources\Subscriptions\Pages;
 use App\Filament\Admin\Resources\Subscriptions\SubscriptionResource;
 use App\Models\AddOn;
 use App\Models\Member;
+use App\Models\MembershipSetting;
 use App\Models\PaymentMethod;
 use App\Models\Plan;
 use App\Models\Subscription;
@@ -95,7 +96,7 @@ class ListSubscriptions extends ListRecords
                         // prices every duration (including 1) at today's rate,
                         // since this action records a payment happening now.
                         return Plan::currentOptionsFor($addOn, now())
-                            ->mapWithKeys(fn (Plan $plan) => [$plan->duration_months => "{$plan->duration_months} month(s) — \$".number_format($plan->price, 2)])
+                            ->mapWithKeys(fn (Plan $plan) => [$plan->duration_months => "{$plan->duration_months} month(s) — ".MembershipSetting::formatMoney($plan->price)])
                             ->all();
                     })
                     ->required(),
@@ -143,7 +144,7 @@ class ListSubscriptions extends ListRecords
                     : $first->covered_month->format('F Y').' – '.$last->covered_month->format('F Y');
 
                 Notification::make()
-                    ->title("Bundle recorded for {$member->username} — \$".number_format((float) $rows->sum('amount_paid'), 2)." covering {$rangeLabel}")
+                    ->title("Bundle recorded for {$member->username} — ".MembershipSetting::formatMoney((float) $rows->sum('amount_paid'))." covering {$rangeLabel}")
                     ->success()
                     ->send();
             });
