@@ -21,6 +21,15 @@ is fixes only.
   Analytics widget, and every `->money()` table column across the admin panel (set via one
   panel-wide default rather than touching each column).
 
+### Security
+
+- Repository hardening ahead of wider public use: `main` and `v*` release tags are now
+  protected by rulesets (PR + passing CI required, no force-push or deletion, squash
+  merge only); CI actions are pinned to commit SHAs with an explicit `contents: read`
+  token scope; Dependabot version updates (composer, npm, GitHub Actions) and a CodeQL
+  workflow (JS + workflow files — CodeQL has no PHP support) are added; and a
+  `CODEOWNERS` file covers the authorization and deploy-script paths.
+
 ## [0.2.0] — 2026-09-17
 
 ### Added
