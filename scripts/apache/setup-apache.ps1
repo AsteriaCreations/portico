@@ -19,11 +19,11 @@
     The LAN IP, hostname, and CIDR are read from -ConfFile (any
     "Define <prefix>_IP/_HOST/_LAN" lines, matched by suffix regardless of
     prefix -- portico.conf's SITE_IP/SITE_HOST/SITE_LAN, a fork's own
-    IX_IP/IX_HOST/IX_LAN, whatever), so that file stays the single source of
-    truth -- this script never second-guesses it. This is also how a fork
-    with its own overlay vhost file (e.g. a club's ix-membership.conf) points
-    this same generic script at its own real values instead of the generic
-    template.
+    MYCLUB_IP/MYCLUB_HOST/MYCLUB_LAN, whatever), so that file stays the
+    single source of truth -- this script never second-guesses it. This is
+    also how a fork with its own overlay vhost file (e.g. a club's
+    myclub.conf) points this same generic script at its own real values
+    instead of the generic template.
 
     Idempotent: safe to re-run. Skips work already done and reports it.
 
@@ -53,7 +53,7 @@
     this script and deployed to conf\extra\<ConfFile> with a matching
     Include line. Default "portico.conf" (the generic template). A fork with
     its own overlay file (real IP/hostname/CIDR already filled in) passes its
-    own filename here instead, e.g. "ix-membership.conf".
+    own filename here instead, e.g. "myclub.conf".
 
 .PARAMETER ServiceName
     Windows service name. Default "Apache-Portico".
@@ -105,8 +105,8 @@
 .EXAMPLE
     # Add HTTPS to an already-running box, using a fork's own overlay conf and
     # an mkcert-issued cert/key:
-    .\setup-apache.ps1 -ConfFile 'ix-membership.conf' -ServiceName 'Apache-IX' `
-        -EnableTls -CertFile 'C:\Users\you\checkin.ix.lan+1.pem' -KeyFile 'C:\Users\you\checkin.ix.lan+1-key.pem'
+    .\setup-apache.ps1 -ConfFile 'myclub.conf' -ServiceName 'Apache-MyClub' `
+        -EnableTls -CertFile 'C:\Users\you\checkin.myclub.lan+1.pem' -KeyFile 'C:\Users\you\checkin.myclub.lan+1-key.pem'
 #>
 [CmdletBinding(SupportsShouldProcess = $true)]
 param(
@@ -145,7 +145,7 @@ $confText = Get-Content -Path $confSource -Raw
 
 # Pull the LAN facts straight out of the vhost file so there's one source of
 # truth. Match on the _IP/_HOST/_LAN suffix, not a fixed "SITE_" prefix -- a
-# fork's own overlay file (e.g. ix-membership.conf's IX_IP/IX_HOST/IX_LAN)
+# fork's own overlay file (e.g. myclub.conf's MYCLUB_IP/MYCLUB_HOST/MYCLUB_LAN)
 # uses a different prefix than the generic portico.conf's SITE_IP/SITE_HOST/
 # SITE_LAN, and -ConfFile exists precisely so this script can read either.
 $defs = @{}
@@ -168,8 +168,8 @@ if (-not (Test-Path $phpApacheDll)) {
     throw "PHP Apache SAPI not found at $phpApacheDll. Install the Thread Safe PHP 8.4 build to C:\php before running this."
 }
 
-# A conf file that declares SSLEngine on (a TLS-only overlay like
-# ix-membership.conf, once the club committed to HTTPS) unconditionally
+# A conf file that declares SSLEngine on (a TLS-only overlay like a fork's
+# own myclub.conf, once the club committed to HTTPS) unconditionally
 # expects a cert at conf\ssl\ -- which only ever gets placed there when
 # -EnableTls runs. Catch a missing/dropped -EnableTls here, with a clear
 # message, instead of letting httpd -t fail later with a bare
