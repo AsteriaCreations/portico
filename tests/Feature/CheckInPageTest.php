@@ -96,6 +96,16 @@ test('the live price breakdown updates as a subscription is selected, without ch
         ->and(Subscription::where('member_id', $member->id)->exists())->toBeFalse();
 });
 
+test('the live Due total reflects a club-configured currency, not a hardcoded dollar sign', function () {
+    MembershipSetting::current()->update(['currency' => 'JPY']);
+    $member = clearMember($this->irregular);
+    $event = Event::factory()->create(['event_date' => now()->toDateString(), 'entry_fee' => 40, 'pool_fee' => 0]);
+
+    Livewire::test(CheckIn::class)
+        ->fillForm(['event_id' => $event->id, 'member_id' => $member->id])
+        ->assertDontSee('$40.00');
+});
+
 test('add_on_ids is always seeded as a real array, never an absent key', function () {
     // Regression guard for a live bug: Alpine/Livewire's checkbox-group
     // binding (getInputValue() in livewire.js) only concats into an array

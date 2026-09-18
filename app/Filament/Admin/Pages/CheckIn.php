@@ -465,7 +465,7 @@ class CheckIn extends Page implements HasTable
         $entryFee = $this->getPriceBreakdown()?->entryFee ?? 0.0;
         $ownBalance = $member?->voucherBalance() ?? 0.0;
         $voucherLabel = $member
-            ? "Apply voucher credit — \${$this->formatCurrency($ownBalance)} available on {$member->displayName()}'s account"
+            ? "Apply voucher credit — {$this->formatCurrency($ownBalance)} available on {$member->displayName()}'s account"
             : 'Apply voucher credit';
 
         return $schema
@@ -484,7 +484,7 @@ class CheckIn extends Page implements HasTable
                         ->orderBy('sort_order')
                         ->get()
                         ->mapWithKeys(fn (AddOn $addOn) => [
-                            $addOn->id => $addOn->name.' — $'.number_format($addOn->price, 2)
+                            $addOn->id => $addOn->name.' — '.$this->formatCurrency($addOn->price)
                                 .(($event && ! $addOn->hasRoomOn($event->event_date)) ? ' (full for tonight)' : ''),
                         ])
                         ->all())
@@ -521,7 +521,7 @@ class CheckIn extends Page implements HasTable
                     ->label("Apply from a different member's balance (optional)")
                     ->searchable()
                     ->getSearchResultsUsing(fn (string $search) => static::searchMembers($search)
-                        ->mapWithKeys(fn (Member $payer) => [$payer->id => static::memberLabel($payer).' — $'.$this->formatCurrency($payer->voucherBalance()).' available'])
+                        ->mapWithKeys(fn (Member $payer) => [$payer->id => static::memberLabel($payer).' — '.$this->formatCurrency($payer->voucherBalance()).' available'])
                         ->all())
                     ->getOptionLabelUsing(fn ($value) => ($payer = Member::find($value)) ? static::memberLabel($payer) : null)
                     ->helperText("Leave blank to use {$member?->displayName()}'s own balance.")
@@ -921,7 +921,7 @@ class CheckIn extends Page implements HasTable
                 $variance = $service->variance($closed) ?? 0.0;
                 $label = $variance == 0.0 ? 'exact' : ($variance > 0 ? 'over' : 'short');
 
-                Notification::make()->title('Box closed — $'.number_format(abs($variance), 2)." {$label}")->success()->send();
+                Notification::make()->title('Box closed — '.$this->formatCurrency(abs($variance))." {$label}")->success()->send();
             });
     }
 
@@ -1053,7 +1053,7 @@ class CheckIn extends Page implements HasTable
                         }
 
                         return Plan::currentOptionsFor($addOn, now())
-                            ->mapWithKeys(fn (Plan $plan) => [$plan->duration_months => "{$plan->duration_months} month(s) — \$".number_format($plan->price, 2)])
+                            ->mapWithKeys(fn (Plan $plan) => [$plan->duration_months => "{$plan->duration_months} month(s) — {$this->formatCurrency($plan->price)}"])
                             ->all();
                     })
                     ->required(),
@@ -1118,7 +1118,7 @@ class CheckIn extends Page implements HasTable
                     : $first->covered_month->format('F Y').' – '.$last->covered_month->format('F Y');
 
                 Notification::make()
-                    ->title('Subscription recorded — $'.number_format((float) $rows->sum('amount_paid'), 2)." covering {$rangeLabel}")
+                    ->title('Subscription recorded — '.$this->formatCurrency((float) $rows->sum('amount_paid'))." covering {$rangeLabel}")
                     ->success()
                     ->send();
             });
@@ -1177,7 +1177,7 @@ class CheckIn extends Page implements HasTable
                         return static::addOnDayPassEventOptionsQuery($addOn)
                             ->orderBy('event_date')
                             ->get()
-                            ->mapWithKeys(fn (Event $event) => [$event->id => "{$event->name} — {$event->event_date->toFormattedDateString()} (\$".number_format((float) $addOn->priceFor($event), 2).')']);
+                            ->mapWithKeys(fn (Event $event) => [$event->id => "{$event->name} — {$event->event_date->toFormattedDateString()} ({$this->formatCurrency((float) $addOn->priceFor($event))})"]);
                     })
                     ->required()
                     ->searchable(),
@@ -1242,7 +1242,7 @@ class CheckIn extends Page implements HasTable
                 }
 
                 Notification::make()
-                    ->title("{$addOn->name} day pass recorded — \$".number_format((float) $pass->amount_paid, 2)." for {$event->name}")
+                    ->title("{$addOn->name} day pass recorded — {$this->formatCurrency((float) $pass->amount_paid)} for {$event->name}")
                     ->success()
                     ->send();
             });
@@ -1340,7 +1340,7 @@ class CheckIn extends Page implements HasTable
 
         $monthlyPlan = Plan::currentFor($addOn, $event->event_date);
         if ($monthlyPlan && ! $member->hasActiveSubscriptionFor($addOn, $eventMonth)) {
-            $options[1] = 'This month — $'.number_format($monthlyPlan->price, 2);
+            $options[1] = 'This month — '.$this->formatCurrency($monthlyPlan->price);
         }
 
         $service = app(SubscriptionBundleService::class);
@@ -1367,7 +1367,7 @@ class CheckIn extends Page implements HasTable
                 ? $resolution->start->format('F Y')
                 : $resolution->start->format('F Y').' – '.$endMonth->format('F Y');
 
-            $label = "{$plan->duration_months} months — \$".number_format($plan->price, 2)." ({$rangeLabel})";
+            $label = "{$plan->duration_months} months — {$this->formatCurrency($plan->price)} ({$rangeLabel})";
 
             if (! empty($resolution->skippedMonths)) {
                 $skippedLabel = collect($resolution->skippedMonths)->map(fn ($m) => $m->format('F Y'))->implode(', ');
@@ -1430,7 +1430,7 @@ class CheckIn extends Page implements HasTable
                 && $this->getDecision()?->outcome !== AdmissionOutcome::Capture
                 && ($event === null || app(CapacityService::class)->hasRoom($event->event_date)))
             ->action(function (array $data): void {
-                if ($this->haltForTraining('Practice check-in complete — $'.number_format(($this->getLivePriceBreakdown()?->amountPaid ?? 0) + $this->getLiveAddOnTotal(), 2).' would have been charged. Nothing was saved.')) {
+                if ($this->haltForTraining('Practice check-in complete — '.$this->formatCurrency(($this->getLivePriceBreakdown()?->amountPaid ?? 0) + $this->getLiveAddOnTotal()).' would have been charged. Nothing was saved.')) {
                     return;
                 }
 
@@ -1701,15 +1701,15 @@ class CheckIn extends Page implements HasTable
                 // inherits this one's comp/voucher/subscription choices.
                 $this->pricingData = ['add_on_ids' => []];
 
-                $title = 'Checked in — $'.number_format($breakdown->amountPaid + $addOnTotal, 2).' due';
+                $title = 'Checked in — '.$this->formatCurrency($breakdown->amountPaid + $addOnTotal).' due';
                 if ($subscriptionTotal > 0) {
-                    $title .= ' + $'.number_format($subscriptionTotal, 2).' Subscription';
+                    $title .= ' + '.$this->formatCurrency($subscriptionTotal).' Subscription';
                 }
                 if ($addOnTotal > 0) {
-                    $title .= ' + $'.number_format($addOnTotal, 2).' Add-ons';
+                    $title .= ' + '.$this->formatCurrency($addOnTotal).' Add-ons';
                 }
                 if ($voucherApplied > 0) {
-                    $title .= ' − $'.number_format($voucherApplied, 2).' voucher';
+                    $title .= ' − '.$this->formatCurrency($voucherApplied).' voucher';
                 }
 
                 Notification::make()->title($title)->success()->send();
@@ -1718,7 +1718,7 @@ class CheckIn extends Page implements HasTable
 
     protected function formatCurrency(float $amount): string
     {
-        return number_format($amount, 2);
+        return MembershipSetting::formatMoney($amount);
     }
 
     public function markArrivedAction(): Action

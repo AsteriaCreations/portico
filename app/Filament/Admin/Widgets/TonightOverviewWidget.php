@@ -4,6 +4,7 @@ namespace App\Filament\Admin\Widgets;
 
 use App\Enums\Role;
 use App\Models\Attendance;
+use App\Models\MembershipSetting;
 use Filament\Widgets\StatsOverviewWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
 
@@ -28,7 +29,7 @@ class TonightOverviewWidget extends StatsOverviewWidget
 
         return [
             Stat::make("Tonight's check-ins", $baseQuery()->count()),
-            Stat::make("Tonight's door take", '$'.number_format($baseQuery()->sum('amount_paid'), 2)),
+            Stat::make("Tonight's door take", MembershipSetting::formatMoney($baseQuery()->sum('amount_paid'))),
         ];
     }
 }

@@ -9,6 +9,7 @@ use App\Models\MembershipSetting;
 use App\Models\User;
 use App\Observers\MemberObserver;
 use App\Observers\UserObserver;
+use Filament\Tables\Table;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Validation\Rules\Password;
@@ -94,6 +95,15 @@ class AppServiceProvider extends ServiceProvider
             && MembershipSetting::current()->upstream_check_enabled
             && MembershipSetting::current()->deploy_trigger_enabled
             && filled(MembershipSetting::current()->deploy_task_name));
+
+        // Panel-wide default so every Filament ->money() table column (there
+        // are ~30 of them across Resources/RelationManagers) picks up the
+        // club-configured currency without touching each one individually --
+        // ->money() itself already falls back to $table->getDefaultCurrency()
+        // when no explicit currency is passed. Hand-formatted money strings
+        // (Analytics widgets, the check-in desk's live totals) don't go
+        // through a Table at all -- see MembershipSetting::formatMoney().
+        Table::configureUsing(fn (Table $table): Table => $table->defaultCurrency(fn (): string => MembershipSetting::current()->currency));
 
         Member::observe(MemberObserver::class);
         User::observe(UserObserver::class);

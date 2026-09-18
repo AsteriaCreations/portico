@@ -14,7 +14,7 @@
         </tr>
         <tr>
             <td>Revenue</td>
-            <td><strong>${{ number_format($summary['revenue'], 2) }}</strong></td>
+            <td><strong>{{ \App\Models\MembershipSetting::formatMoney($summary['revenue']) }}</strong></td>
         </tr>
     </table>
 </body>

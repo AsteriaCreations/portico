@@ -34,3 +34,14 @@ test('current reflects updates rather than re-reading config', function () {
 
     expect(MembershipSetting::current()->subscription_eligibility_threshold)->toBe(42);
 });
+
+test('formatMoney defaults to USD', function () {
+    expect(MembershipSetting::formatMoney(1234.5))->toBe('$1,234.50');
+});
+
+test('formatMoney respects a club-configured currency', function () {
+    MembershipSetting::current()->update(['currency' => 'EUR']);
+
+    expect(MembershipSetting::formatMoney(1234.5))->toContain('1,234.50')
+        ->and(MembershipSetting::formatMoney(1234.5))->not->toStartWith('$');
+});

@@ -286,6 +286,18 @@ test('voucher liability widget sums every voucher amount, positive and negative,
     expect($stats[0]->getValue())->toBe('$50.00');
 });
 
+test('voucher liability widget reflects a club-configured currency, not a hardcoded dollar sign', function () {
+    MembershipSetting::current()->update(['currency' => 'GBP']);
+    $this->actingAs(User::factory()->create(['active' => true, 'role' => Role::Manager]));
+
+    Voucher::factory()->create(['amount' => 50]);
+
+    $widget = new VoucherLiabilityWidget;
+    $stats = (fn () => $this->getStats())->call($widget);
+
+    expect($stats[0]->getValue())->not->toStartWith('$')->and($stats[0]->getValue())->toContain('50.00');
+});
+
 test('voucher liability widget is restricted to manager and up', function () {
     $door = User::factory()->create(['active' => true, 'role' => Role::Door]);
     $this->actingAs($door);

@@ -5,6 +5,7 @@ namespace App\Filament\Admin\Pages;
 use App\Enums\Role;
 use App\Models\MembershipSetting;
 use BackedEnum;
+use Closure;
 use Filament\Actions\Action;
 use Filament\Forms\Components\CheckboxList;
 use Filament\Forms\Components\Select;
@@ -58,6 +59,7 @@ class MembershipSettings extends Page
             'event_window_buffer_minutes',
             'age_of_majority',
             'alcohol_flag_age',
+            'currency',
             'org_name',
             'member_search_fields',
             'checkin_display_name_field',
@@ -116,6 +118,33 @@ class MembershipSettings extends Page
                     ->numeric()
                     ->minValue(0)
                     ->required(),
+                TextInput::make('currency')
+                    ->label('Currency code')
+                    ->helperText('A 3-letter ISO 4217 currency code (e.g. USD, EUR, GBP, CAD) — used everywhere a dollar figure is shown, from the check-in desk\'s live totals to every money column in the admin panel.')
+                    ->required()
+                    ->minLength(3)
+                    ->maxLength(3)
+                    ->dehydrateStateUsing(fn (?string $state): ?string => $state ? strtoupper($state) : $state)
+                    // ->rule() evaluates a bare Closure through Filament's own
+                    // DI resolver (which fails trying to inject $attribute) --
+                    // wrapping it in an outer closure that itself takes no
+                    // recognized parameters hands the real validation closure
+                    // to Laravel's validator unevaluated, as intended.
+                    //
+                    // NumberFormatter::formatCurrency() is lenient about an
+                    // unrecognized code -- it just prints it as a literal
+                    // prefix ("ZZZ 1.00") instead of failing -- so validation
+                    // can't rely on Number::currency()'s return value. ICU's
+                    // own currency data (already shipped with the required
+                    // intl extension, no new dependency) is the real source
+                    // of truth for "is this a currency ICU knows how to format".
+                    ->rule(fn (): Closure => function (string $attribute, mixed $value, Closure $fail): void {
+                        $known = \ResourceBundle::create('en', 'ICUDATA-curr')->get('Currencies')->get(strtoupper((string) $value));
+
+                        if ($known === null) {
+                            $fail('Not a recognized currency code.');
+                        }
+                    }),
                 TextInput::make('org_name')
                     ->label('Displayed organization name')
                     ->helperText('Shown across the admin panel (header, browser tab, login page) in place of "'.config('app.name').'". Leave blank to use that default. Owner only.')

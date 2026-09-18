@@ -45,7 +45,7 @@ class RegisterVarianceWidget extends StatsOverviewWidget
         $total = $variances->sum();
 
         return [
-            Stat::make('Total register variance this week', '$'.number_format($total, 2))
+            Stat::make('Total register variance this week', MembershipSetting::formatMoney($total))
                 ->color(match (true) {
                     $total == 0.0 => 'success',
                     $total > 0 => 'warning',

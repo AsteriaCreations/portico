@@ -46,7 +46,7 @@ class AddOnRevenueWidget extends StatsOverviewWidget
 
         return $rows
             ->map(fn ($row) => Stat::make($row->name, "{$row->qty} sold")
-                ->description('$'.number_format($row->revenue, 2).' collected'))
+                ->description(MembershipSetting::formatMoney($row->revenue).' collected'))
             ->all();
     }
 }

@@ -3,6 +3,7 @@
 namespace App\Filament\Admin\Resources\ShowrunnerPayoutTiers\Tables;
 
 use App\Enums\PayoutType;
+use App\Models\MembershipSetting;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
@@ -29,7 +30,7 @@ class ShowrunnerPayoutTiersTable
                 TextColumn::make('payout_value')
                     ->label('Payout')
                     ->formatStateUsing(fn (string $state, $record): string => $record->payout_type === PayoutType::Voucher
-                        ? '$'.number_format((float) $state, 2)
+                        ? MembershipSetting::formatMoney((float) $state)
                         : number_format((float) $state, 2).'%'),
             ])
             ->filters([

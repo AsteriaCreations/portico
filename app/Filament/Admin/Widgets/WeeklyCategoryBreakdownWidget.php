@@ -3,6 +3,7 @@
 namespace App\Filament\Admin\Widgets;
 
 use App\Enums\Role;
+use App\Models\MembershipSetting;
 use Filament\Widgets\StatsOverviewWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
 use Illuminate\Support\Facades\DB;
@@ -34,7 +35,7 @@ class WeeklyCategoryBreakdownWidget extends StatsOverviewWidget
 
         return $rows
             ->map(fn ($row) => Stat::make($row->name, "{$row->visits} visits")
-                ->description('$'.number_format($row->revenue, 2).' collected'))
+                ->description(MembershipSetting::formatMoney($row->revenue).' collected'))
             ->all();
     }
 }

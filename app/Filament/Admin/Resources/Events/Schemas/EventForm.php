@@ -140,7 +140,7 @@ class EventForm
                                 ->content(fn (?Event $record, EventSummaryService $summaryService): string => (string) ($record ? $summaryService->forEvent($record)['prepaid_no_show'] : 0)),
                             Placeholder::make('summary_revenue')
                                 ->label('Revenue')
-                                ->content(fn (?Event $record, EventSummaryService $summaryService): string => '$'.number_format($record ? $summaryService->forEvent($record)['revenue'] : 0, 2)),
+                                ->content(fn (?Event $record, EventSummaryService $summaryService): string => MembershipSetting::formatMoney($record ? $summaryService->forEvent($record)['revenue'] : 0)),
                         ]),
                 ] : []),
             ]);
