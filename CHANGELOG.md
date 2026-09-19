@@ -21,6 +21,17 @@ is fixes only.
   Analytics widget, and every `->money()` table column across the admin panel (set via one
   panel-wide default rather than touching each column).
 
+### Changed
+
+- `docs/DEPLOYMENT.md` is expanded with lessons from a real production go-live, and the
+  network guidance is now router-agnostic: a vendor-neutral checklist (DHCP reservation,
+  local DNS, isolated staff network, no WAN port-forward, verify segmentation) with UniFi
+  as a worked example. Also new: which account should own the install, the `php.ini`
+  gotchas (absolute `extension_dir`, the `bcmath`/`exif`/`zip` lines the Windows template
+  lacks), the Apache VS17-vs-VS18 pairing note, Node and MariaDB notes, `schtasks.exe`
+  examples, fuller mkcert/TLS steps, and a post-launch smoke-test checklist (§8). The
+  install steps now include the `npm run build` they previously omitted.
+
 ### Security
 
 - Repository hardening ahead of wider public use: `main` and `v*` release tags are now
