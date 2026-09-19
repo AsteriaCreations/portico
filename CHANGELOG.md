@@ -29,8 +29,13 @@ is fixes only.
   as a worked example. Also new: which account should own the install, the `php.ini`
   gotchas (absolute `extension_dir`, the `bcmath`/`exif`/`zip` lines the Windows template
   lacks), the Apache VS17-vs-VS18 pairing note, Node and MariaDB notes, `schtasks.exe`
-  examples, fuller mkcert/TLS steps, and a post-launch smoke-test checklist (§8). The
-  install steps now include the `npm run build` they previously omitted.
+  examples, fuller mkcert/TLS steps, and a post-launch smoke-test checklist (§8). Node is
+  documented as optional: the admin panel doesn't use the Vite build, so it's needed only
+  for `deploy.ps1`'s default `npm` step (`-SkipNpm` skips it).
+- `README.md` brought up to date: current release (`v0.2.0`), the full feature-flag list,
+  configurable currency and check-in display name, the complete seed set, the
+  `SYSTEM_USER_EMAIL` override, the optional `upstream:check` job and one-command deploy
+  tooling, and links to `docs/FEATURES.md`, `docs/CONFIGURING.md` and `CHANGELOG.md`.
 
 ### Security
 
