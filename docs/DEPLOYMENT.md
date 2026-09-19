@@ -161,7 +161,13 @@ server. Apache as a Windows service (§2) has none of those constraints.
 
 ### Node.js
 
-`npm run build` needs Node — use the current LTS (24, or 22); check `package.json`'s
+**Node is optional for the admin panel.** The panel runs on Filament's own assets, which are
+committed under `public/`; the Vite build (`public/build/`) is only used by the stock
+welcome page, which works without it. You need Node only for `scripts/deploy.ps1`'s default
+`npm install && npm run build` step (§7) — install Node, or pass `-SkipNpm` and skip this
+section.
+
+If you do install it, use the current LTS (24, or 22); check `package.json`'s
 `engines`/the Vite version if in doubt, as older Node lines fall below Vite's floor. The
 MSI can fail writing `C:\Program Files\nodejs\corepack` if a previous Node install left
 files there; if so, uninstall the old Node, delete that folder, and either re-run the MSI
@@ -176,7 +182,6 @@ the PowerShell execution policy at `RemoteSigned` or looser:
 git clone <your fork> C:\portico
 cd C:\portico
 composer install --no-dev --optimize-autoloader
-npm install && npm run build      # public/build/ is gitignored — the box must build it
 cp .env.example .env
 php artisan key:generate
 ```
@@ -468,7 +473,9 @@ build`, `php artisan migrate --force`, `storage:link` / `config:clear` /
 `optimize`, then restarts the service — in a `finally` block, so a failure
 partway through never leaves the box down. Flags for the common variations:
 
-- `-SkipNpm` — this update touched no front-end asset (most don't).
+- `-SkipNpm` — skip `npm install && npm run build`. The admin panel doesn't use the Vite
+  build (§1, "Node.js"), so this is safe whenever Node isn't installed or the update
+  touched no front-end asset (most don't).
 - `-SkipMigrate` — this update has no schema change.
 - `-MigrateFresh` — **pre-launch only, destroys data** — rebuilds the schema
   from scratch instead of a forward-only `migrate --force`.
@@ -563,8 +570,8 @@ After go-live, and again after any update that touches code or assets:
       database — only the real `ADMIN_EMAIL` credential does.
 - [ ] A non-admin staff account exists for day-to-day use, so the desk isn't signed in as
       Owner.
-- [ ] `/admin/check-in` loads **and is styled** (confirms the freshly built `public/build/`
-      is being served, not just the HTML).
+- [ ] `/admin/check-in` loads **and is styled**. Unstyled pages mean static assets aren't
+      being served — check that the vhost's document root is the app's `public/` folder.
 - [ ] A test check-in records correctly, and the register/reporting widgets reflect it.
 - [ ] Each scheduled task (§3) shows as registered with a next-run time; after its first
       real run, its log shows success and `Last Result` is `0x0`.

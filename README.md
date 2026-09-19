@@ -1,7 +1,7 @@
 # Portico
 
-A standalone member check-in and membership-management app for member clubs (built for one
-of ~1,000 members), replacing a single shared spreadsheet. It solves one core problem:
+A standalone member check-in and membership-management app for member clubs (built for a
+club of ~1,000 members), replacing a single shared spreadsheet. It solves one core problem:
 **concurrent multi-user check-in with per-event payment tracking** — several volunteers
 checking members in at the door simultaneously, on the same night, without stepping on
 each other's data.
@@ -11,6 +11,13 @@ each other's data.
 Full schema, fee logic, admission rules, and role permissions are specified in
 [`docs/BLUEPRINT.md`](docs/BLUEPRINT.md) — read that first if you're changing business
 logic. [`CONTRIBUTING.md`](CONTRIBUTING.md) has the working conventions for this codebase.
+
+Where to look next:
+
+- [`docs/FEATURES.md`](docs/FEATURES.md) — a flat inventory of what's built, by area.
+- [`docs/CONFIGURING.md`](docs/CONFIGURING.md) — setting Portico up for your club.
+- [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md) — standing it up on a club LAN.
+- [`CHANGELOG.md`](CHANGELOG.md) — what changed, release by release.
 
 > **License note:** Portico is [AGPL-3.0-or-later](LICENSE). If you run a modified version
 > as a network service, you must offer your users the modified source. See
@@ -37,7 +44,7 @@ Set `DB_DATABASE`, `DB_USERNAME`, `DB_PASSWORD` in `.env` for your local MariaDB
 php artisan migrate:fresh --seed
 ```
 
-This seeds membership categories, a starter `event_types` list (Social, Pool Social, Class, Munch, Private Rental, Meeting, Special, Yoga), example subscription plans (regular $60 / $25 credit, pool $15 / full coverage — all editable at runtime via the Plans and Membership Settings screens), and a starter `comp_reasons` list (Presenter, Volunteer, Guest of a staff member). Every one of those is ordinary settings data you edit, rename, or deactivate to match your club. In `local`/`testing` the shipped `DatabaseSeeder` also creates an admin at `test@example.com` / `password`; outside those environments it instead requires `ADMIN_EMAIL` and `ADMIN_PASSWORD` in `.env` and refuses to seed a guessable credential.
+This seeds membership categories, a starter `event_types` list (Social, Pool Social, Class, Munch, Private Rental, Meeting, Special, Yoga), the Entry and Pool add-ons, example subscription plans (regular 60 / 25 credit, pool 15 / full coverage — all editable at runtime via the Plans and Membership Settings screens; the currency is a Membership Settings choice, `USD` by default), a starter `comp_reasons` list (Presenter, Volunteer, Guest of a staff member), paperwork types, and starter showrunner-payout and instructor pay-rate tiers, plus an inactive system user that exists only to attribute automated ledger entries. Every one of those is ordinary settings data you edit, rename, or deactivate to match your club. In `local`/`testing` the shipped `DatabaseSeeder` also creates an admin at `test@example.com` / `password`; outside those environments it instead requires `ADMIN_EMAIL` and `ADMIN_PASSWORD` in `.env` and refuses to seed a guessable credential.
 
 Visit `/admin` to log in. `/admin/check-in` is the primary door-facing screen; everything else (Members, Events, Subscriptions, Plans, Event Types, Users, reports) is gated to Manager/Admin per the roles table below.
 
@@ -113,9 +120,9 @@ Seven nested tiers — `Showrunner ⊂ Volunteer ⊂ DM ⊂ Door ⊂ Manager ⊂
 
 † Deliberately not monotonic — Admin sits between Manager and Owner in rank but can't grant this perk. See `docs/BLUEPRINT.md` "Monthly Manager & Owner Subscription Perk".
 
-Showrunner's entire surface is the comp-request page, and Door's entire surface is the check-in page — every other resource returns 403 for those roles. Member names shown there are always `preferred_name` (falling back to `username`); legal name and email never appear outside the Members resource itself. Every Manager+-only capability above is enforced **server-side**, not just hidden in the UI — e.g. a forged check-in payload from a Door session can't apply a per-event comp or grant the subscription perk.
+Showrunner's entire surface is the comp-request page, and Door's entire surface is the check-in page — every other resource returns 403 for those roles. Member names shown at the desk follow a club-configurable setting (`preferred_name` by default, or full name, or `username` — and it always falls back to `username` rather than showing a blank); legal name and email never appear outside the Members resource itself. Every Manager+-only capability above is enforced **server-side**, not just hidden in the UI — e.g. a forged check-in payload from a Door session can't apply a per-event comp or grant the subscription perk.
 
-This table covers the roles' distinguishing capabilities, not an exhaustive feature-by-feature matrix — for the full, continuously-updated picture (feature flags, per-event payouts, member skill tracking, and everything else added since), see `CONTRIBUTING.md` and the commit history.
+This table covers the roles' distinguishing capabilities, not an exhaustive feature-by-feature matrix — for the full picture (feature flags, per-event payouts, member skill tracking, and everything else added since), see [`docs/FEATURES.md`](docs/FEATURES.md), [`CHANGELOG.md`](CHANGELOG.md), and `docs/BLUEPRINT.md`.
 
 **Subscription eligibility** (`Member::isSubscriptionEligible()`) gates who can subscribe at all, independent of role — including the monthly Manager & Owner perk, which waives price but not this rule: 5+ attended events all-time, or `subscription_eligible` manually set on the member (Manager+, via the Members resource, or set automatically by the historical import below). Threshold is `config('membership.subscription_eligibility_threshold')`, default 5.
 
@@ -133,7 +140,9 @@ Populated with `DemoDataSeeder`'s sample data.
 
 ## Production / LAN deployment
 
-Everything below (Backups, Post-event notifications, Comp-reward vouchers) assumes a single dev machine. Standing this up as a venue's network-reachable check-in server — a dedicated workstation on the club's LAN, multiple devices checking members in at once — is a separate, more involved process: network setup (DHCP reservation, local DNS, VLAN / client-isolation, TLS), a from-scratch production install, and the scheduled jobs below all registered on the real box. See [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md) for the full checklist, plus `scripts/apache/` for a scripted Apache + mod_php setup on Windows.
+Everything below (Backups, Post-event notifications, Comp-reward vouchers) describes each recurring job on its own. Standing Portico up as a venue's network-reachable check-in server — a dedicated workstation on the club's LAN, multiple devices checking members in at once — is a separate, more involved process: network setup (DHCP reservation, local DNS, an isolated staff network), a from-scratch production install, optional local HTTPS, all the scheduled jobs registered on the real box, and a repeatable way to apply updates afterward. See [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md) for the full checklist, plus `scripts/apache/` (a scripted Apache + `mod_php` setup on Windows) and `scripts/deploy.ps1` (one-command updates, optionally triggered from the **Upstream Updates** admin page).
+
+Portico has no Laravel scheduler: every recurring job is a plain Artisan command you register on a timer. Besides the three below, `upstream:check` (optional — only for a fork that tracks an upstream remote) is covered in `docs/DEPLOYMENT.md` §3 and §7, along with the full cadence table.
 
 ## Backups
 
@@ -200,11 +209,11 @@ Output is appended to `storage/logs/notify-event-ended.log`.
 php artisan vouchers:grant-comp-rewards
 ```
 
-This app has no Laravel scheduler (same as backups above) — register it in Windows Task Scheduler on a timer (hourly is a reasonable default; adjust as needed), via `scripts\run-vouchers-grant-comp-rewards.bat`, the same way `backup:database` already is. Requires the system user seeded by `DatabaseSeeder` (`system@portico.internal`, `active = false` — it exists purely as the ledger's `recorded_by`, and can never actually log in).
+This app has no Laravel scheduler (same as backups above) — register it in Windows Task Scheduler on a timer (hourly is a reasonable default; adjust as needed), via `scripts\run-vouchers-grant-comp-rewards.bat`, the same way `backup:database` already is. Requires the system user seeded by `DatabaseSeeder` (`system@portico.internal` unless you set `SYSTEM_USER_EMAIL`; `active = false` — it exists purely as the ledger's `recorded_by`, and can never actually log in).
 
 ## Project status
 
-Current release: **`v0.1.0`** — see [`CHANGELOG.md`](CHANGELOG.md). Portico is `0.x`, so a
+Current release: **`v0.2.0`** — see [`CHANGELOG.md`](CHANGELOG.md). Portico is `0.x`, so a
 minor release may include a migration; see [`CONTRIBUTING.md`](CONTRIBUTING.md) "Versioning
 & releases".
 
@@ -220,7 +229,7 @@ Built through the blueprint's step-by-step build order:
 
 The app has grown substantially since via many incremental slices — vouchers, guests, prepay / building-capacity, ban exceptions, per-event comp, feature flags, showrunner / instructor payouts, membership settings, member skill tracking, analytics, and more. The commit history is the detailed record; `CONTRIBUTING.md` covers the conventions and the architecture rules that hold across all of it.
 
-Portico ships a **feature-flag mechanism** (`/admin/feature-flags`, Manager+) so a club that doesn't want vouchers, add-ons, the pool component, prepay, register shifts, the showrunner comp-request pipeline, the Manager/Owner perk, suspensions, or patron notes can turn each off. Flags stop new writes; they never hide data already collected.
+Portico ships a **feature-flag mechanism** (`/admin/feature-flags`, Manager+) so a club can turn off the optional parts it doesn't use — vouchers, add-ons, the pool component, prepay, register shifts, the showrunner comp-request pipeline, showrunner and instructor payouts, the Manager/Owner perk, suspensions, and visit and behavior notes — and opt in to the two operations features that are off by default: upstream update checking and the web-triggered deploy button. Flags stop new writes; they never hide data already collected. [`docs/CONFIGURING.md`](docs/CONFIGURING.md) lists every flag and its default.
 
 ## License
 
