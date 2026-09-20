@@ -34,13 +34,13 @@ enum Role: string implements HasLabel
     public function getLabel(): string
     {
         return match ($this) {
-            self::Showrunner => 'Event Lead',
-            self::Volunteer => 'Volunteer',
-            self::DM => 'Monitor',
-            self::Door => 'Door',
-            self::Manager => 'Manager',
-            self::Admin => 'Admin',
-            self::Owner => 'Owner',
+            self::Showrunner => __('Event Lead'),
+            self::Volunteer => __('Volunteer'),
+            self::DM => __('Monitor'),
+            self::Door => __('Door'),
+            self::Manager => __('Manager'),
+            self::Admin => __('Admin'),
+            self::Owner => __('Owner'),
         };
     }
 

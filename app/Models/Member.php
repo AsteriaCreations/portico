@@ -363,11 +363,11 @@ class Member extends Model
     public static function searchableFieldsLabel(): string
     {
         $labels = [
-            'username' => 'username',
-            'name' => 'name',
-            'member_number' => 'member number',
-            'preferred_name' => 'preferred name',
-            'email' => 'email',
+            'username' => __('username'),
+            'name' => __('name'),
+            'member_number' => __('member number'),
+            'preferred_name' => __('preferred name'),
+            'email' => __('email'),
         ];
 
         $parts = collect(MembershipSetting::current()->member_search_fields ?: ['username'])
@@ -376,16 +376,16 @@ class Member extends Model
             ->all();
 
         if (count($parts) <= 1) {
-            return $parts[0] ?? 'username';
+            return $parts[0] ?? __('username');
         }
 
         if (count($parts) === 2) {
-            return "{$parts[0]} or {$parts[1]}";
+            return __(':first or :second', ['first' => $parts[0], 'second' => $parts[1]]);
         }
 
         $last = array_pop($parts);
 
-        return implode(', ', $parts).", or {$last}";
+        return implode(', ', $parts).__(', or :last', ['last' => $last]);
     }
 
     /**

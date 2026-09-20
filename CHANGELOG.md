@@ -11,6 +11,16 @@ is fixes only.
 
 ### Added
 
+- The admin panel's language is now a per-installation setting (Membership Settings →
+  Language, stored as `membership_settings.locale`; blank keeps the server default). Only
+  languages with a `lang/{code}.json` translation file are offered, so English is the only
+  choice until one is added. Translation keys are the English text (`__('Check-In Desk')`),
+  so English needs no file. Conversion is incremental: the coverage/role/capability/payout
+  enum labels, `AdmissionPolicy` decision messages, and the whole Check-In Desk (page,
+  notifications, Blade views, roster and cash-box summary) are translatable so far; other
+  screens follow. Names a club types itself (categories, plans, comp reasons, ...) are
+  never translated. See CONTRIBUTING.md for the convention.
+
 - Age of majority and the check-ID/no-alcohol flag age (18/21 by default) are now
   club-configurable on the Membership Settings page, instead of hardcoded in
   `AdmissionPolicy` — both are jurisdiction-specific. Setting them equal disables the

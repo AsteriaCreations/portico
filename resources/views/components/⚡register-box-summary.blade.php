@@ -47,14 +47,19 @@ re-find these lines after every refresh. --}}
 <div wire:poll.10s>
     @if ($this->shift)
         <p role="status" class="text-sm text-gray-500">
-            Open since {{ $this->shift->created_at->format('g:i A') }} by {{ $this->shift->openedBy->name }} —
-            opened {{ \App\Models\MembershipSetting::formatMoney($this->shift->opening_count) }},
-            expected now {{ \App\Models\MembershipSetting::formatMoney($this->expected) }}
+            {{ __('Open since :time by :name — opened :opening, expected now :expected', [
+                'time' => $this->shift->created_at->translatedFormat('g:i A'),
+                'name' => $this->shift->openedBy->name,
+                'opening' => \App\Models\MembershipSetting::formatMoney($this->shift->opening_count),
+                'expected' => \App\Models\MembershipSetting::formatMoney($this->expected),
+            ]) }}
         </p>
         <p role="status" class="text-sm text-gray-500">
-            Event {{ \App\Models\MembershipSetting::formatMoney($this->breakdown['event']) }} ·
-            Subscription {{ \App\Models\MembershipSetting::formatMoney($this->breakdown['subscription']) }} ·
-            Other {{ \App\Models\MembershipSetting::formatMoney($this->breakdown['other']) }}
+            {{ __('Event :event · Subscription :subscription · Other :other', [
+                'event' => \App\Models\MembershipSetting::formatMoney($this->breakdown['event']),
+                'subscription' => \App\Models\MembershipSetting::formatMoney($this->breakdown['subscription']),
+                'other' => \App\Models\MembershipSetting::formatMoney($this->breakdown['other']),
+            ]) }}
         </p>
     @endif
 </div>

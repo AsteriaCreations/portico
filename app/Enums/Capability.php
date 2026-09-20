@@ -20,7 +20,7 @@ enum Capability: string implements HasLabel
     public function getLabel(): string
     {
         return match ($this) {
-            self::CleaningCrew => 'Cleaning Crew',
+            self::CleaningCrew => __('Cleaning Crew'),
         };
     }
 }

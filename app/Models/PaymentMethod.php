@@ -93,6 +93,6 @@ class PaymentMethod extends Model
     {
         $fee = static::feeFor($code);
 
-        return $fee > 0 ? 'A '.MembershipSetting::formatMoney($fee).' transaction fee will be added to the total.' : null;
+        return $fee > 0 ? __('A :amount transaction fee will be added to the total.', ['amount' => MembershipSetting::formatMoney($fee)]) : null;
     }
 }

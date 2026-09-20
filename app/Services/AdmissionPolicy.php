@@ -24,38 +24,38 @@ class AdmissionPolicy
         $settings = MembershipSetting::current();
 
         if ($member->is_deceased) {
-            return new AdmissionDecision(AdmissionOutcome::Block, 'Member marked deceased');
+            return new AdmissionDecision(AdmissionOutcome::Block, __('Member marked deceased'));
         }
 
         if ($member->isCurrentlyBanned()) {
             if ($member->hasBanExceptionFor($event)) {
-                return new AdmissionDecision(AdmissionOutcome::Warn, 'Banned — one-time exception granted for this event', $member->ban_reason);
+                return new AdmissionDecision(AdmissionOutcome::Warn, __('Banned — one-time exception granted for this event'), $member->ban_reason);
             }
 
-            return new AdmissionDecision(AdmissionOutcome::Block, 'Do not admit', $member->ban_reason);
+            return new AdmissionDecision(AdmissionOutcome::Block, __('Do not admit'), $member->ban_reason);
         }
 
         if ($age !== null && $age < $settings->age_of_majority) {
-            return new AdmissionDecision(AdmissionOutcome::Block, "Under {$settings->age_of_majority} — no admittance");
+            return new AdmissionDecision(AdmissionOutcome::Block, __('Under :age — no admittance', ['age' => $settings->age_of_majority]));
         }
 
         if ($member->on_watchlist) {
-            return new AdmissionDecision(AdmissionOutcome::Warn, 'Notify '.config('membership.watchlist_notify_label'), $member->watchlist_reason);
+            return new AdmissionDecision(AdmissionOutcome::Warn, __('Notify :label', ['label' => config('membership.watchlist_notify_label')]), $member->watchlist_reason);
         }
 
         if ($this->needsCapture($member)) {
-            return new AdmissionDecision(AdmissionOutcome::Capture, 'Complete sign-up');
+            return new AdmissionDecision(AdmissionOutcome::Capture, __('Complete sign-up'));
         }
 
         if ($this->needsPaperworkCapture($member)) {
-            return new AdmissionDecision(AdmissionOutcome::Capture, 'Missing paperwork — confirm on file before check-in');
+            return new AdmissionDecision(AdmissionOutcome::Capture, __('Missing paperwork — confirm on file before check-in'));
         }
 
         if ($age !== null && $age < $settings->alcohol_flag_age) {
-            return new AdmissionDecision(AdmissionOutcome::Flag, "Under {$settings->alcohol_flag_age} — no alcohol, mark hand");
+            return new AdmissionDecision(AdmissionOutcome::Flag, __('Under :age — no alcohol, mark hand', ['age' => $settings->alcohol_flag_age]));
         }
 
-        return new AdmissionDecision(AdmissionOutcome::Ok, 'Cleared');
+        return new AdmissionDecision(AdmissionOutcome::Ok, __('Cleared'));
     }
 
     // Member-only, no event needed — the one AdmissionDecision outcome that
