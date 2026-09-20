@@ -13,6 +13,7 @@ use App\Filament\Admin\Resources\Members\RelationManagers\MemberStatusChangesRel
 use App\Filament\Admin\Resources\Members\RelationManagers\MemberUsernameChangesRelationManager;
 use App\Filament\Admin\Resources\Members\Schemas\MemberForm;
 use App\Filament\Admin\Resources\Members\Tables\MembersTable;
+use App\Filament\Concerns\TranslatesResourceLabels;
 use App\Models\Member;
 use BackedEnum;
 use Filament\Resources\Resource;
@@ -23,6 +24,8 @@ use UnitEnum;
 
 class MemberResource extends Resource
 {
+    use TranslatesResourceLabels;
+
     protected static ?string $model = Member::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleStack;

@@ -3,6 +3,7 @@
 namespace App\Filament\Admin\Resources\Events\RelationManagers;
 
 use App\Enums\CompRequestStatus;
+use App\Filament\Concerns\TranslatesRelationManagerTitle;
 use App\Models\Attendance;
 use App\Models\AttendanceAddOn;
 use App\Models\CompReason;
@@ -30,6 +31,8 @@ use Illuminate\Support\Facades\Auth;
  */
 class CompRequestsRelationManager extends RelationManager
 {
+    use TranslatesRelationManagerTitle;
+
     protected static string $relationship = 'compRequests';
 
     protected static ?string $title = 'Comp requests';

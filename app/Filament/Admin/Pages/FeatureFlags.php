@@ -3,6 +3,7 @@
 namespace App\Filament\Admin\Pages;
 
 use App\Enums\Role;
+use App\Filament\Concerns\TranslatesPageLabels;
 use App\Models\MembershipSetting;
 use BackedEnum;
 use Filament\Actions\Action;
@@ -23,6 +24,8 @@ use UnitEnum;
  */
 class FeatureFlags extends Page
 {
+    use TranslatesPageLabels;
+
     protected string $view = 'filament.admin.pages.feature-flags';
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedFlag;

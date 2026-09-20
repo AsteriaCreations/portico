@@ -6,6 +6,7 @@ use App\Filament\Admin\Resources\RegisterShifts\Pages\ListRegisterShifts;
 use App\Filament\Admin\Resources\RegisterShifts\Pages\ViewRegisterShift;
 use App\Filament\Admin\Resources\RegisterShifts\RelationManagers\MiscellaneousPaymentsRelationManager;
 use App\Filament\Admin\Resources\RegisterShifts\Tables\RegisterShiftsTable;
+use App\Filament\Concerns\TranslatesResourceLabels;
 use App\Models\RegisterShift;
 use BackedEnum;
 use Filament\Resources\Resource;
@@ -20,6 +21,8 @@ use UnitEnum;
 // itemized ledger, same shape as VoucherResource otherwise.
 class RegisterShiftResource extends Resource
 {
+    use TranslatesResourceLabels;
+
     protected static ?string $model = RegisterShift::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedCalculator;

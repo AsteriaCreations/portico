@@ -2,6 +2,7 @@
 
 namespace App\Filament\Admin\Resources\Members\RelationManagers;
 
+use App\Filament\Concerns\TranslatesRelationManagerTitle;
 use App\Models\PaperworkType;
 use Filament\Actions\CreateAction;
 use Filament\Forms\Components\DatePicker;
@@ -18,6 +19,8 @@ use Filament\Tables\Table;
  */
 class MemberPaperworkRelationManager extends RelationManager
 {
+    use TranslatesRelationManagerTitle;
+
     protected static string $relationship = 'paperwork';
 
     protected static ?string $title = 'Paperwork & waivers';

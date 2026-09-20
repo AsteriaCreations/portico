@@ -7,6 +7,7 @@ use App\Filament\Admin\Resources\PaperworkTypes\Pages\EditPaperworkType;
 use App\Filament\Admin\Resources\PaperworkTypes\Pages\ListPaperworkTypes;
 use App\Filament\Admin\Resources\PaperworkTypes\Schemas\PaperworkTypeForm;
 use App\Filament\Admin\Resources\PaperworkTypes\Tables\PaperworkTypesTable;
+use App\Filament\Concerns\TranslatesResourceLabels;
 use App\Models\PaperworkType;
 use BackedEnum;
 use Filament\Resources\Resource;
@@ -17,6 +18,8 @@ use UnitEnum;
 
 class PaperworkTypeResource extends Resource
 {
+    use TranslatesResourceLabels;
+
     protected static ?string $model = PaperworkType::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedDocumentCheck;

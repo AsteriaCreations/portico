@@ -2,6 +2,7 @@
 
 namespace App\Filament\Admin\Resources\Members\RelationManagers;
 
+use App\Filament\Concerns\TranslatesRelationManagerTitle;
 use Filament\Actions\CreateAction;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
@@ -18,6 +19,8 @@ use Filament\Tables\Table;
  */
 class BanExceptionsRelationManager extends RelationManager
 {
+    use TranslatesRelationManagerTitle;
+
     protected static string $relationship = 'banExceptions';
 
     protected static ?string $title = 'Ban exceptions';

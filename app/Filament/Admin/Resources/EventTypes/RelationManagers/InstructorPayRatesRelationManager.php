@@ -3,6 +3,7 @@
 namespace App\Filament\Admin\Resources\EventTypes\RelationManagers;
 
 use App\Enums\EntryCoverageSource;
+use App\Filament\Concerns\TranslatesRelationManagerTitle;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\CreateAction;
 use Filament\Actions\DeleteAction;
@@ -24,6 +25,8 @@ use Filament\Tables\Table;
  */
 class InstructorPayRatesRelationManager extends RelationManager
 {
+    use TranslatesRelationManagerTitle;
+
     protected static string $relationship = 'instructorPayRates';
 
     protected static ?string $title = 'Instructor pay rates';

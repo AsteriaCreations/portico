@@ -8,6 +8,7 @@ use App\Filament\Admin\Resources\CleaningTasks\Pages\ListCleaningTasks;
 use App\Filament\Admin\Resources\CleaningTasks\RelationManagers\CompletionsRelationManager;
 use App\Filament\Admin\Resources\CleaningTasks\Schemas\CleaningTaskForm;
 use App\Filament\Admin\Resources\CleaningTasks\Tables\CleaningTasksTable;
+use App\Filament\Concerns\TranslatesResourceLabels;
 use App\Models\CleaningTask;
 use BackedEnum;
 use Filament\Resources\Resource;
@@ -18,6 +19,8 @@ use UnitEnum;
 
 class CleaningTaskResource extends Resource
 {
+    use TranslatesResourceLabels;
+
     protected static ?string $model = CleaningTask::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedSparkles;

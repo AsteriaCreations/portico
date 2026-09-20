@@ -7,6 +7,7 @@ use App\Filament\Admin\Resources\ShowrunnerPayoutTiers\Pages\EditShowrunnerPayou
 use App\Filament\Admin\Resources\ShowrunnerPayoutTiers\Pages\ListShowrunnerPayoutTiers;
 use App\Filament\Admin\Resources\ShowrunnerPayoutTiers\Schemas\ShowrunnerPayoutTierForm;
 use App\Filament\Admin\Resources\ShowrunnerPayoutTiers\Tables\ShowrunnerPayoutTiersTable;
+use App\Filament\Concerns\TranslatesResourceLabels;
 use App\Models\ShowrunnerPayoutTier;
 use BackedEnum;
 use Filament\Resources\Resource;
@@ -17,6 +18,8 @@ use UnitEnum;
 
 class ShowrunnerPayoutTierResource extends Resource
 {
+    use TranslatesResourceLabels;
+
     protected static ?string $model = ShowrunnerPayoutTier::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleStack;

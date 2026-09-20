@@ -2,6 +2,7 @@
 
 namespace App\Filament\Admin\Resources\Events\RelationManagers;
 
+use App\Filament\Concerns\TranslatesRelationManagerTitle;
 use App\Models\Attendance;
 use App\Models\AttendanceAddOn;
 use App\Models\CompReason;
@@ -32,6 +33,8 @@ use Filament\Tables\Table;
  */
 class CompListRelationManager extends RelationManager
 {
+    use TranslatesRelationManagerTitle;
+
     protected static string $relationship = 'attendance';
 
     protected static ?string $title = 'Comp list';

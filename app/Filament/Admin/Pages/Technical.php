@@ -4,6 +4,7 @@ namespace App\Filament\Admin\Pages;
 
 use App\Enums\Role;
 use App\Filament\Admin\Widgets\ScheduledJobsWidget;
+use App\Filament\Concerns\TranslatesPageLabels;
 use BackedEnum;
 use Filament\Actions\Action;
 use Filament\Notifications\Notification;
@@ -22,6 +23,8 @@ use UnitEnum;
  */
 class Technical extends Page
 {
+    use TranslatesPageLabels;
+
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedWrenchScrewdriver;
 
     protected static ?string $navigationLabel = 'Technical';

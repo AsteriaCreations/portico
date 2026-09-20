@@ -8,6 +8,7 @@ use App\Filament\Admin\Resources\EventTypes\Pages\ListEventTypes;
 use App\Filament\Admin\Resources\EventTypes\RelationManagers\InstructorPayRatesRelationManager;
 use App\Filament\Admin\Resources\EventTypes\Schemas\EventTypeForm;
 use App\Filament\Admin\Resources\EventTypes\Tables\EventTypesTable;
+use App\Filament\Concerns\TranslatesResourceLabels;
 use App\Models\EventType;
 use BackedEnum;
 use Filament\Resources\Resource;
@@ -18,6 +19,8 @@ use UnitEnum;
 
 class EventTypeResource extends Resource
 {
+    use TranslatesResourceLabels;
+
     protected static ?string $model = EventType::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedTag;

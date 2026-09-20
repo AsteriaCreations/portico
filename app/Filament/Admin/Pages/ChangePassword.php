@@ -2,6 +2,7 @@
 
 namespace App\Filament\Admin\Pages;
 
+use App\Filament\Concerns\TranslatesPageLabels;
 use Filament\Actions\Action;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
@@ -19,6 +20,8 @@ use Illuminate\Validation\Rules\Password;
  */
 class ChangePassword extends Page
 {
+    use TranslatesPageLabels;
+
     protected string $view = 'filament.admin.pages.change-password';
 
     protected static ?string $slug = 'change-password';

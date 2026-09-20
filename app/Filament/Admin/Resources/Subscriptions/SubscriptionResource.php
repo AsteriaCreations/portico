@@ -7,6 +7,7 @@ use App\Filament\Admin\Resources\Subscriptions\Pages\EditSubscription;
 use App\Filament\Admin\Resources\Subscriptions\Pages\ListSubscriptions;
 use App\Filament\Admin\Resources\Subscriptions\Schemas\SubscriptionForm;
 use App\Filament\Admin\Resources\Subscriptions\Tables\SubscriptionsTable;
+use App\Filament\Concerns\TranslatesResourceLabels;
 use App\Models\Subscription;
 use BackedEnum;
 use Filament\Resources\Resource;
@@ -17,6 +18,8 @@ use UnitEnum;
 
 class SubscriptionResource extends Resource
 {
+    use TranslatesResourceLabels;
+
     protected static ?string $model = Subscription::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedCreditCard;

@@ -15,6 +15,7 @@ use App\Filament\Admin\Widgets\VoucherLiabilityWidget;
 use App\Filament\Admin\Widgets\WeeklyAttendanceChartWidget;
 use App\Filament\Admin\Widgets\WeeklyCategoryBreakdownWidget;
 use App\Filament\Admin\Widgets\WeeklySummaryWidget;
+use App\Filament\Concerns\TranslatesPageLabels;
 use BackedEnum;
 use Filament\Pages\Page;
 use Filament\Schemas\Components\Grid;
@@ -29,6 +30,8 @@ use Filament\Support\Icons\Heroicon;
  */
 class Analytics extends Page
 {
+    use TranslatesPageLabels;
+
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedChartBar;
 
     protected static ?string $navigationLabel = 'Analytics';

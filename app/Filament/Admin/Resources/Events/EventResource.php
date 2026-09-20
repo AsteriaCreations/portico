@@ -12,6 +12,7 @@ use App\Filament\Admin\Resources\Events\RelationManagers\CompRequestsRelationMan
 use App\Filament\Admin\Resources\Events\RelationManagers\PrepayListRelationManager;
 use App\Filament\Admin\Resources\Events\Schemas\EventForm;
 use App\Filament\Admin\Resources\Events\Tables\EventsTable;
+use App\Filament\Concerns\TranslatesResourceLabels;
 use App\Models\Event;
 use BackedEnum;
 use Filament\Resources\Resource;
@@ -22,6 +23,8 @@ use UnitEnum;
 
 class EventResource extends Resource
 {
+    use TranslatesResourceLabels;
+
     protected static ?string $model = Event::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedCalendarDays;

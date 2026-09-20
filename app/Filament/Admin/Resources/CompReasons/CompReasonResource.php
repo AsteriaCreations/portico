@@ -7,6 +7,7 @@ use App\Filament\Admin\Resources\CompReasons\Pages\EditCompReason;
 use App\Filament\Admin\Resources\CompReasons\Pages\ListCompReasons;
 use App\Filament\Admin\Resources\CompReasons\Schemas\CompReasonForm;
 use App\Filament\Admin\Resources\CompReasons\Tables\CompReasonsTable;
+use App\Filament\Concerns\TranslatesResourceLabels;
 use App\Models\CompReason;
 use BackedEnum;
 use Filament\Resources\Resource;
@@ -17,6 +18,8 @@ use UnitEnum;
 
 class CompReasonResource extends Resource
 {
+    use TranslatesResourceLabels;
+
     protected static ?string $model = CompReason::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedGift;

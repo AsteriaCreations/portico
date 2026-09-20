@@ -7,6 +7,7 @@ use App\Filament\Admin\Resources\PaymentMethods\Pages\EditPaymentMethod;
 use App\Filament\Admin\Resources\PaymentMethods\Pages\ListPaymentMethods;
 use App\Filament\Admin\Resources\PaymentMethods\Schemas\PaymentMethodForm;
 use App\Filament\Admin\Resources\PaymentMethods\Tables\PaymentMethodsTable;
+use App\Filament\Concerns\TranslatesResourceLabels;
 use App\Models\PaymentMethod;
 use BackedEnum;
 use Filament\Resources\Resource;
@@ -17,6 +18,8 @@ use UnitEnum;
 
 class PaymentMethodResource extends Resource
 {
+    use TranslatesResourceLabels;
+
     protected static ?string $model = PaymentMethod::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedCreditCard;

@@ -3,6 +3,7 @@
 namespace App\Filament\Admin\Resources\Users\RelationManagers;
 
 use App\Enums\Capability;
+use App\Filament\Concerns\TranslatesRelationManagerTitle;
 use Filament\Actions\CreateAction;
 use Filament\Actions\DeleteAction;
 use Filament\Forms\Components\Select;
@@ -19,6 +20,8 @@ use Filament\Tables\Table;
  */
 class CapabilitiesRelationManager extends RelationManager
 {
+    use TranslatesRelationManagerTitle;
+
     protected static string $relationship = 'capabilities';
 
     protected static ?string $title = 'Capabilities';

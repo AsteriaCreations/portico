@@ -3,6 +3,7 @@
 namespace App\Filament\Admin\Resources\Events\RelationManagers;
 
 use App\Enums\EntryCoverageSource;
+use App\Filament\Concerns\TranslatesRelationManagerTitle;
 use App\Models\Attendance;
 use App\Models\AttendanceAddOn;
 use App\Models\Member;
@@ -25,6 +26,8 @@ use Illuminate\Validation\Rules\Unique;
 
 class AttendanceRelationManager extends RelationManager
 {
+    use TranslatesRelationManagerTitle;
+
     protected static string $relationship = 'attendance';
 
     /**

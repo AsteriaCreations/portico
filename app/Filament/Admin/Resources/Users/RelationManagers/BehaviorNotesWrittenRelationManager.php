@@ -2,6 +2,7 @@
 
 namespace App\Filament\Admin\Resources\Users\RelationManagers;
 
+use App\Filament\Concerns\TranslatesRelationManagerTitle;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
@@ -16,6 +17,8 @@ use Filament\Tables\Table;
  */
 class BehaviorNotesWrittenRelationManager extends RelationManager
 {
+    use TranslatesRelationManagerTitle;
+
     protected static string $relationship = 'writtenBehaviorNotes';
 
     protected static ?string $title = 'Behavior notes written';
