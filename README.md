@@ -102,29 +102,41 @@ Seven nested tiers — `Showrunner ⊂ Volunteer ⊂ DM ⊂ Door ⊂ Manager ⊂
 
 | Capability | Showrunner | Volunteer | DM | Door | Manager | Admin | Owner |
 |---|:--:|:--:|:--:|:--:|:--:|:--:|:--:|
-| Submit an Admin-approved comp request for the one event they're assigned to run | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Submit a comp request for the one event they're assigned to run (an Admin approves it) ‡ | ✓ | | | | | | |
 | Record building departures (Dashboard headcount or a named patron on Active Patrons) | | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
-| See a behavior note's full text on Active Patrons without knowing who wrote it | | | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Add visit notes and behavior notes on Active Patrons (each behind its own feature flag) | | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| See every behavior note's full text on Active Patrons — the author is shown to Manager+ only (below DM, you see just your own notes plus a count of the rest) | | | ✓ | ✓ | ✓ | ✓ | ✓ |
 | Check members in, take payment, see the admit decision | | | | ✓ | ✓ | ✓ | ✓ |
 | Complete a Prospective's name/email/DOB, promote to Irregular | | | | ✓ | ✓ | ✓ | ✓ |
 | Collect a subscription payment *during check-in* (member must be subscription-eligible; fixed at the current plan price) | | | | ✓ | ✓ | ✓ | ✓ |
 | Redeem voucher credit at check-in (own or another member's balance; partial amounts allowed) | | | | ✓ | ✓ | ✓ | ✓ |
+| Open and close a register shift, record miscellaneous payments (register shifts are behind a feature flag) | | | | ✓ | ✓ | ✓ | ✓ |
 | See watchlist/ban reasons, notes, raw DOB | | | | | ✓ | ✓ | ✓ |
 | Edit members, browse/edit any subscription record, view events, manage plans/event types/comp reasons, reports | | | | | ✓ | ✓ | ✓ |
+| Use Analytics; edit Membership Settings, Feature Flags, and Role Labels | | | | | ✓ | ✓ | ✓ |
 | Browse the voucher ledger | | | | | ✓ | ✓ | ✓ |
 | Waive one visit's entry fee at check-in (per-event comp, e.g. a House Sub) | | | | | ✓ | ✓ | ✓ |
 | Manage an event's admin-run Prepay List (single add or bulk upload) | | | | | ✓ | ✓ | ✓ |
 | Manage an event's admin-run Comp List | | | | | ✓ | ✓ | ✓ |
 | Grant the monthly free regular subscription (self or gift to a member) † | | | | | ✓ | | ✓ |
 | Create, edit, or delete events (incl. their fees, start/end times, and door-prepay flag), manage volunteer accounts, issue/correct voucher credit | | | | | | ✓ | ✓ |
+| Approve or reject a comp request (Manager+ can see the queue on the event's Comp Requests tab) | | | | | | ✓ | ✓ |
+| Associate a Skill with a member (a Manager can edit the Skills catalog itself, but not tag a member) | | | | | | ✓ | ✓ |
+| Grant a per-user capability such as Cleaning Crew § | | | | | | ✓ | ✓ |
+| Open the Technical page, and Upstream Updates when that flag is on — including "Run update now" once the deploy flag and task are configured | | | | | | ✓ | ✓ |
+| Change the club's displayed name (Membership Settings) | | | | | | | ✓ |
 
 † Deliberately not monotonic — Admin sits between Manager and Owner in rank but can't grant this perk. See `docs/BLUEPRINT.md` "Monthly Manager & Owner Subscription Perk".
 
-Showrunner's entire surface is the comp-request page, and Door's entire surface is the check-in page — every other resource returns 403 for those roles. Member names shown at the desk follow a club-configurable setting (`preferred_name` by default, or full name, or `username` — and it always falls back to `username` rather than showing a blank); legal name and email never appear outside the Members resource itself. Every Manager+-only capability above is enforced **server-side**, not just hidden in the UI — e.g. a forged check-in payload from a Door session can't apply a per-event comp or grant the subscription perk.
+‡ Also deliberately not monotonic — only the Showrunner role itself can open the comp-request page, and only while the "Showrunner comp requests" flag is on. Higher roles review and approve requests from the event's Comp Requests tab instead.
+
+§ The Cleaning Checklist page is gated by a per-user *capability* (Cleaning Crew, granted on a user's Capabilities tab by an Admin+), not by rank — it's orthogonal to this table.
+
+Showrunner's entire surface is the comp-request page. Door's is the check-in desk, the Volunteer-level tools it inherits (Active Patrons and departures), and register shifts and miscellaneous payments; every Manager-level resource returns 403 for Door. Member names shown at the desk follow a club-configurable setting (`preferred_name` by default, or full name, or `username` — and it always falls back to `username` rather than showing a blank); legal name and email never appear outside the Members resource itself. Every Manager+-only capability above is enforced **server-side**, not just hidden in the UI — e.g. a forged check-in payload from a Door session can't apply a per-event comp or grant the subscription perk.
 
 This table covers the roles' distinguishing capabilities, not an exhaustive feature-by-feature matrix — for the full picture (feature flags, per-event payouts, member skill tracking, and everything else added since), see [`docs/FEATURES.md`](docs/FEATURES.md), [`CHANGELOG.md`](CHANGELOG.md), and `docs/BLUEPRINT.md`.
 
-**Subscription eligibility** (`Member::isSubscriptionEligible()`) gates who can subscribe at all, independent of role — including the monthly Manager & Owner perk, which waives price but not this rule: 5+ attended events all-time, or `subscription_eligible` manually set on the member (Manager+, via the Members resource, or set automatically by the historical import below). Threshold is `config('membership.subscription_eligibility_threshold')`, default 5.
+**Subscription eligibility** (`Member::isSubscriptionEligible()`) gates who can subscribe at all, independent of role — including the monthly Manager & Owner perk, which waives price but not this rule: 5+ attended events all-time, or `subscription_eligible` manually set on the member (Manager+, via the Members resource). The threshold is the **Subscription eligibility threshold** on Membership Settings, default 5 (seeded from `SUBSCRIPTION_ELIGIBILITY_THRESHOLD` / `config('membership.subscription_eligibility_threshold')`).
 
 ## Screens
 

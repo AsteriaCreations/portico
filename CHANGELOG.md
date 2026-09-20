@@ -36,6 +36,14 @@ is fixes only.
   configurable currency and check-in display name, the complete seed set, the
   `SYSTEM_USER_EMAIL` override, the optional `upstream:check` job and one-command deploy
   tooling, and links to `docs/FEATURES.md`, `docs/CONFIGURING.md` and `CHANGELOG.md`.
+- The README's Roles table audited against the policies and gates. Corrected: the
+  comp-request submission row (Showrunner only, not every role), the "Door's entire surface
+  is the check-in page" claim, the behavior-note visibility wording, and the subscription
+  eligibility paragraph (the threshold is a Membership Settings value; there is no import
+  command in Portico). Added the capabilities the table omitted: visit/behavior notes,
+  register shifts and miscellaneous payments, Analytics and the Manager-level settings
+  screens, comp-request approval, Skill assignment, per-user capabilities, the Technical
+  and Upstream Updates pages, and the Owner-only club name.
 
 ### Security
 
