@@ -90,6 +90,7 @@ rarely need to touch most of them.
 | Age of majority | `18` | `AdmissionPolicy` blocks a member below this age outright. Jurisdiction-specific. |
 | Check-ID / no-alcohol flag age | `21` | A member below this age (but at or above "Age of majority") is admitted but flagged. Set equal to "Age of majority" to disable the flag. |
 | Currency code | `USD` | A 3-letter ISO 4217 code, used everywhere a money figure is shown — the check-in desk's live totals, every Analytics widget, and every money column in the admin panel. |
+| Language | *(blank — server default, English)* | The admin panel's language for everyone on this install. Lists only languages that have a `lang/{code}.json` translation file; with none installed, English is the only choice. Names you enter yourself (categories, comp reasons, plans, …) are never translated. |
 | Displayed organization name | *(blank)* | Panel brand override — see "Name & branding". |
 | Searchable member fields | `Username` | Which fields the member search boxes match on, and what shows in member dropdown labels. |
 | Hide personal info by default on the Members list | on | Whether the Members table masks name/DOB/email until "Show personal info". |

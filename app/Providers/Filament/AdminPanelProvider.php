@@ -22,6 +22,7 @@ use App\Filament\Admin\Resources\Users\UserResource;
 use App\Filament\Admin\Resources\Vouchers\VoucherResource;
 use App\Filament\Admin\Widgets\RecordDeparturesWidget;
 use App\Http\Middleware\RequirePasswordChange;
+use App\Http\Middleware\SetLocale;
 use App\Models\MembershipSetting;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
@@ -93,6 +94,9 @@ class AdminPanelProvider extends PanelProvider
                 DisableBladeIconComponents::class,
                 DispatchServingFilamentEvent::class,
             ])
+            // Persistent so a Livewire update request keeps the installation's
+            // language, not just the initial page load.
+            ->middleware([SetLocale::class], isPersistent: true)
             ->authMiddleware([
                 Authenticate::class,
                 RequirePasswordChange::class,
