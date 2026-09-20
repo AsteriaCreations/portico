@@ -123,6 +123,17 @@ everywhere a `subscriptions` row gets created.
   screen staff actually operate live during a shift (check-in, floor rosters, departures)
   also gets an entry on the printable desk-reference card set in
   `storage/desk-reference-cards.html` — settings/catalog screens don't need a card.
+- **User-facing text is translatable.** The language is a per-install setting
+  (`membership_settings.locale`, applied by `App\Http\Middleware\SetLocale`). Wrap app-owned
+  strings in `__()` with the English text as the key (`__('Enter training mode')`), and use
+  `:placeholders` (`__('Hello :name', ['name' => $name])`) rather than concatenation. English
+  needs no file; a language is added as `lang/{code}.json`, with no code change. Data rows a
+  club types in itself (categories, comp reasons, plans, payment methods, …) are not
+  translated. `protected static` label properties can't call `__()`, so use the matching
+  `getNavigationLabel()`/`getModelLabel()`/`getTitle()` method instead. Laravel's own
+  validation/auth strings and Filament's built-in chrome aren't covered by `lang/*.json`:
+  Filament ships its own translations, and Laravel's are added with `php artisan lang:publish`.
+  Conversion is incremental, so a string still in plain English is a gap to fix, not a rule.
 - Filament resources/pages/widgets live under `App\Filament\Admin\{Resources,Pages,Widgets}`
   (not the default `app/Filament/...`) — `AdminPanelProvider` discovers them there.
   Generate with `php artisan make:filament-resource ... --panel=admin`.

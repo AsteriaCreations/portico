@@ -60,6 +60,7 @@ class MembershipSettings extends Page
             'age_of_majority',
             'alcohol_flag_age',
             'currency',
+            'locale',
             'org_name',
             'member_search_fields',
             'checkin_display_name_field',
@@ -145,6 +146,11 @@ class MembershipSettings extends Page
                             $fail('Not a recognized currency code.');
                         }
                     }),
+                Select::make('locale')
+                    ->label('Language')
+                    ->helperText('The language of the admin panel for everyone on this installation. Only languages with a translation file in the lang folder are listed; leave blank to use the server default (English unless configured otherwise).')
+                    ->options(fn (): array => MembershipSetting::availableLocales())
+                    ->placeholder('Server default'),
                 TextInput::make('org_name')
                     ->label('Displayed organization name')
                     ->helperText('Shown across the admin panel (header, browser tab, login page) in place of "'.config('app.name').'". Leave blank to use that default. Owner only.')
