@@ -6,11 +6,11 @@
     on its own). <details> gives free keyboard/screen-reader disclosure semantics
     with zero JS.
 --}}
-@props(['title' => 'How to use this screen'])
+@props(['title' => null])
 
 <details class="fi-section mb-6 rounded-xl bg-white shadow-sm ring-1 ring-gray-950/5 dark:bg-gray-900 dark:ring-white/10">
     <summary class="cursor-pointer select-none rounded-xl px-6 py-4 text-sm font-medium text-gray-950 dark:text-white">
-        {{ $title }}
+        {{ $title ?? __('How to use this screen') }}
     </summary>
     <div class="space-y-2 px-6 pb-4 -mt-2 text-sm text-gray-500 dark:text-gray-400">
         {{ $slot }}

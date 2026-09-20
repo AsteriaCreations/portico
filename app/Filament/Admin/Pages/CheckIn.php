@@ -52,6 +52,7 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Concerns\InteractsWithTable;
 use Filament\Tables\Contracts\HasTable;
 use Filament\Tables\Table;
+use Illuminate\Contracts\Support\Htmlable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Collection;
@@ -67,9 +68,16 @@ class CheckIn extends Page implements HasTable
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedClipboardDocumentCheck;
 
-    protected static ?string $navigationLabel = 'Check-In Desk';
+    // Static properties can't call __(), so the label/title are methods.
+    public static function getNavigationLabel(): string
+    {
+        return __('Check-In Desk');
+    }
 
-    protected static ?string $title = 'Check-In Desk';
+    public function getTitle(): string|Htmlable
+    {
+        return __('Check-In Desk');
+    }
 
     // Sits directly under Dashboard, above every navigation group -- the
     // single most-used page in the panel.
@@ -147,14 +155,14 @@ class CheckIn extends Page implements HasTable
     {
         return [
             Action::make('toggleTrainingMode')
-                ->label($this->trainingMode ? 'Exit training mode' : 'Enter training mode')
+                ->label($this->trainingMode ? __('Exit training mode') : __('Enter training mode'))
                 ->icon(Heroicon::OutlinedAcademicCap)
                 ->color($this->trainingMode ? 'warning' : 'gray')
                 // Confirm only when switching it on — leaving it is always safe.
                 ->requiresConfirmation(! $this->trainingMode)
-                ->modalHeading('Enter training mode')
-                ->modalDescription('While training mode is on, nothing you do on this page is saved — it is for practice only.')
-                ->modalSubmitActionLabel('Enter training mode')
+                ->modalHeading(__('Enter training mode'))
+                ->modalDescription(__('While training mode is on, nothing you do on this page is saved — it is for practice only.'))
+                ->modalSubmitActionLabel(__('Enter training mode'))
                 ->action(function (): void {
                     $this->trainingMode = ! $this->trainingMode;
                     session(['checkin.training_mode' => $this->trainingMode]);
@@ -168,9 +176,9 @@ class CheckIn extends Page implements HasTable
                     $notification = Notification::make();
 
                     if ($this->trainingMode) {
-                        $notification->title('Training mode on — nothing will be saved')->warning();
+                        $notification->title(__('Training mode on — nothing will be saved'))->warning();
                     } else {
-                        $notification->title('Training mode off — check-ins are live again')->success();
+                        $notification->title(__('Training mode off — check-ins are live again'))->success();
                     }
 
                     $notification->send();
@@ -191,7 +199,7 @@ class CheckIn extends Page implements HasTable
         }
 
         Notification::make()
-            ->title('Practice only — nothing saved')
+            ->title(__('Practice only — nothing saved'))
             ->body($practiceMessage)
             ->warning()
             ->send();
@@ -231,7 +239,7 @@ class CheckIn extends Page implements HasTable
                 // eligibility, and guest-sponsor status. Event only matters for
                 // per-event price and capacity, so it's the second, narrower input.
                 Select::make('member_id')
-                    ->label('Member')
+                    ->label(__('Member'))
                     ->live()
                     ->searchable()
                     ->getSearchResultsUsing(fn (string $search) => static::searchMembers($search)
@@ -240,7 +248,7 @@ class CheckIn extends Page implements HasTable
                     ->getOptionLabelUsing(fn ($value) => ($member = Member::find($value)) ? static::memberLabel($member) : null)
                     ->required(),
                 Select::make('event_id')
-                    ->label('Event')
+                    ->label(__('Event'))
                     ->live()
                     ->searchable()
                     ->options(fn () => static::eventSelectQuery()
@@ -443,17 +451,17 @@ class CheckIn extends Page implements HasTable
             && $decision?->outcome !== AdmissionOutcome::Capture;
 
         $eligible = $member?->isSubscriptionEligible() ?? false;
-        $regularOptions = ($member && $event && $eligible) ? $this->subscriptionOptions(AddOn::entry(), $member, $event) : ['none' => 'No subscription payment'];
+        $regularOptions = ($member && $event && $eligible) ? $this->subscriptionOptions(AddOn::entry(), $member, $event) : ['none' => __('No subscription payment')];
         // One Select per subscribable add-on (Pool, at launch) rather than a
         // hardcoded pair of fields -- a club that flags a second add-on
         // subscribable gets a duration picker for it with no code change.
         $addOnSubscriptionSelects = AddOn::subscribable()->orderBy('sort_order')->get()
             ->filter(fn (AddOn $addOn) => $addOn->isCurrentlyPurchasable())
             ->map(function (AddOn $addOn) use ($member, $event, $eligible, $canPreviewPricing) {
-                $options = ($member && $event && $eligible) ? $this->subscriptionOptions($addOn, $member, $event) : ['none' => 'No subscription payment'];
+                $options = ($member && $event && $eligible) ? $this->subscriptionOptions($addOn, $member, $event) : ['none' => __('No subscription payment')];
 
                 return Select::make("subscription_addon_{$addOn->id}_duration")
-                    ->label("{$addOn->name} Subscription (covers tonight)")
+                    ->label(__(':addon Subscription (covers tonight)', ['addon' => $addOn->name]))
                     ->live()
                     ->options($options)
                     ->default('none')
@@ -465,14 +473,14 @@ class CheckIn extends Page implements HasTable
         $entryFee = $this->getPriceBreakdown()?->entryFee ?? 0.0;
         $ownBalance = $member?->voucherBalance() ?? 0.0;
         $voucherLabel = $member
-            ? "Apply voucher credit — {$this->formatCurrency($ownBalance)} available on {$member->displayName()}'s account"
-            : 'Apply voucher credit';
+            ? __("Apply voucher credit — :amount available on :name's account", ['amount' => $this->formatCurrency($ownBalance), 'name' => $member->displayName()])
+            : __('Apply voucher credit');
 
         return $schema
             ->statePath('pricingData')
             ->components([
                 CheckboxList::make('add_on_ids')
-                    ->label('Add-ons')
+                    ->label(__('Add-ons'))
                     // Subscribable add-ons (Pool) are never in this list --
                     // they're priced automatically via PricingService
                     // whenever the event has a price for them, the same
@@ -498,18 +506,18 @@ class CheckIn extends Page implements HasTable
                     ->live()
                     ->visible($canPreviewPricing && MembershipSetting::current()->add_ons_enabled),
                 Select::make('subscription_regular_duration')
-                    ->label('Regular Subscription (covers tonight)')
+                    ->label(__('Regular Subscription (covers tonight)'))
                     ->live()
                     ->options($regularOptions)
                     ->default('none')
                     ->visible($canPreviewPricing && $eligible && count($regularOptions) > 1),
                 ...$addOnSubscriptionSelects,
                 Checkbox::make('comp_entry')
-                    ->label('Comp this entry (e.g. worked the event)')
+                    ->label(__('Comp this entry (e.g. worked the event)'))
                     ->live()
                     ->visible($canPreviewPricing && $canGrantComp && $entryFee > 0),
                 Select::make('comp_reason_id')
-                    ->label('Reason')
+                    ->label(__('Reason'))
                     ->options(fn () => CompReason::where('active', true)->orderBy('sort_order')->pluck('name', 'id')->all())
                     ->required(fn (Get $get): bool => (bool) $get('comp_entry'))
                     ->visible(fn (Get $get): bool => $canPreviewPricing && $canGrantComp && (bool) $get('comp_entry')),
@@ -518,25 +526,25 @@ class CheckIn extends Page implements HasTable
                     ->live()
                     ->visible($canPreviewPricing && $member && MembershipSetting::current()->vouchers_enabled && ($this->getLivePriceBreakdownBeforeVoucher()?->amountPaid ?? 0) > 0),
                 Select::make('voucher_payer_id')
-                    ->label("Apply from a different member's balance (optional)")
+                    ->label(__("Apply from a different member's balance (optional)"))
                     ->searchable()
                     ->getSearchResultsUsing(fn (string $search) => static::searchMembers($search)
                         ->mapWithKeys(fn (Member $payer) => [$payer->id => static::memberLabel($payer).' — '.$this->formatCurrency($payer->voucherBalance()).' available'])
                         ->all())
                     ->getOptionLabelUsing(fn ($value) => ($payer = Member::find($value)) ? static::memberLabel($payer) : null)
-                    ->helperText("Leave blank to use {$member?->displayName()}'s own balance.")
+                    ->helperText(__("Leave blank to use :name's own balance.", ['name' => $member?->displayName()]))
                     ->visible(fn (Get $get): bool => $canPreviewPricing && (bool) $get('apply_voucher')),
                 TextInput::make('voucher_amount')
-                    ->label('Voucher amount to apply')
+                    ->label(__('Voucher amount to apply'))
                     ->numeric()
                     ->minValue(0.01)
                     ->step(0.01)
                     ->default(min($ownBalance, $this->getLivePriceBreakdownBeforeVoucher()?->amountPaid ?? 0) ?: null)
                     ->required(fn (Get $get): bool => (bool) $get('apply_voucher'))
-                    ->helperText('Capped automatically at the balance available and what\'s still due — a partial amount is fine.')
+                    ->helperText(__('Capped automatically at the balance available and what\'s still due — a partial amount is fine.'))
                     ->visible(fn (Get $get): bool => $canPreviewPricing && (bool) $get('apply_voucher')),
                 TextInput::make('voucher_reason')
-                    ->label('Reason (required — kept on the ledger)')
+                    ->label(__('Reason (required — kept on the ledger)'))
                     ->maxLength(255)
                     ->required(fn (Get $get): bool => (bool) $get('apply_voucher'))
                     ->visible(fn (Get $get): bool => $canPreviewPricing && (bool) $get('apply_voucher')),
@@ -581,24 +589,24 @@ class CheckIn extends Page implements HasTable
             $flags[] = 'Banned'.($showReason && $member->ban_reason ? ' — '.$member->ban_reason : '');
         }
         if ($member->on_watchlist) {
-            $flags[] = 'On watchlist'.($showReason && $member->watchlist_reason ? ' — '.$member->watchlist_reason : '');
+            $flags[] = __('On watchlist').($showReason && $member->watchlist_reason ? ' — '.$member->watchlist_reason : '');
         }
         if ($policy->needsCapture($member)) {
-            $flags[] = 'Prospective — sign-up incomplete';
+            $flags[] = __('Prospective — sign-up incomplete');
         }
         if ($policy->needsPaperworkCapture($member)) {
-            $flags[] = 'Paperwork not confirmed';
+            $flags[] = __('Paperwork not confirmed');
         }
 
         $event = $this->getSelectedEvent();
 
         if (! $event) {
             $provisional = match (true) {
-                $member->is_deceased, $member->isCurrentlyBanned() => ['stop', 'Do not admit'],
-                $member->on_watchlist => ['check', 'Watchlist — notify '.config('membership.watchlist_notify_label').', then confirm at check-in'],
-                $policy->needsCapture($member) => ['check', 'Prospective — finish sign-up to admit'],
-                $policy->needsPaperworkCapture($member) => ['check', 'Missing paperwork — confirm on file to admit'],
-                default => ['go', "No flags yet — pick tonight's event"],
+                $member->is_deceased, $member->isCurrentlyBanned() => ['stop', __('Do not admit')],
+                $member->on_watchlist => ['check', __('Watchlist — notify :label, then confirm at check-in', ['label' => config('membership.watchlist_notify_label')])],
+                $policy->needsCapture($member) => ['check', __('Prospective — finish sign-up to admit')],
+                $policy->needsPaperworkCapture($member) => ['check', __('Missing paperwork — confirm on file to admit')],
+                default => ['go', __("No flags yet — pick tonight's event")],
             };
 
             return ['tone' => $provisional[0], 'headline' => $provisional[1], 'detail' => null, 'flags' => $flags];
@@ -610,11 +618,11 @@ class CheckIn extends Page implements HasTable
         // reason already appears in $flags below (reason-gated), so it's not
         // re-appended here.
         return match ($decision->outcome) {
-            AdmissionOutcome::Block => ['tone' => 'stop', 'headline' => 'Do not admit', 'detail' => null, 'flags' => $flags],
-            AdmissionOutcome::Warn => ['tone' => 'check', 'headline' => 'Acknowledge before admitting', 'detail' => $decision->message, 'flags' => $flags],
-            AdmissionOutcome::Capture => ['tone' => 'check', 'headline' => 'Finish sign-up to admit', 'detail' => $decision->message, 'flags' => $flags],
-            AdmissionOutcome::Flag => ['tone' => 'check', 'headline' => 'Check ID — under '.MembershipSetting::current()->alcohol_flag_age.', no alcohol, mark hand', 'detail' => null, 'flags' => $flags],
-            AdmissionOutcome::Ok => ['tone' => 'go', 'headline' => 'Ready to admit', 'detail' => null, 'flags' => $flags],
+            AdmissionOutcome::Block => ['tone' => 'stop', 'headline' => __('Do not admit'), 'detail' => null, 'flags' => $flags],
+            AdmissionOutcome::Warn => ['tone' => 'check', 'headline' => __('Acknowledge before admitting'), 'detail' => $decision->message, 'flags' => $flags],
+            AdmissionOutcome::Capture => ['tone' => 'check', 'headline' => __('Finish sign-up to admit'), 'detail' => $decision->message, 'flags' => $flags],
+            AdmissionOutcome::Flag => ['tone' => 'check', 'headline' => __('Check ID — under :age, no alcohol, mark hand', ['age' => MembershipSetting::current()->alcohol_flag_age]), 'detail' => null, 'flags' => $flags],
+            AdmissionOutcome::Ok => ['tone' => 'go', 'headline' => __('Ready to admit'), 'detail' => null, 'flags' => $flags],
         };
     }
 
@@ -659,7 +667,7 @@ class CheckIn extends Page implements HasTable
     public function getGatedAddOnWarnings(): array
     {
         return $this->gatedPaperworkTypesMissing($this->getSelectedMember())
-            ->map(fn (PaperworkType $type) => "{$type->addOn->name} unavailable — {$type->name} missing or expired. Not charged; do not admit to {$type->addOn->name} until it is renewed.")
+            ->map(fn (PaperworkType $type) => __(':addon unavailable — :waiver missing or expired. Not charged; do not admit to :addon until it is renewed.', ['addon' => $type->addOn->name, 'waiver' => $type->name]))
             ->all();
     }
 
@@ -677,7 +685,7 @@ class CheckIn extends Page implements HasTable
     {
         return $this->gatedPaperworkTypesMissing($this->getSelectedMember())
             ->filter(fn (PaperworkType $type) => $type->addOn->subscribable && $type->addOn->priced_per_event)
-            ->map(fn (PaperworkType $type) => "{$type->addOn->name} day pass — requires a signed {$type->name} first. Record the signature above to enable it.")
+            ->map(fn (PaperworkType $type) => __(':addon day pass — requires a signed :waiver first. Record the signature above to enable it.', ['addon' => $type->addOn->name, 'waiver' => $type->name]))
             ->values()
             ->all();
     }
@@ -694,21 +702,21 @@ class CheckIn extends Page implements HasTable
         $missing = $this->gatedPaperworkTypesMissing($this->getSelectedMember());
 
         return Action::make('recordGatedPaperwork')
-            ->label('Record a waiver signature')
+            ->label(__('Record a waiver signature'))
             ->visible(fn (): bool => $missing->isNotEmpty())
             ->schema([
                 Select::make('paperwork_type_id')
-                    ->label('Waiver')
+                    ->label(__('Waiver'))
                     ->options($missing->pluck('name', 'id')->all())
                     ->default($missing->count() === 1 ? $missing->first()->id : null)
                     ->required(),
                 DatePicker::make('signed_on')
-                    ->label('Signed on')
+                    ->label(__('Signed on'))
                     ->default(now())
                     ->required(),
             ])
             ->action(function (array $data): void {
-                if ($this->haltForTraining('Practice: waiver signature simulated.')) {
+                if ($this->haltForTraining(__('Practice: waiver signature simulated.'))) {
                     return;
                 }
 
@@ -727,7 +735,7 @@ class CheckIn extends Page implements HasTable
                     'recorded_by' => auth()->id(),
                 ]);
 
-                Notification::make()->title("{$type->name} recorded")->success()->send();
+                Notification::make()->title(__(':name recorded', ['name' => $type->name]))->success()->send();
             });
     }
 
@@ -788,10 +796,10 @@ class CheckIn extends Page implements HasTable
     public function openShiftAction(): Action
     {
         return Action::make('openShift')
-            ->label('Open Box')
+            ->label(__('Open Box'))
             ->schema([
                 TextInput::make('opening_count')
-                    ->label('Opening count')
+                    ->label(__('Opening count'))
                     ->numeric()
                     ->minValue(0)
                     ->step(0.01)
@@ -800,7 +808,7 @@ class CheckIn extends Page implements HasTable
             ])
             ->visible(fn (): bool => $this->getCurrentRegister() && ! $this->getOpenShift())
             ->action(function (array $data): void {
-                if ($this->haltForTraining('Practice: cash-box action simulated.')) {
+                if ($this->haltForTraining(__('Practice: cash-box action simulated.'))) {
                     return;
                 }
 
@@ -811,14 +819,14 @@ class CheckIn extends Page implements HasTable
 
                 app(RegisterShiftService::class)->openShift($register, auth()->user(), (float) $data['opening_count']);
 
-                Notification::make()->title('Box opened')->success()->send();
+                Notification::make()->title(__('Box opened'))->success()->send();
             });
     }
 
     public function recordDropAction(): Action
     {
         return Action::make('recordDrop')
-            ->label('Record a drop')
+            ->label(__('Record a drop'))
             ->schema([
                 TextInput::make('amount')
                     ->numeric()
@@ -830,7 +838,7 @@ class CheckIn extends Page implements HasTable
             ])
             ->visible(fn (): bool => (bool) $this->getOpenShift())
             ->action(function (array $data): void {
-                if ($this->haltForTraining('Practice: cash-box action simulated.')) {
+                if ($this->haltForTraining(__('Practice: cash-box action simulated.'))) {
                     return;
                 }
 
@@ -841,7 +849,7 @@ class CheckIn extends Page implements HasTable
 
                 app(RegisterShiftService::class)->recordDrop($shift, auth()->user(), (float) $data['amount'], $data['reason'] ?? null);
 
-                Notification::make()->title('Drop recorded')->success()->send();
+                Notification::make()->title(__('Drop recorded'))->success()->send();
             });
     }
 
@@ -853,7 +861,7 @@ class CheckIn extends Page implements HasTable
     public function recordMiscPaymentAction(): Action
     {
         return Action::make('recordMiscPayment')
-            ->label('Record other payment')
+            ->label(__('Record other payment'))
             ->schema([
                 Select::make('payment_method')
                     ->options(PaymentMethod::options())
@@ -864,13 +872,13 @@ class CheckIn extends Page implements HasTable
                     ->step(0.01)
                     ->required(),
                 Textarea::make('notation')
-                    ->label('What was this for?')
+                    ->label(__('What was this for?'))
                     ->required()
                     ->maxLength(255),
             ])
             ->visible(fn (): bool => (bool) $this->getOpenShift())
             ->action(function (array $data): void {
-                if ($this->haltForTraining('Practice: cash-box action simulated.')) {
+                if ($this->haltForTraining(__('Practice: cash-box action simulated.'))) {
                     return;
                 }
 
@@ -887,17 +895,17 @@ class CheckIn extends Page implements HasTable
                     $data['notation'],
                 );
 
-                Notification::make()->title('Payment recorded')->success()->send();
+                Notification::make()->title(__('Payment recorded'))->success()->send();
             });
     }
 
     public function closeShiftAction(): Action
     {
         return Action::make('closeShift')
-            ->label('Close Box')
+            ->label(__('Close Box'))
             ->schema([
                 TextInput::make('closing_count')
-                    ->label('Final count')
+                    ->label(__('Final count'))
                     ->numeric()
                     ->minValue(0)
                     ->step(0.01)
@@ -907,7 +915,7 @@ class CheckIn extends Page implements HasTable
             ])
             ->visible(fn (): bool => (bool) $this->getOpenShift())
             ->action(function (array $data): void {
-                if ($this->haltForTraining('Practice: cash-box action simulated.')) {
+                if ($this->haltForTraining(__('Practice: cash-box action simulated.'))) {
                     return;
                 }
 
@@ -919,26 +927,26 @@ class CheckIn extends Page implements HasTable
                 $service = app(RegisterShiftService::class);
                 $closed = $service->closeShift($shift, auth()->user(), (float) $data['closing_count'], $data['notes'] ?? null);
                 $variance = $service->variance($closed) ?? 0.0;
-                $label = $variance == 0.0 ? 'exact' : ($variance > 0 ? 'over' : 'short');
+                $label = $variance == 0.0 ? __('exact') : ($variance > 0 ? __('over') : __('short'));
 
-                Notification::make()->title('Box closed — '.$this->formatCurrency(abs($variance))." {$label}")->success()->send();
+                Notification::make()->title(__('Box closed — :amount :label', ['amount' => $this->formatCurrency(abs($variance)), 'label' => $label]))->success()->send();
             });
     }
 
     public function saveAndPromoteAction(): Action
     {
         return Action::make('saveAndPromote')
-            ->label('Save & promote to Irregular')
+            ->label(__('Save & promote to Irregular'))
             ->schema([
                 TextInput::make('preferred_name')->required()->maxLength(60),
                 TextInput::make('first_name')->required()->maxLength(60),
                 TextInput::make('last_name')->required()->maxLength(60),
                 TextInput::make('email')->required()->email()->maxLength(120),
                 Checkbox::make('appears_under_21')
-                    ->label('Appears to be under '.MembershipSetting::current()->alcohol_flag_age)
+                    ->label(__('Appears to be under :age', ['age' => MembershipSetting::current()->alcohol_flag_age]))
                     ->live(),
                 DatePicker::make('dob')
-                    ->label('Date of birth')
+                    ->label(__('Date of birth'))
                     ->required(fn (Get $get): bool => (bool) $get('appears_under_21'))
                     ->visible(fn (Get $get): bool => (bool) $get('appears_under_21')),
             ])
@@ -947,7 +955,7 @@ class CheckIn extends Page implements HasTable
             // before any event is picked (AdmissionPolicy::needsCapture()).
             ->visible(fn (): bool => ($member = $this->getSelectedMember()) && app(AdmissionPolicy::class)->needsCapture($member))
             ->action(function (array $data): void {
-                if ($this->haltForTraining('Practice: promote to Irregular simulated.')) {
+                if ($this->haltForTraining(__('Practice: promote to Irregular simulated.'))) {
                     return;
                 }
 
@@ -965,7 +973,7 @@ class CheckIn extends Page implements HasTable
                     'category_id' => $irregular->id,
                 ]);
 
-                Notification::make()->title('Member promoted to Irregular')->success()->send();
+                Notification::make()->title(__('Member promoted to Irregular'))->success()->send();
             });
     }
 
@@ -978,10 +986,10 @@ class CheckIn extends Page implements HasTable
     public function confirmPaperworkAction(): Action
     {
         return Action::make('confirmPaperwork')
-            ->label('Confirm paperwork on file')
+            ->label(__('Confirm paperwork on file'))
             ->visible(fn (): bool => ($member = $this->getSelectedMember()) && app(AdmissionPolicy::class)->needsPaperworkCapture($member))
             ->action(function (): void {
-                if ($this->haltForTraining('Practice: paperwork confirmation simulated.')) {
+                if ($this->haltForTraining(__('Practice: paperwork confirmation simulated.'))) {
                     return;
                 }
 
@@ -998,7 +1006,7 @@ class CheckIn extends Page implements HasTable
 
                 $member->update(['missing_paperwork' => false]);
 
-                Notification::make()->title('Paperwork confirmed')->success()->send();
+                Notification::make()->title(__('Paperwork confirmed'))->success()->send();
             });
     }
 
@@ -1021,12 +1029,12 @@ class CheckIn extends Page implements HasTable
         $openShift = $this->getOpenShift();
 
         return Action::make('purchaseSubscription')
-            ->label('Buy Subscription (no check-in)')
-            ->modalDescription('This purchases coverage on its own — it does not check the member in or apply to any event tonight. To cover tonight\'s entry with a subscription instead, use the Regular/Pool Subscription options under Payment options below.')
+            ->label(__('Buy Subscription (no check-in)'))
+            ->modalDescription(__('This purchases coverage on its own — it does not check the member in or apply to any event tonight. To cover tonight\'s entry with a subscription instead, use the Regular/Pool Subscription options under Payment options below.'))
             ->visible(fn (): bool => (bool) $member?->isSubscriptionEligible())
             ->schema([
                 Select::make('add_on_id')
-                    ->label('Plan')
+                    ->label(__('Plan'))
                     // Entry (the Regular subscription) plus every currently
                     // subscribable add-on (Pool, at launch) -- rebuilt fresh
                     // on every open/submit, same reasoning as every other
@@ -1038,14 +1046,14 @@ class CheckIn extends Page implements HasTable
                     ->required()
                     ->live(),
                 DatePicker::make('desired_start')
-                    ->label('Desired start month')
-                    ->helperText('If a month in the window is already covered, the whole bundle shifts forward to the next free block — the notification will say so.')
+                    ->label(__('Desired start month'))
+                    ->helperText(__('If a month in the window is already covered, the whole bundle shifts forward to the next free block — the notification will say so.'))
                     ->default(now()->startOfMonth())
                     ->required()
                     ->live()
                     ->dehydrateStateUsing(fn (?string $state) => $state ? Carbon::parse($state)->startOfMonth()->toDateString() : null),
                 Select::make('duration_months')
-                    ->label('Duration')
+                    ->label(__('Duration'))
                     ->options(function (Get $get): array {
                         $addOn = $get('add_on_id') ? AddOn::find($get('add_on_id')) : null;
                         if (! $addOn) {
@@ -1067,7 +1075,7 @@ class CheckIn extends Page implements HasTable
                     ->helperText(fn (Get $get): ?string => PaymentMethod::feeHelperText($get('payment_method'))),
             ])
             ->action(function (array $data): void {
-                if ($this->haltForTraining('Practice: subscription purchase simulated.')) {
+                if ($this->haltForTraining(__('Practice: subscription purchase simulated.'))) {
                     return;
                 }
 
@@ -1114,11 +1122,11 @@ class CheckIn extends Page implements HasTable
 
                 $last = $rows->last();
                 $rangeLabel = $first->covered_month->isSameMonth($last->covered_month)
-                    ? $first->covered_month->format('F Y')
-                    : $first->covered_month->format('F Y').' – '.$last->covered_month->format('F Y');
+                    ? $first->covered_month->translatedFormat('F Y')
+                    : $first->covered_month->translatedFormat('F Y').' – '.$last->covered_month->translatedFormat('F Y');
 
                 Notification::make()
-                    ->title('Subscription recorded — '.$this->formatCurrency((float) $rows->sum('amount_paid'))." covering {$rangeLabel}")
+                    ->title(__('Subscription recorded — :amount covering :range', ['amount' => $this->formatCurrency((float) $rows->sum('amount_paid')), 'range' => $rangeLabel]))
                     ->success()
                     ->send();
             });
@@ -1157,17 +1165,17 @@ class CheckIn extends Page implements HasTable
         $defaultAddOnId = $dayPassableAddOns->count() === 1 ? $dayPassableAddOns->first()->id : null;
 
         return Action::make('purchaseAddOnDayPass')
-            ->label('Buy Day Pass')
+            ->label(__('Buy Day Pass'))
             ->visible(fn (): bool => (bool) $member && $dayPassableAddOns->isNotEmpty())
             ->schema([
                 Select::make('add_on_id')
-                    ->label('Add-on')
+                    ->label(__('Add-on'))
                     ->options($dayPassableAddOns->pluck('name', 'id')->all())
                     ->default($defaultAddOnId)
                     ->required()
                     ->live(),
                 Select::make('event_id')
-                    ->label('Event')
+                    ->label(__('Event'))
                     ->options(function (Get $get) {
                         $addOn = $get('add_on_id') ? AddOn::find($get('add_on_id')) : null;
                         if (! $addOn) {
@@ -1190,7 +1198,7 @@ class CheckIn extends Page implements HasTable
                     ->helperText(fn (Get $get): ?string => PaymentMethod::feeHelperText($get('payment_method'))),
             ])
             ->action(function (array $data): void {
-                if ($this->haltForTraining('Practice: day pass simulated.')) {
+                if ($this->haltForTraining(__('Practice: day pass simulated.'))) {
                     return;
                 }
 
@@ -1232,7 +1240,7 @@ class CheckIn extends Page implements HasTable
                         throw $exception;
                     }
 
-                    Notification::make()->title("{$member->username} already has a {$addOn->name} day pass for that event.")->danger()->send();
+                    Notification::make()->title(__(':username already has a :addon day pass for that event.', ['username' => $member->username, 'addon' => $addOn->name]))->danger()->send();
 
                     return;
                 }
@@ -1242,7 +1250,7 @@ class CheckIn extends Page implements HasTable
                 }
 
                 Notification::make()
-                    ->title("{$addOn->name} day pass recorded — {$this->formatCurrency((float) $pass->amount_paid)} for {$event->name}")
+                    ->title(__(':addon day pass recorded — :amount for :event', ['addon' => $addOn->name, 'amount' => $this->formatCurrency((float) $pass->amount_paid), 'event' => $event->name]))
                     ->success()
                     ->send();
             });
@@ -1254,7 +1262,7 @@ class CheckIn extends Page implements HasTable
         $attendance = $this->getExistingAttendance();
 
         return Action::make('registerGuest')
-            ->label('Register a guest')
+            ->label(__('Register a guest'))
             ->schema([
                 TextInput::make('username')
                     ->required()
@@ -1265,10 +1273,10 @@ class CheckIn extends Page implements HasTable
                 TextInput::make('last_name')->required()->maxLength(60),
                 TextInput::make('email')->email()->required()->maxLength(120),
                 Checkbox::make('appears_under_21')
-                    ->label('Appears to be under '.MembershipSetting::current()->alcohol_flag_age)
+                    ->label(__('Appears to be under :age', ['age' => MembershipSetting::current()->alcohol_flag_age]))
                     ->live(),
                 DatePicker::make('dob')
-                    ->label('Date of birth')
+                    ->label(__('Date of birth'))
                     ->required(fn (Get $get): bool => (bool) $get('appears_under_21'))
                     ->visible(fn (Get $get): bool => (bool) $get('appears_under_21')),
             ])
@@ -1276,7 +1284,7 @@ class CheckIn extends Page implements HasTable
                 && $attendance?->checked_in_at
                 && ! $sponsor->isOnProbation())
             ->action(function (array $data) use ($sponsor): void {
-                if ($this->haltForTraining('Practice: guest registration simulated.')) {
+                if ($this->haltForTraining(__('Practice: guest registration simulated.'))) {
                     return;
                 }
 
@@ -1308,7 +1316,7 @@ class CheckIn extends Page implements HasTable
                         throw $exception;
                     }
 
-                    Notification::make()->title('That username was just taken — please choose another.')->danger()->send();
+                    Notification::make()->title(__('That username was just taken — please choose another.'))->danger()->send();
 
                     return;
                 }
@@ -1318,7 +1326,7 @@ class CheckIn extends Page implements HasTable
                     'member_id' => $guest->id,
                 ]);
 
-                Notification::make()->title("Registered {$guest->first_name} {$guest->last_name} as {$sponsor->username}'s guest")->success()->send();
+                Notification::make()->title(__("Registered :guest as :sponsor's guest", ['guest' => "{$guest->first_name} {$guest->last_name}", 'sponsor' => $sponsor->username]))->success()->send();
             });
     }
 
@@ -1335,12 +1343,12 @@ class CheckIn extends Page implements HasTable
      */
     protected function subscriptionOptions(AddOn $addOn, Member $member, Event $event): array
     {
-        $options = ['none' => 'No subscription payment'];
+        $options = ['none' => __('No subscription payment')];
         $eventMonth = $event->event_date->clone()->startOfMonth();
 
         $monthlyPlan = Plan::currentFor($addOn, $event->event_date);
         if ($monthlyPlan && ! $member->hasActiveSubscriptionFor($addOn, $eventMonth)) {
-            $options[1] = 'This month — '.$this->formatCurrency($monthlyPlan->price);
+            $options[1] = __('This month — :amount', ['amount' => $this->formatCurrency($monthlyPlan->price)]);
         }
 
         $service = app(SubscriptionBundleService::class);
@@ -1364,14 +1372,14 @@ class CheckIn extends Page implements HasTable
 
             $endMonth = $resolution->start->clone()->addMonthsNoOverflow($plan->duration_months - 1);
             $rangeLabel = $resolution->start->isSameMonth($endMonth)
-                ? $resolution->start->format('F Y')
-                : $resolution->start->format('F Y').' – '.$endMonth->format('F Y');
+                ? $resolution->start->translatedFormat('F Y')
+                : $resolution->start->translatedFormat('F Y').' – '.$endMonth->translatedFormat('F Y');
 
-            $label = "{$plan->duration_months} months — {$this->formatCurrency($plan->price)} ({$rangeLabel})";
+            $label = __(':months months — :amount (:range)', ['months' => $plan->duration_months, 'amount' => $this->formatCurrency($plan->price), 'range' => $rangeLabel]);
 
             if (! empty($resolution->skippedMonths)) {
-                $skippedLabel = collect($resolution->skippedMonths)->map(fn ($m) => $m->format('F Y'))->implode(', ');
-                $label .= " — {$skippedLabel} already covered";
+                $skippedLabel = collect($resolution->skippedMonths)->map(fn ($m) => $m->translatedFormat('F Y'))->implode(', ');
+                $label .= ' — '.__(':months already covered', ['months' => $skippedLabel]);
             }
 
             $options[$plan->duration_months] = $label;
@@ -1397,11 +1405,11 @@ class CheckIn extends Page implements HasTable
         $lockedOneTimeCodes = $member?->hasUsedOneTimeMethod() ? PaymentMethod::oneTimeCodes()->all() : [];
 
         return Action::make('checkIn')
-            ->label('Check in')
+            ->label(__('Check in'))
             ->schema([
                 ...($requiresAcknowledgement ? [
                     Checkbox::make('acknowledged')
-                        ->label('I have notified '.config('membership.watchlist_notify_label').' per the watchlist note.')
+                        ->label(__('I have notified :label per the watchlist note.', ['label' => config('membership.watchlist_notify_label')]))
                         ->accepted()
                         ->required(),
                 ] : []),
@@ -1420,7 +1428,7 @@ class CheckIn extends Page implements HasTable
                     ->disableOptionWhen(fn (string $value): bool => in_array($value, $lockedOneTimeCodes, true))
                     ->helperText(fn (Get $get): ?string => PaymentMethod::feeHelperText($get('payment_method'))),
                 TextInput::make('on_behalf_note')
-                    ->label('On behalf of / guest note')
+                    ->label(__('On behalf of / guest note'))
                     ->maxLength(120),
                 TextInput::make('notes')
                     ->maxLength(255),
@@ -1430,7 +1438,7 @@ class CheckIn extends Page implements HasTable
                 && $this->getDecision()?->outcome !== AdmissionOutcome::Capture
                 && ($event === null || app(CapacityService::class)->hasRoom($event->event_date)))
             ->action(function (array $data): void {
-                if ($this->haltForTraining('Practice check-in complete — '.$this->formatCurrency(($this->getLivePriceBreakdown()?->amountPaid ?? 0) + $this->getLiveAddOnTotal()).' would have been charged. Nothing was saved.')) {
+                if ($this->haltForTraining(__('Practice check-in complete — :amount would have been charged. Nothing was saved.', ['amount' => $this->formatCurrency(($this->getLivePriceBreakdown()?->amountPaid ?? 0) + $this->getLiveAddOnTotal())]))) {
                     return;
                 }
 
@@ -1460,7 +1468,7 @@ class CheckIn extends Page implements HasTable
                 // silently create a duplicate attendance row.
                 if ($this->getExistingAttendance()) {
                     Notification::make()
-                        ->title('Already checked in — another register just recorded this.')
+                        ->title(__('Already checked in — another register just recorded this.'))
                         ->warning()
                         ->send();
 
@@ -1689,7 +1697,7 @@ class CheckIn extends Page implements HasTable
                     }
 
                     Notification::make()
-                        ->title('Already checked in — another register just recorded this at the same moment.')
+                        ->title(__('Already checked in — another register just recorded this at the same moment.'))
                         ->warning()
                         ->send();
 
@@ -1701,15 +1709,15 @@ class CheckIn extends Page implements HasTable
                 // inherits this one's comp/voucher/subscription choices.
                 $this->pricingData = ['add_on_ids' => []];
 
-                $title = 'Checked in — '.$this->formatCurrency($breakdown->amountPaid + $addOnTotal).' due';
+                $title = __('Checked in — :amount due', ['amount' => $this->formatCurrency($breakdown->amountPaid + $addOnTotal)]);
                 if ($subscriptionTotal > 0) {
-                    $title .= ' + '.$this->formatCurrency($subscriptionTotal).' Subscription';
+                    $title .= ' + '.__(':amount Subscription', ['amount' => $this->formatCurrency($subscriptionTotal)]);
                 }
                 if ($addOnTotal > 0) {
-                    $title .= ' + '.$this->formatCurrency($addOnTotal).' Add-ons';
+                    $title .= ' + '.__(':amount Add-ons', ['amount' => $this->formatCurrency($addOnTotal)]);
                 }
                 if ($voucherApplied > 0) {
-                    $title .= ' − '.$this->formatCurrency($voucherApplied).' voucher';
+                    $title .= ' − '.__(':amount voucher', ['amount' => $this->formatCurrency($voucherApplied)]);
                 }
 
                 Notification::make()->title($title)->success()->send();
@@ -1729,16 +1737,16 @@ class CheckIn extends Page implements HasTable
             && $this->getDecision()?->requiresAcknowledgement();
 
         return Action::make('markArrived')
-            ->label('Mark arrived')
+            ->label(__('Mark arrived'))
             ->schema($requiresAcknowledgement ? [
                 Checkbox::make('acknowledged')
-                    ->label('I have notified '.config('membership.watchlist_notify_label').' per the watchlist note.')
+                    ->label(__('I have notified :label per the watchlist note.', ['label' => config('membership.watchlist_notify_label')]))
                     ->accepted()
                     ->required(),
             ] : [])
             ->visible(fn (): bool => (bool) ($attendance && is_null($attendance->checked_in_at)))
             ->action(function (): void {
-                if ($this->haltForTraining('Practice: marked arrived.')) {
+                if ($this->haltForTraining(__('Practice: marked arrived.'))) {
                     return;
                 }
 
@@ -1760,7 +1768,7 @@ class CheckIn extends Page implements HasTable
 
                 $attendance->update(['checked_in_at' => now()]);
 
-                Notification::make()->title('Marked arrived')->success()->send();
+                Notification::make()->title(__('Marked arrived'))->success()->send();
             });
     }
 
@@ -1776,11 +1784,11 @@ class CheckIn extends Page implements HasTable
         $attendance = $this->getExistingAttendance();
 
         return Action::make('markAsReturned')
-            ->label('Mark as returned')
+            ->label(__('Mark as returned'))
             ->color('success')
             ->visible(fn (): bool => (bool) ($attendance?->departed_at) && Gate::allows('record-departures'))
             ->action(function (): void {
-                if ($this->haltForTraining('Practice: mark-as-returned simulated.')) {
+                if ($this->haltForTraining(__('Practice: mark-as-returned simulated.'))) {
                     return;
                 }
 
@@ -1794,7 +1802,7 @@ class CheckIn extends Page implements HasTable
 
                 $attendance->update(['departed_at' => null]);
 
-                Notification::make()->title('Marked as returned')->success()->send();
+                Notification::make()->title(__('Marked as returned'))->success()->send();
             });
     }
 
@@ -1810,7 +1818,7 @@ class CheckIn extends Page implements HasTable
 
         return $table
             ->query(Attendance::query()->whereNull('checked_in_at')->where('event_id', $event?->id ?? 0))
-            ->heading('Prepaid, awaiting arrival')
+            ->heading(__('Prepaid, awaiting arrival'))
             // Split/Stack layout, not a flat column list -- each prepay row
             // renders as one stacked card on a phone and a single row at sm+,
             // so the desk never needs a sideways scroll to reach the amount
@@ -1819,12 +1827,12 @@ class CheckIn extends Page implements HasTable
                 Split::make([
                     Stack::make([
                         TextColumn::make('member.username')
-                            ->label('Member')
+                            ->label(__('Member'))
                             ->weight(FontWeight::Bold),
                         TextColumn::make('notes')
                             ->color('gray')
                             ->size(TextSize::Small)
-                            ->placeholder('—')
+                            ->placeholder(__('—'))
                             ->wrap(),
                     ])->space(1),
 
@@ -1841,19 +1849,19 @@ class CheckIn extends Page implements HasTable
     protected function markArrivedRowAction(): Action
     {
         return Action::make('markArrived')
-            ->label('Mark arrived')
+            ->label(__('Mark arrived'))
             ->schema(function (Attendance $record) {
                 $decision = app(AdmissionPolicy::class)->decide($record->member, $record->event);
 
                 return $decision->requiresAcknowledgement() ? [
                     Checkbox::make('acknowledged')
-                        ->label('I have notified '.config('membership.watchlist_notify_label').' per the note.')
+                        ->label(__('I have notified :label per the note.', ['label' => config('membership.watchlist_notify_label')]))
                         ->accepted()
                         ->required(),
                 ] : [];
             })
             ->action(function (Attendance $record): void {
-                if ($this->haltForTraining('Practice: marked arrived.')) {
+                if ($this->haltForTraining(__('Practice: marked arrived.'))) {
                     return;
                 }
 
@@ -1867,7 +1875,7 @@ class CheckIn extends Page implements HasTable
 
                 $record->update(['checked_in_at' => now()]);
 
-                Notification::make()->title('Marked arrived')->success()->send();
+                Notification::make()->title(__('Marked arrived'))->success()->send();
             });
     }
 
@@ -1913,7 +1921,7 @@ class CheckIn extends Page implements HasTable
 
     protected static function eventLabel(Event $event): string
     {
-        return $event->event_date->toFormattedDateString().' — '.($event->name ?? 'Untitled event');
+        return $event->event_date->translatedFormat('M j, Y').' — '.($event->name ?? __('Untitled event'));
     }
 
     /**

@@ -12,8 +12,8 @@ enum PayoutType: string implements HasLabel
     public function getLabel(): string
     {
         return match ($this) {
-            self::Voucher => 'Voucher',
-            self::Percentage => 'Percentage',
+            self::Voucher => __('Voucher'),
+            self::Percentage => __('Percentage'),
         };
     }
 }

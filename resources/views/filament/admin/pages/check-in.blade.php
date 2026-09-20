@@ -23,24 +23,22 @@
             style="border-left: 5px solid var(--warning-600, #d97706); background-color: color-mix(in srgb, var(--warning-600, #d97706) 12%, transparent);"
         >
             <p class="text-base font-semibold" style="color: var(--warning-600, #d97706);">
-                Training mode — practice freely. Nothing you do here is saved.
+                {{ __('Training mode — practice freely. Nothing you do here is saved.') }}
             </p>
             <p class="mt-1 text-sm" style="opacity: .75;">
-                The screen behaves exactly as normal — status line, Due total, confirmations —
-                but no records are created, so nothing appears on the roster afterward.
-                Use the <strong>Exit training mode</strong> button above for real check-ins.
+                {!! __('The screen behaves exactly as normal — status line, Due total, confirmations — but no records are created, so nothing appears on the roster afterward. Use the <strong>Exit training mode</strong> button above for real check-ins.') !!}
             </p>
         </div>
     @endif
 
-    <x-screen-instructions title="How to check someone in">
-        <p>1. Search for the <strong>member</strong> first, by {{ $this->memberSearchFieldsLabel() }}.</p>
-        <p>2. Read the <strong>status line</strong> — green means go, amber means do one thing first, red means stop and get a manager. It shows before you pick an event.</p>
-        <p>3. Pick tonight's <strong>event</strong> to see what's due.</p>
-        <p>4. Take payment for the amount on the <strong>Due</strong> line, then click <strong>Check in</strong>.</p>
-        <p>If a watchlist note asks for a staff-channel message, send it first, then tick the acknowledgement — you can't proceed without it.</p>
-        <p>Everything folded away — selling a subscription or day pass, add-ons / vouchers / comps, the cash box — is still here, one click open, and never needed for a normal check-in.</p>
-        <p>Two different things say "subscription": <strong>Payment options</strong> below uses one to cover tonight's entry fee, as part of this same check-in. <strong>Sell a subscription or day pass</strong> is a separate, standalone sale that doesn't check anyone in.</p>
+    <x-screen-instructions :title="__('How to check someone in')">
+        <p>{!! __('1. Search for the <strong>member</strong> first, by :fields.', ['fields' => e($this->memberSearchFieldsLabel())]) !!}</p>
+        <p>{!! __('2. Read the <strong>status line</strong> — green means go, amber means do one thing first, red means stop and get a manager. It shows before you pick an event.') !!}</p>
+        <p>{!! __("3. Pick tonight's <strong>event</strong> to see what's due.") !!}</p>
+        <p>{!! __('4. Take payment for the amount on the <strong>Due</strong> line, then click <strong>Check in</strong>.') !!}</p>
+        <p>{{ __("If a watchlist note asks for a staff-channel message, send it first, then tick the acknowledgement — you can't proceed without it.") }}</p>
+        <p>{{ __('Everything folded away — selling a subscription or day pass, add-ons / vouchers / comps, the cash box — is still here, one click open, and never needed for a normal check-in.') }}</p>
+        <p>{!! __('Two different things say "subscription": <strong>Payment options</strong> below uses one to cover tonight\'s entry fee, as part of this same check-in. <strong>Sell a subscription or day pass</strong> is a separate, standalone sale that doesn\'t check anyone in.') !!}</p>
     </x-screen-instructions>
 
     {{-- No wire:poll here on purpose: this whole section shares one Livewire message-bus
@@ -74,13 +72,13 @@
         <x-filament::section>
             <div class="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-4">
                 <div class="flex items-center gap-2">
-                    <label for="registerId" class="text-sm font-medium">Register</label>
+                    <label for="registerId" class="text-sm font-medium">{{ __('Register') }}</label>
                     <select
                         id="registerId"
                         wire:model.live="registerId"
                         class="fi-input block rounded-lg border text-sm shadow-sm"
                     >
-                        <option value="">— none —</option>
+                        <option value="">{{ __('— none —') }}</option>
                         @foreach ($this->getRegisterOptions() as $id => $name)
                             <option value="{{ $id }}">{{ $name }}</option>
                         @endforeach
@@ -112,7 +110,7 @@
             drops, other payments, and closing the box are one click away in here -- a
             start/end-of-night task, not a per-member one. --}}
             @if ($this->getCurrentRegister() && $this->getOpenShift())
-                <x-desk-fold class="mt-4" title="Cash box" summary="Record a drop, take an off-book payment, or close the box">
+                <x-desk-fold class="mt-4" :title="__('Cash box')" :summary="__('Record a drop, take an off-book payment, or close the box')">
                     <div class="flex flex-wrap gap-2">
                         {{ $this->recordDropAction }}
                         {{ $this->recordMiscPaymentAction }}
@@ -181,7 +179,7 @@
             <p class="text-sm text-gray-500">{{ $member->category->name }}</p>
 
             @if (app(\App\Services\AdmissionPolicy::class)->needsCapture($member))
-                <p class="mt-4 font-medium">Prospective — complete sign-up to promote to Irregular.</p>
+                <p class="mt-4 font-medium">{{ __('Prospective — complete sign-up to promote to Irregular.') }}</p>
                 <div class="mt-2">
                     {{ $this->saveAndPromoteAction }}
                 </div>
@@ -190,7 +188,7 @@
             {{-- Independent of the Prospective capture block above -- both can
             show at once if a member somehow has both gaps. --}}
             @if (app(\App\Services\AdmissionPolicy::class)->needsPaperworkCapture($member))
-                <p class="mt-4 font-medium">Missing paperwork — confirm on file before check-in.</p>
+                <p class="mt-4 font-medium">{{ __('Missing paperwork — confirm on file before check-in.') }}</p>
                 <div class="mt-2">
                     {{ $this->confirmPaperworkAction }}
                 </div>
@@ -210,7 +208,7 @@
             {{-- Folded: standalone transactions, not part of a normal check-in.
             Buying a subscription or day pass here doesn't require an event to
             be selected. --}}
-            <x-desk-fold class="mt-4" title="Sell a subscription or day pass" summary="Standalone — no event or check-in needed">
+            <x-desk-fold class="mt-4" :title="__('Sell a subscription or day pass')" :summary="__('Standalone — no event or check-in needed')">
                 @if ($member->isSubscriptionEligible())
                     <div>
                         {{ $this->purchaseSubscriptionAction }}
@@ -220,7 +218,7 @@
                         $attendedCount = $member->attendance()->whereNotNull('checked_in_at')->count();
                         $subscriptionThreshold = \App\Models\MembershipSetting::current()->subscription_eligibility_threshold;
                     @endphp
-                    <p class="text-sm text-gray-500">Not yet subscription-eligible ({{ $attendedCount }}/{{ $subscriptionThreshold }} events attended)</p>
+                    <p class="text-sm text-gray-500">{{ __('Not yet subscription-eligible (:attended/:threshold events attended)', ['attended' => $attendedCount, 'threshold' => $subscriptionThreshold]) }}</p>
                 @endif
 
                 {{-- Unlike Buy Subscription above, not gated by isSubscriptionEligible() --
@@ -254,8 +252,8 @@
             <x-filament::section>
                 @if ($attendance->departed_at)
                     <p class="font-medium text-warning-600">
-                        Checked in at {{ $attendance->checked_in_at->format('g:i A') }} — paid {{ \App\Models\MembershipSetting::formatMoney($attendance->amount_paid) }}.
-                        Marked departed at {{ $attendance->departed_at->format('g:i A') }}.
+                        {{ __('Checked in at :time — paid :amount.', ['time' => $attendance->checked_in_at->translatedFormat('g:i A'), 'amount' => \App\Models\MembershipSetting::formatMoney($attendance->amount_paid)]) }}
+                        {{ __('Marked departed at :time.', ['time' => $attendance->departed_at->translatedFormat('g:i A')]) }}
                     </p>
 
                     <div class="mt-4">
@@ -263,11 +261,11 @@
                     </div>
                 @else
                     <p class="font-medium text-success-600">
-                        Checked in at {{ $attendance->checked_in_at->format('g:i A') }} — paid {{ \App\Models\MembershipSetting::formatMoney($attendance->amount_paid) }}
+                        {{ __('Checked in at :time — paid :amount', ['time' => $attendance->checked_in_at->translatedFormat('g:i A'), 'amount' => \App\Models\MembershipSetting::formatMoney($attendance->amount_paid)]) }}
                     </p>
 
                     @if ($member->isOnProbation())
-                        <p class="mt-2 text-sm text-gray-500">On probation — cannot bring a guest yet.</p>
+                        <p class="mt-2 text-sm text-gray-500">{{ __('On probation — cannot bring a guest yet.') }}</p>
                     @else
                         <div class="mt-4">
                             {{ $this->registerGuestAction }}
@@ -277,7 +275,7 @@
             </x-filament::section>
         @elseif ($attendance)
             <x-filament::section>
-                <p class="font-medium">Prepaid — not yet arrived. Paid {{ \App\Models\MembershipSetting::formatMoney($attendance->amount_paid) }}.</p>
+                <p class="font-medium">{{ __('Prepaid — not yet arrived. Paid :amount.', ['amount' => \App\Models\MembershipSetting::formatMoney($attendance->amount_paid)]) }}</p>
 
                 @if ($decision?->blocksCheckIn())
                     {{-- The status line above already says "Do not admit"; markArrived
@@ -299,14 +297,14 @@
                 {{-- Folded: adjustments to what's owed. Closed by default so a
                 normal walk-in is just Due + Check in. The Due line below stays
                 outside the fold and reacts live to anything changed in here. --}}
-                <x-desk-fold title="Payment options" summary="Cover tonight — subscription, add-ons, voucher, comp">
+                <x-desk-fold :title="__('Payment options')" :summary="__('Cover tonight — subscription, add-ons, voucher, comp')">
                     {{ $this->pricingForm }}
                 </x-desk-fold>
 
                 {{-- role="status" (implicit aria-live="polite" + aria-atomic) so this
                 announces itself to screen readers as pricingForm() selections
                 change it, without staff needing to re-navigate to it after every toggle. --}}
-                <p role="status" class="mt-3 text-xl font-bold">Due: {{ \App\Models\MembershipSetting::formatMoney($this->getLivePriceBreakdown()->amountPaid + $this->getLiveAddOnTotal()) }}</p>
+                <p role="status" class="mt-3 text-xl font-bold">{{ __('Due: :amount', ['amount' => \App\Models\MembershipSetting::formatMoney($this->getLivePriceBreakdown()->amountPaid + $this->getLiveAddOnTotal())]) }}</p>
 
                 @if ($hasRoom)
                     <div class="mt-4">
@@ -314,7 +312,7 @@
                     </div>
                 @else
                     <p class="mt-2 text-danger-600">
-                        At capacity ({{ $this->getOccupancy() }}/{{ $this->getCapacity() }}) — no new walk-in check-ins until someone leaves.
+                        {{ __('At capacity (:occupancy/:capacity) — no new walk-in check-ins until someone leaves.', ['occupancy' => $this->getOccupancy(), 'capacity' => $this->getCapacity()]) }}
                     </p>
                 @endif
             </x-filament::section>

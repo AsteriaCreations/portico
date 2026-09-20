@@ -23,11 +23,11 @@ enum AddOnCoverageSource: string implements HasLabel
     public function getLabel(): string
     {
         return match ($this) {
-            self::None => 'None',
-            self::Comp => 'Comp',
-            self::Subscription => 'Subscription',
-            self::DayPass => 'Day Pass',
-            self::LegacyImport => 'Legacy Import',
+            self::None => __('None'),
+            self::Comp => __('Comp'),
+            self::Subscription => __('Subscription'),
+            self::DayPass => __('Day Pass'),
+            self::LegacyImport => __('Legacy Import'),
         };
     }
 }

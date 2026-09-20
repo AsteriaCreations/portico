@@ -18,12 +18,12 @@ enum EntryCoverageSource: string implements HasLabel
     public function getLabel(): string
     {
         return match ($this) {
-            self::None => 'None',
-            self::Comp => 'Comp',
-            self::RegularSubscription => 'Regular Subscription',
-            self::LegacyImport => 'Legacy Import',
-            self::EventComp => 'Event Comp',
-            self::Host => 'Host',
+            self::None => __('None'),
+            self::Comp => __('Comp'),
+            self::RegularSubscription => __('Regular Subscription'),
+            self::LegacyImport => __('Legacy Import'),
+            self::EventComp => __('Event Comp'),
+            self::Host => __('Host'),
         };
     }
 }

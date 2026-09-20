@@ -39,11 +39,11 @@ new class extends Component
         someone in) is announced -- the table body below stays outside this region, since
         re-announcing the whole roster on every 10s poll would be noise, not signal. --}}
         <x-slot name="heading">
-            <span role="status">Checked in tonight ({{ $this->attendances->count() }})</span>
+            <span role="status">{{ __('Checked in tonight (:count)', ['count' => $this->attendances->count()]) }}</span>
         </x-slot>
 
         @if ($this->attendances->isEmpty())
-            <p class="px-3 py-2 text-sm text-gray-500 dark:text-gray-400">No one checked in yet.</p>
+            <p class="px-3 py-2 text-sm text-gray-500 dark:text-gray-400">{{ __('No one checked in yet.') }}</p>
         @else
             {{-- Below sm: one stacked card per person, so a phone at the desk
             never needs the sideways scroll the 5-column table forces. --}}
@@ -51,8 +51,8 @@ new class extends Component
                 @foreach ($this->attendances as $checkedInAttendance)
                     <div class="border-t border-gray-200 py-2 text-sm dark:border-white/10">
                         <p class="font-medium">{{ $checkedInAttendance->member->displayName() }}</p>
-                        <p class="text-gray-500 dark:text-gray-400">{{ $this->event->name }} &middot; {{ $this->event->event_date->toFormattedDateString() }}</p>
-                        <p class="text-gray-500 dark:text-gray-400">{{ $checkedInAttendance->checked_in_at->format('g:i A') }} &middot; {{ \App\Models\MembershipSetting::formatMoney($checkedInAttendance->amount_paid) }}</p>
+                        <p class="text-gray-500 dark:text-gray-400">{{ $this->event->name }} &middot; {{ $this->event->event_date->translatedFormat('M j, Y') }}</p>
+                        <p class="text-gray-500 dark:text-gray-400">{{ $checkedInAttendance->checked_in_at->translatedFormat('g:i A') }} &middot; {{ \App\Models\MembershipSetting::formatMoney($checkedInAttendance->amount_paid) }}</p>
                     </div>
                 @endforeach
             </div>
@@ -62,11 +62,11 @@ new class extends Component
                 <table class="fi-ta-table w-full text-start">
                     <thead>
                         <tr>
-                            <th scope="col" class="px-3 py-2 text-start text-xs font-medium text-gray-500 dark:text-gray-400">Member</th>
-                            <th scope="col" class="px-3 py-2 text-start text-xs font-medium text-gray-500 dark:text-gray-400">Event</th>
-                            <th scope="col" class="px-3 py-2 text-start text-xs font-medium text-gray-500 dark:text-gray-400">Date</th>
-                            <th scope="col" class="px-3 py-2 text-start text-xs font-medium text-gray-500 dark:text-gray-400">Checked in</th>
-                            <th scope="col" class="px-3 py-2 text-start text-xs font-medium text-gray-500 dark:text-gray-400">Paid</th>
+                            <th scope="col" class="px-3 py-2 text-start text-xs font-medium text-gray-500 dark:text-gray-400">{{ __('Member') }}</th>
+                            <th scope="col" class="px-3 py-2 text-start text-xs font-medium text-gray-500 dark:text-gray-400">{{ __('Event') }}</th>
+                            <th scope="col" class="px-3 py-2 text-start text-xs font-medium text-gray-500 dark:text-gray-400">{{ __('Date') }}</th>
+                            <th scope="col" class="px-3 py-2 text-start text-xs font-medium text-gray-500 dark:text-gray-400">{{ __('Checked in') }}</th>
+                            <th scope="col" class="px-3 py-2 text-start text-xs font-medium text-gray-500 dark:text-gray-400">{{ __('Paid') }}</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -74,8 +74,8 @@ new class extends Component
                             <tr class="border-t border-gray-200 dark:border-white/10">
                                 <td class="px-3 py-2 text-sm">{{ $checkedInAttendance->member->displayName() }}</td>
                                 <td class="px-3 py-2 text-sm">{{ $this->event->name }}</td>
-                                <td class="px-3 py-2 text-sm">{{ $this->event->event_date->toFormattedDateString() }}</td>
-                                <td class="px-3 py-2 text-sm">{{ $checkedInAttendance->checked_in_at->format('g:i A') }}</td>
+                                <td class="px-3 py-2 text-sm">{{ $this->event->event_date->translatedFormat('M j, Y') }}</td>
+                                <td class="px-3 py-2 text-sm">{{ $checkedInAttendance->checked_in_at->translatedFormat('g:i A') }}</td>
                                 <td class="px-3 py-2 text-sm">{{ \App\Models\MembershipSetting::formatMoney($checkedInAttendance->amount_paid) }}</td>
                             </tr>
                         @endforeach
