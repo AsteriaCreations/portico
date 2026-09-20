@@ -53,6 +53,10 @@ is fixes only.
   token scope; Dependabot version updates (composer, npm, GitHub Actions) and a CodeQL
   workflow (JS + workflow files — CodeQL has no PHP support) are added; and a
   `CODEOWNERS` file covers the authorization and deploy-script paths.
+- `/storage/imports` is now gitignored, as a drop folder for files fed to an importer
+  command (a roster export, say). Those files hold member names, emails and dates of
+  birth, and unlike `storage/app` the folder wasn't ignored, so a broad `git add -A` could
+  have staged one.
 
 ## [0.2.0] — 2026-09-17
 

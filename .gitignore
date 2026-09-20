@@ -26,6 +26,9 @@
 /public/hot
 /public/storage
 /storage/*.key
+# A drop folder for files fed to an importer command (a legacy roster export, say).
+# They hold member data -- names, emails, dates of birth -- and must never be staged.
+/storage/imports
 /storage/pail
 /vendor
 /database/testing.sqlite
