@@ -3,6 +3,7 @@
 namespace App\Filament\Admin\Pages;
 
 use App\Enums\Role;
+use App\Filament\Concerns\TranslatesPageLabels;
 use App\Models\MembershipSetting;
 use BackedEnum;
 use Closure;
@@ -26,6 +27,8 @@ use UnitEnum;
  */
 class MembershipSettings extends Page
 {
+    use TranslatesPageLabels;
+
     protected string $view = 'filament.admin.pages.membership-settings';
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedCog6Tooth;

@@ -4,6 +4,7 @@ namespace App\Filament\Admin\Pages;
 
 use App\Enums\AdmissionOutcome;
 use App\Enums\Role;
+use App\Filament\Concerns\TranslatesPageLabels;
 use App\Models\AddOn;
 use App\Models\AddOnDayPass;
 use App\Models\Attendance;
@@ -52,7 +53,6 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Concerns\InteractsWithTable;
 use Filament\Tables\Contracts\HasTable;
 use Filament\Tables\Table;
-use Illuminate\Contracts\Support\Htmlable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Collection;
@@ -63,21 +63,15 @@ use Symfony\Component\HttpKernel\Exception\HttpException;
 class CheckIn extends Page implements HasTable
 {
     use InteractsWithTable;
+    use TranslatesPageLabels;
 
     protected string $view = 'filament.admin.pages.check-in';
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedClipboardDocumentCheck;
 
-    // Static properties can't call __(), so the label/title are methods.
-    public static function getNavigationLabel(): string
-    {
-        return __('Check-In Desk');
-    }
+    protected static ?string $navigationLabel = 'Check-In Desk';
 
-    public function getTitle(): string|Htmlable
-    {
-        return __('Check-In Desk');
-    }
+    protected static ?string $title = 'Check-In Desk';
 
     // Sits directly under Dashboard, above every navigation group -- the
     // single most-used page in the panel.

@@ -7,6 +7,7 @@ use App\Filament\Admin\Resources\Skills\Pages\EditSkill;
 use App\Filament\Admin\Resources\Skills\Pages\ListSkills;
 use App\Filament\Admin\Resources\Skills\Schemas\SkillForm;
 use App\Filament\Admin\Resources\Skills\Tables\SkillsTable;
+use App\Filament\Concerns\TranslatesResourceLabels;
 use App\Models\Skill;
 use BackedEnum;
 use Filament\Resources\Resource;
@@ -17,6 +18,8 @@ use UnitEnum;
 
 class SkillResource extends Resource
 {
+    use TranslatesResourceLabels;
+
     protected static ?string $model = Skill::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedAcademicCap;

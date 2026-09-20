@@ -7,6 +7,7 @@ use App\Filament\Admin\Resources\AddOns\Pages\EditAddOn;
 use App\Filament\Admin\Resources\AddOns\Pages\ListAddOns;
 use App\Filament\Admin\Resources\AddOns\Schemas\AddOnForm;
 use App\Filament\Admin\Resources\AddOns\Tables\AddOnsTable;
+use App\Filament\Concerns\TranslatesResourceLabels;
 use App\Models\AddOn;
 use BackedEnum;
 use Filament\Resources\Resource;
@@ -17,6 +18,8 @@ use UnitEnum;
 
 class AddOnResource extends Resource
 {
+    use TranslatesResourceLabels;
+
     protected static ?string $model = AddOn::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedPlusCircle;

@@ -3,6 +3,7 @@
 namespace App\Filament\Admin\Pages;
 
 use App\Enums\Role;
+use App\Filament\Concerns\TranslatesPageLabels;
 use App\Models\CommandRun;
 use App\Models\MembershipSetting;
 use App\Services\DeployTrigger;
@@ -26,6 +27,8 @@ use UnitEnum;
  */
 class UpstreamUpdates extends Page
 {
+    use TranslatesPageLabels;
+
     protected string $view = 'filament.admin.pages.upstream-updates';
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedCloudArrowDown;

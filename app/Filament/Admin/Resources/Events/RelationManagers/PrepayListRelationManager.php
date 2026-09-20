@@ -2,6 +2,7 @@
 
 namespace App\Filament\Admin\Resources\Events\RelationManagers;
 
+use App\Filament\Concerns\TranslatesRelationManagerTitle;
 use App\Models\Attendance;
 use App\Models\AttendanceAddOn;
 use App\Models\Member;
@@ -40,6 +41,7 @@ use Illuminate\Support\Facades\Storage;
 class PrepayListRelationManager extends RelationManager
 {
     use PrunesUploadedFiles;
+    use TranslatesRelationManagerTitle;
 
     protected static string $relationship = 'attendance';
 

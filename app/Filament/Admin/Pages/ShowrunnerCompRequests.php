@@ -5,6 +5,7 @@ namespace App\Filament\Admin\Pages;
 use App\Enums\CompRequestStatus;
 use App\Enums\Role;
 use App\Filament\Admin\Resources\Events\EventResource;
+use App\Filament\Concerns\TranslatesPageLabels;
 use App\Models\Attendance;
 use App\Models\CompReason;
 use App\Models\CompRequest;
@@ -41,6 +42,7 @@ use UnitEnum;
 class ShowrunnerCompRequests extends Page implements HasTable
 {
     use InteractsWithTable;
+    use TranslatesPageLabels;
 
     protected string $view = 'filament.admin.pages.showrunner-comp-requests';
 

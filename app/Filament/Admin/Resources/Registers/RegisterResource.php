@@ -7,6 +7,7 @@ use App\Filament\Admin\Resources\Registers\Pages\EditRegister;
 use App\Filament\Admin\Resources\Registers\Pages\ListRegisters;
 use App\Filament\Admin\Resources\Registers\Schemas\RegisterForm;
 use App\Filament\Admin\Resources\Registers\Tables\RegistersTable;
+use App\Filament\Concerns\TranslatesResourceLabels;
 use App\Models\Register;
 use BackedEnum;
 use Filament\Resources\Resource;
@@ -17,6 +18,8 @@ use UnitEnum;
 
 class RegisterResource extends Resource
 {
+    use TranslatesResourceLabels;
+
     protected static ?string $model = Register::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedBanknotes;

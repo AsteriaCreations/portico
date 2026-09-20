@@ -20,6 +20,11 @@ is fixes only.
   notifications, Blade views, roster and cash-box summary) are translatable so far; other
   screens follow. Names a club types itself (categories, plans, comp reasons, ...) are
   never translated. See CONTRIBUTING.md for the convention.
+- Every Filament form field, table column, filter and action label is now looked up in the
+  translator (one global default in `AppServiceProvider`), whether set with `->label()` or
+  derived from the attribute name; Resource, Page and relation-manager model/navigation
+  labels and titles do the same through small traits in `App\Filament\Concerns`, and the
+  panel's navigation groups translate lazily so they follow the installation's language.
 
 - Age of majority and the check-ID/no-alcohol flag age (18/21 by default) are now
   club-configurable on the Membership Settings page, instead of hardcoded in

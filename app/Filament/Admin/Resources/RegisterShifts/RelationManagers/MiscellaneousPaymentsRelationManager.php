@@ -2,6 +2,7 @@
 
 namespace App\Filament\Admin\Resources\RegisterShifts\RelationManagers;
 
+use App\Filament\Concerns\TranslatesRelationManagerTitle;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
@@ -13,6 +14,8 @@ use Filament\Tables\Table;
  */
 class MiscellaneousPaymentsRelationManager extends RelationManager
 {
+    use TranslatesRelationManagerTitle;
+
     protected static string $relationship = 'miscellaneousPayments';
 
     protected static ?string $title = 'Other payments';

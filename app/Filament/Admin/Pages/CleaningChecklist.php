@@ -2,6 +2,7 @@
 
 namespace App\Filament\Admin\Pages;
 
+use App\Filament\Concerns\TranslatesPageLabels;
 use App\Models\CleaningTask;
 use BackedEnum;
 use Filament\Actions\Action;
@@ -28,6 +29,7 @@ use UnitEnum;
 class CleaningChecklist extends Page implements HasTable
 {
     use InteractsWithTable;
+    use TranslatesPageLabels;
 
     protected string $view = 'filament.admin.pages.cleaning-checklist';
 

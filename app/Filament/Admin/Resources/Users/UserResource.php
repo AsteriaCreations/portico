@@ -9,6 +9,7 @@ use App\Filament\Admin\Resources\Users\RelationManagers\BehaviorNotesWrittenRela
 use App\Filament\Admin\Resources\Users\RelationManagers\CapabilitiesRelationManager;
 use App\Filament\Admin\Resources\Users\Schemas\UserForm;
 use App\Filament\Admin\Resources\Users\Tables\UsersTable;
+use App\Filament\Concerns\TranslatesResourceLabels;
 use App\Models\User;
 use BackedEnum;
 use Filament\Resources\Resource;
@@ -19,6 +20,8 @@ use UnitEnum;
 
 class UserResource extends Resource
 {
+    use TranslatesResourceLabels;
+
     protected static ?string $model = User::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedUsers;

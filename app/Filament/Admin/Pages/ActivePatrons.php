@@ -3,6 +3,7 @@
 namespace App\Filament\Admin\Pages;
 
 use App\Enums\Role;
+use App\Filament\Concerns\TranslatesPageLabels;
 use App\Models\Attendance;
 use App\Models\AttendanceBehaviorNote;
 use App\Models\Event;
@@ -42,6 +43,7 @@ use UnitEnum;
 class ActivePatrons extends Page implements HasTable
 {
     use InteractsWithTable;
+    use TranslatesPageLabels;
 
     protected string $view = 'filament.admin.pages.active-patrons';
 

@@ -129,11 +129,21 @@ everywhere a `subscriptions` row gets created.
   `:placeholders` (`__('Hello :name', ['name' => $name])`) rather than concatenation. English
   needs no file; a language is added as `lang/{code}.json`, with no code change. Data rows a
   club types in itself (categories, comp reasons, plans, payment methods, …) are not
-  translated. `protected static` label properties can't call `__()`, so use the matching
-  `getNavigationLabel()`/`getModelLabel()`/`getTitle()` method instead. Laravel's own
-  validation/auth strings and Filament's built-in chrome aren't covered by `lang/*.json`:
-  Filament ships its own translations, and Laravel's are added with `php artisan lang:publish`.
-  Conversion is incremental, so a string still in plain English is a gap to fix, not a rule.
+  translated. **Labels are already handled:** every Filament form field, table column, filter
+  and action label — set with `->label('…')` or derived from the attribute name — is
+  translated by a global default in `AppServiceProvider` (`translateLabel()`), so don't wrap
+  those in `__()`. Wrap everything else: `helperText`, `placeholder`, `tooltip`, `description`,
+  modal headings/descriptions, `Section::make('…')` headings, notification titles/bodies,
+  select option lists, and Blade text. A new Resource, Page or relation manager adds the
+  matching trait from `App\Filament\Concerns` (`TranslatesResourceLabels`,
+  `TranslatesPageLabels`, `TranslatesRelationManagerTitle`), which translates its
+  model/navigation label and title (a `protected static` label property can't call `__()`).
+  Navigation groups are keyed in `AdminPanelProvider` with lazy closure labels — a new group
+  needs an entry there, and a Resource/Page keeps giving the English key as `$navigationGroup`.
+  Laravel's own validation/auth strings and Filament's built-in chrome aren't covered by
+  `lang/*.json`: Filament ships its own translations, and Laravel's are added with
+  `php artisan lang:publish`. Conversion is incremental, so a string still in plain English is
+  a gap to fix, not a rule.
 - Filament resources/pages/widgets live under `App\Filament\Admin\{Resources,Pages,Widgets}`
   (not the default `app/Filament/...`) — `AdminPanelProvider` discovers them there.
   Generate with `php artisan make:filament-resource ... --panel=admin`.

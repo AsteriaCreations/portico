@@ -9,6 +9,10 @@ use App\Models\MembershipSetting;
 use App\Models\User;
 use App\Observers\MemberObserver;
 use App\Observers\UserObserver;
+use Filament\Actions\Action;
+use Filament\Forms\Components\Field;
+use Filament\Tables\Columns\Column;
+use Filament\Tables\Filters\BaseFilter;
 use Filament\Tables\Table;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
@@ -104,6 +108,16 @@ class AppServiceProvider extends ServiceProvider
         // (Analytics widgets, the check-in desk's live totals) don't go
         // through a Table at all -- see MembershipSetting::formatMoney().
         Table::configureUsing(fn (Table $table): Table => $table->defaultCurrency(fn (): string => MembershipSetting::current()->currency));
+
+        // Every form field, table column, filter, and action label -- whether
+        // set with ->label('...') or derived from the attribute name ("first_name"
+        // -> "First name") -- is looked up in the translator, English text as the
+        // key. Set once here so no resource has to remember ->translateLabel();
+        // an untranslated label just falls back to its English text.
+        Field::configureUsing(fn (Field $field): Field => $field->translateLabel());
+        Column::configureUsing(fn (Column $column): Column => $column->translateLabel());
+        BaseFilter::configureUsing(fn (BaseFilter $filter): BaseFilter => $filter->translateLabel());
+        Action::configureUsing(fn (Action $action): Action => $action->translateLabel());
 
         Member::observe(MemberObserver::class);
         User::observe(UserObserver::class);

@@ -64,12 +64,17 @@ class AdminPanelProvider extends PanelProvider
             // and Analytics stay ungrouped and render above all of these.
             // The three catalog/config groups are collapsed by default so the
             // rail isn't a wall of text -- the two operational groups are not.
+            //
+            // Keyed by the English name each Resource/Page still gives as its
+            // `$navigationGroup`, with the label as a closure: the panel is built
+            // at boot, before SetLocale has applied the installation's language,
+            // so a plain __() here would always resolve in the default locale.
             ->navigationGroups([
-                NavigationGroup::make('Front of House'),
-                NavigationGroup::make('Records'),
-                NavigationGroup::make('Desk & Money')->collapsed(),
-                NavigationGroup::make('Members & Events')->collapsed(),
-                NavigationGroup::make('System')->collapsed(),
+                'Front of House' => NavigationGroup::make()->label(fn (): string => __('Front of House')),
+                'Records' => NavigationGroup::make()->label(fn (): string => __('Records')),
+                'Desk & Money' => NavigationGroup::make()->label(fn (): string => __('Desk & Money'))->collapsed(),
+                'Members & Events' => NavigationGroup::make()->label(fn (): string => __('Members & Events'))->collapsed(),
+                'System' => NavigationGroup::make()->label(fn (): string => __('System'))->collapsed(),
             ])
             ->databaseNotifications()
             ->renderHook(
