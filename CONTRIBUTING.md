@@ -142,8 +142,10 @@ everywhere a `subscriptions` row gets created.
   needs an entry there, and a Resource/Page keeps giving the English key as `$navigationGroup`.
   Laravel's own validation/auth strings and Filament's built-in chrome aren't covered by
   `lang/*.json`: Filament ships its own translations, and Laravel's are added with
-  `php artisan lang:publish`. Conversion is incremental, so a string still in plain English is
-  a gap to fix, not a rule.
+  `php artisan lang:publish`. `tests/Feature/LocalizationGuardTest.php` enforces all of this: it
+  fails on a Resource, Page or relation manager missing its trait, and on an unwrapped string
+  literal passed to `helperText`/`placeholder`/`tooltip`/`description`/`heading`/`title`/`body`/
+  modal text, a `Section::make('…')`, or `$fail('…')`.
 - Filament resources/pages/widgets live under `App\Filament\Admin\{Resources,Pages,Widgets}`
   (not the default `app/Filament/...`) — `AdminPanelProvider` discovers them there.
   Generate with `php artisan make:filament-resource ... --panel=admin`.
