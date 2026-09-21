@@ -35,12 +35,12 @@ class ScheduledJobsWidget extends StatsOverviewWidget
     protected function getStats(): array
     {
         $stats = [
-            $this->statFor('backup:database', 'Database backup'),
-            $this->statFor('vouchers:grant-comp-rewards', 'Comp reward vouchers'),
+            $this->statFor('backup:database', __('Database backup')),
+            $this->statFor('vouchers:grant-comp-rewards', __('Comp reward vouchers')),
         ];
 
         if (MembershipSetting::current()->upstream_check_enabled) {
-            $stats[] = $this->statFor('upstream:check', 'Upstream check');
+            $stats[] = $this->statFor('upstream:check', __('Upstream check'));
         }
 
         return $stats;
@@ -51,14 +51,14 @@ class ScheduledJobsWidget extends StatsOverviewWidget
         $run = CommandRun::firstWhere('command', $command);
 
         if (! $run?->last_success_at) {
-            return Stat::make($label, 'Never run')->color('danger');
+            return Stat::make($label, __('Never run'))->color('danger');
         }
 
         $isFailing = $run->last_failure_at?->gt($run->last_success_at) ?? false;
         $isStale = $run->last_success_at->lt(now()->subHours(self::STALE_AFTER_HOURS));
 
         return Stat::make($label, $run->last_success_at->diffForHumans())
-            ->description($isFailing ? "Failing since {$run->last_failure_at->diffForHumans()}" : null)
+            ->description($isFailing ? __('Failing since :when', ['when' => $run->last_failure_at->diffForHumans()]) : null)
             ->color($isFailing || $isStale ? 'danger' : 'success');
     }
 }

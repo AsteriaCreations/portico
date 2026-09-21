@@ -2,61 +2,61 @@
     @php($result = $this->getResult())
 
     @if ($result)
-        <x-filament::section heading="Showrunner payout">
+        <x-filament::section :heading="__('Showrunner payout')">
             <dl class="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
-                <dt class="text-gray-500">Cash-paying attendees</dt>
+                <dt class="text-gray-500">{{ __('Cash-paying attendees') }}</dt>
                 <dd>{{ $result->cashCount }} ({{ \App\Models\MembershipSetting::formatMoney($result->cashRevenue) }})</dd>
 
-                <dt class="text-gray-500">Subscription-covered (SH) attendees</dt>
+                <dt class="text-gray-500">{{ __('Subscription-covered (SH) attendees') }}</dt>
                 <dd>
                     {{ $result->shCount }} ({{ \App\Models\MembershipSetting::formatMoney($result->shRevenue) }})
                     &mdash;
                     @if ($result->includeSh)
-                        counts toward commission
+                        {{ __('counts toward commission') }}
                     @else
-                        excluded (event entry fee doesn't exceed the subscription credit)
+                        {{ __("excluded (event entry fee doesn't exceed the subscription credit)") }}
                     @endif
                 </dd>
 
-                <dt class="text-gray-500">Pool revenue</dt>
+                <dt class="text-gray-500">{{ __('Pool revenue') }}</dt>
                 <dd>
                     {{ \App\Models\MembershipSetting::formatMoney($result->poolRevenue) }}
-                    ({{ $this->getSettings()->showrunner_door_includes_pool ? 'included' : 'excluded' }})
+                    ({{ $this->getSettings()->showrunner_door_includes_pool ? __('included') : __('excluded') }})
                 </dd>
 
-                <dt class="text-gray-500">Add-on revenue</dt>
+                <dt class="text-gray-500">{{ __('Add-on revenue') }}</dt>
                 <dd>
                     {{ \App\Models\MembershipSetting::formatMoney($result->addonRevenue) }}
-                    ({{ $this->getSettings()->showrunner_door_includes_addons ? 'included' : 'excluded' }})
+                    ({{ $this->getSettings()->showrunner_door_includes_addons ? __('included') : __('excluded') }})
                 </dd>
 
-                <dt class="text-gray-500">Headcount used for tier</dt>
+                <dt class="text-gray-500">{{ __('Headcount used for tier') }}</dt>
                 <dd>{{ $result->headcount }}</dd>
 
-                <dt class="text-gray-500">Door total</dt>
+                <dt class="text-gray-500">{{ __('Door total') }}</dt>
                 <dd>{{ \App\Models\MembershipSetting::formatMoney($result->doorTotal) }}</dd>
 
-                <dt class="text-gray-500">Tier</dt>
+                <dt class="text-gray-500">{{ __('Tier') }}</dt>
                 <dd>
                     @if ($result->tier)
-                        {{ $result->tier->min_headcount }}{{ $result->tier->max_headcount !== null ? '–'.$result->tier->max_headcount : '+' }} attendees
+                        {{ __(':range attendees', ['range' => $result->tier->min_headcount.($result->tier->max_headcount !== null ? '–'.$result->tier->max_headcount : '+')]) }}
                         &mdash;
                         @if ($result->tier->payout_type === \App\Enums\PayoutType::Voucher)
-                            {{ \App\Models\MembershipSetting::formatMoney($result->tier->payout_value) }} voucher
+                            {{ __(':amount voucher', ['amount' => \App\Models\MembershipSetting::formatMoney($result->tier->payout_value)]) }}
                         @else
-                            {{ number_format($result->tier->payout_value, 2) }}% of the door
+                            {{ __(':percent% of the door', ['percent' => number_format($result->tier->payout_value, 2)]) }}
                         @endif
                     @else
-                        No tier configured for this headcount
+                        {{ __('No tier configured for this headcount') }}
                     @endif
                 </dd>
 
-                <dt class="text-gray-500">Payout</dt>
+                <dt class="text-gray-500">{{ __('Payout') }}</dt>
                 <dd class="font-semibold">
                     @if ($result->payoutAmount !== null)
                         {{ \App\Models\MembershipSetting::formatMoney($result->payoutAmount) }}
                         @if ($result->tier?->payout_type === \App\Enums\PayoutType::Voucher)
-                            &mdash; issue manually via Vouchers
+                            &mdash; {{ __('issue manually via Vouchers') }}
                         @endif
                     @else
                         &mdash;

@@ -2,13 +2,13 @@
     @php($lineItems = $this->getLineItems())
 
     @if ($lineItems)
-        <x-filament::section heading="Comp list cost">
+        <x-filament::section :heading="__('Comp list cost')">
             <table class="w-full text-sm">
                 <thead>
                     <tr>
-                        <th scope="col" class="text-left">Reason</th>
-                        <th scope="col" class="text-right">Arrived</th>
-                        <th scope="col" class="text-right">Foregone</th>
+                        <th scope="col" class="text-left">{{ __('Reason') }}</th>
+                        <th scope="col" class="text-right">{{ __('Arrived') }}</th>
+                        <th scope="col" class="text-right">{{ __('Foregone') }}</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -22,7 +22,7 @@
                 </tbody>
                 <tfoot>
                     <tr class="font-semibold">
-                        <td colspan="2">Total</td>
+                        <td colspan="2">{{ __('Total') }}</td>
                         <td class="text-right">{{ \App\Models\MembershipSetting::formatMoney($lineItems->sum('foregone')) }}</td>
                     </tr>
                 </tfoot>

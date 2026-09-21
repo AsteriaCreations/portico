@@ -35,7 +35,7 @@ class SubscriptionOverviewWidget extends StatsOverviewWidget
 
         $stats = [
             Stat::make(
-                'Active Regular subscribers',
+                __('Active Regular subscribers'),
                 Subscription::where('add_on_id', AddOn::entry()->id)
                     ->whereDate('covered_month', $thisMonth)
                     ->distinct('member_id')
@@ -49,7 +49,7 @@ class SubscriptionOverviewWidget extends StatsOverviewWidget
         $poolAddOn = AddOn::pool();
         if ($poolAddOn && MembershipSetting::current()->pool_enabled) {
             $stats[] = Stat::make(
-                'Active Pool subscribers',
+                __('Active Pool subscribers'),
                 Subscription::where('add_on_id', $poolAddOn->id)
                     ->whereDate('covered_month', $thisMonth)
                     ->distinct('member_id')
@@ -58,7 +58,7 @@ class SubscriptionOverviewWidget extends StatsOverviewWidget
         }
 
         $stats[] = Stat::make(
-            'Subscription revenue this week',
+            __('Subscription revenue this week'),
             MembershipSetting::formatMoney(
                 Subscription::whereBetween('paid_on', [now()->startOfWeek(), now()->endOfWeek()])->sum('amount_paid'),
             ),

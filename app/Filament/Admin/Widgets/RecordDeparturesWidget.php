@@ -62,7 +62,7 @@ class RecordDeparturesWidget extends Widget implements HasActions, HasForms
                     'recorded_by' => auth()->id(),
                 ]);
 
-                Notification::make()->title('Departures recorded')->success()->send();
+                Notification::make()->title(__('Departures recorded'))->success()->send();
             });
     }
 }

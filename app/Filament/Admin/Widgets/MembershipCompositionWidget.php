@@ -19,7 +19,10 @@ class MembershipCompositionWidget extends StatsOverviewWidget
     // Analytics-page visibility and testability reasoning.
     protected static bool $isLazy = false;
 
-    protected ?string $heading = 'Active Membership — By Category';
+    protected function getHeading(): ?string
+    {
+        return __('Active Membership — By Category');
+    }
 
     public static function canView(): bool
     {
@@ -37,7 +40,7 @@ class MembershipCompositionWidget extends StatsOverviewWidget
             ->get();
 
         return $rows
-            ->map(fn ($row) => Stat::make($row->name, "{$row->members} members"))
+            ->map(fn ($row) => Stat::make($row->name, trans_choice(':count member|:count members', $row->members)))
             ->all();
     }
 }

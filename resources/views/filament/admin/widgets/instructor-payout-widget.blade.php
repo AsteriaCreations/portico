@@ -2,14 +2,14 @@
     @php($result = $this->getResult())
 
     @if ($result)
-        <x-filament::section heading="Instructor payout">
+        <x-filament::section :heading="__('Instructor payout')">
             <table class="w-full text-sm">
                 <thead>
                     <tr>
-                        <th scope="col" class="text-left">Coverage</th>
-                        <th scope="col" class="text-right">Count</th>
-                        <th scope="col" class="text-right">Rate</th>
-                        <th scope="col" class="text-right">Subtotal</th>
+                        <th scope="col" class="text-left">{{ __('Coverage') }}</th>
+                        <th scope="col" class="text-right">{{ __('Count') }}</th>
+                        <th scope="col" class="text-right">{{ __('Rate') }}</th>
+                        <th scope="col" class="text-right">{{ __('Subtotal') }}</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -24,7 +24,7 @@
                 </tbody>
                 <tfoot>
                     <tr class="font-semibold">
-                        <td colspan="3">Total</td>
+                        <td colspan="3">{{ __('Total') }}</td>
                         <td class="text-right">{{ \App\Models\MembershipSetting::formatMoney($result->total) }}</td>
                     </tr>
                 </tfoot>

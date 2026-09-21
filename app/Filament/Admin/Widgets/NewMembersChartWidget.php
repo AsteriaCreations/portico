@@ -26,7 +26,10 @@ class NewMembersChartWidget extends ChartWidget
     // Analytics-page visibility and testability reasoning.
     protected static bool $isLazy = false;
 
-    protected ?string $heading = 'New Members';
+    public function getHeading(): ?string
+    {
+        return __('New Members');
+    }
 
     public static function canView(): bool
     {
@@ -45,12 +48,12 @@ class NewMembersChartWidget extends ChartWidget
 
         return [
             'datasets' => [[
-                'label' => 'New members',
+                'label' => __('New members'),
                 'data' => $months->map(fn ($month) => Member::query()
                     ->whereBetween('created_at', [$month, $month->copy()->endOfMonth()])
                     ->count())->all(),
             ]],
-            'labels' => $months->map(fn ($month) => $month->format('M Y'))->all(),
+            'labels' => $months->map(fn ($month) => $month->translatedFormat('M Y'))->all(),
         ];
     }
 

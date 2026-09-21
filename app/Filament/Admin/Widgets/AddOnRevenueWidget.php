@@ -23,7 +23,10 @@ class AddOnRevenueWidget extends StatsOverviewWidget
     // Analytics-page visibility and testability reasoning.
     protected static bool $isLazy = false;
 
-    protected ?string $heading = 'Add-On Revenue This Week';
+    protected function getHeading(): ?string
+    {
+        return __('Add-On Revenue This Week');
+    }
 
     // Also hidden when the club has Event Add-Ons turned off entirely — no
     // point surfacing a revenue breakdown for a feature that's not in use.
@@ -45,8 +48,8 @@ class AddOnRevenueWidget extends StatsOverviewWidget
             ->get();
 
         return $rows
-            ->map(fn ($row) => Stat::make($row->name, "{$row->qty} sold")
-                ->description(MembershipSetting::formatMoney($row->revenue).' collected'))
+            ->map(fn ($row) => Stat::make($row->name, __(':count sold', ['count' => $row->qty]))
+                ->description(__(':amount collected', ['amount' => MembershipSetting::formatMoney($row->revenue)])))
             ->all();
     }
 }

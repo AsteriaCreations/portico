@@ -45,13 +45,13 @@ class RegisterVarianceWidget extends StatsOverviewWidget
         $total = $variances->sum();
 
         return [
-            Stat::make('Total register variance this week', MembershipSetting::formatMoney($total))
+            Stat::make(__('Total register variance this week'), MembershipSetting::formatMoney($total))
                 ->color(match (true) {
                     $total == 0.0 => 'success',
                     $total > 0 => 'warning',
                     default => 'danger',
                 }),
-            Stat::make('Shifts with variance', $variances->filter(fn (?float $v) => $v !== null && $v !== 0.0)->count().' of '.$shifts->count()),
+            Stat::make(__('Shifts with variance'), __(':count of :total', ['count' => $variances->filter(fn (?float $v) => $v !== null && $v !== 0.0)->count(), 'total' => $shifts->count()])),
         ];
     }
 }
