@@ -46,7 +46,7 @@ class MembersTable
                     ->sortable(),
                 TextColumn::make('dob')
                     ->label('DOB')
-                    ->formatStateUsing(fn (?Carbon $state, $livewire): string => $livewire->piiHidden ? self::PII_MASK : ($state?->toFormattedDateString() ?? '—'))
+                    ->formatStateUsing(fn (?Carbon $state, $livewire): string => $livewire->piiHidden ? self::PII_MASK : ($state?->translatedFormat('M j, Y') ?? '—'))
                     ->sortable(),
                 TextColumn::make('email')
                     ->formatStateUsing(fn (?string $state, $livewire): string => $livewire->piiHidden ? self::PII_MASK : ($state ?? '—'))

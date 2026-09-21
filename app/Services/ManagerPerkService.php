@@ -35,18 +35,18 @@ class ManagerPerkService
     public function grant(User $manager, Member $beneficiary, ?string $notes = null): Subscription
     {
         if (! $this->isAvailable($manager)) {
-            throw new \RuntimeException('This manager has already used their monthly subscription perk.');
+            throw new \RuntimeException(__('This manager has already used their monthly subscription perk.'));
         }
 
         if (! $beneficiary->isSubscriptionEligible()) {
-            throw new \RuntimeException('This member is not yet subscription-eligible.');
+            throw new \RuntimeException(__('This member is not yet subscription-eligible.'));
         }
 
         $month = now()->startOfMonth();
         $entry = AddOn::entry();
 
         if ($beneficiary->hasActiveSubscriptionFor($entry, $month)) {
-            throw new \RuntimeException('This member already has regular subscription coverage this month.');
+            throw new \RuntimeException(__('This member already has regular subscription coverage this month.'));
         }
 
         return Subscription::create([

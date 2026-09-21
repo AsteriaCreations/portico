@@ -33,6 +33,10 @@ class NotifyEventEnded extends Command
 {
     public function handle(EventSummaryService $summaryService): int
     {
+        // No request, so SetLocale never ran -- apply the installation's
+        // language before rendering the email and notification text.
+        MembershipSetting::applyConfiguredLocale();
+
         $events = Event::whereNotNull('ends_at')
             ->where('ends_at', '<', now())
             ->whereNull('ended_notification_sent_at')
@@ -58,8 +62,8 @@ class NotifyEventEnded extends Command
                 }
 
                 $notification = Notification::make()
-                    ->title("Event ended: {$event->name}")
-                    ->body("{$summary['checked_in']} checked in, {$summary['prepaid_no_show']} prepaid but never arrived — ".MembershipSetting::formatMoney($summary['revenue']).' revenue.')
+                    ->title(__('Event ended: :name', ['name' => $event->name]))
+                    ->body(__(':checked_in checked in, :no_show prepaid but never arrived — :revenue revenue.', ['checked_in' => $summary['checked_in'], 'no_show' => $summary['prepaid_no_show'], 'revenue' => MembershipSetting::formatMoney($summary['revenue'])]))
                     ->actions([
                         Action::make('view')
                             ->label('View event')

@@ -112,7 +112,7 @@ class SubscriptionBundleService
     private function rangeLabel(CarbonInterface $start, CarbonInterface $end): string
     {
         return $start->isSameMonth($end)
-            ? $start->format('F Y')
-            : $start->format('F Y').' – '.$end->format('F Y');
+            ? $start->translatedFormat('F Y')
+            : $start->translatedFormat('F Y').' – '.$end->translatedFormat('F Y');
     }
 }

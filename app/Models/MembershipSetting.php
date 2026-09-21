@@ -132,6 +132,26 @@ class MembershipSetting extends Model
     }
 
     /**
+     * Applies the installation's configured language to the running process --
+     * the app locale (which Carbon follows) and the Number locale (which does
+     * not, and is a static that would otherwise outlive a changed setting).
+     * A null or unrecognized value leaves config('app.locale') in force.
+     *
+     * Called by SetLocale for web requests, and directly by anything that
+     * renders text outside a request -- a console command sending email.
+     */
+    public static function applyConfiguredLocale(): void
+    {
+        $locale = static::current()->locale;
+
+        if ($locale !== null && array_key_exists($locale, static::availableLocales())) {
+            app()->setLocale($locale);
+        }
+
+        Number::useLocale(app()->getLocale());
+    }
+
+    /**
      * The languages this installation can switch to, keyed by locale code
      * with each language's own name as the label: English (the source
      * language, which needs no file) plus every lang/{code}.json present.

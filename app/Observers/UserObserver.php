@@ -31,7 +31,7 @@ class UserObserver
         $this->guardSelfLockout($user);
         $this->guardLastActiveOwner(
             $user,
-            'The last active Owner can’t be demoted or deactivated. Promote another Owner first.',
+            __('The last active Owner can’t be demoted or deactivated. Promote another Owner first.'),
         );
     }
 
@@ -43,13 +43,13 @@ class UserObserver
 
         if (auth()->id() === $user->id) {
             throw ValidationException::withMessages([
-                'record' => 'You can’t delete your own account.',
+                'record' => __('You can’t delete your own account.'),
             ]);
         }
 
         $this->guardLastActiveOwner(
             $user,
-            'The last active Owner can’t be deleted. Promote another Owner first.',
+            __('The last active Owner can’t be deleted. Promote another Owner first.'),
             isDeletion: true,
         );
     }
@@ -67,13 +67,13 @@ class UserObserver
 
         if ($user->isDirty('active') && ! $user->active) {
             throw ValidationException::withMessages([
-                'active' => 'You can’t deactivate your own account.',
+                'active' => __('You can’t deactivate your own account.'),
             ]);
         }
 
         if ($user->isDirty('role') && ! $user->role->atLeast(Role::Admin)) {
             throw ValidationException::withMessages([
-                'role' => 'You can’t lower your own role below Admin.',
+                'role' => __('You can’t lower your own role below Admin.'),
             ]);
         }
     }
