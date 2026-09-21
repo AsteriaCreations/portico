@@ -30,11 +30,11 @@ class UsersTable
                     ->toggleable(),
                 IconColumn::make('active')
                     ->boolean()
-                    ->tooltip(fn (bool $state): string => $state ? 'Active' : 'Inactive'),
+                    ->tooltip(fn (bool $state): string => $state ? __('Active') : __('Inactive')),
                 IconColumn::make('must_change_password')
                     ->label('Password reset pending')
                     ->boolean()
-                    ->tooltip(fn (bool $state): string => $state ? 'Must change password at next login' : 'No password change required'),
+                    ->tooltip(fn (bool $state): string => $state ? __('Must change password at next login') : __('No password change required')),
                 TextColumn::make('created_at')
                     ->dateTime()
                     ->sortable()

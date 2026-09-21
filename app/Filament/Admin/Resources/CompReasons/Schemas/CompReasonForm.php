@@ -23,7 +23,7 @@ class CompReasonForm
                     ->numeric()
                     ->prefix('$')
                     ->default(null)
-                    ->helperText('Leave blank for no automatic voucher. If set, a member comped for this reason gets a voucher of this amount once the event ends.'),
+                    ->helperText(__('Leave blank for no automatic voucher. If set, a member comped for this reason gets a voucher of this amount once the event ends.')),
                 TextInput::make('sort_order')
                     ->required()
                     ->numeric()

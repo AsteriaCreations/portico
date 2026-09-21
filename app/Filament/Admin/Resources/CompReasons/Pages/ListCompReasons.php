@@ -75,7 +75,7 @@ class ListCompReasons extends ListRecords
                 $result = app(CompReasonBulkImporter::class)->import($path);
 
                 Notification::make()
-                    ->title("Created {$result['created']} comp reasons")
+                    ->title(trans_choice('Created :count comp reason|Created :count comp reasons', $result['created']))
                     ->body($result['log'] ? implode("\n", $result['log']) : null)
                     ->success()
                     ->send();

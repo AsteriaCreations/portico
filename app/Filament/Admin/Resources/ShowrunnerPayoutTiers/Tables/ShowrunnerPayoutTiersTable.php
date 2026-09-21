@@ -24,7 +24,7 @@ class ShowrunnerPayoutTiersTable
                 TextColumn::make('max_headcount')
                     ->label('Max headcount')
                     ->numeric()
-                    ->placeholder('No cap'),
+                    ->placeholder(__('No cap')),
                 TextColumn::make('payout_type')
                     ->badge(),
                 TextColumn::make('payout_value')

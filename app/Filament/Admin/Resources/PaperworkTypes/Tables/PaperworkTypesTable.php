@@ -20,14 +20,14 @@ class PaperworkTypesTable
                     ->searchable(),
                 IconColumn::make('required')
                     ->boolean()
-                    ->tooltip(fn (bool $state): string => $state ? 'Expected of every member' : 'Optional'),
+                    ->tooltip(fn (bool $state): string => $state ? __('Expected of every member') : __('Optional')),
                 TextColumn::make('renewal_months')
                     ->label('Renews every')
-                    ->formatStateUsing(fn (?int $state): string => $state ? "{$state} months" : 'Never')
-                    ->placeholder('Never'),
+                    ->formatStateUsing(fn (?int $state): string => $state ? trans_choice(':count month|:count months', $state) : __('Never'))
+                    ->placeholder(__('Never')),
                 TextColumn::make('addOn.name')
                     ->label('Gates add-on')
-                    ->placeholder('—'),
+                    ->placeholder(__('—')),
                 TextColumn::make('description')
                     ->searchable(),
                 TextColumn::make('sort_order')
@@ -35,7 +35,7 @@ class PaperworkTypesTable
                     ->sortable(),
                 IconColumn::make('active')
                     ->boolean()
-                    ->tooltip(fn (bool $state): string => $state ? 'Active' : 'Inactive'),
+                    ->tooltip(fn (bool $state): string => $state ? __('Active') : __('Inactive')),
             ])
             ->filters([
                 //
