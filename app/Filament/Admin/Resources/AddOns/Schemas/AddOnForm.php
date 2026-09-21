@@ -25,11 +25,11 @@ class AddOnForm
                     ->disabled(fn (?AddOn $record): bool => $record?->name === AddOn::ENTRY_NAME)
                     ->dehydrated(fn (?AddOn $record): bool => $record?->name !== AddOn::ENTRY_NAME),
                 Toggle::make('subscribable')
-                    ->helperText('Lets a Plan be created for this add-on, so a member can subscribe to cover it monthly instead of paying per visit.'),
+                    ->helperText(__('Lets a Plan be created for this add-on, so a member can subscribe to cover it monthly instead of paying per visit.')),
                 Toggle::make('priced_per_event')
                     ->label('Priced per event')
                     ->live()
-                    ->helperText('Only meaningful for Pool today -- its price varies by event (events.pool_fee) rather than one flat catalog price.')
+                    ->helperText(__('Only meaningful for Pool today -- its price varies by event (events.pool_fee) rather than one flat catalog price.'))
                     ->visible(fn (?AddOn $record): bool => $record?->name === AddOn::POOL_NAME),
                 TextInput::make('price')
                     ->required(fn (Get $get): bool => ! $get('priced_per_event'))
@@ -41,11 +41,11 @@ class AddOnForm
                     ->numeric()
                     ->minValue(1)
                     ->default(null)
-                    ->helperText('Caps how many can be sold across all of a night\'s events, e.g. a single rentable room. Leave blank for unlimited.'),
+                    ->helperText(__('Caps how many can be sold across all of a night\'s events, e.g. a single rentable room. Leave blank for unlimited.')),
                 Toggle::make('is_overnight')
                     ->label('Overnight stay')
                     ->default(false)
-                    ->helperText('Marks this add-on as recording an overnight stay (e.g. Private room rental, Sleepover) — extends sponsor accountability and Active Patrons visibility past midnight until the guest is checked out.'),
+                    ->helperText(__('Marks this add-on as recording an overnight stay (e.g. Private room rental, Sleepover) — extends sponsor accountability and Active Patrons visibility past midnight until the guest is checked out.')),
                 TextInput::make('description')
                     ->maxLength(255)
                     ->default(null),

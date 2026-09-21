@@ -20,18 +20,18 @@ class AddOnsTable
                     ->searchable(),
                 TextColumn::make('price')
                     ->money()
-                    ->placeholder('Per event'),
+                    ->placeholder(__('Per event')),
                 IconColumn::make('subscribable')
                     ->boolean()
-                    ->tooltip(fn (bool $state): string => $state ? 'Subscribable' : 'Not subscribable'),
+                    ->tooltip(fn (bool $state): string => $state ? __('Subscribable') : __('Not subscribable')),
                 TextColumn::make('max_per_night')
                     ->label('Max/night')
                     ->numeric()
-                    ->placeholder('Unlimited'),
+                    ->placeholder(__('Unlimited')),
                 IconColumn::make('is_overnight')
                     ->label('Overnight')
                     ->boolean()
-                    ->tooltip(fn (bool $state): string => $state ? 'Overnight stay' : 'Not an overnight stay'),
+                    ->tooltip(fn (bool $state): string => $state ? __('Overnight stay') : __('Not an overnight stay')),
                 TextColumn::make('description')
                     ->searchable(),
                 TextColumn::make('sort_order')
@@ -39,7 +39,7 @@ class AddOnsTable
                     ->sortable(),
                 IconColumn::make('active')
                     ->boolean()
-                    ->tooltip(fn (bool $state): string => $state ? 'Active' : 'Inactive'),
+                    ->tooltip(fn (bool $state): string => $state ? __('Active') : __('Inactive')),
             ])
             ->filters([
                 //

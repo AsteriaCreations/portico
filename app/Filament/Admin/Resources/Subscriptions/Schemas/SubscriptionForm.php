@@ -27,7 +27,7 @@ class SubscriptionForm
                     ->rule(
                         fn () => function (string $attribute, $value, $fail) {
                             if ($value && ! Member::find($value)?->isSubscriptionEligible()) {
-                                $fail('This member is not yet subscription-eligible.');
+                                $fail(__('This member is not yet subscription-eligible.'));
                             }
                         },
                         condition: fn (string $operation): bool => $operation === 'create',
@@ -37,7 +37,7 @@ class SubscriptionForm
                     ->relationship('addOn', 'name')
                     ->required(),
                 DatePicker::make('covered_month')
-                    ->helperText('The calendar month this payment covers — stored as the first of the month.')
+                    ->helperText(__('The calendar month this payment covers — stored as the first of the month.'))
                     ->required()
                     ->dehydrateStateUsing(fn (?string $state) => $state ? Carbon::parse($state)->startOfMonth()->toDateString() : null),
                 TextInput::make('amount_paid')

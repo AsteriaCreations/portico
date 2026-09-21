@@ -62,7 +62,7 @@ class ListSubscriptions extends ListRecords
                         return function (string $attribute, $value, $fail) {
                             $member = $value ? Member::find($value) : null;
                             if ($member && ! $member->isSubscriptionEligible()) {
-                                $fail('This member is not yet subscription-eligible.');
+                                $fail(__('This member is not yet subscription-eligible.'));
                             }
                         };
                     }),
@@ -79,7 +79,7 @@ class ListSubscriptions extends ListRecords
                     ->live(),
                 DatePicker::make('desired_start')
                     ->label('Desired start month')
-                    ->helperText('If a month in the window is already covered, the whole bundle shifts forward to the next free block — the notification will say so.')
+                    ->helperText(__('If a month in the window is already covered, the whole bundle shifts forward to the next free block — the notification will say so.'))
                     ->default(now()->startOfMonth())
                     ->required()
                     ->live()
@@ -140,11 +140,11 @@ class ListSubscriptions extends ListRecords
 
                 $last = $rows->last();
                 $rangeLabel = $first->covered_month->isSameMonth($last->covered_month)
-                    ? $first->covered_month->format('F Y')
-                    : $first->covered_month->format('F Y').' – '.$last->covered_month->format('F Y');
+                    ? $first->covered_month->translatedFormat('F Y')
+                    : $first->covered_month->translatedFormat('F Y').' – '.$last->covered_month->translatedFormat('F Y');
 
                 Notification::make()
-                    ->title("Bundle recorded for {$member->username} — ".MembershipSetting::formatMoney((float) $rows->sum('amount_paid'))." covering {$rangeLabel}")
+                    ->title(__('Bundle recorded for :username — :amount covering :range', ['username' => $member->username, 'amount' => MembershipSetting::formatMoney((float) $rows->sum('amount_paid')), 'range' => $rangeLabel]))
                     ->success()
                     ->send();
             });
@@ -172,10 +172,10 @@ class ListSubscriptions extends ListRecords
                         return function (string $attribute, $value, $fail) {
                             $member = $value ? Member::find($value) : null;
                             if ($member && ! $member->isSubscriptionEligible()) {
-                                $fail('This member is not yet subscription-eligible.');
+                                $fail(__('This member is not yet subscription-eligible.'));
                             }
                             if ($member && $member->hasActiveSubscriptionFor(AddOn::entry(), now()->startOfMonth())) {
-                                $fail('This member already has regular subscription coverage this month.');
+                                $fail(__('This member already has regular subscription coverage this month.'));
                             }
                         };
                     }),
@@ -199,7 +199,7 @@ class ListSubscriptions extends ListRecords
 
                 if (! $service->isAvailable($manager)) {
                     Notification::make()
-                        ->title('You have already used your monthly subscription perk.')
+                        ->title(__('You have already used your monthly subscription perk.'))
                         ->danger()
                         ->send();
 
@@ -210,7 +210,7 @@ class ListSubscriptions extends ListRecords
                 $service->grant($manager, $beneficiary, $data['notes'] ?? null);
 
                 Notification::make()
-                    ->title("Granted regular subscription to {$beneficiary->username} for ".now()->format('F Y'))
+                    ->title(__('Granted regular subscription to :username for :month', ['username' => $beneficiary->username, 'month' => now()->translatedFormat('F Y')]))
                     ->success()
                     ->send();
             });
