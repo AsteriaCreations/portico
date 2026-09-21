@@ -99,7 +99,7 @@ class AttendanceRelationManager extends RelationManager
                             ->label('Event')
                             ->relationship('event', 'name')
                             ->getOptionLabelFromRecordUsing(
-                                fn (Event $record) => "{$record->event_date->toFormattedDateString()} — {$record->name}"
+                                fn (Event $record) => "{$record->event_date->translatedFormat('M j, Y')} — {$record->name}"
                             )
                             ->searchable()
                             ->preload()

@@ -1179,7 +1179,7 @@ class CheckIn extends Page implements HasTable
                         return static::addOnDayPassEventOptionsQuery($addOn)
                             ->orderBy('event_date')
                             ->get()
-                            ->mapWithKeys(fn (Event $event) => [$event->id => "{$event->name} — {$event->event_date->toFormattedDateString()} ({$this->formatCurrency((float) $addOn->priceFor($event))})"]);
+                            ->mapWithKeys(fn (Event $event) => [$event->id => "{$event->name} — {$event->event_date->translatedFormat('M j, Y')} ({$this->formatCurrency((float) $addOn->priceFor($event))})"]);
                     })
                     ->required()
                     ->searchable(),

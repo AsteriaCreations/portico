@@ -5,7 +5,6 @@ namespace App\Http\Middleware;
 use App\Models\MembershipSetting;
 use Closure;
 use Illuminate\Http\Request;
-use Illuminate\Support\Number;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
@@ -22,13 +21,7 @@ class SetLocale
 {
     public function handle(Request $request, Closure $next): Response
     {
-        $locale = MembershipSetting::current()->locale;
-
-        if ($locale !== null && array_key_exists($locale, MembershipSetting::availableLocales())) {
-            app()->setLocale($locale);
-        }
-
-        Number::useLocale(app()->getLocale());
+        MembershipSetting::applyConfiguredLocale();
 
         return $next($request);
     }

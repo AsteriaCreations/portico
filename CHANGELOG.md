@@ -20,8 +20,10 @@ is fixes only.
   notifications, Blade views, roster and cash-box summary) and the Members, Categories, Events,
   Subscriptions, Plans, Vouchers, Add-Ons, payment methods, registers, comp reasons, paperwork
   types, skills, cleaning tasks, payout tiers and Users screens, the dashboard
-  widgets, the remaining admin pages, and every screen's "How to use" panel are translatable;
-  a few notification bodies and emails follow. Names a club types itself (categories, plans, comp reasons, ...) are
+  widgets, the remaining admin pages, and every screen's "How to use" panel are translatable, as are
+  the event-ended email and its notification (rendered in the installation's language even
+  when sent by the scheduled `events:notify-ended` command) and the user-guard error messages.
+  Hand-written dates now use `translatedFormat()` so month names follow the language too. Names a club types itself (categories, plans, comp reasons, ...) are
   never translated. See CONTRIBUTING.md for the convention.
 - Every Filament form field, table column, filter and action label is now looked up in the
   translator (one global default in `AppServiceProvider`), whether set with `->label()` or
