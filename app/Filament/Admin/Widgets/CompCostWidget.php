@@ -25,7 +25,10 @@ class CompCostWidget extends StatsOverviewWidget
     // Analytics-page visibility and testability reasoning.
     protected static bool $isLazy = false;
 
-    protected ?string $heading = 'Comp Cost This Week';
+    protected function getHeading(): ?string
+    {
+        return __('Comp Cost This Week');
+    }
 
     public static function canView(): bool
     {
@@ -45,8 +48,8 @@ class CompCostWidget extends StatsOverviewWidget
             ->get();
 
         return $rows
-            ->map(fn ($row) => Stat::make($row->name, "{$row->comps} comps")
-                ->description(MembershipSetting::formatMoney($row->foregone).' foregone'))
+            ->map(fn ($row) => Stat::make($row->name, trans_choice(':count comp|:count comps', $row->comps))
+                ->description(__(':amount foregone', ['amount' => MembershipSetting::formatMoney($row->foregone)])))
             ->all();
     }
 }

@@ -14,7 +14,10 @@ class WeeklyCategoryBreakdownWidget extends StatsOverviewWidget
     // Analytics-page visibility and testability reasoning.
     protected static bool $isLazy = false;
 
-    protected ?string $heading = 'This Week — By Category';
+    protected function getHeading(): ?string
+    {
+        return __('This Week — By Category');
+    }
 
     public static function canView(): bool
     {
@@ -34,8 +37,8 @@ class WeeklyCategoryBreakdownWidget extends StatsOverviewWidget
             ->get();
 
         return $rows
-            ->map(fn ($row) => Stat::make($row->name, "{$row->visits} visits")
-                ->description(MembershipSetting::formatMoney($row->revenue).' collected'))
+            ->map(fn ($row) => Stat::make($row->name, trans_choice(':count visit|:count visits', $row->visits))
+                ->description(__(':amount collected', ['amount' => MembershipSetting::formatMoney($row->revenue)])))
             ->all();
     }
 }

@@ -14,7 +14,10 @@ class WeeklyAttendanceChartWidget extends ChartWidget
     // Analytics-page visibility and testability reasoning.
     protected static bool $isLazy = false;
 
-    protected ?string $heading = 'Weekly Attendance';
+    public function getHeading(): ?string
+    {
+        return __('Weekly Attendance');
+    }
 
     public static function canView(): bool
     {
@@ -38,7 +41,7 @@ class WeeklyAttendanceChartWidget extends ChartWidget
                     ->whereBetween('checked_in_at', [$weekStart, $weekStart->copy()->endOfWeek()])
                     ->count())->all(),
             ]],
-            'labels' => $weeks->map(fn ($weekStart) => $weekStart->format('M j'))->all(),
+            'labels' => $weeks->map(fn ($weekStart) => $weekStart->translatedFormat('M j'))->all(),
         ];
     }
 

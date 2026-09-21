@@ -3,9 +3,9 @@
         <div class="flex items-center justify-between gap-4">
             <p class="text-sm text-gray-500">
                 @if ($this->getCapacity() !== null)
-                    {{ $this->getOccupancy() }}/{{ $this->getCapacity() }} in the building
+                    {{ __(':occupancy/:capacity in the building', ['occupancy' => $this->getOccupancy(), 'capacity' => $this->getCapacity()]) }}
                 @else
-                    {{ $this->getOccupancy() }} in the building
+                    {{ __(':count in the building', ['count' => $this->getOccupancy()]) }}
                 @endif
             </p>
             {{ $this->recordDeparturesAction }}

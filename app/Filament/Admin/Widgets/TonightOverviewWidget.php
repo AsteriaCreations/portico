@@ -28,8 +28,8 @@ class TonightOverviewWidget extends StatsOverviewWidget
             ->whereNotNull('checked_in_at');
 
         return [
-            Stat::make("Tonight's check-ins", $baseQuery()->count()),
-            Stat::make("Tonight's door take", MembershipSetting::formatMoney($baseQuery()->sum('amount_paid'))),
+            Stat::make(__("Tonight's check-ins"), $baseQuery()->count()),
+            Stat::make(__("Tonight's door take"), MembershipSetting::formatMoney($baseQuery()->sum('amount_paid'))),
         ];
     }
 }

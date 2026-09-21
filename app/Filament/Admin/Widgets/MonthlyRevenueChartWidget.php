@@ -31,7 +31,10 @@ class MonthlyRevenueChartWidget extends ChartWidget
     // Analytics-page visibility and testability reasoning.
     protected static bool $isLazy = false;
 
-    protected ?string $heading = 'Monthly Revenue';
+    public function getHeading(): ?string
+    {
+        return __('Monthly Revenue');
+    }
 
     public static function canView(): bool
     {
@@ -73,7 +76,7 @@ class MonthlyRevenueChartWidget extends ChartWidget
                     })->all(),
                 ],
             ],
-            'labels' => $months->map(fn ($month) => $month->format('M Y'))->all(),
+            'labels' => $months->map(fn ($month) => $month->translatedFormat('M Y'))->all(),
         ];
     }
 
