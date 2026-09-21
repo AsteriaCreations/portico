@@ -75,7 +75,7 @@ class ListCategories extends ListRecords
                 $result = app(CategoryBulkImporter::class)->import($path);
 
                 Notification::make()
-                    ->title("Created {$result['created']} categories")
+                    ->title(trans_choice('Created :count category|Created :count categories', $result['created']))
                     ->body($result['log'] ? implode("\n", $result['log']) : null)
                     ->success()
                     ->send();

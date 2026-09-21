@@ -3,8 +3,10 @@
 use App\Enums\Role;
 use App\Filament\Admin\Pages\Technical;
 use App\Filament\Admin\Resources\Categories\Pages\CreateCategory;
+use App\Filament\Admin\Resources\Categories\Pages\EditCategory;
 use App\Filament\Admin\Resources\Categories\Pages\ListCategories;
 use App\Filament\Admin\Resources\Members\MemberResource;
+use App\Filament\Admin\Resources\Members\Pages\CreateMember;
 use App\Filament\Admin\Resources\Members\Pages\EditMember;
 use App\Filament\Admin\Resources\Members\Pages\ListMembers;
 use App\Filament\Admin\Resources\Members\RelationManagers\BehaviorNotesRelationManager;
@@ -32,6 +34,11 @@ beforeEach(function () {
         'Watchlist' => 'xx-Watchlist',
         'Show personal info' => 'xx-Show personal info',
         'Hide personal info' => 'xx-Hide personal info',
+        // Prose, not labels: section headings, tooltips, helper text, plurals.
+        'Identity' => 'xx-Identity',
+        'Not comped' => 'xx-Not comped',
+        'This category name is relied on by check-in logic and cannot be renamed.' => 'xx-Protected name',
+        'Created :count member|Created :count members' => 'xx-Made :count member|xx-Made :count members',
     ]]]]);
 
     $this->actingAs(User::factory()->create(['active' => true, 'role' => Role::Manager]));
@@ -115,4 +122,37 @@ test('a resource list page title, a page navigation label and a relation manager
         ->and(BehaviorNotesRelationManager::getTitle(Member::factory()->create(), EditMember::class))->toBe('Notas de conducta');
 
     Livewire::test(ListMembers::class)->assertSee('Miembros');
+});
+
+test('section headings on the member form are translated', function () {
+    app()->setLocale('es');
+
+    Livewire::test(CreateMember::class)->assertSee('xx-Identity');
+});
+
+test('a tooltip driven by a closure on a table column is translated', function () {
+    Category::factory()->create(['is_comped' => false]);
+    app()->setLocale('es');
+
+    Livewire::test(ListCategories::class)->assertSee('xx-Not comped');
+});
+
+test('a helper text closure on the category form is translated for a protected category', function () {
+    $guest = Category::factory()->create(['name' => 'Guest']);
+    app()->setLocale('es');
+
+    Livewire::test(EditCategory::class, ['record' => $guest->getKey()])
+        ->assertSee('xx-Protected name');
+});
+
+test('plural notification titles pick the singular or plural translation', function () {
+    app()->setLocale('es');
+
+    expect(trans_choice('Created :count member|Created :count members', 1))->toBe('xx-Made 1 member')
+        ->and(trans_choice('Created :count member|Created :count members', 3))->toBe('xx-Made 3 members');
+
+    app()->setLocale('en');
+
+    expect(trans_choice('Created :count member|Created :count members', 1))->toBe('Created 1 member')
+        ->and(trans_choice('Created :count member|Created :count members', 3))->toBe('Created 3 members');
 });

@@ -51,7 +51,7 @@ class EditMember extends EditRecord
                         throw $exception;
                     }
 
-                    Notification::make()->title('That username was just taken — please choose another.')->danger()->send();
+                    Notification::make()->title(__('That username was just taken — please choose another.'))->danger()->send();
 
                     return;
                 }
@@ -61,7 +61,7 @@ class EditMember extends EditRecord
                 // page would keep showing the old value until a full reload.
                 $this->refreshFormData(['username']);
 
-                Notification::make()->title('Username updated')->success()->send();
+                Notification::make()->title(__('Username updated'))->success()->send();
             });
     }
 }

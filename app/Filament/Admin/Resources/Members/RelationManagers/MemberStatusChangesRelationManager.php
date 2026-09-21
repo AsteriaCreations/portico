@@ -28,7 +28,7 @@ class MemberStatusChangesRelationManager extends RelationManager
                 TextColumn::make('status')->badge(),
                 IconColumn::make('value')
                     ->boolean()
-                    ->tooltip(fn (bool $state): string => $state ? 'Turned on' : 'Turned off'),
+                    ->tooltip(fn (bool $state): string => $state ? __('Turned on') : __('Turned off')),
                 TextColumn::make('reason'),
                 TextColumn::make('changedBy.name')->label('Changed by'),
                 TextColumn::make('created_at')->dateTime()->sortable(),
