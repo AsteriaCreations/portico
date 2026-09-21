@@ -137,12 +137,12 @@ class ActivePatrons extends Page implements HasTable
                             ->label('Overnight')
                             ->boolean()
                             ->getStateUsing(fn (Attendance $record): bool => $record->isOvernightStay())
-                            ->tooltip(fn (bool $state): string => $state ? 'Staying overnight' : 'Same-night guest'),
+                            ->tooltip(fn (bool $state): string => $state ? __('Staying overnight') : __('Same-night guest')),
                         IconColumn::make('member.on_watchlist')
                             ->label('Watchlist')
                             ->boolean()
-                            ->color(fn (?bool $state): string => $state ? 'warning' : 'gray')
-                            ->tooltip(fn (?bool $state): string => $state ? 'On watchlist' : 'Not on watchlist'),
+                            ->color(fn (?bool $state): string => $state ? __('warning') : __('gray'))
+                            ->tooltip(fn (?bool $state): string => $state ? __('On watchlist') : __('Not on watchlist')),
                     ])->space(1)->alignment(Alignment::End)->grow(false),
                 ])->from('sm'),
 
@@ -150,7 +150,7 @@ class ActivePatrons extends Page implements HasTable
                     TextColumn::make('member.skills.name')
                         ->label('Skills')
                         ->badge()
-                        ->placeholder('—'),
+                        ->placeholder(__('—')),
                     TextColumn::make('member.watchlist_reason')
                         ->label('Watchlist reason')
                         ->color('warning')
@@ -160,14 +160,14 @@ class ActivePatrons extends Page implements HasTable
                     TextColumn::make('visit_note')
                         ->label('Visit note')
                         ->icon(Heroicon::OutlinedPencilSquare)
-                        ->placeholder('— add visit note —')
+                        ->placeholder(__('— add visit note —'))
                         ->wrap()
                         ->visible(fn (): bool => Gate::allows('manage-visit-notes'))
                         ->action($this->editVisitNoteAction()),
                     TextColumn::make('behaviorNotesSummary')
                         ->label('Behavior notes')
                         ->icon(Heroicon::OutlinedFlag)
-                        ->placeholder('— add behavior note —')
+                        ->placeholder(__('— add behavior note —'))
                         ->wrap()
                         ->visible(fn (): bool => Gate::allows('manage-behavior-notes'))
                         ->getStateUsing(fn (Attendance $record): ?string => $this->behaviorNotesSummary($record))
@@ -197,7 +197,7 @@ class ActivePatrons extends Page implements HasTable
 
                 $record->update(['departed_at' => now()]);
 
-                Notification::make()->title('Marked departed')->success()->send();
+                Notification::make()->title(__('Marked departed'))->success()->send();
             });
     }
 
@@ -216,7 +216,7 @@ class ActivePatrons extends Page implements HasTable
             ->schema([
                 TextInput::make('visit_note')
                     ->label('Visit note')
-                    ->helperText('e.g. a clothing description to help identify this patron tonight. Not kept after the event.')
+                    ->helperText(__('e.g. a clothing description to help identify this patron tonight. Not kept after the event.'))
                     ->maxLength(255),
             ])
             ->action(function (Attendance $record, array $data): void {
@@ -226,7 +226,7 @@ class ActivePatrons extends Page implements HasTable
 
                 $record->update(['visit_note' => $data['visit_note'] ?: null]);
 
-                Notification::make()->title('Visit note saved')->success()->send();
+                Notification::make()->title(__('Visit note saved'))->success()->send();
             });
     }
 
@@ -250,7 +250,7 @@ class ActivePatrons extends Page implements HasTable
                     'created_by' => Auth::id(),
                 ]);
 
-                Notification::make()->title('Behavior note added')->success()->send();
+                Notification::make()->title(__('Behavior note added'))->success()->send();
             });
     }
 
@@ -287,11 +287,11 @@ class ActivePatrons extends Page implements HasTable
         $othersCount = $notes->count() - $own->count();
 
         if ($own->isEmpty()) {
-            return $notes->count().' behavior note'.($notes->count() === 1 ? '' : 's');
+            return trans_choice(':count behavior note|:count behavior notes', $notes->count());
         }
 
         $summary = $own->pluck('note')->implode("\n");
 
-        return $othersCount > 0 ? "{$summary}\n(+{$othersCount} more)" : $summary;
+        return $othersCount > 0 ? $summary."\n".__('(+:count more)', ['count' => $othersCount]) : $summary;
     }
 }

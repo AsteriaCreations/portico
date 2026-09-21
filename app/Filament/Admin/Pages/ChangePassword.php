@@ -60,7 +60,7 @@ class ChangePassword extends Page
                     ->revealable()
                     ->required()
                     ->rule(Password::default())
-                    ->helperText('At least 12 characters with upper and lower case, a number, and a symbol.'),
+                    ->helperText(__('At least 12 characters with upper and lower case, a number, and a symbol.')),
                 TextInput::make('new_password_confirmation')
                     ->label('Confirm new password')
                     ->password()
@@ -82,7 +82,7 @@ class ChangePassword extends Page
                 $user->must_change_password = false;
                 $user->save();
 
-                Notification::make()->title('Password updated')->success()->send();
+                Notification::make()->title(__('Password updated'))->success()->send();
 
                 $this->redirect(Dashboard::getUrl());
             });

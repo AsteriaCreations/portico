@@ -58,7 +58,7 @@ class CleaningChecklist extends Page implements HasTable
                     ->label('Done this week')
                     ->boolean()
                     ->getStateUsing(fn (CleaningTask $record): bool => $record->isCompletedForWeek(now()->startOfWeek()))
-                    ->tooltip(fn (bool $state): string => $state ? 'Completed this week' : 'Not yet completed this week'),
+                    ->tooltip(fn (bool $state): string => $state ? __('Completed this week') : __('Not yet completed this week')),
                 TextColumn::make('completed_by')
                     ->label('Completed by')
                     ->getStateUsing(fn (CleaningTask $record) => $record->completions()
@@ -85,7 +85,7 @@ class CleaningChecklist extends Page implements HasTable
                     ]);
                 }
 
-                Notification::make()->title('Marked complete')->success()->send();
+                Notification::make()->title(__('Marked complete'))->success()->send();
             });
     }
 }

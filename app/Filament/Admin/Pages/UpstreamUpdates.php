@@ -91,8 +91,8 @@ class UpstreamUpdates extends Page
                 $exitCode = Artisan::call('upstream:check');
 
                 $exitCode === 0
-                    ? Notification::make()->title('Upstream check completed')->success()->send()
-                    : Notification::make()->title('Upstream check failed')->body(Artisan::output())->danger()->send();
+                    ? Notification::make()->title(__('Upstream check completed'))->success()->send()
+                    : Notification::make()->title(__('Upstream check failed'))->body(Artisan::output())->danger()->send();
 
                 $this->redirect(static::getUrl());
             });
@@ -111,7 +111,7 @@ class UpstreamUpdates extends Page
             ->color('danger')
             ->visible(fn (): bool => Gate::allows('trigger-deploy'))
             ->requiresConfirmation()
-            ->modalDescription('This briefly takes the site offline, pulls the upstream branch, reinstalls dependencies, and runs a database migration. It cannot be undone once started.')
+            ->modalDescription(__('This briefly takes the site offline, pulls the upstream branch, reinstalls dependencies, and runs a database migration. It cannot be undone once started.'))
             ->action(function (): void {
                 // Re-checked here, not just via ->visible() -- same defensive
                 // pattern as checkForUpdatesAction() above, since $data is
@@ -124,14 +124,14 @@ class UpstreamUpdates extends Page
                     app(DeployTrigger::class)->trigger($taskName);
                 } catch (Throwable $e) {
                     CommandRun::recordFailure('deploy:trigger', $e->getMessage());
-                    Notification::make()->title('Failed to trigger the update')->body($e->getMessage())->danger()->send();
+                    Notification::make()->title(__('Failed to trigger the update'))->body($e->getMessage())->danger()->send();
                     $this->redirect(static::getUrl());
 
                     return;
                 }
 
                 CommandRun::recordSuccess('deploy:trigger');
-                Notification::make()->title('Update triggered')->body('Check back in a few minutes for the result.')->success()->send();
+                Notification::make()->title(__('Update triggered'))->body(__('Check back in a few minutes for the result.'))->success()->send();
 
                 $this->redirect(static::getUrl());
             });

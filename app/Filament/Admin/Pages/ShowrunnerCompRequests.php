@@ -133,24 +133,24 @@ class ShowrunnerCompRequests extends Page implements HasTable
                     ->rule(fn (): Closure => function (string $attribute, mixed $value, Closure $fail): void {
                         $event = $this->getSelectedEvent();
                         if (! $event) {
-                            $fail('Select an event first.');
+                            $fail(__('Select an event first.'));
 
                             return;
                         }
 
                         $member = Member::find($value);
                         if ($member?->isCurrentlyBanned() && ! $member->hasBanExceptionFor($event)) {
-                            $fail('This member is banned and has no exception for this event.');
+                            $fail(__('This member is banned and has no exception for this event.'));
 
                             return;
                         }
 
                         if (Attendance::where('event_id', $event->id)->where('member_id', $value)->exists()) {
-                            $fail('This member already has an attendance record for this event.');
+                            $fail(__('This member already has an attendance record for this event.'));
                         }
 
                         if (CompRequest::where('event_id', $event->id)->where('member_id', $value)->where('status', CompRequestStatus::Pending)->exists()) {
-                            $fail('This member already has a pending comp request for this event.');
+                            $fail(__('This member already has a pending comp request for this event.'));
                         }
                     })
                     ->required(),
@@ -165,7 +165,7 @@ class ShowrunnerCompRequests extends Page implements HasTable
                 TextInput::make('requested_reason_text')
                     ->label('Reason')
                     ->maxLength(255)
-                    ->helperText('Admin will approve, reject, or turn this into a real reason.')
+                    ->helperText(__('Admin will approve, reject, or turn this into a real reason.'))
                     ->required(fn (Get $get): bool => (bool) $get('other_reason'))
                     ->visible(fn (Get $get): bool => (bool) $get('other_reason')),
                 Textarea::make('notes')
@@ -196,7 +196,7 @@ class ShowrunnerCompRequests extends Page implements HasTable
 
                 static::notifyAdminsOfNewRequest($request, $event);
 
-                Notification::make()->title('Comp request submitted — pending Admin approval')->success()->send();
+                Notification::make()->title(__('Comp request submitted — pending Admin approval'))->success()->send();
             });
     }
 
@@ -210,8 +210,8 @@ class ShowrunnerCompRequests extends Page implements HasTable
         }
 
         $notification = Notification::make()
-            ->title('New comp request awaiting approval')
-            ->body($request->member->username.' — '.$event->event_date->toFormattedDateString())
+            ->title(__('New comp request awaiting approval'))
+            ->body($request->member->username.' — '.$event->event_date->translatedFormat('M j, Y'))
             ->actions([
                 Action::make('view')
                     ->label('Review')
@@ -261,6 +261,6 @@ class ShowrunnerCompRequests extends Page implements HasTable
 
     protected static function eventLabel(Event $event): string
     {
-        return $event->event_date->toFormattedDateString().' — '.($event->name ?? 'Untitled event');
+        return $event->event_date->translatedFormat('M j, Y').' — '.($event->name ?? __('Untitled event'));
     }
 }

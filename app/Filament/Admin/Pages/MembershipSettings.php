@@ -83,48 +83,48 @@ class MembershipSettings extends Page
             ->components([
                 TextInput::make('subscription_eligibility_threshold')
                     ->label('Subscription eligibility threshold')
-                    ->helperText('A member becomes eligible for either subscription plan once they\'ve attended this many events, all-time.')
+                    ->helperText(__('A member becomes eligible for either subscription plan once they\'ve attended this many events, all-time.'))
                     ->numeric()
                     ->minValue(0)
                     ->required(),
                 TextInput::make('probation_period_days')
                     ->label('Probation period (days)')
-                    ->helperText('Reporting-only — never affects admission or pricing.')
+                    ->helperText(__('Reporting-only — never affects admission or pricing.'))
                     ->numeric()
                     ->minValue(0)
                     ->required(),
                 TextInput::make('venue_capacity')
                     ->label('Venue capacity')
-                    ->helperText('Hard cap on how many people can be in the building at once. Leave blank to not enforce a capacity limit.')
+                    ->helperText(__('Hard cap on how many people can be in the building at once. Leave blank to not enforce a capacity limit.'))
                     ->numeric()
                     ->minValue(1),
                 TextInput::make('default_opening_float')
                     ->label('Default cash drawer opening float')
-                    ->helperText('Pre-fills the "opening count" field when a Door+ user opens a new cashbox shift. Leave blank to not pre-fill anything.')
+                    ->helperText(__('Pre-fills the "opening count" field when a Door+ user opens a new cashbox shift. Leave blank to not pre-fill anything.'))
                     ->numeric()
                     ->minValue(0)
                     ->step(0.01),
                 TextInput::make('event_window_buffer_minutes')
                     ->label('Event window buffer (minutes)')
-                    ->helperText('Minutes of slack on either side of an event\'s start/end time when deciding whether it\'s "current" for the check-in page\'s event picker — lets staff pull an event up a little early and keep working it a little after it ends.')
+                    ->helperText(__('Minutes of slack on either side of an event\'s start/end time when deciding whether it\'s "current" for the check-in page\'s event picker — lets staff pull an event up a little early and keep working it a little after it ends.'))
                     ->numeric()
                     ->minValue(0)
                     ->required(),
                 TextInput::make('age_of_majority')
                     ->label('Age of majority')
-                    ->helperText('AdmissionPolicy blocks a member below this age outright. Jurisdiction-specific — adjust if your club isn\'t in an 18-is-adult jurisdiction.')
+                    ->helperText(__('AdmissionPolicy blocks a member below this age outright. Jurisdiction-specific — adjust if your club isn\'t in an 18-is-adult jurisdiction.'))
                     ->numeric()
                     ->minValue(0)
                     ->required(),
                 TextInput::make('alcohol_flag_age')
                     ->label('Check-ID / no-alcohol flag age')
-                    ->helperText('A member below this age (but at or above "Age of majority") is admitted but flagged to check ID / mark their hand. Set equal to "Age of majority" to disable the flag entirely.')
+                    ->helperText(__('A member below this age (but at or above "Age of majority") is admitted but flagged to check ID / mark their hand. Set equal to "Age of majority" to disable the flag entirely.'))
                     ->numeric()
                     ->minValue(0)
                     ->required(),
                 TextInput::make('currency')
                     ->label('Currency code')
-                    ->helperText('A 3-letter ISO 4217 currency code (e.g. USD, EUR, GBP, CAD) — used everywhere a dollar figure is shown, from the check-in desk\'s live totals to every money column in the admin panel.')
+                    ->helperText(__('A 3-letter ISO 4217 currency code (e.g. USD, EUR, GBP, CAD) — used everywhere a dollar figure is shown, from the check-in desk\'s live totals to every money column in the admin panel.'))
                     ->required()
                     ->minLength(3)
                     ->maxLength(3)
@@ -146,63 +146,63 @@ class MembershipSettings extends Page
                         $known = \ResourceBundle::create('en', 'ICUDATA-curr')->get('Currencies')->get(strtoupper((string) $value));
 
                         if ($known === null) {
-                            $fail('Not a recognized currency code.');
+                            $fail(__('Not a recognized currency code.'));
                         }
                     }),
                 Select::make('locale')
                     ->label('Language')
-                    ->helperText('The language of the admin panel for everyone on this installation. Only languages with a translation file in the lang folder are listed; leave blank to use the server default (English unless configured otherwise).')
+                    ->helperText(__('The language of the admin panel for everyone on this installation. Only languages with a translation file in the lang folder are listed; leave blank to use the server default (English unless configured otherwise).'))
                     ->options(fn (): array => MembershipSetting::availableLocales())
-                    ->placeholder('Server default'),
+                    ->placeholder(__('Server default')),
                 TextInput::make('org_name')
                     ->label('Displayed organization name')
-                    ->helperText('Shown across the admin panel (header, browser tab, login page) in place of "'.config('app.name').'". Leave blank to use that default. Owner only.')
+                    ->helperText(__('Shown across the admin panel (header, browser tab, login page) in place of ":name". Leave blank to use that default. Owner only.', ['name' => config('app.name')]))
                     ->maxLength(255)
                     ->visible(fn (): bool => Gate::allows('manage-org-name')),
                 CheckboxList::make('member_search_fields')
                     ->label('Searchable member fields')
-                    ->helperText('Which fields staff can search on in every member picker — the check-in desk, the Showrunner/Host selects, subscriptions, vouchers, and the rest. Username is the desk\'s primary lookup; add others only if staff actually need them.')
+                    ->helperText(__('Which fields staff can search on in every member picker — the check-in desk, the Showrunner/Host selects, subscriptions, vouchers, and the rest. Username is the desk\'s primary lookup; add others only if staff actually need them.'))
                     ->options([
-                        'username' => 'Username',
-                        'name' => 'Name (first & last)',
-                        'member_number' => 'Member number',
-                        'preferred_name' => 'Preferred name',
-                        'email' => 'Email',
+                        'username' => __('Username'),
+                        'name' => __('Name (first & last)'),
+                        'member_number' => __('Member number'),
+                        'preferred_name' => __('Preferred name'),
+                        'email' => __('Email'),
                     ])
                     ->minItems(1)
                     ->required(),
                 Select::make('checkin_display_name_field')
                     ->label('Check-in desk display name')
-                    ->helperText('Which field the Check-In Desk shows once a member is selected -- the greeting line, the checked-in roster, voucher labels, and the guest-registration sponsor note. Falls back to username if the chosen field is blank for a given member.')
+                    ->helperText(__('Which field the Check-In Desk shows once a member is selected -- the greeting line, the checked-in roster, voucher labels, and the guest-registration sponsor note. Falls back to username if the chosen field is blank for a given member.'))
                     ->options([
-                        'preferred_name' => 'Preferred name',
-                        'full_name' => 'Full name',
-                        'username' => 'Username',
+                        'preferred_name' => __('Preferred name'),
+                        'full_name' => __('Full name'),
+                        'username' => __('Username'),
                     ])
                     ->required(),
                 Toggle::make('hide_member_pii_by_default')
                     ->label('Hide personal info by default on the Members list')
-                    ->helperText('Controls the starting state of the "Hide personal info" toggle on the Members list (first/last name, DOB, email). Staff can still flip it for their own session either way.')
+                    ->helperText(__('Controls the starting state of the "Hide personal info" toggle on the Members list (first/last name, DOB, email). Staff can still flip it for their own session either way.'))
                     ->required(),
                 Toggle::make('showrunner_door_includes_pool')
                     ->label('Showrunner commission includes pool revenue')
-                    ->helperText('Entry revenue always counts toward the showrunner\'s commission base ("the door"). Turn this on to also count pool fee revenue from the same qualifying attendees.')
+                    ->helperText(__('Entry revenue always counts toward the showrunner\'s commission base ("the door"). Turn this on to also count pool fee revenue from the same qualifying attendees.'))
                     ->required(),
                 Toggle::make('showrunner_door_includes_addons')
                     ->label('Showrunner commission includes add-on revenue')
-                    ->helperText('Turn this on to also count Event Add-On revenue (private room rental, sleepover, etc.) from the same qualifying attendees toward the showrunner\'s commission base.')
+                    ->helperText(__('Turn this on to also count Event Add-On revenue (private room rental, sleepover, etc.) from the same qualifying attendees toward the showrunner\'s commission base.'))
                     ->required(),
                 TextInput::make('upstream_remote')
                     ->label('Upstream git remote name')
                     // Keep this pattern identical to
                     // UpstreamUpdateChecker::SAFE_REF_PATTERN.
                     ->rule('regex:/^[A-Za-z0-9](?:[A-Za-z0-9._\/-]*[A-Za-z0-9])?$/')
-                    ->helperText('The name of a git remote already added on this server (`git remote add <name> <url>`) that this fork tracks for updates -- this app never adds one itself. Leave blank if this fork doesn\'t track an upstream. Turn on "Upstream update checking enabled" on Feature Flags once set.')
+                    ->helperText(__('The name of a git remote already added on this server (`git remote add <name> <url>`) that this fork tracks for updates -- this app never adds one itself. Leave blank if this fork doesn\'t track an upstream. Turn on "Upstream update checking enabled" on Feature Flags once set.'))
                     ->maxLength(255),
                 TextInput::make('upstream_branch')
                     ->label('Upstream branch')
                     ->rule('regex:/^[A-Za-z0-9](?:[A-Za-z0-9._\/-]*[A-Za-z0-9])?$/')
-                    ->helperText('The branch on the upstream remote to compare against -- usually "main".')
+                    ->helperText(__('The branch on the upstream remote to compare against -- usually "main".'))
                     ->maxLength(255)
                     ->required(),
                 TextInput::make('deploy_task_name')
@@ -212,7 +212,7 @@ class MembershipSettings extends Page
                     // upstream_remote/upstream_branch above, a task name may
                     // contain spaces, so this only blocks a leading '-'/'/'.
                     ->rule('regex:/^[^\s\/-][^\r\n]*$/')
-                    ->helperText('The exact name of a Windows Scheduled Task, already registered on this server to run scripts/deploy.ps1, that "Run update now" on Upstream Updates should fire -- this app never registers one itself. Leave blank if you don\'t want a web-triggered deploy. Turn on "Web-triggered deploy enabled" on Feature Flags once set.')
+                    ->helperText(__('The exact name of a Windows Scheduled Task, already registered on this server to run scripts/deploy.ps1, that "Run update now" on Upstream Updates should fire -- this app never registers one itself. Leave blank if you don\'t want a web-triggered deploy. Turn on "Web-triggered deploy enabled" on Feature Flags once set.'))
                     ->maxLength(255),
             ]);
     }
@@ -234,7 +234,7 @@ class MembershipSettings extends Page
 
                 MembershipSetting::current()->update($state);
 
-                Notification::make()->title('Settings saved')->success()->send();
+                Notification::make()->title(__('Settings saved'))->success()->send();
             });
     }
 }
