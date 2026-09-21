@@ -100,7 +100,7 @@ class CompListRelationManager extends RelationManager
                             ->rule(function () {
                                 return function (string $attribute, mixed $value, \Closure $fail): void {
                                     if (! app(CapacityService::class)->hasRoom($this->getOwnerRecord()->event_date)) {
-                                        $fail('The building is at capacity.');
+                                        $fail(__('The building is at capacity.'));
                                     }
                                 };
                             })

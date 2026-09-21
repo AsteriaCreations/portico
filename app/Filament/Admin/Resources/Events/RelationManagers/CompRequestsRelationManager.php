@@ -90,7 +90,7 @@ class CompRequestsRelationManager extends RelationManager
             ->schema(fn (CompRequest $record): array => $record->comp_reason_id === null ? [
                 Select::make('comp_reason_id')
                     ->label('Resolve to reason')
-                    ->helperText("Showrunner requested: \"{$record->requested_reason_text}\"")
+                    ->helperText(__('Showrunner requested: ":reason"', ['reason' => $record->requested_reason_text]))
                     ->options(fn () => CompReason::where('active', true)->orderBy('sort_order')->pluck('name', 'id'))
                     ->searchable()
                     ->required()
@@ -142,7 +142,7 @@ class CompRequestsRelationManager extends RelationManager
                     'attendance_id' => $attendance->id,
                 ]);
 
-                Notification::make()->title('Comp request approved')->success()->send();
+                Notification::make()->title(__('Comp request approved'))->success()->send();
             });
     }
 
@@ -167,7 +167,7 @@ class CompRequestsRelationManager extends RelationManager
                     'review_notes' => $data['review_notes'] ?? null,
                 ]);
 
-                Notification::make()->title('Comp request rejected')->success()->send();
+                Notification::make()->title(__('Comp request rejected'))->success()->send();
             });
     }
 }

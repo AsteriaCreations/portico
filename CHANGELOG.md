@@ -17,8 +17,8 @@ is fixes only.
   choice until one is added. Translation keys are the English text (`__('Check-In Desk')`),
   so English needs no file. Conversion is incremental: the coverage/role/capability/payout
   enum labels, `AdmissionPolicy` decision messages, and the whole Check-In Desk (page,
-  notifications, Blade views, roster and cash-box summary) and the Members and Categories
-  screens are translatable so far; other screens follow. Names a club types itself (categories, plans, comp reasons, ...) are
+  notifications, Blade views, roster and cash-box summary) and the Members, Categories and
+  Events screens are translatable so far; other screens follow. Names a club types itself (categories, plans, comp reasons, ...) are
   never translated. See CONTRIBUTING.md for the convention.
 - Every Filament form field, table column, filter and action label is now looked up in the
   translator (one global default in `AppServiceProvider`), whether set with `->label()` or

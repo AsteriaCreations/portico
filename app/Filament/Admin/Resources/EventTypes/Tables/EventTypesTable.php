@@ -25,7 +25,7 @@ class EventTypesTable
                     ->sortable(),
                 IconColumn::make('active')
                     ->boolean()
-                    ->tooltip(fn (bool $state): string => $state ? 'Active' : 'Inactive'),
+                    ->tooltip(fn (bool $state): string => $state ? __('Active') : __('Inactive')),
             ])
             ->filters([
                 //
