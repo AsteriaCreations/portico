@@ -53,14 +53,14 @@ class MembersTable
                     ->searchable(),
                 IconColumn::make('is_active')
                     ->boolean()
-                    ->tooltip(fn (bool $state): string => $state ? 'Active' : 'Inactive'),
+                    ->tooltip(fn (bool $state): string => $state ? __('Active') : __('Inactive')),
                 IconColumn::make('email_opt_in')
                     ->label('Email OK')
                     ->boolean()
-                    ->tooltip(fn (bool $state): string => $state ? 'OK to email (bulk list)' : 'Not opted in to bulk email'),
+                    ->tooltip(fn (bool $state): string => $state ? __('OK to email (bulk list)') : __('Not opted in to bulk email')),
                 IconColumn::make('on_watchlist')
                     ->boolean()
-                    ->tooltip(fn (bool $state): string => $state ? 'On watchlist' : 'Not on watchlist'),
+                    ->tooltip(fn (bool $state): string => $state ? __('On watchlist') : __('Not on watchlist')),
                 IconColumn::make('is_banned')
                     ->label('Banned')
                     ->boolean()
@@ -69,12 +69,12 @@ class MembersTable
                     // the probation column below is computed rather than
                     // stored. See Member::isCurrentlyBanned().
                     ->state(fn (Member $record) => $record->isCurrentlyBanned())
-                    ->tooltip(fn (bool $state): string => $state ? 'Banned' : 'Not banned'),
+                    ->tooltip(fn (bool $state): string => $state ? __('Banned') : __('Not banned')),
                 IconColumn::make('probation')
                     ->label('On Probation')
                     ->boolean()
                     ->state(fn (Member $record) => $record->isOnProbation())
-                    ->tooltip(fn (bool $state): string => $state ? 'On probation' : 'Not on probation'),
+                    ->tooltip(fn (bool $state): string => $state ? __('On probation') : __('Not on probation')),
             ])
             ->filters([
                 SelectFilter::make('category_id')
@@ -140,7 +140,7 @@ class MembersTable
                             $records->each(fn (Member $record) => $record->update(['category_id' => $data['category_id']]));
 
                             Notification::make()
-                                ->title('Category updated for '.$records->count().' member(s)')
+                                ->title(trans_choice('Category updated for :count member|Category updated for :count members', $records->count()))
                                 ->success()
                                 ->send();
                         }),
@@ -158,14 +158,14 @@ class MembersTable
                         ->label('Require paperwork')
                         ->icon('heroicon-o-document-text')
                         ->requiresConfirmation()
-                        ->modalDescription('Flags each selected member as missing paperwork. They\'ll be prompted to reconfirm it (e.g. sign the new waiver) the next time they\'re selected at the Check-In Desk.')
+                        ->modalDescription(__('Flags each selected member as missing paperwork. They\'ll be prompted to reconfirm it (e.g. sign the new waiver) the next time they\'re selected at the Check-In Desk.'))
                         ->authorizeIndividualRecords('update')
                         ->deselectRecordsAfterCompletion()
                         ->action(function (Collection $records): void {
                             $records->each(fn (Member $record) => $record->update(['missing_paperwork' => true]));
 
                             Notification::make()
-                                ->title('Paperwork required for '.$records->count().' member(s)')
+                                ->title(trans_choice('Paperwork required for :count member|Paperwork required for :count members', $records->count()))
                                 ->success()
                                 ->send();
                         }),

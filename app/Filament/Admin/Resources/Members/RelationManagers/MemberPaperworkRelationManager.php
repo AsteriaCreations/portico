@@ -46,7 +46,7 @@ class MemberPaperworkRelationManager extends RelationManager
             ->columns([
                 TextColumn::make('paperworkType.name')->label('Type')->sortable(),
                 TextColumn::make('signed_on')->date()->sortable(),
-                TextColumn::make('recordedBy.name')->label('Recorded by')->placeholder('—'),
+                TextColumn::make('recordedBy.name')->label('Recorded by')->placeholder(__('—')),
                 TextColumn::make('created_at')->dateTime()->sortable(),
             ])
             ->headerActions([

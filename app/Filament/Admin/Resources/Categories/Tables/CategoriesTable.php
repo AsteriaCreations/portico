@@ -23,13 +23,13 @@ class CategoriesTable
                 IconColumn::make('is_comped')
                     ->label('Comped')
                     ->boolean()
-                    ->tooltip(fn (bool $state): string => $state ? 'Comped' : 'Not comped'),
+                    ->tooltip(fn (bool $state): string => $state ? __('Comped') : __('Not comped')),
                 TextColumn::make('sort_order')
                     ->numeric()
                     ->sortable(),
                 IconColumn::make('active')
                     ->boolean()
-                    ->tooltip(fn (bool $state): string => $state ? 'Active' : 'Inactive'),
+                    ->tooltip(fn (bool $state): string => $state ? __('Active') : __('Inactive')),
             ])
             ->filters([
                 //

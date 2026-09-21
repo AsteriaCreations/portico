@@ -210,7 +210,7 @@ class ListMembers extends ListRecords
                 $result = app(MemberBulkImporter::class)->import($path);
 
                 Notification::make()
-                    ->title("Created {$result['created']} members")
+                    ->title(trans_choice('Created :count member|Created :count members', $result['created']))
                     ->body($result['log'] ? implode("\n", $result['log']) : null)
                     ->success()
                     ->send();

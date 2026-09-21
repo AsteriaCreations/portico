@@ -23,14 +23,14 @@ class CategoryForm
                     ->disabled(fn (?Category $record): bool => (bool) $record && in_array($record->name, Category::PROTECTED_NAMES, true))
                     ->dehydrated(fn (?Category $record): bool => ! ($record && in_array($record->name, Category::PROTECTED_NAMES, true)))
                     ->helperText(fn (?Category $record): ?string => ($record && in_array($record->name, Category::PROTECTED_NAMES, true))
-                        ? 'This category name is relied on by check-in logic and cannot be renamed.'
+                        ? __('This category name is relied on by check-in logic and cannot be renamed.')
                         : null),
                 TextInput::make('description')
                     ->maxLength(255)
                     ->default(null),
                 Toggle::make('is_comped')
                     ->label('Comped')
-                    ->helperText('Members in this category are fully comped on entry and pool fees.')
+                    ->helperText(__('Members in this category are fully comped on entry and pool fees.'))
                     ->required()
                     ->default(false),
                 TextInput::make('sort_order')
