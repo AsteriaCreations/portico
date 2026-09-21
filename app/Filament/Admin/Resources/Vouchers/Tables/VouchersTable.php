@@ -25,7 +25,7 @@ class VouchersTable
                     ->wrap(),
                 TextColumn::make('attendance.event.name')
                     ->label('Redeemed at')
-                    ->placeholder('— not tied to a check-in')
+                    ->placeholder(__('— not tied to a check-in'))
                     ->toggleable(),
                 TextColumn::make('recordedBy.name')
                     ->label('Recorded by'),

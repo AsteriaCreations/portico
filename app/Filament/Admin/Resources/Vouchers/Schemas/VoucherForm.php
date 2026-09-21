@@ -25,16 +25,16 @@ class VoucherForm
                     ->required(),
                 TextInput::make('amount')
                     ->label('Amount')
-                    ->helperText('Positive to issue credit, negative to correct a wrongly-issued voucher (e.g. -25 to void a $25 grant).')
+                    ->helperText(__('Positive to issue credit, negative to correct a wrongly-issued voucher (e.g. -25 to void a $25 grant).'))
                     ->required()
                     ->numeric()
                     ->prefix('$')
                     ->rule('decimal:0,2')
                     ->notIn([0])
-                    ->validationMessages(['not_in' => 'Amount cannot be zero.']),
+                    ->validationMessages(['not_in' => __('Amount cannot be zero.')]),
                 Textarea::make('reason')
                     ->label('Reason')
-                    ->helperText('Required on every row — this is the only record of why a balance changed.')
+                    ->helperText(__('Required on every row — this is the only record of why a balance changed.'))
                     ->required()
                     ->maxLength(255),
                 Hidden::make('recorded_by')

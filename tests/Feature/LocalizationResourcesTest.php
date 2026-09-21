@@ -2,6 +2,7 @@
 
 use App\Enums\Role;
 use App\Filament\Admin\Pages\Technical;
+use App\Filament\Admin\Resources\AddOns\Pages\ListAddOns;
 use App\Filament\Admin\Resources\Categories\Pages\CreateCategory;
 use App\Filament\Admin\Resources\Categories\Pages\EditCategory;
 use App\Filament\Admin\Resources\Categories\Pages\ListCategories;
@@ -14,6 +15,7 @@ use App\Filament\Admin\Resources\Members\Pages\EditMember;
 use App\Filament\Admin\Resources\Members\Pages\ListMembers;
 use App\Filament\Admin\Resources\Members\RelationManagers\BehaviorNotesRelationManager;
 use App\Filament\Admin\Resources\Plans\PlanResource;
+use App\Models\AddOn;
 use App\Models\Category;
 use App\Models\Event;
 use App\Models\Member;
@@ -46,6 +48,8 @@ beforeEach(function () {
         "Date defaults from the event date above — an event can't start on a different day." => 'xx-Date defaults',
         'Comp list' => 'xx-Comp list',
         'The building is at capacity.' => 'xx-At capacity',
+        'Not subscribable' => 'xx-Not subscribable',
+        'Granted regular subscription to :username for :month' => 'xx-Granted :username :month',
     ]]]]);
 
     $this->actingAs(User::factory()->create(['active' => true, 'role' => Role::Manager]));
@@ -171,4 +175,12 @@ test('the event form helper text and a relation manager title are translated', f
     Livewire::test(CreateEvent::class)->assertSee('xx-Date defaults');
 
     expect(CompListRelationManager::getTitle(Event::factory()->create(), EditEvent::class))->toBe('xx-Comp list');
+});
+
+test('an add-on table tooltip driven by a closure is translated', function () {
+    AddOn::create(['name' => 'Sleepover', 'subscribable' => false]);
+    $this->actingAs(User::factory()->create(['active' => true, 'role' => Role::Admin]));
+    app()->setLocale('es');
+
+    Livewire::test(ListAddOns::class)->assertSee('xx-Not subscribable');
 });

@@ -27,14 +27,14 @@ class PlansTable
                     ->sortable(),
                 TextColumn::make('credit')
                     ->money()
-                    ->placeholder('Full coverage')
+                    ->placeholder(__('Full coverage'))
                     ->sortable(),
                 TextColumn::make('effective_from')
                     ->date()
                     ->sortable(),
                 TextColumn::make('effective_to')
                     ->date()
-                    ->placeholder('Current')
+                    ->placeholder(__('Current'))
                     ->sortable(),
                 TextColumn::make('created_at')
                     ->dateTime()
