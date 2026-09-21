@@ -51,7 +51,7 @@ class EventsTable
                     ->label('Comp List Overdue')
                     ->boolean()
                     ->state(fn (Event $record) => $record->isCompListOverdue())
-                    ->tooltip(fn (bool $state): string => $state ? 'Comp list overdue' : 'Comp list not overdue')
+                    ->tooltip(fn (bool $state): string => $state ? __('Comp list overdue') : __('Comp list not overdue'))
                     ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('notes')
                     ->searchable()
@@ -122,7 +122,7 @@ class EventsTable
                 $event->addOns()->sync($record->addOns->pluck('id'));
 
                 Notification::make()
-                    ->title('Event duplicated')
+                    ->title(__('Event duplicated'))
                     ->success()
                     ->send();
             })

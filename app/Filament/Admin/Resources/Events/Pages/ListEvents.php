@@ -83,7 +83,7 @@ class ListEvents extends ListRecords
                 $result = app(EventBulkImporter::class)->import($path, Auth::user());
 
                 Notification::make()
-                    ->title("Created {$result['created']} events")
+                    ->title(trans_choice('Created :count event|Created :count events', $result['created']))
                     ->body($result['log'] ? implode("\n", $result['log']) : null)
                     ->success()
                     ->send();

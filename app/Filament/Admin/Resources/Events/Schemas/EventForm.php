@@ -55,15 +55,15 @@ class EventForm
                         $set('starts_at', Carbon::parse($state)->setTimeFromTimeString($time)->toDateTimeString());
                     }),
                 DateTimePicker::make('starts_at')
-                    ->helperText("Date defaults from the event date above — an event can't start on a different day.")
+                    ->helperText(__("Date defaults from the event date above — an event can't start on a different day."))
                     ->required(),
                 DateTimePicker::make('ends_at')
-                    ->helperText('Set independently — pick the next day for an event that runs past midnight.')
+                    ->helperText(__('Set independently — pick the next day for an event that runs past midnight.'))
                     ->required()
                     ->after('starts_at'),
                 DatePicker::make('comp_list_due_at')
                     ->label('Comp list due date')
-                    ->helperText('Optional reminder date for staff to finalize Comp List additions by. Informational only — nothing is blocked once it passes.')
+                    ->helperText(__('Optional reminder date for staff to finalize Comp List additions by. Informational only — nothing is blocked once it passes.'))
                     ->default(null),
                 TextInput::make('name')
                     ->maxLength(80)
@@ -76,14 +76,14 @@ class EventForm
                     ->default(null),
                 TextInput::make('entry_fee')
                     ->label('Entry fee')
-                    ->helperText('0 for a pool-only event.')
+                    ->helperText(__('0 for a pool-only event.'))
                     ->required()
                     ->numeric()
                     ->prefix('$')
                     ->default(0),
                 TextInput::make('pool_fee')
                     ->label('Pool fee')
-                    ->helperText('0 if the pool is closed / not offered.')
+                    ->helperText(__('0 if the pool is closed / not offered.'))
                     ->required()
                     ->numeric()
                     ->prefix('$')
@@ -91,7 +91,7 @@ class EventForm
                     ->visible(fn (): bool => MembershipSetting::current()->pool_enabled),
                 Toggle::make('door_prepay_enabled')
                     ->label('Allow prepay ahead of the door')
-                    ->helperText('Lets the check-in page surface this event before its date, so the desk can take a walk-in prepayment for it.')
+                    ->helperText(__('Lets the check-in page surface this event before its date, so the desk can take a walk-in prepayment for it.'))
                     ->visible(fn (): bool => MembershipSetting::current()->prepay_enabled),
                 Select::make('showrunner_id')
                     ->label('Showrunner')
@@ -99,14 +99,14 @@ class EventForm
                     ->getOptionLabelFromRecordUsing(fn (Member $record) => Member::pickerLabel($record))
                     ->searchable(Member::searchableColumns())
                     ->preload()
-                    ->helperText('The member running this event — lets their linked login submit comp-list requests for it, subject to Admin+ approval.'),
+                    ->helperText(__('The member running this event — lets their linked login submit comp-list requests for it, subject to Admin+ approval.')),
                 Select::make('host_id')
                     ->label('Host')
                     ->relationship('host', 'username')
                     ->getOptionLabelFromRecordUsing(fn (Member $record) => Member::pickerLabel($record))
                     ->searchable(Member::searchableColumns())
                     ->preload()
-                    ->helperText('Automatically checked in free of charge when they attend this event — no comp request needed.'),
+                    ->helperText(__('Automatically checked in free of charge when they attend this event — no comp request needed.')),
                 Select::make('add_on_ids')
                     ->label('Available add-ons')
                     ->relationship('addOns', 'name')
@@ -117,7 +117,7 @@ class EventForm
                     // already governed by pool_fee above, so it's never a
                     // candidate here.
                     ->options(fn () => AddOn::where('active', true)->where('subscribable', false)->orderBy('sort_order')->pluck('name', 'id'))
-                    ->helperText('Which flat, checkbox-style add-ons the check-in desk can offer for this event.')
+                    ->helperText(__('Which flat, checkbox-style add-ons the check-in desk can offer for this event.'))
                     ->visible(fn (): bool => $includeAddOnSelection && MembershipSetting::current()->add_ons_enabled),
                 TextInput::make('notes')
                     ->maxLength(255)
@@ -129,7 +129,7 @@ class EventForm
                 // so this can never drift from what actually went out. No new
                 // gate: whoever can already reach this page sees it.
                 ...($includeSummary ? [
-                    Section::make('Summary')
+                    Section::make(__('Summary'))
                         ->visible(fn (?Event $record): bool => $record?->hasEnded() ?? false)
                         ->components([
                             Placeholder::make('summary_checked_in')

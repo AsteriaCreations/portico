@@ -115,7 +115,7 @@ class PrepayListRelationManager extends RelationManager
                             ->rule(function () {
                                 return function (string $attribute, mixed $value, \Closure $fail): void {
                                     if (! app(CapacityService::class)->hasRoom($this->getOwnerRecord()->event_date)) {
-                                        $fail('The building is at capacity.');
+                                        $fail(__('The building is at capacity.'));
                                     }
                                 };
                             })
@@ -123,7 +123,7 @@ class PrepayListRelationManager extends RelationManager
                         TextInput::make('amount_override')
                             ->label('Amount actually paid (optional override)')
                             ->numeric()
-                            ->helperText('Leave blank to use the computed price. Set this for a partial deposit or an early-bird rate.'),
+                            ->helperText(__('Leave blank to use the computed price. Set this for a partial deposit or an early-bird rate.')),
                         TextInput::make('payment_method')
                             ->maxLength(30),
                         Textarea::make('notes')
@@ -191,7 +191,7 @@ class PrepayListRelationManager extends RelationManager
                 $result = app(PrepayListImporter::class)->import($this->getOwnerRecord(), $path, auth()->user());
 
                 Notification::make()
-                    ->title("Added {$result['created']} to the prepay list")
+                    ->title(__('Added :count to the prepay list', ['count' => $result['created']]))
                     ->body($result['log'] ? implode("\n", $result['log']) : null)
                     ->success()
                     ->send();

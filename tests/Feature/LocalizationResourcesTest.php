@@ -5,6 +5,9 @@ use App\Filament\Admin\Pages\Technical;
 use App\Filament\Admin\Resources\Categories\Pages\CreateCategory;
 use App\Filament\Admin\Resources\Categories\Pages\EditCategory;
 use App\Filament\Admin\Resources\Categories\Pages\ListCategories;
+use App\Filament\Admin\Resources\Events\Pages\CreateEvent;
+use App\Filament\Admin\Resources\Events\Pages\EditEvent;
+use App\Filament\Admin\Resources\Events\RelationManagers\CompListRelationManager;
 use App\Filament\Admin\Resources\Members\MemberResource;
 use App\Filament\Admin\Resources\Members\Pages\CreateMember;
 use App\Filament\Admin\Resources\Members\Pages\EditMember;
@@ -12,6 +15,7 @@ use App\Filament\Admin\Resources\Members\Pages\ListMembers;
 use App\Filament\Admin\Resources\Members\RelationManagers\BehaviorNotesRelationManager;
 use App\Filament\Admin\Resources\Plans\PlanResource;
 use App\Models\Category;
+use App\Models\Event;
 use App\Models\Member;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -39,6 +43,9 @@ beforeEach(function () {
         'Not comped' => 'xx-Not comped',
         'This category name is relied on by check-in logic and cannot be renamed.' => 'xx-Protected name',
         'Created :count member|Created :count members' => 'xx-Made :count member|xx-Made :count members',
+        "Date defaults from the event date above — an event can't start on a different day." => 'xx-Date defaults',
+        'Comp list' => 'xx-Comp list',
+        'The building is at capacity.' => 'xx-At capacity',
     ]]]]);
 
     $this->actingAs(User::factory()->create(['active' => true, 'role' => Role::Manager]));
@@ -155,4 +162,13 @@ test('plural notification titles pick the singular or plural translation', funct
 
     expect(trans_choice('Created :count member|Created :count members', 1))->toBe('Created 1 member')
         ->and(trans_choice('Created :count member|Created :count members', 3))->toBe('Created 3 members');
+});
+
+test('the event form helper text and a relation manager title are translated', function () {
+    $this->actingAs(User::factory()->create(['active' => true, 'role' => Role::Admin]));
+    app()->setLocale('es');
+
+    Livewire::test(CreateEvent::class)->assertSee('xx-Date defaults');
+
+    expect(CompListRelationManager::getTitle(Event::factory()->create(), EditEvent::class))->toBe('xx-Comp list');
 });
