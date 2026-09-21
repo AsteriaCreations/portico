@@ -23,11 +23,11 @@ class PaymentMethodsTable
                 IconColumn::make('requires_register_shift')
                     ->label('Register only')
                     ->boolean()
-                    ->tooltip(fn (bool $state): string => $state ? 'Requires an open register shift' : 'Selectable with no register shift open'),
+                    ->tooltip(fn (bool $state): string => $state ? __('Requires an open register shift') : __('Selectable with no register shift open')),
                 IconColumn::make('one_time_only')
                     ->label('One-time')
                     ->boolean()
-                    ->tooltip(fn (bool $state): string => $state ? 'A member may use this method only once, ever, for entry/day passes (never restricted for a subscription purchase)' : 'A member may use this method any number of times'),
+                    ->tooltip(fn (bool $state): string => $state ? __('A member may use this method only once, ever, for entry/day passes (never restricted for a subscription purchase)') : __('A member may use this method any number of times')),
                 TextColumn::make('transaction_fee')
                     ->label('Fee')
                     ->money()
@@ -37,7 +37,7 @@ class PaymentMethodsTable
                     ->sortable(),
                 IconColumn::make('active')
                     ->boolean()
-                    ->tooltip(fn (bool $state): string => $state ? 'Active' : 'Inactive'),
+                    ->tooltip(fn (bool $state): string => $state ? __('Active') : __('Inactive')),
             ])
             ->filters([
                 //

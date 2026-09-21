@@ -31,7 +31,7 @@ class UserForm
                     ->required(fn (string $operation): bool => $operation === 'create')
                     ->dehydrateStateUsing(fn ($state) => Hash::make($state))
                     ->dehydrated(fn ($state) => filled($state))
-                    ->helperText('At least 12 characters with upper and lower case, a number, and a symbol. Leave blank to keep the current password.'),
+                    ->helperText(__('At least 12 characters with upper and lower case, a number, and a symbol. Leave blank to keep the current password.')),
                 Select::make('role')
                     // Not ->options(Role::class) -- that resolves labels via
                     // Role::getLabel() only, which never consults a club's
@@ -46,14 +46,14 @@ class UserForm
                     ->searchable(Member::searchableColumns())
                     ->preload()
                     ->unique(ignoreRecord: true)
-                    ->helperText("Optional — connects this login to the member's own record."),
+                    ->helperText(__("Optional — connects this login to the member's own record.")),
                 Toggle::make('active')
                     ->default(true)
                     ->required(),
                 Toggle::make('must_change_password')
                     ->label('Require password change at next login')
                     ->default(false)
-                    ->helperText('Forces this user to set a new password the next time they sign in, before they can do anything else in the panel — e.g. after a temporary or shared password.'),
+                    ->helperText(__('Forces this user to set a new password the next time they sign in, before they can do anything else in the panel — e.g. after a temporary or shared password.')),
             ]);
     }
 }

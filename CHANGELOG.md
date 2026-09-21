@@ -18,7 +18,9 @@ is fixes only.
   so English needs no file. Conversion is incremental: the coverage/role/capability/payout
   enum labels, `AdmissionPolicy` decision messages, and the whole Check-In Desk (page,
   notifications, Blade views, roster and cash-box summary) and the Members, Categories, Events,
-  Subscriptions, Plans, Vouchers and Add-Ons screens are translatable so far; other screens follow. Names a club types itself (categories, plans, comp reasons, ...) are
+  Subscriptions, Plans, Vouchers, Add-Ons, payment methods, registers, comp reasons, paperwork
+  types, skills, cleaning tasks, payout tiers and Users screens are translatable so far;
+  widgets, the remaining pages and emails follow. Names a club types itself (categories, plans, comp reasons, ...) are
   never translated. See CONTRIBUTING.md for the convention.
 - Every Filament form field, table column, filter and action label is now looked up in the
   translator (one global default in `AppServiceProvider`), whether set with `->label()` or

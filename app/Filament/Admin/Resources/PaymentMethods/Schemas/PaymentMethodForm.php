@@ -29,21 +29,21 @@ class PaymentMethodForm
                     ->disabled(fn (?PaymentMethod $record): bool => (bool) $record)
                     ->dehydrated(fn (?PaymentMethod $record): bool => ! $record)
                     ->helperText(fn (?PaymentMethod $record): ?string => $record
-                        ? 'The stored value on historical records — cannot be changed once created.'
-                        : 'The value stored on attendance/subscription rows, e.g. "cash".'),
+                        ? __('The stored value on historical records — cannot be changed once created.')
+                        : __('The value stored on attendance/subscription rows, e.g. "cash".')),
                 Toggle::make('requires_register_shift')
                     ->label('Requires the register to be open')
-                    ->helperText('Only selectable while a shift is open, and counted toward box reconciliation — e.g. Cash.')
+                    ->helperText(__('Only selectable while a shift is open, and counted toward box reconciliation — e.g. Cash.'))
                     ->required()
                     ->default(false),
                 Toggle::make('one_time_only')
                     ->label('One-time use per member')
-                    ->helperText('A member may select this method only once, ever, for entry (check-in) or a day pass — doing so appends a dated note to their hospitality note and disables every one-time method for them afterward. E.g. Venmo, PayPal. A subscription/membership purchase is never restricted by this, regardless of the flag.')
+                    ->helperText(__('A member may select this method only once, ever, for entry (check-in) or a day pass — doing so appends a dated note to their hospitality note and disables every one-time method for them afterward. E.g. Venmo, PayPal. A subscription/membership purchase is never restricted by this, regardless of the flag.'))
                     ->required()
                     ->default(false),
                 TextInput::make('transaction_fee')
                     ->label('Transaction fee')
-                    ->helperText('A flat surcharge added to the total whenever this method is selected, e.g. $2 for Venmo/PayPal to cover the processor cost. Leave at 0 for no fee.')
+                    ->helperText(__('A flat surcharge added to the total whenever this method is selected, e.g. $2 for Venmo/PayPal to cover the processor cost. Leave at 0 for no fee.'))
                     ->numeric()
                     ->minValue(0)
                     ->step(0.01)

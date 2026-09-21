@@ -14,7 +14,9 @@ use App\Filament\Admin\Resources\Members\Pages\CreateMember;
 use App\Filament\Admin\Resources\Members\Pages\EditMember;
 use App\Filament\Admin\Resources\Members\Pages\ListMembers;
 use App\Filament\Admin\Resources\Members\RelationManagers\BehaviorNotesRelationManager;
+use App\Filament\Admin\Resources\PaymentMethods\Pages\CreatePaymentMethod;
 use App\Filament\Admin\Resources\Plans\PlanResource;
+use App\Filament\Admin\Resources\Users\Pages\CreateUser;
 use App\Models\AddOn;
 use App\Models\Category;
 use App\Models\Event;
@@ -49,6 +51,8 @@ beforeEach(function () {
         'Comp list' => 'xx-Comp list',
         'The building is at capacity.' => 'xx-At capacity',
         'Not subscribable' => 'xx-Not subscribable',
+        'The value stored on attendance/subscription rows, e.g. "cash".' => 'xx-Stored value',
+        "Optional — connects this login to the member's own record." => 'xx-Optional link',
         'Granted regular subscription to :username for :month' => 'xx-Granted :username :month',
     ]]]]);
 
@@ -183,4 +187,12 @@ test('an add-on table tooltip driven by a closure is translated', function () {
     app()->setLocale('es');
 
     Livewire::test(ListAddOns::class)->assertSee('xx-Not subscribable');
+});
+
+test('helper texts on the payment method and user forms are translated', function () {
+    $this->actingAs(User::factory()->create(['active' => true, 'role' => Role::Owner]));
+    app()->setLocale('es');
+
+    Livewire::test(CreatePaymentMethod::class)->assertSee('xx-Stored value');
+    Livewire::test(CreateUser::class)->assertSee('xx-Optional link');
 });

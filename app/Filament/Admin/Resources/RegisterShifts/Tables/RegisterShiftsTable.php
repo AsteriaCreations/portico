@@ -30,17 +30,17 @@ class RegisterShiftsTable
                     ->money(),
                 TextColumn::make('closedBy.name')
                     ->label('Closed by')
-                    ->placeholder('—')
+                    ->placeholder(__('—'))
                     ->toggleable(),
                 TextColumn::make('closed_at')
                     ->label('Closed at')
                     ->dateTime()
-                    ->placeholder('— still open')
+                    ->placeholder(__('— still open'))
                     ->sortable(),
                 TextColumn::make('closing_count')
                     ->label('Closing count')
                     ->money()
-                    ->placeholder('—')
+                    ->placeholder(__('—'))
                     ->toggleable(),
                 TextColumn::make('drops_total')
                     ->label('Drops')
@@ -64,7 +64,7 @@ class RegisterShiftsTable
                 TextColumn::make('variance')
                     ->state(fn (RegisterShift $record) => app(RegisterShiftService::class)->variance($record))
                     ->money()
-                    ->placeholder('— open')
+                    ->placeholder(__('— open'))
                     ->color(fn (?float $state) => match (true) {
                         $state === null => 'gray',
                         $state == 0.0 => 'success',

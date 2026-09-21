@@ -23,7 +23,7 @@ class ShowrunnerPayoutTierForm
                     ->label('Maximum headcount')
                     ->numeric()
                     ->minValue(0)
-                    ->helperText('Leave blank for the top tier — informational only. The tier with the highest minimum headcount at or below the actual headcount always wins, so its rate keeps applying with no upper bound regardless of what\'s set here.'),
+                    ->helperText(__('Leave blank for the top tier — informational only. The tier with the highest minimum headcount at or below the actual headcount always wins, so its rate keeps applying with no upper bound regardless of what\'s set here.')),
                 Select::make('payout_type')
                     ->required()
                     ->live()
