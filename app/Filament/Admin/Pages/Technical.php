@@ -77,8 +77,8 @@ class Technical extends Page
                 $exitCode = Artisan::call('backup:database');
 
                 $exitCode === 0
-                    ? Notification::make()->title('Backup completed')->success()->send()
-                    : Notification::make()->title('Backup failed')->body(Artisan::output())->danger()->send();
+                    ? Notification::make()->title(__('Backup completed'))->success()->send()
+                    : Notification::make()->title(__('Backup failed'))->body(Artisan::output())->danger()->send();
 
                 $this->redirect(static::getUrl());
             });
@@ -94,8 +94,8 @@ class Technical extends Page
                 $exitCode = Artisan::call('vouchers:grant-comp-rewards');
 
                 $exitCode === 0
-                    ? Notification::make()->title('Comp-reward grant completed')->success()->send()
-                    : Notification::make()->title('Comp-reward grant failed')->body(Artisan::output())->danger()->send();
+                    ? Notification::make()->title(__('Comp-reward grant completed'))->success()->send()
+                    : Notification::make()->title(__('Comp-reward grant failed'))->body(Artisan::output())->danger()->send();
 
                 $this->redirect(static::getUrl());
             });

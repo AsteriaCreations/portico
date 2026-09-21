@@ -85,7 +85,7 @@ class RoleLabels extends Page
 
                 MembershipSetting::current()->update(['role_labels' => $labels]);
 
-                Notification::make()->title('Role labels saved')->success()->send();
+                Notification::make()->title(__('Role labels saved'))->success()->send();
             });
     }
 }
