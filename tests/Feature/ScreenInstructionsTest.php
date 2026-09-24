@@ -52,3 +52,36 @@ test('active patrons and check-in keep their existing instructions panel', funct
         ->assertSuccessful()
         ->assertSee('How to check someone in');
 });
+
+test('the printable desk reference cards require auth and serve the stored file', function () {
+    $this->get('/admin/desk-reference-cards')->assertRedirect('/admin/login');
+
+    $volunteer = User::factory()->create(['active' => true, 'role' => Role::Volunteer]);
+
+    // A BinaryFileResponse streams straight from disk rather than buffering
+    // into getContent(), so assert the content-type and the underlying file
+    // path instead of asserting on body text.
+    $response = $this->actingAs($volunteer)->get('/admin/desk-reference-cards')
+        ->assertSuccessful()
+        ->assertHeader('content-type', 'text/html; charset=utf-8');
+
+    expect($response->baseResponse->getFile()->getPathname())
+        ->toBe(realpath(storage_path('desk-reference-cards.html')));
+});
+
+// Each screen the cards actually cover links straight to its own card via
+// the #check-in / #active-patrons / #departures anchors added to the file.
+test('dashboard, check-in, and active patrons link to their desk reference card', function (string $path, string $anchor) {
+    $volunteer = User::factory()->create(['active' => true, 'role' => Role::Volunteer]);
+    $door = User::factory()->create(['active' => true, 'role' => Role::Door]);
+
+    $user = $path === '/admin/check-in' ? $door : $volunteer;
+
+    $this->actingAs($user)->get($path)
+        ->assertSuccessful()
+        ->assertSee('/admin/desk-reference-cards'.$anchor, false);
+})->with([
+    ['/admin', '#departures'],
+    ['/admin/check-in', '#check-in'],
+    ['/admin/active-patrons', '#active-patrons'],
+]);

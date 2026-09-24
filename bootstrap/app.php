@@ -17,6 +17,12 @@ return Application::configure(basePath: dirname(__DIR__))
         // check, the public welcome route -- carries it once served over
         // HTTPS, not just the admin panel.
         $middleware->append(EnforceHsts::class);
+
+        // Routes outside the Filament panel (e.g. the desk-reference-cards
+        // print page) still use the framework's 'auth' middleware alias, which
+        // otherwise redirects a guest to an undefined 'login' route. Send them
+        // to the panel's own login page instead.
+        $middleware->redirectGuestsTo('/admin/login');
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(
