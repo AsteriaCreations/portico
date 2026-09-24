@@ -5,6 +5,7 @@
         <p>{!! __('<strong>Visit note</strong> is temporary — use it for something like a clothing description to help spot someone tonight. It\'s not kept after the event.') !!}</p>
         <p>{!! __('<strong>Behavior note</strong> is permanent and goes on the member\'s record — use it for anything staff should know about later, not just tonight.') !!}</p>
         <p>{!! __('Use the <strong>Watchlist only</strong> filter to keep an eye on flagged patrons still in the room.') !!}</p>
+        <p>{!! __('Print the <a href=":url" target="_blank" rel="noopener" class="underline">desk reference card</a> for this screen.', ['url' => route('desk-reference-cards').'#active-patrons']) !!}</p>
     </x-screen-instructions>
 
     <x-filament::section>

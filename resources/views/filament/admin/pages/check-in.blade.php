@@ -39,6 +39,7 @@
         <p>{{ __("If a watchlist note asks for a staff-channel message, send it first, then tick the acknowledgement — you can't proceed without it.") }}</p>
         <p>{{ __('Everything folded away — selling a subscription or day pass, add-ons / vouchers / comps, the cash box — is still here, one click open, and never needed for a normal check-in.') }}</p>
         <p>{!! __('Two different things say "subscription": <strong>Payment options</strong> below uses one to cover tonight\'s entry fee, as part of this same check-in. <strong>Sell a subscription or day pass</strong> is a separate, standalone sale that doesn\'t check anyone in.') !!}</p>
+        <p>{!! __('Print the <a href=":url" target="_blank" rel="noopener" class="underline">desk reference card</a> for this screen.', ['url' => route('desk-reference-cards').'#check-in']) !!}</p>
     </x-screen-instructions>
 
     {{-- No wire:poll here on purpose: this whole section shares one Livewire message-bus
