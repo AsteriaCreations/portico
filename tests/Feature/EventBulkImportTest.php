@@ -90,6 +90,23 @@ test('bulk upload skips and logs an unparseable date, unmatched event type, unma
     expect(Event::count())->toBe(0);
 });
 
+test('bulk upload skips a negative fee and a start on a different day than the event date', function () {
+    $path = buildEventUploadFixture([
+        ['2026-09-01', '', '', 'Negative Entry', '', -20, 5, '', '', '', ''],
+        ['2026-09-02', '', '', 'Negative Pool', '', 20, -5, '', '', '', ''],
+        ['2026-09-03', '2026-09-05 20:00', '2026-09-05 23:00', 'Wrong Start Day', '', 20, 5, '', '', '', ''],
+        ['2026-09-04', '2026-09-04 20:00', '2026-09-05 01:00', 'Runs Past Midnight', '', 20, 5, '', '', '', ''],
+    ]);
+
+    try {
+        callEventBulkUpload($path)->assertHasNoErrors();
+    } finally {
+        @unlink($path);
+    }
+
+    expect(Event::pluck('name')->all())->toBe(['Runs Past Midnight']);
+});
+
 test('bulk upload is idempotent on the same event_date + name', function () {
     $path = buildEventUploadFixture([
         ['2026-09-01', '', '', 'Fall Social', '', 20, 5, '', '', '', ''],

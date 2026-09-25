@@ -1,6 +1,7 @@
 <?php
 
 use App\Enums\Role;
+use App\Filament\Admin\Resources\Events\EventResource;
 use App\Filament\Admin\Resources\Events\Pages\CreateEvent;
 use App\Filament\Admin\Resources\Events\Pages\EditEvent;
 use App\Filament\Admin\Resources\Events\Pages\ListEvents;
@@ -95,6 +96,99 @@ test('ends_at must be after starts_at', function () {
         ])
         ->call('create')
         ->assertHasFormErrors(['ends_at']);
+});
+
+test('fees must be zero or more, to the cent', function () {
+    $base = [
+        'event_date' => '2026-08-01',
+        'starts_at' => '2026-08-01 20:00:00',
+        'ends_at' => '2026-08-01 23:00:00',
+        'name' => 'Fee Check',
+        'entry_fee' => 20,
+        'pool_fee' => 5,
+    ];
+
+    Livewire::test(CreateEvent::class)
+        ->fillForm([...$base, 'entry_fee' => -20])
+        ->call('create')
+        ->assertHasFormErrors(['entry_fee']);
+
+    Livewire::test(CreateEvent::class)
+        ->fillForm([...$base, 'pool_fee' => -5])
+        ->call('create')
+        ->assertHasFormErrors(['pool_fee']);
+
+    Livewire::test(CreateEvent::class)
+        ->fillForm([...$base, 'entry_fee' => 5.005])
+        ->call('create')
+        ->assertHasFormErrors(['entry_fee']);
+
+    expect(Event::where('name', 'Fee Check')->exists())->toBeFalse();
+});
+
+test('starts_at must be on the event date, while ends_at may run past midnight', function () {
+    Livewire::test(CreateEvent::class)
+        ->fillForm([
+            'event_date' => '2026-08-01',
+            'starts_at' => '2026-08-05 20:00:00',
+            'ends_at' => '2026-08-05 23:00:00',
+            'name' => 'Wrong Day',
+            'entry_fee' => 20,
+            'pool_fee' => 0,
+        ])
+        ->call('create')
+        ->assertHasFormErrors(['starts_at']);
+
+    expect(Event::where('name', 'Wrong Day')->exists())->toBeFalse();
+});
+
+test('an event is titled by its date and name, falling back to its type when unnamed', function () {
+    $type = EventType::factory()->create(['name' => 'Social']);
+    $named = Event::factory()->create(['event_date' => '2026-08-01', 'name' => 'Summer Social', 'event_type_id' => $type->id]);
+    $unnamed = Event::factory()->create(['event_date' => '2026-08-02', 'name' => null, 'event_type_id' => $type->id]);
+    $bare = Event::factory()->create(['event_date' => '2026-08-03', 'name' => null, 'event_type_id' => null]);
+
+    expect(EventResource::getRecordTitle($named))->toBe('Aug 1, 2026 — Summer Social')
+        ->and(EventResource::getRecordTitle($unnamed))->toBe('Aug 2, 2026 — Social')
+        ->and(EventResource::getRecordTitle($bare))->toBe('Aug 3, 2026 — Untitled event');
+});
+
+test('the edit form warns that changes do not touch attendance already recorded, and only then', function () {
+    $empty = Event::factory()->create();
+    Livewire::test(EditEvent::class, ['record' => $empty->getRouteKey()])
+        ->assertDontSee('already recorded for this event');
+
+    $busy = Event::factory()->create();
+    Attendance::factory()->for($busy)->count(2)->create();
+    Livewire::test(EditEvent::class, ['record' => $busy->getRouteKey()])
+        ->assertSee('2 people are already recorded for this event.');
+});
+
+test('duplicating an event with attendance does not show the already-recorded warning', function () {
+    $original = Event::factory()->create();
+    Attendance::factory()->for($original)->create();
+
+    $html = Livewire::test(ListEvents::class)
+        ->mountTableAction('duplicate', $original)
+        ->html();
+
+    expect($html)->not->toContain('already recorded for this event');
+});
+
+test('the events table counts arrivals only and filters upcoming from past', function () {
+    $past = Event::factory()->create(['event_date' => today()->subWeek(), 'starts_at' => today()->subWeek()->setTime(20, 0), 'ends_at' => today()->subWeek()->setTime(23, 0)]);
+    $upcoming = Event::factory()->create(['event_date' => today()->addWeek(), 'starts_at' => today()->addWeek()->setTime(20, 0), 'ends_at' => today()->addWeek()->setTime(23, 0)]);
+    Attendance::factory()->for($past)->count(2)->create(['checked_in_at' => now()->subWeek()]);
+    Attendance::factory()->for($past)->create(['checked_in_at' => null]);
+
+    Livewire::test(ListEvents::class)
+        ->assertTableColumnStateSet('attendance_count', 2, $past)
+        ->filterTable('when', 'upcoming')
+        ->assertCanSeeTableRecords([$upcoming])
+        ->assertCanNotSeeTableRecords([$past])
+        ->filterTable('when', 'past')
+        ->assertCanSeeTableRecords([$past])
+        ->assertCanNotSeeTableRecords([$upcoming]);
 });
 
 test('comp_list_due_at is optional and can be set on an event', function () {

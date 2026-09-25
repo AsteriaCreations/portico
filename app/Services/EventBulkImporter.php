@@ -93,14 +93,22 @@ class EventBulkImporter
                 continue;
             }
 
-            if ($entryFeeRaw === '' || ! is_numeric($entryFeeRaw)) {
-                $log[] = "row {$row}: missing or non-numeric entry_fee '{$entryFeeRaw}', skipped";
+            // Same rule as EventForm: a start on another day would surface
+            // the event at the desk on two different nights.
+            if ($startsAt && ! $startsAt->isSameDay($eventDate)) {
+                $log[] = "row {$row}: starts_at is not on event_date, skipped";
 
                 continue;
             }
 
-            if ($poolFeeRaw === '' || ! is_numeric($poolFeeRaw)) {
-                $log[] = "row {$row}: missing or non-numeric pool_fee '{$poolFeeRaw}', skipped";
+            if ($entryFeeRaw === '' || ! is_numeric($entryFeeRaw) || Cents::of($entryFeeRaw) < 0) {
+                $log[] = "row {$row}: missing, non-numeric or negative entry_fee '{$entryFeeRaw}', skipped";
+
+                continue;
+            }
+
+            if ($poolFeeRaw === '' || ! is_numeric($poolFeeRaw) || Cents::of($poolFeeRaw) < 0) {
+                $log[] = "row {$row}: missing, non-numeric or negative pool_fee '{$poolFeeRaw}', skipped";
 
                 continue;
             }

@@ -513,7 +513,7 @@ test('a 1-month subscription purchase at check-in is priced as of today, not the
     Plan::create(['add_on_id' => $this->entry->id, 'price' => 75, 'credit' => 25, 'effective_from' => now()->toDateString()]);
 
     $member = clearMember($this->irregular, ['subscription_eligible' => true]);
-    $event = Event::factory()->create(['event_date' => '2026-01-05', 'entry_fee' => 40, 'pool_fee' => 0]);
+    $event = Event::factory()->create(['event_date' => '2026-01-05', 'entry_fee' => 40, 'pool_fee' => 0, 'door_prepay_enabled' => true]);
 
     Livewire::test(CheckIn::class)
         ->fillForm(['event_id' => $event->id, 'member_id' => $member->id])
@@ -834,7 +834,7 @@ test('a non-attendance integrity violation is not reported as "already checked i
 
 test('checking in for a future event without a check-in time records a prepayment', function () {
     $member = clearMember($this->irregular);
-    $event = Event::factory()->create(['event_date' => now()->addMonth()->toDateString(), 'entry_fee' => 40]);
+    $event = Event::factory()->create(['event_date' => now()->addMonth()->toDateString(), 'entry_fee' => 40, 'door_prepay_enabled' => true]);
 
     Livewire::test(CheckIn::class)
         ->fillForm(['event_id' => $event->id, 'member_id' => $member->id])
@@ -1414,7 +1414,7 @@ test('card is no longer offered as a check-in payment method', function () {
 test('venmo can be used once per member; a second attempt is rejected and the first is noted on hospitality_note', function () {
     $member = clearMember($this->irregular);
     $eventOne = Event::factory()->create(['event_date' => now()->toDateString(), 'entry_fee' => 20, 'pool_fee' => 0]);
-    $eventTwo = Event::factory()->create(['event_date' => '2026-07-26', 'entry_fee' => 20, 'pool_fee' => 0]);
+    $eventTwo = Event::factory()->create(['event_date' => '2026-07-26', 'entry_fee' => 20, 'pool_fee' => 0, 'door_prepay_enabled' => true]);
 
     Livewire::test(CheckIn::class)
         ->fillForm(['event_id' => $eventOne->id, 'member_id' => $member->id])
@@ -1442,7 +1442,7 @@ test('venmo can be used once per member; a second attempt is rejected and the fi
 test('using one one-time method (venmo) also locks out the others (paypal)', function () {
     $member = clearMember($this->irregular);
     $eventOne = Event::factory()->create(['event_date' => now()->toDateString(), 'entry_fee' => 20, 'pool_fee' => 0]);
-    $eventTwo = Event::factory()->create(['event_date' => '2026-07-26', 'entry_fee' => 20, 'pool_fee' => 0]);
+    $eventTwo = Event::factory()->create(['event_date' => '2026-07-26', 'entry_fee' => 20, 'pool_fee' => 0, 'door_prepay_enabled' => true]);
 
     Livewire::test(CheckIn::class)
         ->fillForm(['event_id' => $eventOne->id, 'member_id' => $member->id])
@@ -1466,7 +1466,7 @@ test('using one one-time method (venmo) also locks out the others (paypal)', fun
 test('a non-one-time method (cash) never locks anything out', function () {
     $member = clearMember($this->irregular);
     $eventOne = Event::factory()->create(['event_date' => now()->toDateString(), 'entry_fee' => 20, 'pool_fee' => 0]);
-    $eventTwo = Event::factory()->create(['event_date' => '2026-07-26', 'entry_fee' => 20, 'pool_fee' => 0]);
+    $eventTwo = Event::factory()->create(['event_date' => '2026-07-26', 'entry_fee' => 20, 'pool_fee' => 0, 'door_prepay_enabled' => true]);
 
     foreach ([$eventOne, $eventTwo] as $event) {
         Livewire::test(CheckIn::class)
@@ -1858,6 +1858,25 @@ test('a forged event_id for a future door-prepay event is rejected once prepay_e
     // post-call state cleanly, the same Livewire/abort_unless interaction
     // already seen in the Manager-perk and Pool rounds -- the resulting DB
     // state is what actually proves the fix.
+    Livewire::test(CheckIn::class)
+        ->fillForm(['event_id' => $futureEvent->id, 'member_id' => $member->id])
+        ->callAction('checkIn', data: ['checked_in_at' => now()]);
+
+    expect(Attendance::where('member_id', $member->id)->where('event_id', $futureEvent->id)->exists())->toBeFalse();
+});
+
+test('a forged event_id for a future event that never opted into door prepay is rejected even with prepay_enabled on', function () {
+    $member = clearMember($this->irregular);
+    $futureEvent = Event::factory()->create([
+        'event_date' => now()->addMonth()->toDateString(),
+        'starts_at' => now()->addMonth()->setTime(20, 0)->toDateTimeString(),
+        'ends_at' => now()->addMonth()->setTime(23, 0)->toDateTimeString(),
+        'door_prepay_enabled' => false,
+        'entry_fee' => 20,
+    ]);
+
+    // Same forged-payload shape as the prepay_enabled-off test above; the
+    // global setting is on here, so only the event's own opt-in stops it.
     Livewire::test(CheckIn::class)
         ->fillForm(['event_id' => $futureEvent->id, 'member_id' => $member->id])
         ->callAction('checkIn', data: ['checked_in_at' => now()]);

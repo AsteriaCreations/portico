@@ -45,6 +45,14 @@ is fixes only.
 
 ### Changed
 
+- Events screen: the list gains a start-time column, an "Arrived" count (arrivals only,
+  not prepays awaiting arrival) and an Upcoming / Past filter. An unnamed event is titled
+  by its date and type ("Aug 1, 2026 — Social") instead of a bare "Event", in page titles,
+  breadcrumbs, global search and the check-in desk's picker (new `Event::label()`). Editing
+  an event that already has attendance shows a notice that recorded payments keep their
+  price and subscription month. The ended-event Summary runs its query once, not three
+  times.
+
 - The check-in desk's recording transaction (subscriptions bought with the visit, the
   priced attendance row, add-ons, voucher draw, and the capacity and add-on-limit
   re-checks under the admission lock) moved out of the Check-In page into
@@ -90,6 +98,16 @@ is fixes only.
   and Upstream Updates pages, and the Owner-only club name.
 
 ### Fixed
+
+- The check-in desk could record a prepayment for any past or future event through a
+  forged `event_id`, as long as prepay was switched on for the club: the server-side
+  re-check looked at the club setting, not the event's own "Allow prepay ahead of the
+  door". It now requires both, matching what the event picker offers.
+- An event's entry and pool fees accepted negative amounts and silently rounded a third
+  decimal; both must now be zero or more, to the cent. An event's start could be on a
+  different day from its event date, surfacing it at the desk on two nights; the start
+  must now be on the event date (the end may still run past midnight). The events bulk
+  upload skips and logs rows breaking either rule.
 
 - A check-in that subscription credit plus a voucher covered exactly could still be
   charged the payment method's transaction fee (e.g. $20.30 entry, $20.00 credit, $0.30

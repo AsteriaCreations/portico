@@ -19,6 +19,8 @@ use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
+use Illuminate\Contracts\Support\Htmlable;
+use Illuminate\Database\Eloquent\Model;
 use UnitEnum;
 
 class EventResource extends Resource
@@ -34,6 +36,15 @@ class EventResource extends Resource
     protected static ?int $navigationSort = 2;
 
     protected static ?string $recordTitleAttribute = 'name';
+
+    /**
+     * The name is optional, so titles, breadcrumbs and global search use
+     * Event::label() (date plus name, or type) rather than a bare "Event".
+     */
+    public static function getRecordTitle(?Model $record): string|Htmlable|null
+    {
+        return $record instanceof Event ? $record->label() : parent::getRecordTitle($record);
+    }
 
     public static function form(Schema $schema): Schema
     {

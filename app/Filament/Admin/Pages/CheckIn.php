@@ -1433,11 +1433,11 @@ class CheckIn extends Page implements HasTable
 
                 // getSelectedEvent() does a raw Event::find() with no relation
                 // to eventSelectQuery()'s own dropdown filtering -- a forged
-                // event_id for a non-active (prepay-only) event must still be
-                // rejected once prepay is disabled, even though the picker
-                // itself already stopped offering it. A currently-active
-                // event is never affected either way.
-                abort_unless($event->isCurrentlyActive() || MembershipSetting::current()->prepay_enabled, 403);
+                // event_id for a non-active event must be one the picker would
+                // offer: prepay switched on AND this event opted in. Checking
+                // the setting alone let a forged id prepay into any future
+                // event. A currently-active event is never affected.
+                abort_unless($event->isCurrentlyActive() || (MembershipSetting::current()->prepay_enabled && $event->door_prepay_enabled), 403);
 
                 // pricingForm's own required-if rules (comp_reason_id when
                 // comp_entry is checked, the voucher fields when apply_voucher
@@ -1770,7 +1770,7 @@ class CheckIn extends Page implements HasTable
 
     protected static function eventLabel(Event $event): string
     {
-        return $event->event_date->translatedFormat('M j, Y').' — '.($event->name ?? __('Untitled event'));
+        return $event->label();
     }
 
     /**
