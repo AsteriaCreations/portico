@@ -22,6 +22,7 @@ use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Schemas\Schema;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Validation\Rules\Unique;
 
 class AttendanceRelationManager extends RelationManager
@@ -97,10 +98,9 @@ class AttendanceRelationManager extends RelationManager
                     ->schema([
                         Select::make('event_id')
                             ->label('Event')
-                            ->relationship('event', 'name')
-                            ->getOptionLabelFromRecordUsing(
-                                fn (Event $record) => "{$record->event_date->translatedFormat('M j, Y')} — {$record->name}"
-                            )
+                            // An archived event takes no new attendance.
+                            ->relationship('event', 'name', modifyQueryUsing: fn (Builder $query): Builder => $query->whereNull('archived_at'))
+                            ->getOptionLabelFromRecordUsing(fn (Event $record): string => $record->label())
                             ->searchable()
                             ->preload()
                             ->unique(

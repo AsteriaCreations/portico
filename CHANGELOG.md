@@ -11,6 +11,16 @@ is fixes only.
 
 ### Added
 
+- **Archive events** (Admin+), instead of deleting them. An archived event leaves the
+  check-in desk, Active Patrons, the Showrunner comp-request screen, day-pass sales and the
+  default events list (an **Archived** filter shows it again), and becomes read-only: its
+  form, tabs and comp-request approvals are locked, and a forged check-in is refused (in
+  `CheckInService` too). Every attendance, payment and comp row is kept, and **Unarchive**
+  restores it. A past event can always be archived; an upcoming one only while nobody is on
+  it, so no prepayment is stranded. New `events.archived_at` / `archived_by` columns:
+  **run `php artisan migrate`**. The ended-event summary skips an event archived before it
+  ended; comp-reward vouchers are still granted for one archived after.
+
 - The admin panel's language is now a per-installation setting (Membership Settings →
   Language, stored as `membership_settings.locale`; blank keeps the server default). Only
   languages with a `lang/{code}.json` translation file are offered, so English is the only
@@ -99,6 +109,10 @@ is fixes only.
 
 ### Fixed
 
+- Deleting an event that had any check-ins, prepays, comp requests, day passes or ban
+  exceptions (singly or by bulk delete) failed with a server error on the database's
+  foreign keys. Delete now only appears for an event with nothing recorded against it, bulk
+  delete skips the rest, and those events can be archived instead.
 - The check-in desk could record a prepayment for any past or future event through a
   forged `event_id`, as long as prepay was switched on for the club: the server-side
   re-check looked at the club setting, not the event's own "Allow prepay ahead of the

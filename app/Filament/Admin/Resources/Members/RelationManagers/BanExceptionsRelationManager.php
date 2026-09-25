@@ -3,6 +3,7 @@
 namespace App\Filament\Admin\Resources\Members\RelationManagers;
 
 use App\Filament\Concerns\TranslatesRelationManagerTitle;
+use App\Models\Event;
 use Filament\Actions\CreateAction;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
@@ -10,6 +11,7 @@ use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Schemas\Schema;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 
 /**
  * Grants a specific banned member admission to one specific event without
@@ -31,10 +33,10 @@ class BanExceptionsRelationManager extends RelationManager
             ->components([
                 Select::make('event_id')
                     ->label('Event')
-                    ->relationship('event', 'name')
-                    ->getOptionLabelFromRecordUsing(
-                        fn ($record) => "{$record->event_date->translatedFormat('M j, Y')} — {$record->name}"
-                    )
+                    // A new exception can't target an archived event; an existing
+                    // one still shows its event when edited.
+                    ->relationship('event', 'name', modifyQueryUsing: fn (Builder $query, string $operation): Builder => $operation === 'create' ? $query->whereNull('archived_at') : $query)
+                    ->getOptionLabelFromRecordUsing(fn (Event $record): string => $record->label())
                     ->searchable()
                     ->preload()
                     ->required(),

@@ -165,15 +165,23 @@ CREATE TABLE events (
   showrunner_id INT,                                  -- FK -> members; the member running this event (Showrunner role's comp-list nominations, Admin-approved)
   host_id       INT,                                  -- FK -> members; automatically free entry at THIS event when they check in (see "Host")
   notes         VARCHAR(255),
+  archived_at   TIMESTAMP NULL,                       -- NULL = active; set = retired, history kept (see "Archived events")
+  archived_by   INT,                                  -- FK -> users; who archived it (cleared on unarchive)
   created_by    INT,
   created_at TIMESTAMP NULL, updated_at TIMESTAMP NULL,
   FOREIGN KEY (created_by)    REFERENCES users(id),
   FOREIGN KEY (event_type_id) REFERENCES event_types(id),
   FOREIGN KEY (showrunner_id) REFERENCES members(id),
-  FOREIGN KEY (host_id)       REFERENCES members(id)
+  FOREIGN KEY (host_id)       REFERENCES members(id),
+  FOREIGN KEY (archived_by)   REFERENCES users(id)
 );
 -- has_entry = entry_fee > 0 · has_pool = pool_fee > 0 (both derived, not stored)
--- Event cost is fixed — creating, editing, or deleting an event is Admin+ only (EventPolicy).
+-- Event cost is fixed — creating, editing, archiving, or deleting an event is Admin+ only (EventPolicy).
+-- Archived events: out of the check-in desk, Active Patrons, the Showrunner screen and the
+-- default events list; read-only, with every attendance/payment/comp row kept. A past event
+-- can always be archived, an upcoming one only while it has no attendance. Delete is allowed
+-- only for an event nothing references (no attendance, comp requests, day passes or ban
+-- exceptions); otherwise archive. starts_at must be on event_date; fees are >= 0.
 -- starts_at/ends_at are nullable at the DB level (the ~111 events that predate this
 -- feature stay null) but the EventForm requires both going forward, ends_at after starts_at.
 

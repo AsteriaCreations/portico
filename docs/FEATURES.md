@@ -63,6 +63,8 @@ MEMBER MANAGEMENT
 EVENTS
 ------
 - Event CRUD with fixed cost (Admin-only edits)
+- Archive / unarchive events (Admin+): retires an event from the desk and default list, read-only, history kept; delete only for an event with nothing recorded
+- Events list: start time, arrivals count, Upcoming / Past and Archived filters
 - Concurrent same-day events
 - Midnight-spanning event detection (buffered window)
 - Door-prepay flag for future-dated events

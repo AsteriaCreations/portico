@@ -28,6 +28,7 @@ class Event extends Model
             'entry_fee' => 'decimal:2',
             'pool_fee' => 'decimal:2',
             'door_prepay_enabled' => 'boolean',
+            'archived_at' => 'datetime',
         ];
     }
 
@@ -77,6 +78,69 @@ class Event extends Model
         return $this->hasMany(AddOnDayPass::class);
     }
 
+    public function banExceptions(): HasMany
+    {
+        return $this->hasMany(BanException::class);
+    }
+
+    public function archivedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'archived_by');
+    }
+
+    public function isArchived(): bool
+    {
+        return $this->archived_at !== null;
+    }
+
+    /**
+     * Anything that points at this event and would block (or be lost by) a
+     * hard delete: attendance and prepays, comp requests, day passes, ban
+     * exceptions. An event with none of these was created by mistake or never
+     * used, and can simply be deleted; otherwise it can only be archived.
+     */
+    public function hasRecordedActivity(): bool
+    {
+        return $this->hasAnyAttendance()
+            || ($this->comp_requests_exists ?? $this->compRequests()->exists())
+            || ($this->add_on_day_passes_exists ?? $this->addOnDayPasses()->exists())
+            || ($this->ban_exceptions_exists ?? $this->banExceptions()->exists());
+    }
+
+    /**
+     * Uses a withExists('attendance') flag when the query loaded one (the
+     * events table does, so its per-row action checks don't each query).
+     */
+    private function hasAnyAttendance(): bool
+    {
+        return (bool) ($this->attendance_exists ?? $this->attendance()->exists());
+    }
+
+    /**
+     * A past event can always be archived. An upcoming one only while nobody
+     * is on it, so no one's prepayment ends up on an event the desk can no
+     * longer see.
+     */
+    public function canBeArchived(): bool
+    {
+        return ! $this->isArchived()
+            && ($this->hasEnded() || ! $this->hasAnyAttendance());
+    }
+
+    /**
+     * Columns set here rather than through #[Fillable], so a form can never
+     * archive an event by posting archived_at.
+     */
+    public function archive(User $by): void
+    {
+        $this->forceFill(['archived_at' => now(), 'archived_by' => $by->id])->save();
+    }
+
+    public function unarchive(): void
+    {
+        $this->forceFill(['archived_at' => null, 'archived_by' => null])->save();
+    }
+
     /**
      * Flat, non-subscribable add-ons (Sleepover, Private room rental, …)
      * this event actually offers at check-in -- see AddOn::events().
@@ -98,14 +162,15 @@ class Event extends Model
      * not a replacement — event_date keeps its existing "whole calendar day"
      * reach for events that don't cross midnight, this only adds coverage
      * for ones that do. Events with no starts_at/ends_at (nullable for
-     * pre-existing events) fall back to the event_date check alone.
+     * pre-existing events) fall back to the event_date check alone. An
+     * archived event is never current, whatever its dates.
      */
     public static function currentQuery(): Builder
     {
         $buffer = MembershipSetting::current()->event_window_buffer_minutes;
         $now = now();
 
-        return static::query()->where(fn ($query) => $query
+        return static::query()->whereNull('archived_at')->where(fn ($query) => $query
             ->whereDate('event_date', today())
             ->orWhere(fn ($withinWindow) => $withinWindow
                 ->whereNotNull('starts_at')
@@ -121,11 +186,12 @@ class Event extends Model
      * currentQuery() — that method answers "is this happening right now,
      * within a few minutes' grace" for the check-in desk; this one answers
      * the coarser "hasn't ended" for scoping what a Showrunner can still
-     * reach (see ShowrunnerCompRequests::eventOptionsQuery()).
+     * reach (see ShowrunnerCompRequests::eventOptionsQuery()). Archived
+     * events are excluded, as in currentQuery().
      */
     public static function currentOrFutureQuery(): Builder
     {
-        return static::query()->where(fn ($query) => $query
+        return static::query()->whereNull('archived_at')->where(fn ($query) => $query
             ->whereDate('event_date', '>=', today())
             ->orWhere(fn ($stillRunning) => $stillRunning
                 ->whereNotNull('ends_at')
@@ -140,6 +206,10 @@ class Event extends Model
      */
     public function isCurrentlyActive(): bool
     {
+        if ($this->isArchived()) {
+            return false;
+        }
+
         if ($this->event_date->isToday()) {
             return true;
         }

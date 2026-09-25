@@ -2,6 +2,7 @@
 
 namespace App\Filament\Admin\Resources\Events\RelationManagers;
 
+use App\Filament\Concerns\ReadOnlyWhenEventArchived;
 use App\Filament\Concerns\TranslatesRelationManagerTitle;
 use App\Models\Attendance;
 use App\Models\AttendanceAddOn;
@@ -41,6 +42,7 @@ use Illuminate\Support\Facades\Storage;
 class PrepayListRelationManager extends RelationManager
 {
     use PrunesUploadedFiles;
+    use ReadOnlyWhenEventArchived;
     use TranslatesRelationManagerTitle;
 
     protected static string $relationship = 'attendance';
@@ -174,6 +176,7 @@ class PrepayListRelationManager extends RelationManager
     {
         return Action::make('bulkUploadPrepay')
             ->label('Bulk upload prepay list')
+            ->visible(fn (): bool => ! $this->isOwnerEventArchived())
             ->schema([
                 FileUpload::make('file')
                     ->label('Prepay list file')
@@ -187,6 +190,8 @@ class PrepayListRelationManager extends RelationManager
                     ->required(),
             ])
             ->action(function (array $data): void {
+                abort_if($this->isOwnerEventArchived(), 403);
+
                 $path = Storage::disk('local')->path($data['file']);
                 $result = app(PrepayListImporter::class)->import($this->getOwnerRecord(), $path, auth()->user());
 

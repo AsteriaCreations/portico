@@ -2,6 +2,7 @@
 
 namespace App\Filament\Admin\Resources\Events\RelationManagers;
 
+use App\Filament\Concerns\ReadOnlyWhenEventArchived;
 use App\Filament\Concerns\TranslatesRelationManagerTitle;
 use App\Models\Attendance;
 use App\Models\AttendanceAddOn;
@@ -33,6 +34,7 @@ use Filament\Tables\Table;
  */
 class CompListRelationManager extends RelationManager
 {
+    use ReadOnlyWhenEventArchived;
     use TranslatesRelationManagerTitle;
 
     protected static string $relationship = 'attendance';
