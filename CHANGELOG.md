@@ -128,6 +128,12 @@ is fixes only.
 
 ### Fixed
 
+- The Check-In Desk's "Checked in tonight" list showed everyone twice: once as a stacked
+  card above the table, once in it. The phone-card and table layouts were switched with
+  Tailwind's `sm:hidden` / `hidden sm:block`, which aren't in the panel's compiled CSS (the
+  app runs no Tailwind build for its own Blade views), so both always rendered. The roster
+  now switches them with a small scoped `<style>` block, and a new `PanelCssGuardTest` fails
+  the build on any panel view using a show/hide utility the compiled CSS lacks.
 - Deleting an event that had any check-ins, prepays, comp requests, day passes or ban
   exceptions (singly or by bulk delete) failed with a server error on the database's
   foreign keys. Delete now only appears for an event with nothing recorded against it, bulk

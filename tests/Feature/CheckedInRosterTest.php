@@ -46,9 +46,14 @@ test('the roster renders a phone card layout alongside the wide table', function
         'checked_in_at' => now(),
     ]);
 
-    // The `sm:hidden` card block is what keeps a phone off the sideways scroll
-    // the 5-column table forces; `sm:block` is the table that takes over at width.
+    // The card block keeps a phone off the sideways scroll the 5-column table
+    // forces; the table takes over at width. The switch is the component's own
+    // scoped CSS: Tailwind's sm:hidden / sm:block aren't in the panel's
+    // compiled CSS, so they rendered both and listed everyone twice.
     expect(Livewire::test('checked-in-roster', ['eventId' => $event->id])->html())
-        ->toContain('sm:hidden')
-        ->toContain('sm:block');
+        ->toContain('class="checked-in-roster-cards"')
+        ->toContain('class="checked-in-roster-table ')
+        ->toContain('.checked-in-roster-cards { display: none; }')
+        ->toContain('@media (min-width: 640px)')
+        ->not->toContain('sm:hidden');
 });

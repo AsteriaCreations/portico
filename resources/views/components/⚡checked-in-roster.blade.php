@@ -34,6 +34,19 @@ new class extends Component
 ?>
 
 <div wire:poll.10s>
+    {{-- Scoped here rather than Tailwind's sm:hidden / hidden sm:block: the panel only ships
+    Filament's own compiled CSS (this app runs no Tailwind build for Blade views), which has
+    neither, so both layouts rendered on every screen and each person appeared twice -- once
+    as a card above the table, once in it. 640px is Tailwind's sm breakpoint. --}}
+    <style>
+        .checked-in-roster-cards { display: block; }
+        .checked-in-roster-table { display: none; }
+        @media (min-width: 640px) {
+            .checked-in-roster-cards { display: none; }
+            .checked-in-roster-table { display: block; }
+        }
+    </style>
+
     <x-filament::section>
         {{-- role="status" so a poll that changes the count (another terminal checking
         someone in) is announced -- the table body below stays outside this region, since
@@ -47,7 +60,7 @@ new class extends Component
         @else
             {{-- Below sm: one stacked card per person, so a phone at the desk
             never needs the sideways scroll the 5-column table forces. --}}
-            <div class="sm:hidden">
+            <div class="checked-in-roster-cards">
                 @foreach ($this->attendances as $checkedInAttendance)
                     <div class="border-t border-gray-200 py-2 text-sm dark:border-white/10">
                         <p class="font-medium">{{ $checkedInAttendance->member->displayName() }}</p>
@@ -58,7 +71,7 @@ new class extends Component
             </div>
 
             {{-- sm and up: the full columnar table, unchanged. --}}
-            <div class="fi-ta-content hidden overflow-x-auto sm:block">
+            <div class="checked-in-roster-table fi-ta-content overflow-x-auto">
                 <table class="fi-ta-table w-full text-start">
                     <thead>
                         <tr>
