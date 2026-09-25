@@ -327,19 +327,24 @@
       </p>
 
       <ol class="steps">
-        <li><p><span class="label">Find the member</span><span class="sub">Search by username, name, or member number. Status shows the instant they're selected — no event needed yet.</span></p></li>
-        <li><p><span class="label">Pick tonight's event</span><span class="sub">Unlocks pricing, comp/voucher/subscription options, and the Due total.</span></p></li>
-        <li><p><span class="label">Clear anything flagged</span><span class="sub">Prospective sign-up, missing paperwork, or a watchlist acknowledgment — see below.</span></p></li>
-        <li><p><span class="label">Set the pricing options</span><span class="sub">Subscription month, comp entry, voucher, add-ons. The Due total updates as you go.</span></p></li>
-        <li><p><span class="label">Check In</span><span class="sub">Records payment and admits them. Done.</span></p></li>
+        <li><p><span class="label">Find the member</span><span class="sub">Search by the fields your club has set up — the "How to check someone in" panel on the screen lists them.</span></p></li>
+        <li><p><span class="label">Read the status line</span><span class="sub">It shows the instant they're selected, before any event. Green = go. Amber = do one thing first. Red = stop and get a manager.</span></p></li>
+        <li><p><span class="label">Clear anything amber</span><span class="sub">"Save &amp; promote to Irregular" for a Prospective, "Confirm paperwork on file" for missing paperwork — both sit right under the member's name.</span></p></li>
+        <li><p><span class="label">Pick tonight's event</span><span class="sub">Shows the Due total. Most walk-ins need nothing else — Payment options (subscription, add-ons, voucher, comp) stays folded until you need it.</span></p></li>
+        <li><p><span class="label">Take payment, click Check in</span><span class="sub">Choose how they paid in the dialog and confirm. Done.</span></p></li>
       </ol>
 
       <div class="callouts">
-        <div class="callout danger"><span class="tag">Blocked</span><p>Banned or deceased members can't be checked in — no override here. A granted one-event exception still shows as a warning below, not a block.</p></div>
-        <div class="callout warn"><span class="tag">Watchlist</span><p>Notify the staff channel first, then check the acknowledgment box — Check In won't submit without it.</p></div>
-        <div class="callout good"><span class="tag">No event needed</span><p>Buying a subscription or a one-night day pass is its own transaction — pick it straight from the member panel. Which add-ons offer these depends on this club's catalog.</p></div>
-        <div class="callout good"><span class="tag">Guests</span><p>"Register a guest" appears once the host is checked in tonight and isn't on probation. Collects name, username, email, DOB if under 21.</p></div>
-        <div class="callout warn"><span class="tag">At capacity</span><p>Check In hides once the room is full. Send someone to Active Patrons to log a departure and it reopens.</p></div>
+        <div class="callout danger"><span class="tag">Do not admit</span><p>Banned or deceased members can't be checked in — no override here. A granted one-event exception shows as amber instead, not red.</p></div>
+        <div class="callout warn"><span class="tag">Watchlist</span><p>Notify the staff channel first, then tick the acknowledgment in the Check in dialog — it won't submit without it.</p></div>
+        <div class="callout warn"><span class="tag">Under age</span><p>"Check ID — under 21, no alcohol, mark hand": they're admitted, but ID and mark them. (The age is set by the club.)</p></div>
+        <div class="callout good"><span class="tag">Prepaid</span><p>Already paid or on the comp list? The screen says "Prepaid — not yet arrived". Click Mark arrived instead of Check in — nothing more to collect.</p></div>
+        <div class="callout good"><span class="tag">No event needed</span><p>Selling a subscription or a day pass is its own sale — open "Sell a subscription or day pass" under the member's name. It doesn't check anyone in.</p></div>
+        <div class="callout good"><span class="tag">Guests</span><p>"Register a guest" appears once the host is checked in tonight and isn't on probation. Collects username, preferred, first and last name, and email; date of birth only if you tick "Appears to be under 21".</p></div>
+        <div class="callout warn"><span class="tag">At capacity</span><p>Check in is replaced by an "At capacity" message once the building is full. Log a departure (Active Patrons, or Record Departures on the Dashboard) and it comes back.</p></div>
+        <div class="callout good"><span class="tag">Left by mistake</span><p>Departed someone who's still here? Select them and click Mark as returned — no new check-in, no new charge.</p></div>
+        <div class="callout good"><span class="tag">Practice</span><p>"Enter training mode" at the top of the screen lets you rehearse the whole flow. Nothing is saved until you exit it.</p></div>
+        <div class="callout good"><span class="tag">Cash box</span><p>If your desk uses one, pick the Register and click Open Box at the start of the night. Drops, other payments and Close Box are under "Cash box".</p></div>
       </div>
 
       <div class="card-foot">
@@ -382,6 +387,7 @@
       <div class="callouts">
         <div class="callout good"><span class="tag">Overnight</span><p>A guest staying over (an add-on flagged Overnight, e.g. private room/sleepover) keeps showing here past their event's window, until someone departs them.</p></div>
         <div class="callout warn"><span class="tag">Who sees what</span><p>Behavior notes: you always see your own in full. Volunteer sees a count of others'. DM and Door see every note's text. Manager+ also sees who wrote it.</p></div>
+        <div class="callout warn"><span class="tag">Departed by mistake</span><p>There's no undo here. At the Check-In desk (Door+), select the member and tonight's event, then click Mark as returned.</p></div>
         <div class="callout good"><span class="tag">Also in the building</span><p>The header lists signed-in Volunteer+ staff too — not just patrons — so you can tell who else is on site.</p></div>
       </div>
 
@@ -389,11 +395,11 @@
         <div class="ladder">
           <span class="rung">Showrunner</span><span class="sep">⊂</span>
           <span class="rung floor">Volunteer</span><span class="sep">⊂</span>
-          <span class="rung floor">DM</span><span class="sep">⊂</span>
-          <span class="rung floor">Door</span><span class="sep">⊂</span>
-          <span class="rung floor">Manager</span><span class="sep">⊂</span>
-          <span class="rung floor">Admin</span><span class="sep">⊂</span>
-          <span class="rung floor">Owner</span>
+          <span class="rung">DM</span><span class="sep">⊂</span>
+          <span class="rung">Door</span><span class="sep">⊂</span>
+          <span class="rung">Manager</span><span class="sep">⊂</span>
+          <span class="rung">Admin</span><span class="sep">⊂</span>
+          <span class="rung">Owner</span>
         </div>
         <p class="ladder-cap">Filled rung = minimum role for this screen. Everything above it can use it too.</p>
       </div>
@@ -429,11 +435,11 @@
         <div class="ladder">
           <span class="rung">Showrunner</span><span class="sep">⊂</span>
           <span class="rung floor">Volunteer</span><span class="sep">⊂</span>
-          <span class="rung floor">DM</span><span class="sep">⊂</span>
-          <span class="rung floor">Door</span><span class="sep">⊂</span>
-          <span class="rung floor">Manager</span><span class="sep">⊂</span>
-          <span class="rung floor">Admin</span><span class="sep">⊂</span>
-          <span class="rung floor">Owner</span>
+          <span class="rung">DM</span><span class="sep">⊂</span>
+          <span class="rung">Door</span><span class="sep">⊂</span>
+          <span class="rung">Manager</span><span class="sep">⊂</span>
+          <span class="rung">Admin</span><span class="sep">⊂</span>
+          <span class="rung">Owner</span>
         </div>
         <p class="ladder-cap">Filled rung = minimum role for this screen. Everything above it can use it too.</p>
       </div>
