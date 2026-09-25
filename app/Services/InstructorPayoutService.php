@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Attendance;
 use App\Models\Event;
 use App\Models\InstructorPayRate;
+use App\Support\Cents;
 
 /**
  * Computes what an event's instructor is owed, per attendee, broken out by
@@ -21,7 +22,7 @@ class InstructorPayoutService
         $rates = InstructorPayRate::where('event_type_id', $event->event_type_id)->get();
 
         if ($rates->isEmpty()) {
-            return new InstructorPayoutResult(lineItems: [], total: 0.0);
+            return new InstructorPayoutResult(lineItems: [], totalCents: 0);
         }
 
         $counts = Attendance::query()
@@ -31,7 +32,7 @@ class InstructorPayoutService
             ->countBy(fn (Attendance $attendance) => $attendance->entry_covered_by->value);
 
         $lineItems = [];
-        $total = 0.0;
+        $totalCents = 0;
 
         foreach ($rates as $rate) {
             $count = (int) ($counts[$rate->entry_covered_by->value] ?? 0);
@@ -40,18 +41,19 @@ class InstructorPayoutService
                 continue;
             }
 
-            $subtotal = $count * (float) $rate->rate;
+            $rateCents = Cents::of($rate->rate);
+            $subtotalCents = $count * $rateCents;
 
             $lineItems[] = [
                 'source' => $rate->entry_covered_by,
                 'count' => $count,
-                'rate' => (float) $rate->rate,
-                'subtotal' => $subtotal,
+                'rateCents' => $rateCents,
+                'subtotalCents' => $subtotalCents,
             ];
 
-            $total += $subtotal;
+            $totalCents += $subtotalCents;
         }
 
-        return new InstructorPayoutResult(lineItems: $lineItems, total: $total);
+        return new InstructorPayoutResult(lineItems: $lineItems, totalCents: $totalCents);
     }
 }

@@ -22,7 +22,7 @@ class EventEndedSummary extends Mailable
     use Queueable, SerializesModels;
 
     /**
-     * @param  array{checked_in: int, prepaid_no_show: int, revenue: float}  $summary
+     * @param  array{checked_in: int, prepaid_no_show: int, revenue_cents: int}  $summary
      */
     public function __construct(
         public Event $event,

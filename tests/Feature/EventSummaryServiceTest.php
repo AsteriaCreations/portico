@@ -20,7 +20,7 @@ test('forEvent counts arrived attendees, prepaid no-shows, and total revenue', f
 
     expect($summary['checked_in'])->toBe(2)
         ->and($summary['prepaid_no_show'])->toBe(1)
-        ->and($summary['revenue'])->toEqual(55.0);
+        ->and($summary['revenue_cents'])->toBe(5500);
 });
 
 test('forEvent only counts attendance for the given event, not others', function () {
@@ -32,7 +32,7 @@ test('forEvent only counts attendance for the given event, not others', function
     $summary = $this->service->forEvent($event);
 
     expect($summary['checked_in'])->toBe(1)
-        ->and($summary['revenue'])->toEqual(20.0);
+        ->and($summary['revenue_cents'])->toBe(2000);
 });
 
 test('forEvent returns zeroes for an event with no attendance at all', function () {
@@ -40,5 +40,5 @@ test('forEvent returns zeroes for an event with no attendance at all', function 
 
     $summary = $this->service->forEvent($event);
 
-    expect($summary)->toBe(['checked_in' => 0, 'prepaid_no_show' => 0, 'revenue' => 0.0]);
+    expect($summary)->toBe(['checked_in' => 0, 'prepaid_no_show' => 0, 'revenue_cents' => 0]);
 });

@@ -27,7 +27,7 @@ class MembershipSetting extends Model
             'subscription_eligibility_threshold' => 'integer',
             'probation_period_days' => 'integer',
             'venue_capacity' => 'integer',
-            'default_opening_float' => 'float',
+            'default_opening_float' => 'decimal:2',
             'event_window_buffer_minutes' => 'integer',
             'age_of_majority' => 'integer',
             'alcohol_flag_age' => 'integer',

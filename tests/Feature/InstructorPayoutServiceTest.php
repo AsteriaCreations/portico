@@ -25,12 +25,12 @@ test('pays per attendee, broken out by how the entry was covered', function () {
 
     $result = $this->service->calculate($event);
 
-    expect($result->total)->toBe(80.0) // 6*10 + 4*5
+    expect($result->totalCents)->toBe(8000) // 6*10 + 4*5
         ->and($result->lineItems)->toHaveCount(2);
 
     $cashLine = collect($result->lineItems)->first(fn ($item) => $item['source'] === EntryCoverageSource::None);
     expect($cashLine['count'])->toBe(6)
-        ->and($cashLine['subtotal'])->toBe(60.0);
+        ->and($cashLine['subtotalCents'])->toBe(6000);
 });
 
 test('a coverage bucket with no configured rate contributes nothing and is omitted', function () {
@@ -44,7 +44,7 @@ test('a coverage bucket with no configured rate contributes nothing and is omitt
 
     $result = $this->service->calculate($event);
 
-    expect($result->total)->toBe(30.0)
+    expect($result->totalCents)->toBe(3000)
         ->and($result->lineItems)->toHaveCount(1);
 });
 
@@ -58,7 +58,7 @@ test('only counts arrived attendees, not a prepaid-but-not-yet-arrived row', fun
 
     $result = $this->service->calculate($event);
 
-    expect($result->total)->toBe(10.0);
+    expect($result->totalCents)->toBe(1000);
 });
 
 test('an event whose type has no configured rates returns an empty result', function () {
@@ -69,5 +69,5 @@ test('an event whose type has no configured rates returns an empty result', func
     $result = $this->service->calculate($event);
 
     expect($result->lineItems)->toBe([])
-        ->and($result->total)->toBe(0.0);
+        ->and($result->totalCents)->toBe(0);
 });

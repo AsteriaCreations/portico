@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Attendance;
 use App\Models\Event;
+use App\Support\Cents;
 
 /**
  * Backs both NotifyEventEnded's email/notification content and EventForm's
@@ -14,7 +15,7 @@ use App\Models\Event;
 class EventSummaryService
 {
     /**
-     * @return array{checked_in: int, prepaid_no_show: int, revenue: float}
+     * @return array{checked_in: int, prepaid_no_show: int, revenue_cents: int} revenue in integer cents -- see App\Support\Cents
      */
     public function forEvent(Event $event): array
     {
@@ -26,7 +27,7 @@ class EventSummaryService
             // no-show — the same "prepaid, awaiting arrival" state the
             // check-in page shows live, read here after the fact.
             'prepaid_no_show' => (clone $attendance)->whereNull('checked_in_at')->count(),
-            'revenue' => (float) (clone $attendance)->sum('amount_paid'),
+            'revenue_cents' => Cents::of((clone $attendance)->sum('amount_paid')),
         ];
     }
 }

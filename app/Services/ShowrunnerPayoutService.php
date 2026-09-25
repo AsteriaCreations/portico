@@ -11,6 +11,7 @@ use App\Models\Event;
 use App\Models\MembershipSetting;
 use App\Models\Plan;
 use App\Models\ShowrunnerPayoutTier;
+use App\Support\Cents;
 use Illuminate\Database\Eloquent\Builder;
 
 /**
@@ -20,20 +21,22 @@ use Illuminate\Database\Eloquent\Builder;
  * ("SH") attendees only count toward the headcount/door total once the
  * event's entry fee exceeds the current Regular plan's credit — read from
  * Plan::currentFor(), never hardcoded, same rule PricingService::build()
- * already uses to cap subscription coverage itself.
+ * already uses to cap subscription coverage itself. Amounts are integer
+ * cents (see App\Support\Cents); a percentage payout is rounded once, to
+ * the cent, half-up, so a total of payouts sums the rounded amounts.
  */
 class ShowrunnerPayoutService
 {
     public function calculate(Event $event): ShowrunnerPayoutResult
     {
-        $creditThreshold = (float) (Plan::currentFor(AddOn::entry(), $event->event_date)?->credit ?? 0);
-        $includeSh = (float) $event->entry_fee > $creditThreshold;
+        $creditThresholdCents = Cents::of(Plan::currentFor(AddOn::entry(), $event->event_date)?->credit);
+        $includeSh = Cents::of($event->entry_fee) > $creditThresholdCents;
 
         $cashCount = $this->arrivedQuery($event)->where('entry_covered_by', EntryCoverageSource::None)->count();
         $shCount = $this->arrivedQuery($event)->where('entry_covered_by', EntryCoverageSource::RegularSubscription)->count();
 
-        $cashRevenue = $this->sumEntryRevenue($event, EntryCoverageSource::None);
-        $shRevenue = $this->sumEntryRevenue($event, EntryCoverageSource::RegularSubscription);
+        $cashRevenueCents = $this->sumEntryRevenueCents($event, EntryCoverageSource::None);
+        $shRevenueCents = $this->sumEntryRevenueCents($event, EntryCoverageSource::RegularSubscription);
 
         $qualifyingBuckets = $includeSh
             ? [EntryCoverageSource::None, EntryCoverageSource::RegularSubscription]
@@ -47,24 +50,24 @@ class ShowrunnerPayoutService
         // the same meaning whether the row is a flat add-on or a
         // subscribable one — see attendance_add_ons' own migration comment.
         $poolAddOn = AddOn::pool();
-        $poolRevenue = $poolAddOn
-            ? (float) AttendanceAddOn::whereIn('attendance_id', $qualifyingAttendanceIds)->where('add_on_id', $poolAddOn->id)->sum('price')
-            : 0.0;
+        $poolRevenueCents = $poolAddOn
+            ? Cents::of(AttendanceAddOn::whereIn('attendance_id', $qualifyingAttendanceIds)->where('add_on_id', $poolAddOn->id)->sum('price'))
+            : 0;
 
         // Flat (non-subscribable) add-on lines only — a subscribable line
         // (Pool, at launch) has its own covered_by value and its own
         // showrunner_door_includes_pool toggle above, so it must not also
         // be double-counted into the generic add-on total here.
-        $addonRevenue = (float) AttendanceAddOn::whereIn('attendance_id', $qualifyingAttendanceIds)->whereNull('covered_by')->sum('price');
+        $addonRevenueCents = Cents::of(AttendanceAddOn::whereIn('attendance_id', $qualifyingAttendanceIds)->whereNull('covered_by')->sum('price'));
 
         $headcount = $cashCount + ($includeSh ? $shCount : 0);
 
         $settings = MembershipSetting::current();
 
-        $doorTotal = $cashRevenue
-            + ($includeSh ? $shRevenue : 0.0)
-            + ($settings->showrunner_door_includes_pool ? $poolRevenue : 0.0)
-            + ($settings->showrunner_door_includes_addons ? $addonRevenue : 0.0);
+        $doorTotalCents = $cashRevenueCents
+            + ($includeSh ? $shRevenueCents : 0)
+            + ($settings->showrunner_door_includes_pool ? $poolRevenueCents : 0)
+            + ($settings->showrunner_door_includes_addons ? $addonRevenueCents : 0);
 
         // Greatest min_headcount at or below the actual headcount wins —
         // max_headcount is informational only, so a tier above the highest
@@ -73,10 +76,10 @@ class ShowrunnerPayoutService
             ->orderByDesc('min_headcount')
             ->first();
 
-        $payoutAmount = match (true) {
+        $payoutAmountCents = match (true) {
             $tier === null => null,
-            $tier->payout_type === PayoutType::Voucher => (float) $tier->payout_value,
-            default => $doorTotal * ((float) $tier->payout_value / 100),
+            $tier->payout_type === PayoutType::Voucher => Cents::of($tier->payout_value),
+            default => Cents::percentOf($doorTotalCents, $tier->payout_value),
         };
 
         return new ShowrunnerPayoutResult(
@@ -84,13 +87,13 @@ class ShowrunnerPayoutService
             includeSh: $includeSh,
             cashCount: $cashCount,
             shCount: $shCount,
-            cashRevenue: $cashRevenue,
-            shRevenue: $shRevenue,
-            poolRevenue: $poolRevenue,
-            addonRevenue: $addonRevenue,
-            doorTotal: $doorTotal,
+            cashRevenueCents: $cashRevenueCents,
+            shRevenueCents: $shRevenueCents,
+            poolRevenueCents: $poolRevenueCents,
+            addonRevenueCents: $addonRevenueCents,
+            doorTotalCents: $doorTotalCents,
             tier: $tier,
-            payoutAmount: $payoutAmount,
+            payoutAmountCents: $payoutAmountCents,
         );
     }
 
@@ -101,11 +104,11 @@ class ShowrunnerPayoutService
             ->whereNotNull('checked_in_at');
     }
 
-    private function sumEntryRevenue(Event $event, EntryCoverageSource $source): float
+    private function sumEntryRevenueCents(Event $event, EntryCoverageSource $source): int
     {
-        return (float) $this->arrivedQuery($event)
+        return Cents::of($this->arrivedQuery($event)
             ->where('entry_covered_by', $source)
             ->selectRaw('COALESCE(SUM(entry_fee - entry_coverage), 0) as total')
-            ->value('total');
+            ->value('total'));
     }
 }

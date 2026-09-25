@@ -39,3 +39,14 @@ test('writes cents as a two-decimal string for a decimal(8,2) column', function 
     [-2010, '-20.10'],
     [99999999, '999999.99'],
 ]);
+
+test('takes a percentage rounded once to the cent, half-up', function (int $cents, string $percent, int $expected) {
+    expect(Cents::percentOf($cents, $percent))->toBe($expected);
+})->with([
+    'exact' => [101000, '15.00', 15150],
+    'fraction of a cent rounds down' => [10010, '33.33', 3336], // 3336.333
+    'exact half cent rounds up, not to even' => [1030, '15.00', 155], // 154.5
+    'just under half a cent' => [1003, '15.00', 150], // 150.45
+    'negative half cent rounds away from zero' => [-1030, '15.00', -155],
+    'zero door' => [0, '10.00', 0],
+]);

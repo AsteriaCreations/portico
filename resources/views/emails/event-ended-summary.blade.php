@@ -14,7 +14,7 @@
         </tr>
         <tr>
             <td>{{ __('Revenue') }}</td>
-            <td><strong>{{ \App\Models\MembershipSetting::formatMoney($summary['revenue']) }}</strong></td>
+            <td><strong>{{ \App\Models\MembershipSetting::formatMoney(\App\Support\Cents::toFloat($summary['revenue_cents'])) }}</strong></td>
         </tr>
     </table>
 </body>

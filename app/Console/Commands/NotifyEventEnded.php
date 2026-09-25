@@ -10,6 +10,7 @@ use App\Models\Event;
 use App\Models\MembershipSetting;
 use App\Models\User;
 use App\Services\EventSummaryService;
+use App\Support\Cents;
 use Filament\Actions\Action;
 use Filament\Notifications\Notification;
 use Illuminate\Console\Attributes\Description;
@@ -63,7 +64,7 @@ class NotifyEventEnded extends Command
 
                 $notification = Notification::make()
                     ->title(__('Event ended: :name', ['name' => $event->name]))
-                    ->body(__(':checked_in checked in, :no_show prepaid but never arrived — :revenue revenue.', ['checked_in' => $summary['checked_in'], 'no_show' => $summary['prepaid_no_show'], 'revenue' => MembershipSetting::formatMoney($summary['revenue'])]))
+                    ->body(__(':checked_in checked in, :no_show prepaid but never arrived — :revenue revenue.', ['checked_in' => $summary['checked_in'], 'no_show' => $summary['prepaid_no_show'], 'revenue' => MembershipSetting::formatMoney(Cents::toFloat($summary['revenue_cents']))]))
                     ->actions([
                         Action::make('view')
                             ->label('View event')
