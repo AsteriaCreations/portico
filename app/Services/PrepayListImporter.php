@@ -6,6 +6,7 @@ use App\Models\AttendanceAddOn;
 use App\Models\Event;
 use App\Models\Member;
 use App\Models\User;
+use App\Support\Cents;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 
 /**
@@ -62,7 +63,7 @@ class PrepayListImporter
 
                     continue;
                 }
-                $override = (float) $overrideRaw;
+                $override = Cents::toDecimal(Cents::of($overrideRaw));
             }
 
             if (! $capacityService->hasRoom($event->event_date)) {

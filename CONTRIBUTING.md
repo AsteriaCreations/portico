@@ -55,6 +55,13 @@ disagree, the blueprint wins.
    (effective-dated, targeting an `add_ons` row); event fees live on the event; operational tunables
    live in the `membership_settings` singleton (`/admin/membership-settings`). Never
    hardcode a dollar amount in code.
+7. **Money is `int` cents in services; floats are for display only.** Read an amount with
+   `App\Support\Cents::of()`, add and compare as ints, write with `Cents::toDecimal()`, and
+   convert with `Cents::toFloat()` only for `formatMoney()` or a chart. A float sum of
+   exact `decimal(8,2)` values isn't exact: it reported a balanced drawer as "$0.00 over"
+   and charged a card fee on a visit with nothing due. `MoneyArithmeticGuardTest` fails the
+   build on a `(float)` cast or a money-named `float` in `app/Services` / `app/Support`; a
+   genuinely safe one goes on its allowlist with the reason.
 
 ## Permissions — enforce server-side, not just hidden in the UI
 
@@ -106,7 +113,7 @@ everywhere a `subscriptions` row gets created.
   Requests or Filament schema rules.
 - Backed PHP enums for `role`, `event_type`, `add_on_kind`, coverage sources, mirroring the
   DB enums.
-- Money as `DECIMAL(8,2)`; no float math on currency.
+- Money as `DECIMAL(8,2)`; no float math on currency (Architecture rule 7).
 - Business logic in services / model methods — not controllers, not Blade.
 - **Accessibility isn't optional — it's a real desk tool, staff use screen readers too.**
   Filament's Schema/Table builders carry their own accessibility — don't fight that. Two

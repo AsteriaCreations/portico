@@ -51,7 +51,7 @@ class RegisterShiftService
             return RegisterShift::create([
                 'register_id' => $register->id,
                 'opened_by' => $user->id,
-                'opening_count' => $openingCount,
+                'opening_count' => Cents::toDecimal(Cents::of($openingCount)),
                 'notes' => $notes,
             ]);
         });
@@ -64,7 +64,7 @@ class RegisterShiftService
 
             return RegisterDrop::create([
                 'register_shift_id' => $locked->id,
-                'amount' => $amount,
+                'amount' => Cents::toDecimal(Cents::of($amount)),
                 'reason' => $reason,
                 'recorded_by' => $user->id,
             ]);
@@ -79,7 +79,7 @@ class RegisterShiftService
             return MiscellaneousPayment::create([
                 'register_shift_id' => $locked->id,
                 'payment_method' => $paymentMethod,
-                'amount' => $amount,
+                'amount' => Cents::toDecimal(Cents::of($amount)),
                 'notation' => $notation,
                 'recorded_by' => $user->id,
             ]);
@@ -166,7 +166,7 @@ class RegisterShiftService
             $locked->update([
                 'closed_by' => $user->id,
                 'closed_at' => now(),
-                'closing_count' => $closingCount,
+                'closing_count' => Cents::toDecimal(Cents::of($closingCount)),
                 'notes' => $notes ?? $locked->notes,
             ]);
 
