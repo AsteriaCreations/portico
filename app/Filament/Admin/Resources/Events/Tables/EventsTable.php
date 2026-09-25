@@ -16,6 +16,7 @@ use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
 
@@ -29,6 +30,10 @@ class EventsTable
                 TextColumn::make('event_date')
                     ->date()
                     ->sortable(),
+                TextColumn::make('starts_at')
+                    ->label('Starts')
+                    ->time()
+                    ->toggleable(),
                 TextColumn::make('name')
                     ->searchable(),
                 TextColumn::make('eventType.name')
@@ -42,6 +47,13 @@ class EventsTable
                     ->money()
                     ->sortable()
                     ->visible(fn (): bool => MembershipSetting::current()->pool_enabled),
+                // Arrivals only: a prepay who hasn't come through the door
+                // yet isn't counted.
+                TextColumn::make('attendance_count')
+                    ->label('Arrived')
+                    ->counts(['attendance' => fn (Builder $query): Builder => $query->whereNotNull('checked_in_at')])
+                    ->sortable()
+                    ->toggleable(),
                 TextColumn::make('comp_list_due_at')
                     ->label('Comp list due')
                     ->date()
@@ -72,6 +84,23 @@ class EventsTable
                 SelectFilter::make('event_type_id')
                     ->label('Event type')
                     ->relationship('eventType', 'name'),
+                // "Upcoming" means not over yet, the same test as
+                // Event::currentOrFutureQuery(): today or later, or still
+                // running past midnight per ends_at.
+                SelectFilter::make('when')
+                    ->label('When')
+                    ->options([
+                        'upcoming' => __('Upcoming'),
+                        'past' => __('Past'),
+                    ])
+                    ->query(fn (Builder $query, array $data): Builder => match ($data['value'] ?? null) {
+                        'upcoming' => $query->where(fn (Builder $upcoming) => $upcoming
+                            ->whereDate('event_date', '>=', today())
+                            ->orWhere('ends_at', '>=', now())),
+                        'past' => $query->whereDate('event_date', '<', today())
+                            ->where(fn (Builder $over) => $over->whereNull('ends_at')->orWhere('ends_at', '<', now())),
+                        default => $query,
+                    }),
             ])
             ->recordActions([
                 EditAction::make(),

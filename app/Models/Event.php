@@ -36,6 +36,17 @@ class Event extends Model
         return $this->belongsTo(EventType::class);
     }
 
+    /**
+     * How an event is named everywhere a person has to pick or recognise it
+     * -- the check-in desk's picker, page titles and breadcrumbs. The name is
+     * optional, so an unnamed event falls back to its type, and the date is
+     * always there to tell repeat events apart.
+     */
+    public function label(): string
+    {
+        return $this->event_date->translatedFormat('M j, Y').' — '.($this->name ?? $this->eventType?->name ?? __('Untitled event'));
+    }
+
     public function createdBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by');
