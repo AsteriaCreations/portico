@@ -1203,6 +1203,9 @@ class CheckIn extends Page implements HasTable
 
                 $event = Event::find($data['event_id']);
                 abort_unless($event, 404);
+                // The picker only offers unarchived events; a forged id
+                // for an archived one stops here.
+                abort_if($event->isArchived(), 403);
 
                 $price = $addOn->priceFor($event);
                 abort_unless($price !== null, 422);
@@ -1438,6 +1441,7 @@ class CheckIn extends Page implements HasTable
                 // the setting alone let a forged id prepay into any future
                 // event. A currently-active event is never affected.
                 abort_unless($event->isCurrentlyActive() || (MembershipSetting::current()->prepay_enabled && $event->door_prepay_enabled), 403);
+                abort_if($event->isArchived(), 403);
 
                 // pricingForm's own required-if rules (comp_reason_id when
                 // comp_entry is checked, the voucher fields when apply_voucher
@@ -1738,13 +1742,21 @@ class CheckIn extends Page implements HasTable
     /**
      * Normally only today's event(s) belong at the desk — an event flagged
      * for door_prepay_enabled is surfaced ahead of its own date too, so the
-     * desk can take a walk-in prepayment for it.
+     * desk can take a walk-in prepayment for it. Archived events never
+     * appear: the prepay branch is grouped with the current-event one so
+     * currentQuery()'s archived_at filter can't be sidestepped by an OR.
      */
     protected static function eventSelectQuery(): Builder
     {
-        return MembershipSetting::current()->prepay_enabled
-            ? static::currentEventQuery()->orWhere('door_prepay_enabled', true)
-            : static::currentEventQuery();
+        if (! MembershipSetting::current()->prepay_enabled) {
+            return static::currentEventQuery();
+        }
+
+        return Event::query()
+            ->whereNull('archived_at')
+            ->where(fn (Builder $query) => $query
+                ->whereIn('id', static::currentEventQuery()->select('id'))
+                ->orWhere('door_prepay_enabled', true));
     }
 
     /**

@@ -24,6 +24,10 @@ class PrepayListImporter
      */
     public function import(Event $event, string $filePath, User $recordedBy): array
     {
+        if ($event->isArchived()) {
+            return ['created' => 0, 'log' => ['event is archived, nothing imported']];
+        }
+
         $sheet = IOFactory::load($filePath)->getActiveSheet();
 
         $created = 0;

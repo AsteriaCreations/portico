@@ -51,6 +51,14 @@ class EventForm
                 // fees now changes nothing already recorded -- say so before
                 // someone expects it to.
                 ...($includeSummary ? [
+                    Callout::make(fn (?Event $record): string => __('Archived on :date by :name.', [
+                        'date' => $record?->archived_at?->translatedFormat('M j, Y') ?? '',
+                        'name' => $record?->archivedBy?->name ?? __('an unknown user'),
+                    ]))
+                        ->description(__('This event is read-only and hidden from the check-in desk. Unarchive it to make changes.'))
+                        ->info()
+                        ->columnSpanFull()
+                        ->visible(fn (?Event $record): bool => $record?->isArchived() ?? false),
                     Callout::make(fn (?Event $record): string => trans_choice(
                         ':count person is already recorded for this event.|:count people are already recorded for this event.',
                         static::recordedCount($record),
@@ -58,7 +66,7 @@ class EventForm
                         ->description(__("Changing the fees won't change what they paid, and moving the date won't move which month's subscription covered them."))
                         ->warning()
                         ->columnSpanFull()
-                        ->visible(fn (?Event $record): bool => static::recordedCount($record) > 0),
+                        ->visible(fn (?Event $record): bool => ! ($record?->isArchived() ?? false) && static::recordedCount($record) > 0),
                 ] : []),
                 DatePicker::make('event_date')
                     ->required()

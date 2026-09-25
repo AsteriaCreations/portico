@@ -62,6 +62,15 @@ class CheckInService
                 );
             }
 
+            // Read fresh rather than trusting $event: an Admin may have
+            // archived it after this screen loaded.
+            if (Event::whereKey($event->id)->whereNotNull('archived_at')->exists()) {
+                throw new CheckInRefused(
+                    __('Event archived — check-in not saved.'),
+                    __('This event was archived after this screen loaded. Nothing was recorded or charged.'),
+                );
+            }
+
             $month = $event->event_date->clone()->startOfMonth();
             // All money in cents -- see App\Support\Cents.
             $subscriptionTotal = 0;

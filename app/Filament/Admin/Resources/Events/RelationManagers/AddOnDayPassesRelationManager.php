@@ -2,6 +2,7 @@
 
 namespace App\Filament\Admin\Resources\Events\RelationManagers;
 
+use App\Filament\Concerns\ReadOnlyWhenEventArchived;
 use App\Filament\Concerns\TranslatesRelationManagerTitle;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Tables\Columns\TextColumn;
@@ -15,6 +16,7 @@ use Filament\Tables\Table;
  */
 class AddOnDayPassesRelationManager extends RelationManager
 {
+    use ReadOnlyWhenEventArchived;
     use TranslatesRelationManagerTitle;
 
     protected static string $relationship = 'addOnDayPasses';

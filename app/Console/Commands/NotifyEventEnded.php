@@ -41,6 +41,10 @@ class NotifyEventEnded extends Command
         $events = Event::whereNotNull('ends_at')
             ->where('ends_at', '<', now())
             ->whereNull('ended_notification_sent_at')
+            // An event archived before it ended was called off with nobody
+            // on it (EventPolicy::archive()), so there's nothing to report.
+            // One archived after it ended still gets its summary.
+            ->where(fn ($query) => $query->whereNull('archived_at')->orWhereColumn('archived_at', '>=', 'ends_at'))
             ->get();
 
         $notified = 0;

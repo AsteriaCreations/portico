@@ -3,6 +3,7 @@
 namespace App\Filament\Admin\Resources\Events\RelationManagers;
 
 use App\Enums\CompRequestStatus;
+use App\Filament\Concerns\ReadOnlyWhenEventArchived;
 use App\Filament\Concerns\TranslatesRelationManagerTitle;
 use App\Models\Attendance;
 use App\Models\AttendanceAddOn;
@@ -31,6 +32,7 @@ use Illuminate\Support\Facades\Auth;
  */
 class CompRequestsRelationManager extends RelationManager
 {
+    use ReadOnlyWhenEventArchived;
     use TranslatesRelationManagerTitle;
 
     protected static string $relationship = 'compRequests';
@@ -79,6 +81,7 @@ class CompRequestsRelationManager extends RelationManager
     {
         return Action::make('approve')
             ->visible(fn (CompRequest $record): bool => $record->status === CompRequestStatus::Pending
+                && ! $this->isOwnerEventArchived()
                 && Auth::user()->can('update', $record)
                 && ! ($record->member->isCurrentlyBanned() && ! $record->member->hasBanExceptionFor($record->event)))
             ->requiresConfirmation()
@@ -104,6 +107,7 @@ class CompRequestsRelationManager extends RelationManager
             ->action(function (CompRequest $record, array $data): void {
                 abort_unless(Auth::user()->can('update', $record), 403);
                 abort_unless($record->status === CompRequestStatus::Pending, 409);
+                abort_if($this->isOwnerEventArchived(), 403);
 
                 $event = $record->event;
                 abort_unless(app(CapacityService::class)->hasRoom($event->event_date), 403);
@@ -150,6 +154,7 @@ class CompRequestsRelationManager extends RelationManager
     {
         return Action::make('reject')
             ->visible(fn (CompRequest $record): bool => $record->status === CompRequestStatus::Pending
+                && ! $this->isOwnerEventArchived()
                 && Auth::user()->can('update', $record))
             ->schema([
                 Textarea::make('review_notes')
@@ -159,6 +164,7 @@ class CompRequestsRelationManager extends RelationManager
             ->action(function (CompRequest $record, array $data): void {
                 abort_unless(Auth::user()->can('update', $record), 403);
                 abort_unless($record->status === CompRequestStatus::Pending, 409);
+                abort_if($this->isOwnerEventArchived(), 403);
 
                 $record->update([
                     'status' => CompRequestStatus::Rejected,
