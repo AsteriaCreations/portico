@@ -51,11 +51,29 @@ class AdmissionPolicy
             return new AdmissionDecision(AdmissionOutcome::Capture, __('Missing paperwork — confirm on file before check-in'));
         }
 
-        if ($age !== null && $age < $settings->alcohol_flag_age) {
+        if ($this->isUnderAlcoholFlagAge($member, $event)) {
             return new AdmissionDecision(AdmissionOutcome::Flag, __('Under :age — no alcohol, mark hand', ['age' => $settings->alcohol_flag_age]));
         }
 
         return new AdmissionDecision(AdmissionOutcome::Ok, __('Cleared'));
+    }
+
+    /**
+     * Whether the member is under the club's alcohol-flag age, as of the
+     * event's date (or today with no event picked). False with no DOB on
+     * file, or when the flag is disabled (alcohol_flag_age no higher than
+     * age_of_majority). Also feeds the check-in desk's always-shown flag
+     * list, so it's surfaced even when a higher-priority outcome wins decide().
+     */
+    public function isUnderAlcoholFlagAge(Member $member, ?Event $event = null): bool
+    {
+        $settings = MembershipSetting::current();
+
+        if (! $member->dob || $settings->alcohol_flag_age <= $settings->age_of_majority) {
+            return false;
+        }
+
+        return $member->dob->diffInYears($event?->event_date ?? today()) < $settings->alcohol_flag_age;
     }
 
     // Member-only, no event needed — the one AdmissionDecision outcome that

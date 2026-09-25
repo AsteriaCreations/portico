@@ -594,6 +594,12 @@ class CheckIn extends Page implements HasTable
 
         $event = $this->getSelectedEvent();
 
+        // Listed regardless of the headline, so it isn't hidden when a
+        // watchlist/sign-up/paperwork outcome outranks it in decide().
+        if ($policy->isUnderAlcoholFlagAge($member, $event)) {
+            $flags[] = __('Under :age — no alcohol, mark hand', ['age' => MembershipSetting::current()->alcohol_flag_age]);
+        }
+
         if (! $event) {
             $provisional = match (true) {
                 $member->is_deceased, $member->isCurrentlyBanned() => ['stop', __('Do not admit')],
