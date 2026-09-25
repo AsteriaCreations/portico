@@ -69,6 +69,12 @@ is fixes only.
 
 ### Fixed
 
+- An add-on with a per-night limit (`max_per_night`, e.g. a single rentable room) could
+  be sold past that limit by two registers at once. The desk's picker greyed a sold-out
+  add-on out, but only for sales committed before the page last rendered. The limit is now
+  re-checked inside the check-in transaction, under the same admission lock as venue
+  capacity. The register that loses the race gets a "sold out for tonight" warning and
+  nothing is recorded or charged; the add-on is not silently dropped from the sale.
 - Two registers could admit two different members into the last spot under the venue
   capacity: each counted occupancy before either had committed. The capacity check now
   runs inside the check-in transaction, behind a row lock every admission takes

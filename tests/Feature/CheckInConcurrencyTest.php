@@ -5,6 +5,7 @@ use App\Enums\Role;
 use App\Filament\Admin\Pages\CheckIn;
 use App\Models\AddOn;
 use App\Models\Attendance;
+use App\Models\AttendanceAddOn;
 use App\Models\Category;
 use App\Models\Event;
 use App\Models\Member;
@@ -52,31 +53,52 @@ afterEach(function () {
 });
 
 /**
- * Starts another register's admission of $member on its own connection,
- * without waiting for it: it takes the same row lock as
- * CapacityService::lockForAdmission(), holds it for $seconds, then commits
- * the attendance row. Returns the connection so the caller can reap it.
+ * Runs `INSERT INTO $table ($columns) SELECT $values` on its own connection,
+ * as another register's in-flight sale, without waiting for it: the
+ * statement takes the same row lock as CapacityService::lockForAdmission(),
+ * holds it for $seconds, then commits the row. Returns the connection so the
+ * caller can reap it.
  */
-function admitOnAnotherRegister(Member $member, Event $event, int $seconds = 1): mysqli
+function sellOnAnotherRegister(string $table, string $columns, string $values, int $seconds = 1): mysqli
 {
     $config = DB::connection()->getConfig();
     $other = new mysqli($config['host'], $config['username'], $config['password'], $config['database'], (int) $config['port']);
 
     // One autocommit statement: the FOR UPDATE lock is taken as the row is
     // read and held until the statement (and so the insert) commits.
-    $other->query(sprintf(
-        'INSERT INTO attendance (member_id, event_id, checked_in_at, created_at, updated_at)
-         SELECT %d, %d, NOW(), NOW(), NOW() FROM membership_settings WHERE SLEEP(%d) = 0 FOR UPDATE',
-        $member->id,
-        $event->id,
-        $seconds,
-    ), MYSQLI_ASYNC);
+    $other->query(
+        "INSERT INTO {$table} ({$columns}) SELECT {$values} FROM membership_settings WHERE SLEEP({$seconds}) = 0 FOR UPDATE",
+        MYSQLI_ASYNC,
+    );
 
     // Long enough for that statement to reach the lock before this
     // connection goes for it.
     usleep(250_000);
 
     return $other;
+}
+
+/**
+ * Waits for sellOnAnotherRegister()'s statement and fails the test if it
+ * didn't insert: a statement that errors out releases the lock at once,
+ * and the race under test would then never have happened.
+ */
+function finishSaleOnAnotherRegister(mysqli $other): void
+{
+    $result = $other->reap_async_query();
+    $error = $other->error;
+    $other->close();
+
+    expect($result)->not->toBeFalse("The other register's insert failed: {$error}");
+}
+
+function admitOnAnotherRegister(Member $member, Event $event): mysqli
+{
+    return sellOnAnotherRegister(
+        'attendance',
+        'member_id, event_id, checked_in_at, created_at, updated_at',
+        sprintf('%d, %d, NOW(), NOW(), NOW()', $member->id, $event->id),
+    );
 }
 
 function raceMember(Category $category, string $username): Member
@@ -110,8 +132,7 @@ test('two registers admitting different members for the last spot admit only one
         ->callMountedAction()
         ->assertNotified(__('Building at capacity — check-in not saved.'));
 
-    $other->reap_async_query();
-    $other->close();
+    finishSaleOnAnotherRegister($other);
 
     expect(Attendance::where('event_id', $event->id)->pluck('member_id')->all())->toBe([$first->id]);
 });
@@ -132,9 +153,41 @@ test('with room to spare, a register waits out another admission instead of fail
         ->callMountedAction()
         ->assertHasNoActionErrors();
 
-    $other->reap_async_query();
-    $other->close();
+    finishSaleOnAnotherRegister($other);
 
     expect(Attendance::where('event_id', $event->id)->pluck('member_id')->sort()->values()->all())
         ->toBe([$first->id, $second->id]);
+});
+
+test('two registers selling the last unit of a capped add-on sell it only once', function () {
+    $event = Event::factory()->create(['event_date' => today()->toDateString(), 'entry_fee' => 20, 'pool_fee' => 0]);
+    $room = AddOn::factory()->create(['name' => 'Private room rental', 'price' => 50, 'max_per_night' => 1]);
+    $event->addOns()->attach($room->id);
+    $first = raceMember($this->category, 'first-register');
+    $second = raceMember($this->category, 'second-register');
+    $firstAttendance = Attendance::factory()->for($first)->for($event)->create(['checked_in_at' => now()]);
+
+    // Mounted with the room still offered, as on a register a moment
+    // before the other one sells it.
+    $livewire = Livewire::test(CheckIn::class)
+        ->fillForm(['event_id' => $event->id, 'member_id' => $second->id])
+        ->fillForm(['add_on_ids' => [$room->id]], 'pricingForm')
+        ->mountAction('checkIn');
+
+    $other = sellOnAnotherRegister(
+        'attendance_add_ons',
+        'attendance_id, add_on_id, name, price, created_at',
+        sprintf("%d, %d, 'Private room rental', 50, NOW()", $firstAttendance->id, $room->id),
+    );
+
+    // Without the re-check this counted the room's sales while the other
+    // register's row was still uncommitted, saw 0 of 1, and sold it too.
+    $livewire->setActionData(['checked_in_at' => now()])
+        ->callMountedAction()
+        ->assertNotified(__(':add_on sold out for tonight — check-in not saved.', ['add_on' => 'Private room rental']));
+
+    finishSaleOnAnotherRegister($other);
+
+    expect(AttendanceAddOn::where('add_on_id', $room->id)->pluck('attendance_id')->all())->toBe([$firstAttendance->id])
+        ->and(Attendance::where('member_id', $second->id)->exists())->toBeFalse();
 });
