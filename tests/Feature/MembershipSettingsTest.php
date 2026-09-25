@@ -89,7 +89,7 @@ test('saving updates the singleton row', function () {
     expect($setting->subscription_eligibility_threshold)->toBe(10)
         ->and($setting->probation_period_days)->toBe(45)
         ->and($setting->venue_capacity)->toBe(200)
-        ->and($setting->default_opening_float)->toBe(75.25)
+        ->and($setting->default_opening_float)->toBe('75.25')
         ->and($setting->event_window_buffer_minutes)->toBe(10)
         ->and($setting->age_of_majority)->toBe(19)
         ->and($setting->alcohol_flag_age)->toBe(20)

@@ -17,15 +17,15 @@
                         <tr>
                             <td>{{ $lineItem['source']->getLabel() }}</td>
                             <td class="text-right">{{ $lineItem['count'] }}</td>
-                            <td class="text-right">{{ \App\Models\MembershipSetting::formatMoney($lineItem['rate']) }}</td>
-                            <td class="text-right">{{ \App\Models\MembershipSetting::formatMoney($lineItem['subtotal']) }}</td>
+                            <td class="text-right">{{ \App\Models\MembershipSetting::formatMoney(\App\Support\Cents::toFloat($lineItem['rateCents'])) }}</td>
+                            <td class="text-right">{{ \App\Models\MembershipSetting::formatMoney(\App\Support\Cents::toFloat($lineItem['subtotalCents'])) }}</td>
                         </tr>
                     @endforeach
                 </tbody>
                 <tfoot>
                     <tr class="font-semibold">
                         <td colspan="3">{{ __('Total') }}</td>
-                        <td class="text-right">{{ \App\Models\MembershipSetting::formatMoney($result->total) }}</td>
+                        <td class="text-right">{{ \App\Models\MembershipSetting::formatMoney(\App\Support\Cents::toFloat($result->totalCents)) }}</td>
                     </tr>
                 </tfoot>
             </table>

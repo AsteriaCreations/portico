@@ -8,6 +8,7 @@ use App\Models\Plan;
 use App\Models\RegisterShift;
 use App\Models\Subscription;
 use App\Models\User;
+use App\Support\Cents;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Collection;
 
@@ -77,7 +78,7 @@ class SubscriptionBundleService
         $plan = Plan::currentFor($addOn, now(), $months);
         abort_unless($plan, 422, "No {$months}-month {$addOn->name} plan is currently effective.");
 
-        $shares = $this->splitCents((int) round((float) $plan->price * 100), $months);
+        $shares = $this->splitCents(Cents::of($plan->price), $months);
         $endMonth = $resolution->start->clone()->addMonthsNoOverflow($months - 1);
         $rangeLabel = $this->rangeLabel($resolution->start, $endMonth);
 

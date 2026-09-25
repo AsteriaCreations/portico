@@ -4,6 +4,10 @@ namespace App\Services;
 
 use App\Models\ShowrunnerPayoutTier;
 
+/**
+ * Amounts are integer cents -- see App\Support\Cents. Convert with
+ * Cents::toFloat() only to display them.
+ */
 final readonly class ShowrunnerPayoutResult
 {
     public function __construct(
@@ -11,12 +15,12 @@ final readonly class ShowrunnerPayoutResult
         public bool $includeSh,
         public int $cashCount,
         public int $shCount,
-        public float $cashRevenue,
-        public float $shRevenue,
-        public float $poolRevenue,
-        public float $addonRevenue,
-        public float $doorTotal,
+        public int $cashRevenueCents,
+        public int $shRevenueCents,
+        public int $poolRevenueCents,
+        public int $addonRevenueCents,
+        public int $doorTotalCents,
         public ?ShowrunnerPayoutTier $tier,
-        public ?float $payoutAmount,
+        public ?int $payoutAmountCents,
     ) {}
 }

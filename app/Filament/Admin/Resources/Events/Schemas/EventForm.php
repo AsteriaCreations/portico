@@ -7,6 +7,7 @@ use App\Models\Event;
 use App\Models\Member;
 use App\Models\MembershipSetting;
 use App\Services\EventSummaryService;
+use App\Support\Cents;
 use Carbon\Carbon;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\DateTimePicker;
@@ -140,7 +141,7 @@ class EventForm
                                 ->content(fn (?Event $record, EventSummaryService $summaryService): string => (string) ($record ? $summaryService->forEvent($record)['prepaid_no_show'] : 0)),
                             Placeholder::make('summary_revenue')
                                 ->label('Revenue')
-                                ->content(fn (?Event $record, EventSummaryService $summaryService): string => MembershipSetting::formatMoney($record ? $summaryService->forEvent($record)['revenue'] : 0)),
+                                ->content(fn (?Event $record, EventSummaryService $summaryService): string => MembershipSetting::formatMoney(Cents::toFloat($record ? $summaryService->forEvent($record)['revenue_cents'] : 0))),
                         ]),
                 ] : []),
             ]);

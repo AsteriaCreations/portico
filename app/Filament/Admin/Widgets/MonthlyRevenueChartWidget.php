@@ -7,6 +7,7 @@ use App\Models\AddOnDayPass;
 use App\Models\Attendance;
 use App\Models\MiscellaneousPayment;
 use App\Models\Subscription;
+use App\Support\Cents;
 use Filament\Widgets\ChartWidget;
 
 /**
@@ -55,24 +56,26 @@ class MonthlyRevenueChartWidget extends ChartWidget
             'datasets' => [
                 [
                     'label' => 'Event',
-                    'data' => $months->map(fn ($month) => (float) Attendance::query()
+                    'data' => $months->map(fn ($month) => Cents::toFloat(Cents::of(Attendance::query()
                         ->whereNotNull('checked_in_at')
                         ->whereBetween('checked_in_at', [$month, $month->copy()->endOfMonth()])
-                        ->sum('amount_paid'))->all(),
+                        ->sum('amount_paid'))))->all(),
                 ],
                 [
                     'label' => 'Subscription',
-                    'data' => $months->map(fn ($month) => (float) Subscription::query()
+                    'data' => $months->map(fn ($month) => Cents::toFloat(Cents::of(Subscription::query()
                         ->whereBetween('paid_on', [$month, $month->copy()->endOfMonth()])
-                        ->sum('amount_paid'))->all(),
+                        ->sum('amount_paid'))))->all(),
                 ],
                 [
                     'label' => 'Other',
                     'data' => $months->map(function ($month) {
                         $range = [$month, $month->copy()->endOfMonth()];
 
-                        return (float) MiscellaneousPayment::query()->whereBetween('created_at', $range)->sum('amount')
-                            + (float) AddOnDayPass::query()->whereBetween('created_at', $range)->sum('amount_paid');
+                        return Cents::toFloat(
+                            Cents::of(MiscellaneousPayment::query()->whereBetween('created_at', $range)->sum('amount'))
+                            + Cents::of(AddOnDayPass::query()->whereBetween('created_at', $range)->sum('amount_paid'))
+                        );
                     })->all(),
                 ],
             ],

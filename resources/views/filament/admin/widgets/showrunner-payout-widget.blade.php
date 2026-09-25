@@ -5,11 +5,11 @@
         <x-filament::section :heading="__('Showrunner payout')">
             <dl class="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
                 <dt class="text-gray-500">{{ __('Cash-paying attendees') }}</dt>
-                <dd>{{ $result->cashCount }} ({{ \App\Models\MembershipSetting::formatMoney($result->cashRevenue) }})</dd>
+                <dd>{{ $result->cashCount }} ({{ \App\Models\MembershipSetting::formatMoney(\App\Support\Cents::toFloat($result->cashRevenueCents)) }})</dd>
 
                 <dt class="text-gray-500">{{ __('Subscription-covered (SH) attendees') }}</dt>
                 <dd>
-                    {{ $result->shCount }} ({{ \App\Models\MembershipSetting::formatMoney($result->shRevenue) }})
+                    {{ $result->shCount }} ({{ \App\Models\MembershipSetting::formatMoney(\App\Support\Cents::toFloat($result->shRevenueCents)) }})
                     &mdash;
                     @if ($result->includeSh)
                         {{ __('counts toward commission') }}
@@ -20,13 +20,13 @@
 
                 <dt class="text-gray-500">{{ __('Pool revenue') }}</dt>
                 <dd>
-                    {{ \App\Models\MembershipSetting::formatMoney($result->poolRevenue) }}
+                    {{ \App\Models\MembershipSetting::formatMoney(\App\Support\Cents::toFloat($result->poolRevenueCents)) }}
                     ({{ $this->getSettings()->showrunner_door_includes_pool ? __('included') : __('excluded') }})
                 </dd>
 
                 <dt class="text-gray-500">{{ __('Add-on revenue') }}</dt>
                 <dd>
-                    {{ \App\Models\MembershipSetting::formatMoney($result->addonRevenue) }}
+                    {{ \App\Models\MembershipSetting::formatMoney(\App\Support\Cents::toFloat($result->addonRevenueCents)) }}
                     ({{ $this->getSettings()->showrunner_door_includes_addons ? __('included') : __('excluded') }})
                 </dd>
 
@@ -34,7 +34,7 @@
                 <dd>{{ $result->headcount }}</dd>
 
                 <dt class="text-gray-500">{{ __('Door total') }}</dt>
-                <dd>{{ \App\Models\MembershipSetting::formatMoney($result->doorTotal) }}</dd>
+                <dd>{{ \App\Models\MembershipSetting::formatMoney(\App\Support\Cents::toFloat($result->doorTotalCents)) }}</dd>
 
                 <dt class="text-gray-500">{{ __('Tier') }}</dt>
                 <dd>
@@ -53,8 +53,8 @@
 
                 <dt class="text-gray-500">{{ __('Payout') }}</dt>
                 <dd class="font-semibold">
-                    @if ($result->payoutAmount !== null)
-                        {{ \App\Models\MembershipSetting::formatMoney($result->payoutAmount) }}
+                    @if ($result->payoutAmountCents !== null)
+                        {{ \App\Models\MembershipSetting::formatMoney(\App\Support\Cents::toFloat($result->payoutAmountCents)) }}
                         @if ($result->tier?->payout_type === \App\Enums\PayoutType::Voucher)
                             &mdash; {{ __('issue manually via Vouchers') }}
                         @endif

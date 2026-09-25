@@ -45,4 +45,18 @@ final class Cents
 
         return sprintf('%s%d.%02d', $sign, intdiv($cents, 100), $cents % 100);
     }
+
+    /**
+     * A percentage of an amount, rounded once to the cent, half-up (away
+     * from zero): 15% of $10.30 is $1.545, which pays $1.55. The percentage
+     * is a decimal(8,2) value like "33.33", taken in hundredths of a percent
+     * so the whole calculation stays in ints -- no float ever rounds it.
+     */
+    public static function percentOf(int $cents, string|int|float $percent): int
+    {
+        $product = $cents * self::of($percent);
+        $rounded = intdiv(abs($product) + 5000, 10000);
+
+        return $product < 0 ? -$rounded : $rounded;
+    }
 }

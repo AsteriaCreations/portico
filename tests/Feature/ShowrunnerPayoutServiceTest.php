@@ -58,7 +58,7 @@ test('under 35 attendees lands in the flat voucher tier', function () {
 
     expect($result->headcount)->toBe(34)
         ->and($result->tier->payout_type)->toBe(PayoutType::Voucher)
-        ->and($result->payoutAmount)->toBe(25.0);
+        ->and($result->payoutAmountCents)->toBe(2500);
 });
 
 test('35 to 100 attendees lands in the 10% tier, computed off entry revenue', function () {
@@ -68,9 +68,9 @@ test('35 to 100 attendees lands in the 10% tier, computed off entry revenue', fu
     $result = $this->service->calculate($event);
 
     expect($result->headcount)->toBe(35)
-        ->and($result->doorTotal)->toBe(350.0)
+        ->and($result->doorTotalCents)->toBe(35000)
         ->and($result->tier->payout_value)->toEqual('10.00')
-        ->and($result->payoutAmount)->toBe(35.0);
+        ->and($result->payoutAmountCents)->toBe(3500);
 });
 
 test('101 attendees lands in the 15% tier', function () {
@@ -80,7 +80,7 @@ test('101 attendees lands in the 15% tier', function () {
     $result = $this->service->calculate($event);
 
     expect($result->headcount)->toBe(101)
-        ->and($result->payoutAmount)->toBe(151.5); // 15% of $1010
+        ->and($result->payoutAmountCents)->toBe(15150); // 15% of $1010
 });
 
 test('above every configured tier, the top tier rate keeps applying with no cap', function () {
@@ -91,7 +91,7 @@ test('above every configured tier, the top tier rate keeps applying with no cap'
 
     expect($result->headcount)->toBe(250)
         ->and($result->tier->min_headcount)->toBe(101)
-        ->and($result->payoutAmount)->toBe(375.0); // 15% of $2500
+        ->and($result->payoutAmountCents)->toBe(37500); // 15% of $2500
 });
 
 test('subscription-covered attendees count toward headcount and door total once the entry fee exceeds the subscription credit', function () {
@@ -108,7 +108,7 @@ test('subscription-covered attendees count toward headcount and door total once 
     expect($result->includeSh)->toBeTrue()
         ->and($result->shCount)->toBe(20)
         ->and($result->headcount)->toBe(20)
-        ->and($result->doorTotal)->toBe(100.0); // 20 * (30 - 25)
+        ->and($result->doorTotalCents)->toBe(10000); // 20 * (30 - 25)
 });
 
 test('subscription-covered attendees are excluded from headcount and door total when the entry fee does not exceed the subscription credit', function () {
@@ -125,7 +125,7 @@ test('subscription-covered attendees are excluded from headcount and door total 
     expect($result->includeSh)->toBeFalse()
         ->and($result->shCount)->toBe(20) // still reported for display
         ->and($result->headcount)->toBe(0)
-        ->and($result->doorTotal)->toBe(0.0);
+        ->and($result->doorTotalCents)->toBe(0);
 });
 
 test('comped, event-comp, and host entries never count toward headcount or door revenue', function () {
@@ -147,7 +147,7 @@ test('comped, event-comp, and host entries never count toward headcount or door 
     $result = $this->service->calculate($event);
 
     expect($result->headcount)->toBe(40)
-        ->and($result->doorTotal)->toBe(400.0);
+        ->and($result->doorTotalCents)->toBe(40000);
 });
 
 test('pool and add-on revenue only count toward the door total when their settings toggle is on', function () {
@@ -170,14 +170,37 @@ test('pool and add-on revenue only count toward the door total when their settin
     AttendanceAddOn::factory()->for($attendance, 'attendance')->create(['price' => 30]);
 
     $offResult = $this->service->calculate($event);
-    expect($offResult->doorTotal)->toBe(10.0)
-        ->and($offResult->poolRevenue)->toBe(5.0)
-        ->and($offResult->addonRevenue)->toBe(30.0);
+    expect($offResult->doorTotalCents)->toBe(1000)
+        ->and($offResult->poolRevenueCents)->toBe(500)
+        ->and($offResult->addonRevenueCents)->toBe(3000);
 
     MembershipSetting::current()->update(['showrunner_door_includes_pool' => true, 'showrunner_door_includes_addons' => true]);
 
     $onResult = $this->service->calculate($event);
-    expect($onResult->doorTotal)->toBe(45.0); // 10 entry + 5 pool + 30 add-on
+    expect($onResult->doorTotalCents)->toBe(4500); // 10 entry + 5 pool + 30 add-on
+});
+
+test('a percentage payout that lands on a fraction of a cent is rounded to the cent', function () {
+    ShowrunnerPayoutTier::query()->delete();
+    ShowrunnerPayoutTier::create(['min_headcount' => 0, 'max_headcount' => null, 'payout_type' => PayoutType::Percentage, 'payout_value' => 33.33]);
+    $event = Event::factory()->create(['event_date' => '2026-07-19', 'entry_fee' => 100.10]);
+    cashAttendance($event, 1, entryFee: 100.10);
+
+    $result = $this->service->calculate($event);
+
+    expect($result->doorTotalCents)->toBe(10010)
+        ->and($result->payoutAmountCents)->toBe(3336); // 33.33% of $100.10 is $33.363333
+});
+
+test('a percentage payout on an exact half cent rounds up', function () {
+    ShowrunnerPayoutTier::query()->delete();
+    ShowrunnerPayoutTier::create(['min_headcount' => 0, 'max_headcount' => null, 'payout_type' => PayoutType::Percentage, 'payout_value' => 15.00]);
+    $event = Event::factory()->create(['event_date' => '2026-07-19', 'entry_fee' => 10.30]);
+    cashAttendance($event, 1, entryFee: 10.30);
+
+    $result = $this->service->calculate($event);
+
+    expect($result->payoutAmountCents)->toBe(155); // 15% of $10.30 is $1.545; half-even would pay $1.54
 });
 
 test('no matching tier reports a null payout rather than guessing', function () {
@@ -188,5 +211,5 @@ test('no matching tier reports a null payout rather than guessing', function () 
     $result = $this->service->calculate($event);
 
     expect($result->tier)->toBeNull()
-        ->and($result->payoutAmount)->toBeNull();
+        ->and($result->payoutAmountCents)->toBeNull();
 });

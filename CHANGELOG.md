@@ -52,6 +52,16 @@ is fixes only.
   the staff member as an argument instead of reading `auth()`. No behavior change; the
   page's existing tests pass unmodified, and `CheckInServiceTest` covers the service
   directly.
+- The showrunner and instructor payouts, the event summary (event-ended email,
+  notification and the event page's summary), and the Monthly Revenue chart now sum and
+  compare money in integer cents, finishing the move off PHP floats for money.
+  `ShowrunnerPayoutResult` and `InstructorPayoutResult` fields are `*Cents` ints, and
+  `EventSummaryService` returns `revenue_cents`. **A percentage payout is now rounded once,
+  to the cent, half-up** (new `Cents::percentOf()`); it was never rounded before, and only
+  the display rounded it, half-even. So a payout landing exactly on a half cent shows 1¢
+  more than it used to (15% of $10.30 is $1.545: now $1.55, previously shown as $1.54).
+  `membership_settings.default_opening_float` is cast `decimal:2` like every other money
+  column.
 - `docs/DEPLOYMENT.md` is expanded with lessons from a real production go-live, and the
   network guidance is now router-agnostic: a vendor-neutral checklist (DHCP reservation,
   local DNS, isolated staff network, no WAN port-forward, verify segmentation) with UniFi
