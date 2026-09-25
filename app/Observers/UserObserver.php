@@ -12,7 +12,8 @@ use Illuminate\Validation\ValidationException;
  * layer so they hold no matter which save path triggered the change (the
  * Filament Users form, tinker, a future API), the same reasoning behind
  * MemberObserver. UserPolicy hides the matching UI buttons; this is the
- * backstop for a forged or scripted call that gets past that.
+ * backstop for a forged or scripted call that gets past that. Rank matters
+ * too: nobody changes an account, or grants a role, above their own.
  *
  * A ValidationException surfaces as an inline form error (Livewire catches it
  * and aborts the save before the write) rather than a 500.
@@ -28,6 +29,8 @@ class UserObserver
             return;
         }
 
+        $this->guardOutrankedTarget($user);
+        $this->guardRoleGrant($user);
         $this->guardSelfLockout($user);
         $this->guardLastActiveOwner(
             $user,
@@ -47,11 +50,56 @@ class UserObserver
             ]);
         }
 
+        $this->guardOutrankedTarget($user);
         $this->guardLastActiveOwner(
             $user,
             __('The last active Owner can’t be deleted. Promote another Owner first.'),
             isDeletion: true,
         );
+    }
+
+    /**
+     * Nobody changes or deletes an account ranked above their own — an Admin
+     * can't reset, deactivate or edit an Owner. Checked against the role the
+     * account had before this save, so demoting it first isn't a way round.
+     */
+    private function guardOutrankedTarget(User $user): void
+    {
+        $targetRole = $this->normalizeRole($user->getOriginal('role'));
+
+        if ($targetRole !== null && ! $this->actorRole()->atLeast($targetRole)) {
+            throw ValidationException::withMessages([
+                'record' => __('You can’t change an account that outranks you.'),
+            ]);
+        }
+    }
+
+    /**
+     * Nobody promotes an account above their own role, themselves included
+     * -- an Admin can't make anyone an Owner. Creating an account with such
+     * a role is refused by CreateUser (the role picker only offers roles up
+     * to your own, and Filament rejects any value outside them).
+     */
+    private function guardRoleGrant(User $user): void
+    {
+        $role = $this->normalizeRole($user->role);
+
+        if ($user->isDirty('role') && $role !== null && ! $this->actorRole()->atLeast($role)) {
+            throw ValidationException::withMessages([
+                'role' => __('You can’t give an account a role above your own.'),
+            ]);
+        }
+    }
+
+    /**
+     * The actor's role as saved, not as it may be about to change: when you
+     * edit your own account, auth()->user() is the very model being saved,
+     * and reading ->role would let an Admin rank themselves as the Owner
+     * they're trying to become.
+     */
+    private function actorRole(): Role
+    {
+        return $this->normalizeRole(auth()->user()->getOriginal('role')) ?? auth()->user()->role;
     }
 
     /**

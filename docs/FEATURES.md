@@ -107,6 +107,8 @@ ROLES & PERMISSIONS
 - Server-side policy enforcement (not just UI hiding)
 - Monthly Manager & Owner subscription perk (non-monotonic exception)
 - Forced password change — an Admin+ can flag a user account so its next sign-in is redirected to a dedicated change-password screen before anything else in the panel is reachable
+- One-click password reset — a random, readable temporary password shown once to pass on; signs the account out everywhere and forces a change at next sign-in
+- Rank rule for staff accounts — nobody edits, resets, deletes or grants a role above their own (only an Owner manages Owners)
 
 REPORTING & ANALYTICS
 ------------------------

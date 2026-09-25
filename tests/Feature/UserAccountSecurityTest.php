@@ -126,11 +126,14 @@ test('an admin cannot delete their own account', function () {
 
 test('the last active owner cannot be deactivated or demoted', function () {
     $owner = User::factory()->create(['role' => Role::Owner, 'active' => true]);
+    // The sole Owner acting on their own account: an Admin would be stopped
+    // by the rank rule first, which isn't what this test is about.
+    $this->actingAs($owner);
 
     expect(fn () => $owner->update(['active' => false]))->toThrow(ValidationException::class);
     expect($owner->refresh()->active)->toBeTrue();
 
-    expect(fn () => $owner->update(['role' => Role::Admin]))->toThrow(ValidationException::class);
+    expect(fn () => $owner->update(['role' => Role::Admin]))->toThrow(ValidationException::class, 'last active Owner');
     expect($owner->refresh()->role)->toBe(Role::Owner);
 });
 
@@ -144,8 +147,10 @@ test('the last active owner cannot be deleted', function () {
 
 test('an owner can be changed once a second active owner exists', function () {
     $first = User::factory()->create(['role' => Role::Owner, 'active' => true]);
-    User::factory()->create(['role' => Role::Owner, 'active' => true]);
+    $second = User::factory()->create(['role' => Role::Owner, 'active' => true]);
 
+    // Only an Owner can change an Owner account (see the rank tests below).
+    $this->actingAs($second);
     $first->update(['role' => Role::Admin]);
 
     expect($first->refresh()->role)->toBe(Role::Admin);
@@ -153,14 +158,86 @@ test('an owner can be changed once a second active owner exists', function () {
 });
 
 test('an inactive owner does not count as the last active owner', function () {
-    User::factory()->create(['role' => Role::Owner, 'active' => true]);
+    $activeOwner = User::factory()->create(['role' => Role::Owner, 'active' => true]);
     $inactive = User::factory()->create(['role' => Role::Owner, 'active' => false]);
 
     // Only one *active* owner (the first) — but this row isn't it, so the
-    // guard doesn't apply to changing this one.
+    // guard doesn't apply to changing this one. Acting as that Owner, since
+    // only an Owner can change an Owner account.
+    $this->actingAs($activeOwner);
     $inactive->update(['role' => Role::Admin]);
 
     expect($inactive->refresh()->role)->toBe(Role::Admin);
+});
+
+// --- Rank: nobody manages an account above their own ----------------------
+
+test('an admin cannot create an owner or promote anyone, themselves included, to owner', function () {
+    Livewire::test(CreateUser::class)
+        ->fillForm([
+            'name' => 'Would-be Owner',
+            'email' => 'owner2@example.com',
+            'password' => 'Sup3r-Secret-Passw0rd',
+            'role' => Role::Owner->value,
+            'active' => true,
+        ])
+        ->call('create')
+        ->assertHasFormErrors(['role']);
+    expect(User::where('email', 'owner2@example.com')->exists())->toBeFalse();
+
+    $door = User::factory()->create(['role' => Role::Door, 'active' => true]);
+    expect(fn () => $door->update(['role' => Role::Owner]))->toThrow(ValidationException::class);
+    expect(fn () => $this->admin->update(['role' => Role::Owner]))->toThrow(ValidationException::class);
+
+    expect($door->refresh()->role)->toBe(Role::Door)
+        ->and($this->admin->refresh()->role)->toBe(Role::Admin);
+});
+
+test('an admin cannot edit, deactivate, delete or reset an owner, even directly', function () {
+    auth()->logout();
+    $owner = User::factory()->create(['role' => Role::Owner, 'active' => true]);
+    User::factory()->create(['role' => Role::Owner, 'active' => true]);
+    $this->actingAs($this->admin);
+
+    expect(Gate::allows('update', $owner))->toBeFalse()
+        ->and(Gate::allows('delete', $owner))->toBeFalse()
+        ->and(Gate::allows('resetPassword', $owner))->toBeFalse();
+
+    expect(fn () => $owner->update(['name' => 'Hijacked']))->toThrow(ValidationException::class, 'outranks you');
+    expect(fn () => $owner->update(['active' => false]))->toThrow(ValidationException::class);
+    expect(fn () => $owner->resetToTemporaryPassword())->toThrow(ValidationException::class);
+    expect(fn () => $owner->delete())->toThrow(ValidationException::class);
+
+    expect($owner->refresh()->name)->not->toBe('Hijacked')
+        ->and($owner->must_change_password)->toBeFalse();
+
+    Livewire::test(EditUser::class, ['record' => $owner->getRouteKey()])->assertForbidden();
+});
+
+test('the role picker never offers a role above your own', function () {
+    $options = Livewire::test(CreateUser::class)
+        ->instance()
+        ->form
+        ->getComponent('role')
+        ->getOptions();
+
+    expect(array_keys($options))->not->toContain(Role::Owner->value)
+        ->toContain(Role::Admin->value);
+});
+
+test('an owner can manage owners, and an admin can still manage admins and below', function () {
+    $owner = User::factory()->create(['role' => Role::Owner, 'active' => true]);
+    $otherAdmin = User::factory()->create(['role' => Role::Admin, 'active' => true]);
+
+    expect(Gate::allows('update', $otherAdmin))->toBeTrue();
+    $otherAdmin->update(['role' => Role::Manager]);
+    expect($otherAdmin->refresh()->role)->toBe(Role::Manager);
+
+    $this->actingAs($owner);
+    $promoted = User::factory()->create(['role' => Role::Owner, 'active' => true]);
+
+    expect(Gate::allows('update', $promoted))->toBeTrue()
+        ->and(Gate::allows('resetPassword', $promoted))->toBeTrue();
 });
 
 // --- A2: console context is exempt -----------------------------------------

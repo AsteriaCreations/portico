@@ -11,6 +11,15 @@ is fixes only.
 
 ### Added
 
+- **Reset password** on a staff account (Users list and the user's edit page, Admin+):
+  sets a random, readable temporary password (e.g. `Maple-Otter-4172!`, always passing the
+  password rule), shows it once in a notification to pass on, signs the account out
+  everywhere, and makes it choose its own password at next sign-in. Never available on
+  your own account (use Change password) or one that outranks you. Deliberately not a
+  shared default like "changeme", which anyone knowing the convention could use to sign in
+  as a just-reset account first. New `App\Support\TemporaryPassword`,
+  `User::resetToTemporaryPassword()` and `User::endSessions()`.
+
 - **Archive events** (Admin+), instead of deleting them. An archived event leaves the
   check-in desk, Active Patrons, the Showrunner comp-request screen, day-pass sales and the
   default events list (an **Archived** filter shows it again), and becomes read-only: its
@@ -55,6 +64,10 @@ is fixes only.
 
 ### Changed
 
+- Users screen: a new account now requires a password change at first sign-in by default
+  (whoever created it chose its password); the list gains an Active filter. Change
+  password rejects reusing your current password, and signs out your other sessions while
+  keeping this one.
 - Events screen: the list gains a start-time column, an "Arrived" count (arrivals only,
   not prepays awaiting arrival) and an Upcoming / Past filter. An unnamed event is titled
   by its date and type ("Aug 1, 2026 — Social") instead of a bare "Event", in page titles,
@@ -164,6 +177,15 @@ is fixes only.
 
 ### Security
 
+- An Admin could take over the Owner role: nothing compared the acting user's rank with
+  the account being changed, so an Admin could promote anyone (themselves included) to
+  Owner, and edit, deactivate, delete or set the password of an Owner account. Now nobody
+  can change an account, or grant a role, above their own: `UserObserver` refuses it on
+  every save (including a direct model update), `UserPolicy` hides Edit/Delete/Reset on
+  higher-ranked rows and 403s their edit page, the role picker stops at your own role, and
+  `CreateUser` refuses a forged higher role. An Admin still manages Admins and below; only
+  an Owner manages Owners. The self-edit check reads your saved role, so changing your own
+  role in the same save can't raise it.
 - Repository hardening ahead of wider public use: `main` and `v*` release tags are now
   protected by rulesets (PR + passing CI required, no force-push or deletion, squash
   merge only); CI actions are pinned to commit SHAs with an explicit `contents: read`

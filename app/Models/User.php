@@ -5,6 +5,7 @@ namespace App\Models;
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 use App\Enums\Capability;
 use App\Enums\Role;
+use App\Support\TemporaryPassword;
 use Database\Factories\UserFactory;
 use Filament\Models\Contracts\FilamentUser;
 use Filament\Panel;
@@ -90,6 +91,40 @@ class User extends Authenticatable implements FilamentUser
     public function writtenBehaviorNotes(): HasMany
     {
         return $this->hasMany(AttendanceBehaviorNote::class, 'created_by');
+    }
+
+    /**
+     * Replaces this account's password with a random temporary one and
+     * returns it, so the admin who reset it can pass it on. The account must
+     * choose its own at next sign-in (RequirePasswordChange), and every
+     * session it has open now is ended, so a browser left signed in doesn't
+     * outlive the reset. UserObserver's rank rule applies to the save.
+     */
+    public function resetToTemporaryPassword(): string
+    {
+        $password = TemporaryPassword::generate();
+
+        $this->forceFill(['password' => $password, 'must_change_password' => true])->save();
+        $this->endSessions();
+
+        return $password;
+    }
+
+    /**
+     * Signs this account out everywhere, or everywhere but $exceptSessionId.
+     * Only possible with the database session driver, which is the default
+     * (config/session.php); with another driver this does nothing.
+     */
+    public function endSessions(?string $exceptSessionId = null): void
+    {
+        if (config('session.driver') !== 'database') {
+            return;
+        }
+
+        DB::table(config('session.table', 'sessions'))
+            ->where('user_id', $this->getKey())
+            ->when($exceptSessionId, fn ($query) => $query->where('id', '!=', $exceptSessionId))
+            ->delete();
     }
 
     public function hasCapability(Capability $capability): bool
