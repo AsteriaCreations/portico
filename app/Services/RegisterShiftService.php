@@ -11,6 +11,7 @@ use App\Models\RegisterDrop;
 use App\Models\RegisterShift;
 use App\Models\Subscription;
 use App\Models\User;
+use App\Support\Cents;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -87,6 +88,16 @@ class RegisterShiftService
 
     public function cashReceived(RegisterShift $shift): float
     {
+        return Cents::toFloat($this->cashReceivedCents($shift));
+    }
+
+    /**
+     * Every sum here is taken in cents -- see App\Support\Cents. A drawer
+     * that balances to the cent must come out at exactly zero variance,
+     * which float sums of these four tables didn't reliably do.
+     */
+    public function cashReceivedCents(RegisterShift $shift): int
+    {
         $cashCodes = PaymentMethod::cashCodes();
 
         $attendanceCash = Attendance::where('register_shift_id', $shift->id)
@@ -105,7 +116,7 @@ class RegisterShiftService
             ->whereIn('payment_method', $cashCodes)
             ->sum('amount_paid');
 
-        return (float) $attendanceCash + (float) $subscriptionCash + (float) $miscCash + (float) $addOnDayPassCash;
+        return Cents::of($attendanceCash) + Cents::of($subscriptionCash) + Cents::of($miscCash) + Cents::of($addOnDayPassCash);
     }
 
     /**
@@ -117,24 +128,34 @@ class RegisterShiftService
      */
     public function revenueBreakdown(RegisterShift $shift): array
     {
-        $other = (float) MiscellaneousPayment::where('register_shift_id', $shift->id)->sum('amount')
-            + (float) AddOnDayPass::where('register_shift_id', $shift->id)->sum('amount_paid');
+        $other = Cents::of(MiscellaneousPayment::where('register_shift_id', $shift->id)->sum('amount'))
+            + Cents::of(AddOnDayPass::where('register_shift_id', $shift->id)->sum('amount_paid'));
 
         return [
-            'event' => (float) Attendance::where('register_shift_id', $shift->id)->sum('amount_paid'),
-            'subscription' => (float) Subscription::where('register_shift_id', $shift->id)->sum('amount_paid'),
-            'other' => $other,
+            'event' => Cents::toFloat(Cents::of(Attendance::where('register_shift_id', $shift->id)->sum('amount_paid'))),
+            'subscription' => Cents::toFloat(Cents::of(Subscription::where('register_shift_id', $shift->id)->sum('amount_paid'))),
+            'other' => Cents::toFloat($other),
         ];
     }
 
     public function totalDrops(RegisterShift $shift): float
     {
-        return (float) RegisterDrop::where('register_shift_id', $shift->id)->sum('amount');
+        return Cents::toFloat($this->totalDropsCents($shift));
+    }
+
+    public function totalDropsCents(RegisterShift $shift): int
+    {
+        return Cents::of(RegisterDrop::where('register_shift_id', $shift->id)->sum('amount'));
     }
 
     public function expectedClosingCount(RegisterShift $shift): float
     {
-        return (float) $shift->opening_count + $this->cashReceived($shift) - $this->totalDrops($shift);
+        return Cents::toFloat($this->expectedClosingCountCents($shift));
+    }
+
+    public function expectedClosingCountCents(RegisterShift $shift): int
+    {
+        return Cents::of($shift->opening_count) + $this->cashReceivedCents($shift) - $this->totalDropsCents($shift);
     }
 
     public function closeShift(RegisterShift $shift, User $user, float $closingCount, ?string $notes = null): RegisterShift
@@ -155,11 +176,23 @@ class RegisterShiftService
 
     public function variance(RegisterShift $shift): ?float
     {
+        $cents = $this->varianceCents($shift);
+
+        return $cents === null ? null : Cents::toFloat($cents);
+    }
+
+    /**
+     * Counted minus expected, in cents: 0 when the box balances, positive
+     * when it's over, negative when short. Compare this, not variance(),
+     * when deciding which of those it is.
+     */
+    public function varianceCents(RegisterShift $shift): ?int
+    {
         if (is_null($shift->closing_count)) {
             return null;
         }
 
-        return (float) $shift->closing_count - $this->expectedClosingCount($shift);
+        return Cents::of($shift->closing_count) - $this->expectedClosingCountCents($shift);
     }
 
     /**
