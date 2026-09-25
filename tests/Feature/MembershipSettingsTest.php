@@ -79,6 +79,7 @@ test('saving updates the singleton row', function () {
             'alcohol_flag_age' => 20,
             'currency' => 'EUR',
             'hide_member_pii_by_default' => false,
+            'active_patrons_show_staff_roles' => false,
             'checkin_display_name_field' => 'full_name',
         ])
         ->callAction('save')
@@ -95,6 +96,7 @@ test('saving updates the singleton row', function () {
         ->and($setting->alcohol_flag_age)->toBe(20)
         ->and($setting->currency)->toBe('EUR')
         ->and($setting->hide_member_pii_by_default)->toBeFalse()
+        ->and($setting->active_patrons_show_staff_roles)->toBeFalse()
         ->and($setting->checkin_display_name_field)->toBe('full_name');
 });
 

@@ -68,6 +68,7 @@ class MembershipSettings extends Page
             'member_search_fields',
             'checkin_display_name_field',
             'hide_member_pii_by_default',
+            'active_patrons_show_staff_roles',
             'showrunner_door_includes_pool',
             'showrunner_door_includes_addons',
             'upstream_remote',
@@ -183,6 +184,10 @@ class MembershipSettings extends Page
                 Toggle::make('hide_member_pii_by_default')
                     ->label('Hide personal info by default on the Members list')
                     ->helperText(__('Controls the starting state of the "Hide personal info" toggle on the Members list (first/last name, DOB, email). Staff can still flip it for their own session either way.'))
+                    ->required(),
+                Toggle::make('active_patrons_show_staff_roles')
+                    ->label('Show staff roles on Active Patrons')
+                    ->helperText(__('Active Patrons notes which staff are signed in ("Also in the building"). Turn this off to list their names only, without each person\'s role.'))
                     ->required(),
                 Toggle::make('showrunner_door_includes_pool')
                     ->label('Showrunner commission includes pool revenue')
