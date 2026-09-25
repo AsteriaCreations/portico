@@ -35,4 +35,23 @@ class CapacityService
     {
         return $this->capacity() === null || $this->occupancy($date) < $this->capacity();
     }
+
+    /**
+     * Serializes admissions against the cap: two registers submitting at
+     * once for different members would otherwise both count the same
+     * pre-admission occupancy and both get in. Holds the single
+     * membership_settings row until the caller's transaction ends.
+     *
+     * Must be the first read inside that transaction, and is taken even when
+     * no cap is set: InnoDB fixes a REPEATABLE READ snapshot at the first
+     * non-locking read, so any read ahead of this lock (including checking
+     * whether a cap exists) would leave the occupancy() count that follows
+     * blind to admissions committed while this one waited. For the same
+     * reason it can't lazily create the settings row itself: the caller must
+     * have called MembershipSetting::current() before opening the transaction.
+     */
+    public function lockForAdmission(): void
+    {
+        MembershipSetting::query()->lockForUpdate()->first();
+    }
 }

@@ -24,6 +24,7 @@ use App\Models\Voucher;
 use App\Services\RegisterShiftService;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Livewire\Livewire;
 
 uses(RefreshDatabase::class);
@@ -798,6 +799,37 @@ test('a check-in raced by another register is rejected without duplicating the r
         ->assertHasNoActionErrors();
 
     expect(Attendance::where('member_id', $member->id)->where('event_id', $event->id)->count())->toBe(1);
+});
+
+test('a non-attendance integrity violation is not reported as "already checked in"', function () {
+    $member = clearMember($this->irregular, ['subscription_eligible' => true]);
+    $event = Event::factory()->create(['event_date' => now()->toDateString(), 'entry_fee' => 40]);
+
+    $livewire = Livewire::test(CheckIn::class)
+        ->fillForm(['event_id' => $event->id, 'member_id' => $member->id])
+        ->fillForm(['subscription_regular_duration' => '1'], 'pricingForm')
+        ->mountAction('checkIn');
+
+    // Another register sells this member the same month between this
+    // register's "already covered?" check and its own insert -- this
+    // register's insert then hits the subscriptions unique key and the
+    // whole check-in rolls back.
+    Subscription::creating(function (Subscription $subscription): void {
+        DB::table('subscriptions')->insert([
+            'member_id' => $subscription->member_id,
+            'add_on_id' => $subscription->add_on_id,
+            'covered_month' => $subscription->covered_month,
+            'amount_paid' => 60,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+    });
+
+    $livewire->setActionData(['checked_in_at' => now()])
+        ->callMountedAction()
+        ->assertNotified(__('Check-in not saved — another register changed this member\'s record at the same moment.'));
+
+    expect(Attendance::where('member_id', $member->id)->exists())->toBeFalse();
 });
 
 test('checking in for a future event without a check-in time records a prepayment', function () {
