@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\CompReason;
 use App\Services\Concerns\ParsesSpreadsheetValues;
+use App\Support\Cents;
 use Illuminate\Database\QueryException;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 use RuntimeException;
@@ -69,7 +70,7 @@ class CompReasonBulkImporter
                 CompReason::create([
                     'name' => $name,
                     'description' => $description !== '' ? $description : null,
-                    'grants_voucher_amount' => $grantsVoucherAmountRaw !== '' ? (float) $grantsVoucherAmountRaw : null,
+                    'grants_voucher_amount' => $grantsVoucherAmountRaw !== '' ? Cents::toDecimal(Cents::of($grantsVoucherAmountRaw)) : null,
                     'sort_order' => $sortOrderRaw !== '' ? (int) $sortOrderRaw : 0,
                     'active' => $active,
                 ]);

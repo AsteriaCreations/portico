@@ -7,6 +7,7 @@ use App\Models\EventType;
 use App\Models\Member;
 use App\Models\User;
 use App\Services\Concerns\ParsesSpreadsheetValues;
+use App\Support\Cents;
 use Carbon\Carbon;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 use RuntimeException;
@@ -163,8 +164,8 @@ class EventBulkImporter
                 'ends_at' => $endsAt,
                 'name' => $name !== '' ? $name : null,
                 'event_type_id' => $eventTypeId,
-                'entry_fee' => (float) $entryFeeRaw,
-                'pool_fee' => (float) $poolFeeRaw,
+                'entry_fee' => Cents::toDecimal(Cents::of($entryFeeRaw)),
+                'pool_fee' => Cents::toDecimal(Cents::of($poolFeeRaw)),
                 'door_prepay_enabled' => $doorPrepayEnabled,
                 'showrunner_id' => $showrunnerId,
                 'host_id' => $hostId,

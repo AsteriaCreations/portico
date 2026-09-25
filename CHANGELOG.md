@@ -62,6 +62,11 @@ is fixes only.
   more than it used to (15% of $10.30 is $1.545: now $1.55, previously shown as $1.54).
   `membership_settings.default_opening_float` is cast `decimal:2` like every other money
   column.
+- A new `MoneyArithmeticGuardTest` fails the build on a `(float)` cast or a money-named
+  `float` parameter, property or return type in `app/Services` / `app/Support`, with a
+  commented allowlist for the safe ones; CONTRIBUTING.md gains the matching money rule. The
+  event, comp-reason and prepay-list importers and the register drop/payment/count writes
+  now store amounts via `Cents::toDecimal()`.
 - `docs/DEPLOYMENT.md` is expanded with lessons from a real production go-live, and the
   network guidance is now router-agnostic: a vendor-neutral checklist (DHCP reservation,
   local DNS, isolated staff network, no WAN port-forward, verify segmentation) with UniFi
