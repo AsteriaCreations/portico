@@ -3,13 +3,22 @@
 use App\Enums\Role;
 use App\Filament\Admin\Pages\FeatureFlags;
 use App\Models\MembershipSetting;
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
 
 uses(RefreshDatabase::class);
 
+// Its own helper rather than MembershipSettingsTest's userWithRoleForSettings():
+// under --parallel the two files can land in different workers, and a helper
+// defined in another test file is then undefined.
+function userWithRoleForFeatureFlags(Role $role): User
+{
+    return User::factory()->create(['active' => true, 'role' => $role]);
+}
+
 test('door cannot access the feature flags page', function () {
-    $this->actingAs(userWithRoleForSettings(Role::Door));
+    $this->actingAs(userWithRoleForFeatureFlags(Role::Door));
 
     expect(FeatureFlags::canAccess())->toBeFalse();
 
@@ -18,7 +27,7 @@ test('door cannot access the feature flags page', function () {
 
 test('manager and above can access the feature flags page', function () {
     foreach ([Role::Manager, Role::Admin, Role::Owner] as $role) {
-        $this->actingAs(userWithRoleForSettings($role));
+        $this->actingAs(userWithRoleForFeatureFlags($role));
 
         expect(FeatureFlags::canAccess())->toBeTrue();
 
@@ -40,7 +49,7 @@ test('mount fills the form from the current singleton row', function () {
         'behavior_notes_enabled' => false,
     ]);
 
-    $this->actingAs(userWithRoleForSettings(Role::Manager));
+    $this->actingAs(userWithRoleForFeatureFlags(Role::Manager));
 
     Livewire::test(FeatureFlags::class)
         ->assertSchemaStateSet([
@@ -58,7 +67,7 @@ test('mount fills the form from the current singleton row', function () {
 });
 
 test('saving updates the singleton row', function () {
-    $this->actingAs(userWithRoleForSettings(Role::Manager));
+    $this->actingAs(userWithRoleForFeatureFlags(Role::Manager));
 
     Livewire::test(FeatureFlags::class)
         ->fillForm([
