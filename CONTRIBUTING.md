@@ -33,6 +33,11 @@ disagree, the blueprint wins.
      vouchers → remainder). `App\Services\PricingService`.
    - A third centralized decision, `App\Services\CapacityService`, tracks building
      occupancy.
+   - `App\Services\CheckInService` is where those decisions meet and get written: one
+     locked transaction recording a check-in's subscriptions, attendance row, add-ons
+     and voucher draw. The Check-In page maps its form state into a `CheckInRequest`
+     and turns the result or refusal into notifications; it doesn't write any of those
+     rows itself.
    Filament resources, pages, and Blade views **call** these services; they never
    re-implement the logic. This centralization is the whole point of the app — keep it
    testable.
