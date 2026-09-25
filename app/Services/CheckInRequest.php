@@ -27,7 +27,7 @@ final readonly class CheckInRequest
         public int|string|null $compReasonId = null,
         public bool $applyVoucher = false,
         public int|string|null $voucherPayerId = null,
-        public float $voucherAmount = 0.0,
+        public int $voucherAmountCents = 0,
         public string $voucherReason = '',
     ) {}
 }

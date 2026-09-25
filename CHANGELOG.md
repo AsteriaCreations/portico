@@ -76,6 +76,16 @@ is fixes only.
 
 ### Fixed
 
+- A check-in that subscription credit plus a voucher covered exactly could still be
+  charged the payment method's transaction fee (e.g. $20.30 entry, $20.00 credit, $0.30
+  voucher: a $0.50 card fee recorded on a visit with nothing due). Pricing subtracted in
+  PHP floats and left 7.2e-16 "due", which counted as money changing hands. Pricing and
+  the check-in transaction now work in integer cents: `PriceBreakdown`, `AddOnPriceLine`
+  and `CheckInResult` fields are `*Cents` ints, `PricingService::applyVoucher()` takes
+  cents, and amounts are written to the database as exact decimal strings. **After
+  upgrading, run `php artisan attendance:find-stray-fees`**: a new read-only report
+  listing past check-ins charged a fee with nothing due, so the club can decide on
+  refunds. It changes nothing.
 - A register drawer that balanced to the cent could be reported as over or short by $0.00
   (e.g. $50.00 opening + $0.05 cash − $20.00 dropped, counted at $30.05), and counted as a
   "shift with variance" on the weekly widget: the expected-cash sums were done in PHP

@@ -4,25 +4,27 @@ namespace App\Services;
 
 use App\Enums\AddOnCoverageSource;
 use App\Models\AddOn;
+use App\Support\Cents;
 
 /**
  * One subscribable add-on's priced line within a PriceBreakdown — Pool, at
  * launch, but generic to any add-on flagged `subscribable`. Never built for
  * a non-subscribable (flat) add-on; those stay entirely outside
- * PricingService, exactly as before this existed.
+ * PricingService, exactly as before this existed. Amounts are integer cents
+ * -- see App\Support\Cents.
  */
 final readonly class AddOnPriceLine
 {
     public function __construct(
         public AddOn $addOn,
-        public float $fee,
-        public float $coverage,
+        public int $feeCents,
+        public int $coverageCents,
         public AddOnCoverageSource $coveredBy,
     ) {}
 
-    public function amountDue(): float
+    public function amountDueCents(): int
     {
-        return $this->fee - $this->coverage;
+        return $this->feeCents - $this->coverageCents;
     }
 
     /**
@@ -37,9 +39,9 @@ final readonly class AddOnPriceLine
         return [
             'add_on_id' => $this->addOn->id,
             'name' => $this->addOn->name,
-            'price' => $this->amountDue(),
-            'fee' => $this->fee,
-            'coverage' => $this->coverage,
+            'price' => Cents::toDecimal($this->amountDueCents()),
+            'fee' => Cents::toDecimal($this->feeCents),
+            'coverage' => Cents::toDecimal($this->coverageCents),
             'covered_by' => $this->coveredBy,
             'is_overnight' => $this->addOn->is_overnight,
         ];

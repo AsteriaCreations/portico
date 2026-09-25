@@ -15,6 +15,7 @@ use App\Models\RegisterShift;
 use App\Models\Subscription;
 use App\Models\User;
 use App\Models\Voucher;
+use App\Support\Cents;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 
@@ -62,7 +63,8 @@ class CheckInService
             }
 
             $month = $event->event_date->clone()->startOfMonth();
-            $subscriptionTotal = 0.0;
+            // All money in cents -- see App\Support\Cents.
+            $subscriptionTotal = 0;
 
             // Filtered to currently-purchasable add-ons (Pool
             // excluded while pool_enabled is off) -- looping
@@ -122,7 +124,7 @@ class CheckInService
                         'payment_method' => $paymentMethod,
                         'register_shift_id' => $openShift?->id,
                     ]);
-                    $subscriptionTotal += (float) $plan->price;
+                    $subscriptionTotal += Cents::of($plan->price);
 
                     continue;
                 }
@@ -136,7 +138,7 @@ class CheckInService
                     $paymentMethod,
                     $openShift,
                 );
-                $subscriptionTotal += (float) $bundleRows->sum('amount_paid');
+                $subscriptionTotal += $bundleRows->sum(fn (Subscription $row) => Cents::of($row->amount_paid));
             }
 
             $breakdown = app(PricingService::class)->price($member, $event);
@@ -154,7 +156,7 @@ class CheckInService
             $selectedAddOns = MembershipSetting::current()->add_ons_enabled
                 ? AddOn::offeredAt($event)->whereIn('id', $request->addOnIds)->get()
                 : collect();
-            $addOnTotal = (float) $selectedAddOns->sum('price');
+            $addOnTotal = $selectedAddOns->sum(fn (AddOn $addOn) => Cents::of($addOn->price));
 
             // The picker's disableOptionWhen() only knows the
             // sales committed when it last rendered. The whole
@@ -175,7 +177,7 @@ class CheckInService
                 $compReasonId = $request->compReasonId;
             }
 
-            $voucherApplied = 0.0;
+            $voucherApplied = 0;
             $voucherPayer = null;
             if ($request->applyVoucher && MembershipSetting::current()->vouchers_enabled) {
                 $voucherPayerId = ! empty($request->voucherPayerId) ? $request->voucherPayerId : $member->id;
@@ -191,10 +193,10 @@ class CheckInService
                 if ($voucherPayer) {
                     $breakdown = app(PricingService::class)->applyVoucher(
                         $breakdown,
-                        $voucherPayer->voucherBalance(),
-                        $request->voucherAmount,
+                        Cents::of($voucherPayer->voucherBalance()),
+                        $request->voucherAmountCents,
                     );
-                    $voucherApplied = $breakdown->voucherCoverage;
+                    $voucherApplied = $breakdown->voucherCoverageCents;
                 }
             }
 
@@ -205,9 +207,9 @@ class CheckInService
             // method), zero when nothing is actually changing
             // hands (e.g. a fully comped/vouchered entry with no
             // bundled subscription).
-            $transactionFee = ($breakdown->amountPaid + $addOnTotal + $subscriptionTotal) > 0
-                ? PaymentMethod::feeFor($paymentMethod)
-                : 0.0;
+            $transactionFee = ($breakdown->amountPaidCents + $addOnTotal + $subscriptionTotal) > 0
+                ? Cents::of(PaymentMethod::feeFor($paymentMethod))
+                : 0;
 
             $attendance = Attendance::create([
                 'member_id' => $member->id,
@@ -231,7 +233,7 @@ class CheckInService
                 // already sums (RegisterShiftService::
                 // cashReceived()/revenueBreakdown()) — no
                 // changes needed there.
-                'amount_paid' => $breakdown->amountPaid + $addOnTotal + $transactionFee,
+                'amount_paid' => Cents::toDecimal($breakdown->amountPaidCents + $addOnTotal + $transactionFee),
             ]);
 
             foreach ($selectedAddOns as $addOn) {
@@ -258,7 +260,7 @@ class CheckInService
             if ($voucherApplied > 0 && $voucherPayer) {
                 Voucher::create([
                     'member_id' => $voucherPayer->id,
-                    'amount' => -$voucherApplied,
+                    'amount' => Cents::toDecimal(-$voucherApplied),
                     'reason' => $request->voucherReason,
                     'attendance_id' => $attendance->id,
                     'recorded_by' => $staff->id,

@@ -63,14 +63,14 @@ test('a comped category owes nothing on any event', function () {
 
     $breakdown = $this->pricing->price($member, $event);
 
-    expect($breakdown->amountPaid)->toBe(0.0)
+    expect($breakdown->amountPaidCents)->toBe(0)
         ->and($breakdown->entryCoveredBy)->toBe(EntryCoverageSource::Comp)
-        ->and($breakdown->entryCoverage)->toBe(8.0)
+        ->and($breakdown->entryCoverageCents)->toBe(800)
         ->and(poolLine($breakdown)->coveredBy)->toBe(AddOnCoverageSource::Comp)
-        ->and(poolLine($breakdown)->coverage)->toBe(5.0);
+        ->and(poolLine($breakdown)->coverageCents)->toBe(500);
 });
 
-test('entry-only event, regular subscription covers up to the credit', function (float $entryFee, float $expectedDue) {
+test('entry-only event, regular subscription covers up to the credit', function (float $entryFee, int $expectedDue) {
     $category = Category::factory()->create(['is_comped' => false]);
     $member = Member::factory()->create(['category_id' => $category->id]);
     $event = Event::factory()->create(['event_date' => '2026-07-19', 'entry_fee' => $entryFee, 'pool_fee' => 0]);
@@ -78,12 +78,12 @@ test('entry-only event, regular subscription covers up to the credit', function 
 
     $breakdown = $this->pricing->price($member, $event);
 
-    expect($breakdown->amountPaid)->toBe($expectedDue)
+    expect($breakdown->amountPaidCents)->toBe($expectedDue)
         ->and($breakdown->entryCoveredBy)->toBe(EntryCoverageSource::RegularSubscription);
 })->with([
-    'on $20' => [20.0, 0.0],
-    'on $40' => [40.0, 15.0],
-    'on $100' => [100.0, 75.0],
+    'on $20' => [20.0, 0],
+    'on $40' => [40.0, 1500],
+    'on $100' => [100.0, 7500],
 ]);
 
 test('a member covered by a 3-month regular bundle still only gets the ordinary monthly credit per visit, not full coverage', function () {
@@ -109,8 +109,8 @@ test('a member covered by a 3-month regular bundle still only gets the ordinary 
     $breakdown = $this->pricing->price($member, $event);
 
     expect($breakdown->entryCoveredBy)->toBe(EntryCoverageSource::RegularSubscription)
-        ->and($breakdown->entryCoverage)->toBe(25.0)
-        ->and($breakdown->amountPaid)->toBe(15.0);
+        ->and($breakdown->entryCoverageCents)->toBe(2500)
+        ->and($breakdown->amountPaidCents)->toBe(1500);
 });
 
 test('entry-only event, no subscription owes the base fee', function () {
@@ -120,11 +120,11 @@ test('entry-only event, no subscription owes the base fee', function () {
 
     $breakdown = $this->pricing->price($member, $event);
 
-    expect($breakdown->amountPaid)->toBe(40.0)
+    expect($breakdown->amountPaidCents)->toBe(4000)
         ->and($breakdown->entryCoveredBy)->toBe(EntryCoverageSource::None);
 });
 
-test('entry plus pool event pricing matrix', function (bool $hasRegular, bool $hasPool, float $expectedDue) {
+test('entry plus pool event pricing matrix', function (bool $hasRegular, bool $hasPool, int $expectedDue) {
     $category = Category::factory()->create(['is_comped' => false]);
     $member = Member::factory()->create(['category_id' => $category->id]);
     $event = Event::factory()->create(['event_date' => '2026-07-19', 'entry_fee' => 8, 'pool_fee' => 5]);
@@ -138,15 +138,15 @@ test('entry plus pool event pricing matrix', function (bool $hasRegular, bool $h
 
     $breakdown = $this->pricing->price($member, $event);
 
-    expect($breakdown->amountPaid)->toBe($expectedDue);
+    expect($breakdown->amountPaidCents)->toBe($expectedDue);
 })->with([
-    'both subs' => [true, true, 0.0],
-    'regular only' => [true, false, 5.0],
-    'pool only' => [false, true, 8.0],
-    'nothing' => [false, false, 13.0],
+    'both subs' => [true, true, 0],
+    'regular only' => [true, false, 500],
+    'pool only' => [false, true, 800],
+    'nothing' => [false, false, 1300],
 ]);
 
-test('pool-only event pricing matrix', function (bool $hasRegular, bool $hasPool, float $expectedDue) {
+test('pool-only event pricing matrix', function (bool $hasRegular, bool $hasPool, int $expectedDue) {
     $category = Category::factory()->create(['is_comped' => false]);
     $member = Member::factory()->create(['category_id' => $category->id]);
     $event = Event::factory()->create(['event_date' => '2026-07-19', 'entry_fee' => 0, 'pool_fee' => 5]);
@@ -160,12 +160,12 @@ test('pool-only event pricing matrix', function (bool $hasRegular, bool $hasPool
 
     $breakdown = $this->pricing->price($member, $event);
 
-    expect($breakdown->amountPaid)->toBe($expectedDue)
+    expect($breakdown->amountPaidCents)->toBe($expectedDue)
         ->and($breakdown->entryCoveredBy)->toBe(EntryCoverageSource::None);
 })->with([
-    'pool subscription' => [false, true, 0.0],
-    'no sub' => [false, false, 5.0],
-    'regular subscription only does nothing' => [true, false, 5.0],
+    'pool subscription' => [false, true, 0],
+    'no sub' => [false, false, 500],
+    'regular subscription only does nothing' => [true, false, 500],
 ]);
 
 test('a pool day pass fully covers pool at the event it was bought for, leaving entry priced independently', function () {
@@ -177,9 +177,9 @@ test('a pool day pass fully covers pool at the event it was bought for, leaving 
     $breakdown = $this->pricing->price($member, $event);
 
     expect(poolLine($breakdown)->coveredBy)->toBe(AddOnCoverageSource::DayPass)
-        ->and(poolLine($breakdown)->coverage)->toBe(5.0)
+        ->and(poolLine($breakdown)->coverageCents)->toBe(500)
         ->and($breakdown->entryCoveredBy)->toBe(EntryCoverageSource::None)
-        ->and($breakdown->amountPaid)->toBe(8.0);
+        ->and($breakdown->amountPaidCents)->toBe(800);
 });
 
 test('a pool day pass does not cover a different event for the same member', function () {
@@ -192,7 +192,7 @@ test('a pool day pass does not cover a different event for the same member', fun
     $breakdown = $this->pricing->price($member, $otherEvent);
 
     expect(poolLine($breakdown)->coveredBy)->toBe(AddOnCoverageSource::None)
-        ->and($breakdown->amountPaid)->toBe(5.0);
+        ->and($breakdown->amountPaidCents)->toBe(500);
 });
 
 test('a pool day pass takes precedence over an active pool subscription in the reported coverage source', function () {
@@ -205,7 +205,7 @@ test('a pool day pass takes precedence over an active pool subscription in the r
     $breakdown = $this->pricing->price($member, $event);
 
     expect(poolLine($breakdown)->coveredBy)->toBe(AddOnCoverageSource::DayPass)
-        ->and($breakdown->amountPaid)->toBe(0.0);
+        ->and($breakdown->amountPaidCents)->toBe(0);
 });
 
 test('breakdown maps cleanly onto attendance snapshot columns, entry and add-on lines separately', function () {
@@ -217,20 +217,20 @@ test('breakdown maps cleanly onto attendance snapshot columns, entry and add-on 
     $breakdown = $this->pricing->price($member, $event);
 
     expect($breakdown->toAttendanceAttributes())->toBe([
-        'entry_fee' => 8.0,
-        'entry_coverage' => 8.0,
+        'entry_fee' => '8.00',
+        'entry_coverage' => '8.00',
         'entry_covered_by' => EntryCoverageSource::RegularSubscription,
-        'voucher_coverage' => 0.0,
-        'amount_paid' => 5.0,
+        'voucher_coverage' => '0.00',
+        'amount_paid' => '5.00',
     ]);
 
     expect($breakdown->addOnAttendanceRows())->toBe([
         [
             'add_on_id' => $this->pool->id,
             'name' => AddOn::POOL_NAME,
-            'price' => 5.0,
-            'fee' => 5.0,
-            'coverage' => 0.0,
+            'price' => '5.00',
+            'fee' => '5.00',
+            'coverage' => '0.00',
             'covered_by' => AddOnCoverageSource::None,
             'is_overnight' => false,
         ],
@@ -254,11 +254,11 @@ test('the event host owes nothing on entry, pool priced independently', function
 
     $breakdown = $this->pricing->price($host, $event);
 
-    expect($breakdown->entryCoverage)->toBe(40.0)
+    expect($breakdown->entryCoverageCents)->toBe(4000)
         ->and($breakdown->entryCoveredBy)->toBe(EntryCoverageSource::Host)
-        ->and(poolLine($breakdown)->coverage)->toBe(0.0)
+        ->and(poolLine($breakdown)->coverageCents)->toBe(0)
         ->and(poolLine($breakdown)->coveredBy)->toBe(AddOnCoverageSource::None)
-        ->and($breakdown->amountPaid)->toBe(5.0);
+        ->and($breakdown->amountPaidCents)->toBe(500);
 });
 
 test('being hosted for one event does not comp entry at a different event', function () {
@@ -270,7 +270,7 @@ test('being hosted for one event does not comp entry at a different event', func
     $breakdown = $this->pricing->price($host, $otherEvent);
 
     expect($breakdown->entryCoveredBy)->toBe(EntryCoverageSource::None)
-        ->and($breakdown->amountPaid)->toBe(40.0);
+        ->and($breakdown->amountPaidCents)->toBe(4000);
 });
 
 test('host coverage is reported even when the host also has an active regular subscription', function () {
@@ -282,7 +282,7 @@ test('host coverage is reported even when the host also has an active regular su
     $breakdown = $this->pricing->price($host, $event);
 
     expect($breakdown->entryCoveredBy)->toBe(EntryCoverageSource::Host)
-        ->and($breakdown->amountPaid)->toBe(0.0);
+        ->and($breakdown->amountPaidCents)->toBe(0);
 });
 
 test('applyVoucher covers the remainder up to what is still due', function () {
@@ -292,10 +292,10 @@ test('applyVoucher covers the remainder up to what is still due', function () {
     subscribe($member, $this->entry, '2026-07-19');
 
     $breakdown = $this->pricing->price($member, $event); // $15 due after the $25 subscription credit
-    $result = $this->pricing->applyVoucher($breakdown, availableBalance: 100.0, requestedAmount: 15.0);
+    $result = $this->pricing->applyVoucher($breakdown, availableBalanceCents: 10000, requestedCents: 1500);
 
-    expect($result->voucherCoverage)->toBe(15.0)
-        ->and($result->amountPaid)->toBe(0.0);
+    expect($result->voucherCoverageCents)->toBe(1500)
+        ->and($result->amountPaidCents)->toBe(0);
 });
 
 test('applyVoucher is capped at the available balance', function () {
@@ -304,10 +304,10 @@ test('applyVoucher is capped at the available balance', function () {
     $event = Event::factory()->create(['event_date' => '2026-07-19', 'entry_fee' => 40, 'pool_fee' => 0]);
 
     $breakdown = $this->pricing->price($member, $event); // $40 due, no subscription
-    $result = $this->pricing->applyVoucher($breakdown, availableBalance: 25.0, requestedAmount: 40.0);
+    $result = $this->pricing->applyVoucher($breakdown, availableBalanceCents: 2500, requestedCents: 4000);
 
-    expect($result->voucherCoverage)->toBe(25.0)
-        ->and($result->amountPaid)->toBe(15.0);
+    expect($result->voucherCoverageCents)->toBe(2500)
+        ->and($result->amountPaidCents)->toBe(1500);
 });
 
 test('applyVoucher is capped at what is due, never overpays', function () {
@@ -316,10 +316,10 @@ test('applyVoucher is capped at what is due, never overpays', function () {
     $event = Event::factory()->create(['event_date' => '2026-07-19', 'entry_fee' => 10, 'pool_fee' => 0]);
 
     $breakdown = $this->pricing->price($member, $event); // $10 due
-    $result = $this->pricing->applyVoucher($breakdown, availableBalance: 100.0, requestedAmount: 50.0);
+    $result = $this->pricing->applyVoucher($breakdown, availableBalanceCents: 10000, requestedCents: 5000);
 
-    expect($result->voucherCoverage)->toBe(10.0)
-        ->and($result->amountPaid)->toBe(0.0);
+    expect($result->voucherCoverageCents)->toBe(1000)
+        ->and($result->amountPaidCents)->toBe(0);
 });
 
 test('applyEventComp waives entry regardless of what price() already covered, leaving pool untouched', function () {
@@ -330,12 +330,12 @@ test('applyEventComp waives entry regardless of what price() already covered, le
     $breakdown = $this->pricing->price($member, $event); // $45 due, no subscription
     $result = $this->pricing->applyEventComp($breakdown);
 
-    expect($result->entryCoverage)->toBe(40.0)
+    expect($result->entryCoverageCents)->toBe(4000)
         ->and($result->entryCoveredBy)->toBe(EntryCoverageSource::EventComp)
-        ->and(poolLine($result)->fee)->toBe(5.0)
-        ->and(poolLine($result)->coverage)->toBe(0.0)
+        ->and(poolLine($result)->feeCents)->toBe(500)
+        ->and(poolLine($result)->coverageCents)->toBe(0)
         ->and(poolLine($result)->coveredBy)->toBe(AddOnCoverageSource::None)
-        ->and($result->amountPaid)->toBe(5.0);
+        ->and($result->amountPaidCents)->toBe(500);
 });
 
 test('applyEventComp overrides an existing regular subscription entry coverage', function () {
@@ -347,9 +347,9 @@ test('applyEventComp overrides an existing regular subscription entry coverage',
     $breakdown = $this->pricing->price($member, $event); // $15 due after the $25 subscription credit
     $result = $this->pricing->applyEventComp($breakdown);
 
-    expect($result->entryCoverage)->toBe(40.0)
+    expect($result->entryCoverageCents)->toBe(4000)
         ->and($result->entryCoveredBy)->toBe(EntryCoverageSource::EventComp)
-        ->and($result->amountPaid)->toBe(0.0);
+        ->and($result->amountPaidCents)->toBe(0);
 });
 
 test('applyVoucher allows a partial amount, leaving the remainder due', function () {
@@ -358,8 +358,29 @@ test('applyVoucher allows a partial amount, leaving the remainder due', function
     $event = Event::factory()->create(['event_date' => '2026-07-19', 'entry_fee' => 40, 'pool_fee' => 0]);
 
     $breakdown = $this->pricing->price($member, $event); // $40 due
-    $result = $this->pricing->applyVoucher($breakdown, availableBalance: 100.0, requestedAmount: 10.0);
+    $result = $this->pricing->applyVoucher($breakdown, availableBalanceCents: 10000, requestedCents: 1000);
 
-    expect($result->voucherCoverage)->toBe(10.0)
-        ->and($result->amountPaid)->toBe(30.0);
+    expect($result->voucherCoverageCents)->toBe(1000)
+        ->and($result->amountPaidCents)->toBe(3000);
+});
+
+test('credit and a voucher that cover a cents remainder leave exactly nothing due', function () {
+    // As floats, $25.30 - $25.00 credit was 0.30000000000000071, and a $0.30
+    // voucher left 7.1e-16 "due" -- enough to draw a transaction fee.
+    $member = Member::factory()->create(['category_id' => Category::factory()->create(['is_comped' => false])->id]);
+    $event = Event::factory()->create(['event_date' => '2026-07-19', 'entry_fee' => 25.30, 'pool_fee' => 0]);
+    subscribe($member, $this->entry, '2026-07-19');
+
+    $breakdown = $this->pricing->price($member, $event);
+    $result = $this->pricing->applyVoucher($breakdown, availableBalanceCents: 30, requestedCents: 30);
+
+    expect($breakdown->amountPaidCents)->toBe(30)
+        ->and($result->voucherCoverageCents)->toBe(30)
+        ->and($result->amountPaidCents)->toBe(0)
+        ->and($result->toAttendanceAttributes())->toMatchArray([
+            'entry_fee' => '25.30',
+            'entry_coverage' => '25.00',
+            'voucher_coverage' => '0.30',
+            'amount_paid' => '0.00',
+        ]);
 });

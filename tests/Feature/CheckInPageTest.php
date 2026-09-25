@@ -87,11 +87,11 @@ test('the live price breakdown updates as a subscription is selected, without ch
     $component = Livewire::test(CheckIn::class)
         ->fillForm(['event_id' => $event->id, 'member_id' => $member->id]);
 
-    expect($component->instance()->getLivePriceBreakdown()->amountPaid)->toEqual(40.0);
+    expect($component->instance()->getLivePriceBreakdown()->amountPaidCents)->toBe(4000);
 
     $component->fillForm(['subscription_regular_duration' => '1'], 'pricingForm');
 
-    expect($component->instance()->getLivePriceBreakdown()->amountPaid)->toEqual(15.0);
+    expect($component->instance()->getLivePriceBreakdown()->amountPaidCents)->toBe(1500);
 
     expect(Attendance::where('member_id', $member->id)->exists())->toBeFalse()
         ->and(Subscription::where('member_id', $member->id)->exists())->toBeFalse();
@@ -491,7 +491,7 @@ test('buying a subscription standalone, then checking in that night, shows the e
 
     $component->fillForm(['event_id' => $event->id]);
 
-    expect($component->instance()->getPriceBreakdown()->amountPaid)->toEqual(15.0);
+    expect($component->instance()->getPriceBreakdown()->amountPaidCents)->toBe(1500);
 
     $component->callAction('checkIn', data: ['checked_in_at' => now()])
         ->assertHasNoActionErrors();

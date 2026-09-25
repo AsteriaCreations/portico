@@ -379,8 +379,8 @@ class CheckIn extends Page implements HasTable
             if ($payer) {
                 $breakdown = app(PricingService::class)->applyVoucher(
                     $breakdown,
-                    $payer->voucherBalance(),
-                    (float) ($this->pricingData['voucher_amount'] ?? 0),
+                    Cents::of($payer->voucherBalance()),
+                    Cents::of($this->pricingData['voucher_amount'] ?? 0),
                 );
             }
         }
@@ -449,7 +449,7 @@ class CheckIn extends Page implements HasTable
             ->values()
             ->all();
         $canGrantComp = Gate::allows('grant-event-comp');
-        $entryFee = $this->getPriceBreakdown()?->entryFee ?? 0.0;
+        $entryFee = $this->getPriceBreakdown()?->entryFeeCents ?? 0;
         $ownBalance = $member?->voucherBalance() ?? 0.0;
         $voucherLabel = $member
             ? __("Apply voucher credit — :amount available on :name's account", ['amount' => $this->formatCurrency($ownBalance), 'name' => $member->displayName()])
@@ -503,7 +503,7 @@ class CheckIn extends Page implements HasTable
                 Checkbox::make('apply_voucher')
                     ->label($voucherLabel)
                     ->live()
-                    ->visible($canPreviewPricing && $member && MembershipSetting::current()->vouchers_enabled && ($this->getLivePriceBreakdownBeforeVoucher()?->amountPaid ?? 0) > 0),
+                    ->visible($canPreviewPricing && $member && MembershipSetting::current()->vouchers_enabled && ($this->getLivePriceBreakdownBeforeVoucher()?->amountPaidCents ?? 0) > 0),
                 Select::make('voucher_payer_id')
                     ->label(__("Apply from a different member's balance (optional)"))
                     ->searchable()
@@ -518,7 +518,7 @@ class CheckIn extends Page implements HasTable
                     ->numeric()
                     ->minValue(0.01)
                     ->step(0.01)
-                    ->default(min($ownBalance, $this->getLivePriceBreakdownBeforeVoucher()?->amountPaid ?? 0) ?: null)
+                    ->default(Cents::toFloat(min(Cents::of($ownBalance), $this->getLivePriceBreakdownBeforeVoucher()?->amountPaidCents ?? 0)) ?: null)
                     ->required(fn (Get $get): bool => (bool) $get('apply_voucher'))
                     ->helperText(__('Capped automatically at the balance available and what\'s still due — a partial amount is fine.'))
                     ->visible(fn (Get $get): bool => $canPreviewPricing && (bool) $get('apply_voucher')),
@@ -1423,7 +1423,7 @@ class CheckIn extends Page implements HasTable
                 && $this->getDecision()?->outcome !== AdmissionOutcome::Capture
                 && ($event === null || app(CapacityService::class)->hasRoom($event->event_date)))
             ->action(function (array $data): void {
-                if ($this->haltForTraining(__('Practice check-in complete — :amount would have been charged. Nothing was saved.', ['amount' => $this->formatCurrency(($this->getLivePriceBreakdown()?->amountPaid ?? 0) + $this->getLiveAddOnTotal())]))) {
+                if ($this->haltForTraining(__('Practice check-in complete — :amount would have been charged. Nothing was saved.', ['amount' => $this->formatCurrency(Cents::toFloat($this->getLivePriceBreakdown()?->amountPaidCents ?? 0) + $this->getLiveAddOnTotal())]))) {
                     return;
                 }
 
@@ -1524,15 +1524,15 @@ class CheckIn extends Page implements HasTable
                 // inherits this one's comp/voucher/subscription choices.
                 $this->pricingData = ['add_on_ids' => []];
 
-                $title = __('Checked in — :amount due', ['amount' => $this->formatCurrency($result->breakdown->amountPaid + $result->addOnTotal)]);
-                if ($result->subscriptionTotal > 0) {
-                    $title .= ' + '.__(':amount Subscription', ['amount' => $this->formatCurrency($result->subscriptionTotal)]);
+                $title = __('Checked in — :amount due', ['amount' => $this->formatCurrency(Cents::toFloat($result->breakdown->amountPaidCents + $result->addOnTotalCents))]);
+                if ($result->subscriptionTotalCents > 0) {
+                    $title .= ' + '.__(':amount Subscription', ['amount' => $this->formatCurrency(Cents::toFloat($result->subscriptionTotalCents))]);
                 }
-                if ($result->addOnTotal > 0) {
-                    $title .= ' + '.__(':amount Add-ons', ['amount' => $this->formatCurrency($result->addOnTotal)]);
+                if ($result->addOnTotalCents > 0) {
+                    $title .= ' + '.__(':amount Add-ons', ['amount' => $this->formatCurrency(Cents::toFloat($result->addOnTotalCents))]);
                 }
-                if ($result->voucherApplied > 0) {
-                    $title .= ' − '.__(':amount voucher', ['amount' => $this->formatCurrency($result->voucherApplied)]);
+                if ($result->voucherAppliedCents > 0) {
+                    $title .= ' − '.__(':amount voucher', ['amount' => $this->formatCurrency(Cents::toFloat($result->voucherAppliedCents))]);
                 }
 
                 Notification::make()->title($title)->success()->send();
@@ -1568,7 +1568,7 @@ class CheckIn extends Page implements HasTable
             compReasonId: $pricingData['comp_reason_id'] ?? null,
             applyVoucher: (bool) ($pricingData['apply_voucher'] ?? false),
             voucherPayerId: $pricingData['voucher_payer_id'] ?? null,
-            voucherAmount: (float) ($pricingData['voucher_amount'] ?? 0),
+            voucherAmountCents: Cents::of($pricingData['voucher_amount'] ?? 0),
             voucherReason: (string) ($pricingData['voucher_reason'] ?? ''),
         );
     }
