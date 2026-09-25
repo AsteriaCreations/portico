@@ -142,6 +142,30 @@ class AdminPanelProvider extends PanelProvider
             );
         }
 
+        // Compiles the Tailwind utilities this app's own Blade views use, which
+        // Filament's stylesheet doesn't ship -- see the theme file. Only once
+        // `npm run build` has produced it (deploy.ps1 does, unless -SkipNpm):
+        // without a build, Vite would fail every panel page looking for it, so
+        // an install that never built assets keeps working, just without
+        // those utilities, exactly as before the theme existed.
+        if (static::themeIsBuilt()) {
+            $panel->viteTheme(self::THEME);
+        }
+
         return $panel;
+    }
+
+    private const THEME = 'resources/css/filament/admin/theme.css';
+
+    private static function themeIsBuilt(): bool
+    {
+        if (is_file(public_path('hot'))) {
+            return true;
+        }
+
+        $manifest = public_path('build/manifest.json');
+
+        return is_file($manifest)
+            && array_key_exists(self::THEME, json_decode((string) file_get_contents($manifest), true) ?: []);
     }
 }

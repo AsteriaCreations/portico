@@ -34,10 +34,11 @@ new class extends Component
 ?>
 
 <div wire:poll.10s>
-    {{-- Scoped here rather than Tailwind's sm:hidden / hidden sm:block: the panel only ships
-    Filament's own compiled CSS (this app runs no Tailwind build for Blade views), which has
-    neither, so both layouts rendered on every screen and each person appeared twice -- once
-    as a card above the table, once in it. 640px is Tailwind's sm breakpoint. --}}
+    {{-- Scoped here rather than Tailwind's sm:hidden / hidden sm:block: those only exist once
+    the panel theme is built (resources/css/filament/admin/theme.css), and without them both
+    layouts render and each person appears twice -- once as a card above the table, once in
+    it. This keeps the roster right even on an install that never ran `npm run build`.
+    640px is Tailwind's sm breakpoint. --}}
     <style>
         .checked-in-roster-cards { display: block; }
         .checked-in-roster-table { display: none; }

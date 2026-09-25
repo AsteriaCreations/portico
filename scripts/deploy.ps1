@@ -56,9 +56,10 @@
     existing data. Default is the safe forward-only `migrate --force`.
 
 .PARAMETER SkipNpm
-    Skip `npm install`/`npm run build`. Use when the sync log says the update
-    touched no front-end asset (most updates don't) and Node isn't set up /
-    you'd rather not wait on it.
+    Skip `npm install`/`npm run build`. Only when the update changed no Blade
+    view, CSS or JS: the admin panel's theme is compiled from the classes the
+    views use, so skipping after a view change leaves new classes unstyled
+    until the next build.
 
 .PARAMETER SkipMigrate
     Skip the `php artisan migrate` step entirely. Use when the sync log

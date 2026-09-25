@@ -1,0 +1,15 @@
+/*
+ * The admin panel's theme. Filament's own stylesheet only contains its own
+ * fi-* classes, so a Tailwind utility used in this app's Blade views
+ * (text-sm, mt-2, grid, sm:hidden, ...) did nothing until it was compiled
+ * here. Tailwind scans the paths below and includes every class it finds;
+ * add a path here if views ever live somewhere new.
+ *
+ * Built by `npm run build` (scripts/deploy.ps1 runs it on every deploy that
+ * doesn't pass -SkipNpm) and loaded via ->viteTheme() in AdminPanelProvider.
+ */
+@import '../../../../vendor/filament/filament/resources/css/theme.css';
+
+@source '../../../../app/Filament/**/*';
+@source '../../../../resources/views/filament/**/*';
+@source '../../../../resources/views/components/**/*';
