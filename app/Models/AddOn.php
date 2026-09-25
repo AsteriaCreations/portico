@@ -98,6 +98,23 @@ class AddOn extends Model
     }
 
     /**
+     * Flat, non-subscribable add-ons eligible for the given event -- bound
+     * via add_on_event (EventForm's "Available add-ons" field). With no
+     * event selected yet, resolves to none rather than every add-on, since
+     * every caller of this only matters once an event is chosen anyway.
+     *
+     * @return Builder<AddOn>
+     */
+    public static function offeredAt(?Event $event): Builder
+    {
+        $query = static::where('active', true)->where('subscribable', false);
+
+        return $event
+            ? $query->whereHas('events', fn (Builder $q) => $q->where('events.id', $event->id))
+            : $query->whereRaw('1 = 0');
+    }
+
+    /**
      * Every add-on currently participating in PricingService's coverage
      * engine -- subscribable and active. Deliberately NOT filtered by
      * pool_enabled: that flag only stops *new* Pool commitments (see

@@ -9,7 +9,6 @@ use App\Filament\Concerns\TranslatesPageLabels;
 use App\Models\AddOn;
 use App\Models\AddOnDayPass;
 use App\Models\Attendance;
-use App\Models\AttendanceAddOn;
 use App\Models\Category;
 use App\Models\CompReason;
 use App\Models\Event;
@@ -26,6 +25,8 @@ use App\Models\Voucher;
 use App\Services\AdmissionDecision;
 use App\Services\AdmissionPolicy;
 use App\Services\CapacityService;
+use App\Services\CheckInRequest;
+use App\Services\CheckInService;
 use App\Services\PriceBreakdown;
 use App\Services\PricingService;
 use App\Services\RegisterShiftService;
@@ -57,7 +58,6 @@ use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 
@@ -397,7 +397,7 @@ class CheckIn extends Page implements HasTable
             return 0.0;
         }
 
-        return (float) static::eligibleAddOnsQuery($this->getSelectedEvent())
+        return (float) AddOn::offeredAt($this->getSelectedEvent())
             ->whereIn('id', static::normalizeAddOnIds($this->pricingData['add_on_ids'] ?? null))
             ->sum('price');
     }
@@ -415,23 +415,6 @@ class CheckIn extends Page implements HasTable
     private static function normalizeAddOnIds(mixed $ids): array
     {
         return is_array($ids) ? $ids : [];
-    }
-
-    /**
-     * Flat, non-subscribable add-ons eligible for the given event -- bound
-     * via add_on_event (EventForm's "Available add-ons" field). With no
-     * event selected yet, resolves to none rather than every add-on, since
-     * every caller of this only matters once an event is chosen anyway.
-     *
-     * @return Builder<AddOn>
-     */
-    private static function eligibleAddOnsQuery(?Event $event): Builder
-    {
-        $query = AddOn::where('active', true)->where('subscribable', false);
-
-        return $event
-            ? $query->whereHas('events', fn (Builder $q) => $q->where('events.id', $event->id))
-            : $query->whereRaw('1 = 0');
     }
 
     // Subscription/comp/voucher choices, split out of checkInAction()'s own schema so
@@ -483,7 +466,7 @@ class CheckIn extends Page implements HasTable
                     // Only flat, non-subscribable extras bound to this event
                     // (EventForm's "Available add-ons" field) are opt-in
                     // here.
-                    ->options(fn () => static::eligibleAddOnsQuery($event)
+                    ->options(fn () => AddOn::offeredAt($event)
                         ->orderBy('sort_order')
                         ->get()
                         ->mapWithKeys(fn (AddOn $addOn) => [
@@ -1486,242 +1469,14 @@ class CheckIn extends Page implements HasTable
                 // Select's value against it, rejecting the whole submission
                 // before the action() closure runs.
                 $openShift = $this->getOpenShift();
-                $paymentMethod = $data['payment_method'] ?? null;
-                $pricingData = $this->pricingData;
-
-                // Ensures the settings row exists before lockForAdmission() needs it.
-                MembershipSetting::current();
-                $capacity = app(CapacityService::class);
-
-                // Wrapped in a transaction so a race that slips past the
-                // check above — two submissions landing close enough that
-                // both saw no existing row — fails atomically on the
-                // database's own unique constraint rather than leaving a
-                // half-written subscription purchase with no attendance row behind.
                 try {
-                    [$attendance, $breakdown, $subscriptionTotal, $voucherApplied, $addOnTotal] = DB::transaction(function () use ($member, $event, $data, $pricingData, $openShift, $paymentMethod, $capacity): array {
-                        // First statement in the transaction, before any
-                        // other read -- see lockForAdmission(). Every
-                        // capped thing sold here (building spots, add-ons
-                        // with max_per_night) is re-checked under it, since
-                        // another register may have taken the last one
-                        // after this page was loaded.
-                        $capacity->lockForAdmission();
-                        if (! $capacity->hasRoom($event->event_date)) {
-                            throw new CheckInRefused(
-                                __('Building at capacity — check-in not saved.'),
-                                __('The building filled up after this screen loaded. Nothing was recorded or charged.'),
-                            );
-                        }
-
-                        $month = $event->event_date->clone()->startOfMonth();
-                        $subscriptionTotal = 0.0;
-
-                        // Filtered to currently-purchasable add-ons (Pool
-                        // excluded while pool_enabled is off) -- looping
-                        // only over what remains is itself the defense-in-
-                        // depth against a forged subscription_addon_{id}_
-                        // duration field for a now-disabled add-on, same as
-                        // the day-pass/subscription actions above re-
-                        // checking the same fresh query. Pricing itself
-                        // (below, via PricingService::price()) is
-                        // unaffected by this filter -- an event that
-                        // already has a pool fee still charges for it,
-                        // and an existing subscription still covers it,
-                        // regardless of whether new ones can be bought.
-                        $targets = collect([['addOn' => AddOn::entry(), 'field' => 'subscription_regular_duration']])
-                            ->merge(AddOn::subscribable()->get()
-                                ->filter(fn (AddOn $addOn) => $addOn->isCurrentlyPurchasable())
-                                ->map(fn (AddOn $addOn) => ['addOn' => $addOn, 'field' => "subscription_addon_{$addOn->id}_duration"]));
-
-                        foreach ($targets as ['addOn' => $addOn, 'field' => $field]) {
-                            $selected = $pricingData[$field] ?? 'none';
-                            if ($selected === 'none' || $selected === null || ! $member->isSubscriptionEligible()) {
-                                continue;
-                            }
-
-                            $months = (int) $selected;
-
-                            if ($months <= 1) {
-                                // Unchanged from before bundles existed: a single-month
-                                // purchase never shifts to a different month — if
-                                // this exact month is already covered, it's just skipped.
-                                // (Deliberately NOT routed through
-                                // SubscriptionBundleService::purchase() even though it
-                                // now handles months=1 correctly price-wise: purchase()
-                                // always calls resolveStart(), which SHIFTS forward to
-                                // the next free month on a conflict rather than skipping
-                                // -- fine for an explicit multi-month bundle purchase,
-                                // wrong here, where a stale/forged '1' selection for an
-                                // already-covered month must silently no-op, not buy a
-                                // different month than what was on screen.)
-                                if ($member->hasActiveSubscriptionFor($addOn, $month)) {
-                                    continue;
-                                }
-                                // Priced as of today, not the event's date -- matches
-                                // SubscriptionBundleService::purchase()'s own "always
-                                // priced as of today" rule, since this is a payment
-                                // happening now regardless of which (possibly future,
-                                // door-prepay) event is selected.
-                                $plan = Plan::currentFor($addOn, now());
-                                if (! $plan) {
-                                    continue;
-                                }
-                                Subscription::create([
-                                    'member_id' => $member->id,
-                                    'add_on_id' => $addOn->id,
-                                    'covered_month' => $month->toDateString(),
-                                    'amount_paid' => $plan->price,
-                                    'paid_on' => now(),
-                                    'recorded_by' => auth()->id(),
-                                    'payment_method' => $paymentMethod,
-                                    'register_shift_id' => $openShift?->id,
-                                ]);
-                                $subscriptionTotal += (float) $plan->price;
-
-                                continue;
-                            }
-
-                            $bundleRows = app(SubscriptionBundleService::class)->purchase(
-                                $member,
-                                $addOn,
-                                $months,
-                                $month,
-                                auth()->user(),
-                                $paymentMethod,
-                                $openShift,
-                            );
-                            $subscriptionTotal += (float) $bundleRows->sum('amount_paid');
-                        }
-
-                        $breakdown = app(PricingService::class)->price($member, $event);
-
-                        // Re-fetched server-side, never trusted from the
-                        // submitted names/prices — same defense-in-depth as
-                        // everywhere else in this closure. A flat add-on
-                        // never goes through PricingService: it's a plain
-                        // addition to amount_paid, not comped or voucher-
-                        // covered. Also re-checked against add_ons_enabled
-                        // and this event's own add_on_event bindings -- a
-                        // forged selection from a session where the field
-                        // was hidden, or for an add-on this event doesn't
-                        // even offer, must be silently ignored, not honored.
-                        $selectedAddOns = MembershipSetting::current()->add_ons_enabled
-                            ? static::eligibleAddOnsQuery($event)->whereIn('id', static::normalizeAddOnIds($pricingData['add_on_ids'] ?? null))->get()
-                            : collect();
-                        $addOnTotal = (float) $selectedAddOns->sum('price');
-
-                        // The picker's disableOptionWhen() only knows the
-                        // sales committed when it last rendered. The whole
-                        // check-in is refused rather than quietly dropping
-                        // the add-on, so the desk never charges for less
-                        // than the member was told they're getting.
-                        $soldOut = $selectedAddOns->first(fn (AddOn $addOn): bool => ! $addOn->hasRoomOn($event->event_date));
-                        if ($soldOut) {
-                            throw new CheckInRefused(
-                                __(':add_on sold out for tonight — check-in not saved.', ['add_on' => $soldOut->name]),
-                                __('Another register sold the last one after this screen loaded. Nothing was recorded or charged. Remove it and check in again.'),
-                            );
-                        }
-
-                        $compReasonId = null;
-                        if (($pricingData['comp_entry'] ?? false) && Gate::allows('grant-event-comp')) {
-                            $breakdown = app(PricingService::class)->applyEventComp($breakdown);
-                            $compReasonId = $pricingData['comp_reason_id'] ?? null;
-                        }
-
-                        $voucherApplied = 0.0;
-                        $voucherPayer = null;
-                        if (($pricingData['apply_voucher'] ?? false) && MembershipSetting::current()->vouchers_enabled) {
-                            $voucherPayerId = ! empty($pricingData['voucher_payer_id']) ? $pricingData['voucher_payer_id'] : $member->id;
-
-                            // Locked for the rest of this transaction: two check-ins
-                            // drawing from the same payer's balance at once must not
-                            // both read the pre-spend balance before either commits,
-                            // or the ledger can go negative with no error raised
-                            // (voucherBalance() is a live SUM with no DB constraint
-                            // against it going negative).
-                            $voucherPayer = Member::where('id', $voucherPayerId)->lockForUpdate()->first();
-
-                            if ($voucherPayer) {
-                                $breakdown = app(PricingService::class)->applyVoucher(
-                                    $breakdown,
-                                    $voucherPayer->voucherBalance(),
-                                    (float) ($pricingData['voucher_amount'] ?? 0),
-                                );
-                                $voucherApplied = $breakdown->voucherCoverage;
-                            }
-                        }
-
-                        // Folded onto the attendance row rather than tracked
-                        // separately, same as add-ons above -- one flat fee
-                        // for the whole transaction (entry plus whatever
-                        // subscription was bundled in via the same payment_
-                        // method), zero when nothing is actually changing
-                        // hands (e.g. a fully comped/vouchered entry with no
-                        // bundled subscription).
-                        $transactionFee = ($breakdown->amountPaid + $addOnTotal + $subscriptionTotal) > 0
-                            ? PaymentMethod::feeFor($paymentMethod)
-                            : 0.0;
-
-                        $attendance = Attendance::create([
-                            'member_id' => $member->id,
-                            'event_id' => $event->id,
-                            'checked_in_by' => auth()->id(),
-                            // Re-derived from the event, not trusted from the
-                            // submission -- a forged checked_in_at for a
-                            // future prepay-only event is silently ignored
-                            // server-side, the same defense-in-depth as the
-                            // payment_method re-check above.
-                            'checked_in_at' => $event->isCurrentlyActive() ? ($data['checked_in_at'] ?? now()) : null,
-                            'payment_method' => $paymentMethod,
-                            'register_shift_id' => $openShift?->id,
-                            'on_behalf_note' => $data['on_behalf_note'] ?? null,
-                            'notes' => $data['notes'] ?? null,
-                            'comp_reason_id' => $compReasonId,
-                            ...$breakdown->toAttendanceAttributes(),
-                            // Overrides the breakdown's own amount_paid so
-                            // add-ons and the transaction fee land in the
-                            // same column the register reconciliation
-                            // already sums (RegisterShiftService::
-                            // cashReceived()/revenueBreakdown()) — no
-                            // changes needed there.
-                            'amount_paid' => $breakdown->amountPaid + $addOnTotal + $transactionFee,
-                        ]);
-
-                        foreach ($selectedAddOns as $addOn) {
-                            AttendanceAddOn::create([
-                                'attendance_id' => $attendance->id,
-                                'add_on_id' => $addOn->id,
-                                'name' => $addOn->name,
-                                'price' => $addOn->price,
-                                'is_overnight' => $addOn->is_overnight,
-                            ]);
-                        }
-
-                        // One row per subscribable add-on priced for this
-                        // event (Pool, at launch) -- coverage already
-                        // resolved by PricingService::build() above.
-                        foreach ($breakdown->addOnAttendanceRows() as $row) {
-                            AttendanceAddOn::create(['attendance_id' => $attendance->id, ...$row]);
-                        }
-
-                        if (in_array($paymentMethod, PaymentMethod::oneTimeCodes()->all(), true)) {
-                            $member->recordOneTimeMethodUsage(PaymentMethod::where('code', $paymentMethod)->value('label'));
-                        }
-
-                        if ($voucherApplied > 0 && $voucherPayer) {
-                            Voucher::create([
-                                'member_id' => $voucherPayer->id,
-                                'amount' => -$voucherApplied,
-                                'reason' => $pricingData['voucher_reason'] ?? '',
-                                'attendance_id' => $attendance->id,
-                                'recorded_by' => auth()->id(),
-                            ]);
-                        }
-
-                        return [$attendance, $breakdown, $subscriptionTotal, $voucherApplied, $addOnTotal];
-                    });
+                    $result = app(CheckInService::class)->record(
+                        $member,
+                        $event,
+                        auth()->user(),
+                        $this->checkInRequest($data),
+                        $openShift,
+                    );
                 } catch (CheckInRefused $refused) {
                     Notification::make()
                         ->title($refused->title)
@@ -1768,19 +1523,53 @@ class CheckIn extends Page implements HasTable
                 // inherits this one's comp/voucher/subscription choices.
                 $this->pricingData = ['add_on_ids' => []];
 
-                $title = __('Checked in — :amount due', ['amount' => $this->formatCurrency($breakdown->amountPaid + $addOnTotal)]);
-                if ($subscriptionTotal > 0) {
-                    $title .= ' + '.__(':amount Subscription', ['amount' => $this->formatCurrency($subscriptionTotal)]);
+                $title = __('Checked in — :amount due', ['amount' => $this->formatCurrency($result->breakdown->amountPaid + $result->addOnTotal)]);
+                if ($result->subscriptionTotal > 0) {
+                    $title .= ' + '.__(':amount Subscription', ['amount' => $this->formatCurrency($result->subscriptionTotal)]);
                 }
-                if ($addOnTotal > 0) {
-                    $title .= ' + '.__(':amount Add-ons', ['amount' => $this->formatCurrency($addOnTotal)]);
+                if ($result->addOnTotal > 0) {
+                    $title .= ' + '.__(':amount Add-ons', ['amount' => $this->formatCurrency($result->addOnTotal)]);
                 }
-                if ($voucherApplied > 0) {
-                    $title .= ' − '.__(':amount voucher', ['amount' => $this->formatCurrency($voucherApplied)]);
+                if ($result->voucherApplied > 0) {
+                    $title .= ' − '.__(':amount voucher', ['amount' => $this->formatCurrency($result->voucherApplied)]);
                 }
 
                 Notification::make()->title($title)->success()->send();
             });
+    }
+
+    /**
+     * The desk's submitted choices, from the checkIn action's own $data
+     * (time, payment method, notes) and the live pricingForm state
+     * (subscriptions, add-ons, comp, voucher). Only maps field names to
+     * CheckInRequest; every value is re-checked by CheckInService.
+     */
+    private function checkInRequest(array $data): CheckInRequest
+    {
+        $pricingData = $this->pricingData;
+
+        $subscriptionFields = collect([AddOn::entry()->id => 'subscription_regular_duration'])
+            ->union(AddOn::subscribable()->pluck('id')->mapWithKeys(fn ($id) => [$id => "subscription_addon_{$id}_duration"]));
+        $subscriptionMonths = $subscriptionFields
+            ->map(fn (string $field) => $pricingData[$field] ?? 'none')
+            ->reject(fn (mixed $selected) => $selected === 'none' || $selected === null)
+            ->map(fn (mixed $selected) => (int) $selected)
+            ->all();
+
+        return new CheckInRequest(
+            checkedInAt: $data['checked_in_at'] ?? null,
+            paymentMethod: $data['payment_method'] ?? null,
+            onBehalfNote: $data['on_behalf_note'] ?? null,
+            notes: $data['notes'] ?? null,
+            subscriptionMonths: $subscriptionMonths,
+            addOnIds: static::normalizeAddOnIds($pricingData['add_on_ids'] ?? null),
+            compEntry: (bool) ($pricingData['comp_entry'] ?? false),
+            compReasonId: $pricingData['comp_reason_id'] ?? null,
+            applyVoucher: (bool) ($pricingData['apply_voucher'] ?? false),
+            voucherPayerId: $pricingData['voucher_payer_id'] ?? null,
+            voucherAmount: (float) ($pricingData['voucher_amount'] ?? 0),
+            voucherReason: (string) ($pricingData['voucher_reason'] ?? ''),
+        );
     }
 
     protected function formatCurrency(float $amount): string

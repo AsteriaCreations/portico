@@ -45,6 +45,13 @@ is fixes only.
 
 ### Changed
 
+- The check-in desk's recording transaction (subscriptions bought with the visit, the
+  priced attendance row, add-ons, voucher draw, and the capacity and add-on-limit
+  re-checks under the admission lock) moved out of the Check-In page into
+  `App\Services\CheckInService`, so it can be tested and reused without Livewire. It takes
+  the staff member as an argument instead of reading `auth()`. No behavior change; the
+  page's existing tests pass unmodified, and `CheckInServiceTest` covers the service
+  directly.
 - `docs/DEPLOYMENT.md` is expanded with lessons from a real production go-live, and the
   network guidance is now router-agnostic: a vendor-neutral checklist (DHCP reservation,
   local DNS, isolated staff network, no WAN port-forward, verify segmentation) with UniFi
