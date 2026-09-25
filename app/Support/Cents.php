@@ -34,4 +34,15 @@ final class Cents
     {
         return $cents / 100;
     }
+
+    /**
+     * For writing to a decimal(8,2) column: "30.05", "-0.30", "0.00".
+     */
+    public static function toDecimal(int $cents): string
+    {
+        $sign = $cents < 0 ? '-' : '';
+        $cents = abs($cents);
+
+        return sprintf('%s%d.%02d', $sign, intdiv($cents, 100), $cents % 100);
+    }
 }

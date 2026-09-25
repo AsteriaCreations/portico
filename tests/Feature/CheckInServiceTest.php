@@ -11,6 +11,7 @@ use App\Models\CompReason;
 use App\Models\Event;
 use App\Models\Member;
 use App\Models\MembershipSetting;
+use App\Models\PaymentMethod;
 use App\Models\Plan;
 use App\Models\Subscription;
 use App\Models\User;
@@ -62,7 +63,7 @@ test('records the entry fee plus a flat add-on, attributed to the staff member p
 
     $result = recordCheckIn($this->member, $this->event, $this->manager, new CheckInRequest(addOnIds: [$room->id]));
 
-    expect($result->addOnTotal)->toEqual(50.0)
+    expect($result->addOnTotalCents)->toBe(5000)
         ->and($result->attendance->amount_paid)->toEqual(90)
         ->and($result->attendance->checked_in_by)->toBe($this->manager->id)
         ->and($result->attendance->addOns()->pluck('name')->all())->toBe(['Private room rental']);
@@ -73,7 +74,7 @@ test('ignores an add-on the event does not offer', function () {
 
     $result = recordCheckIn($this->member, $this->event, $this->manager, new CheckInRequest(addOnIds: [$sleepover->id]));
 
-    expect($result->addOnTotal)->toEqual(0.0)
+    expect($result->addOnTotalCents)->toBe(0)
         ->and($result->attendance->amount_paid)->toEqual(40)
         ->and($result->attendance->addOns()->exists())->toBeFalse();
 });
@@ -98,17 +99,17 @@ test('buys a one-month subscription that covers tonight, recorded by the staff m
     $result = recordCheckIn($member, $this->event, $this->manager, new CheckInRequest(subscriptionMonths: [$this->entry->id => 1]));
 
     $subscription = Subscription::where('member_id', $member->id)->sole();
-    expect($result->subscriptionTotal)->toEqual(60.0)
+    expect($result->subscriptionTotalCents)->toBe(6000)
         ->and($subscription->recorded_by)->toBe($this->manager->id)
         ->and($subscription->covered_month->toDateString())->toBe(today()->startOfMonth()->toDateString())
         ->and($result->attendance->entry_covered_by)->toBe(EntryCoverageSource::RegularSubscription)
-        ->and($result->breakdown->amountPaid)->toEqual(15.0);
+        ->and($result->breakdown->amountPaidCents)->toBe(1500);
 });
 
 test('ignores a subscription selection for a member who is not eligible', function () {
     $result = recordCheckIn($this->member, $this->event, $this->manager, new CheckInRequest(subscriptionMonths: [$this->entry->id => 1]));
 
-    expect($result->subscriptionTotal)->toEqual(0.0)
+    expect($result->subscriptionTotalCents)->toBe(0)
         ->and(Subscription::where('member_id', $this->member->id)->exists())->toBeFalse();
 });
 
@@ -119,12 +120,12 @@ test("draws a voucher from another member's balance, capped at the fee", functio
     $result = recordCheckIn($this->member, $this->event, $this->manager, new CheckInRequest(
         applyVoucher: true,
         voucherPayerId: $payer->id,
-        voucherAmount: 75,
+        voucherAmountCents: 7500,
         voucherReason: 'gift',
     ));
 
     $draw = Voucher::where('attendance_id', $result->attendance->id)->sole();
-    expect($result->voucherApplied)->toEqual(40.0)
+    expect($result->voucherAppliedCents)->toBe(4000)
         ->and($result->attendance->amount_paid)->toEqual(0)
         ->and($draw->member_id)->toBe($payer->id)
         ->and($draw->amount)->toEqual(-40)
@@ -160,4 +161,26 @@ test('ignores a check-in time for an event that is not live yet, recording a pre
     $result = recordCheckIn($this->member, $future, $this->manager, new CheckInRequest(checkedInAt: now()));
 
     expect($result->attendance->checked_in_at)->toBeNull();
+});
+
+test('charges no card fee on a visit that subscription credit and a voucher cover exactly', function () {
+    // $20.30 entry - $20.00 credit left 0.30000000000000071 due as a float;
+    // the $0.30 voucher then left 7.2e-16, which counted as money changing
+    // hands, so the $0.50 card fee was charged on a fully covered visit.
+    Plan::create(['add_on_id' => $this->entry->id, 'price' => 60, 'credit' => 20.00, 'effective_from' => '2026-02-01']);
+    $member = serviceMember($this->category, 'covered', ['subscription_eligible' => true]);
+    Subscription::create(['member_id' => $member->id, 'add_on_id' => $this->entry->id, 'covered_month' => today()->startOfMonth()->toDateString(), 'amount_paid' => 60]);
+    Voucher::factory()->create(['member_id' => $member->id, 'amount' => 0.30]);
+    PaymentMethod::factory()->create(['code' => 'card-with-fee', 'transaction_fee' => 0.50]);
+    $event = Event::factory()->create(['event_date' => today()->toDateString(), 'entry_fee' => 20.30, 'pool_fee' => 0]);
+
+    $result = recordCheckIn($member, $event, $this->manager, new CheckInRequest(
+        paymentMethod: 'card-with-fee',
+        applyVoucher: true,
+        voucherAmountCents: 30,
+        voucherReason: 'covering the rest',
+    ));
+
+    expect($result->attendance->fresh()->amount_paid)->toEqual(0)
+        ->and(Voucher::where('attendance_id', $result->attendance->id)->sole()->amount)->toEqual(-0.30);
 });

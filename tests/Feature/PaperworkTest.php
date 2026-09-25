@@ -78,13 +78,13 @@ test('PricingService drops the pool line for a member without a valid pool waive
 
     $breakdown = app(PricingService::class)->price($this->member, $event);
     expect($breakdown->addOnLines)->toBeEmpty()
-        ->and($breakdown->amountPaid)->toBe(20.0);
+        ->and($breakdown->amountPaidCents)->toBe(2000);
 
     signPaperwork($this->member, $this->poolWaiver, now()->toDateString());
 
     $breakdown = app(PricingService::class)->price($this->member->fresh(), $event);
     expect($breakdown->addOnLines)->toHaveCount(1)
-        ->and($breakdown->amountPaid)->toBe(25.0);
+        ->and($breakdown->amountPaidCents)->toBe(2500);
 });
 
 test('confirmPaperworkAction clears missing_paperwork and records a Standard Paperwork signing', function () {
@@ -127,7 +127,7 @@ test('staff can record a gating waiver signature at the desk, unlocking the add-
     $this->member->refresh();
     expect($this->member->canUseAddOn($this->pool))->toBeTrue()
         ->and($this->member->paperwork()->where('paperwork_type_id', $this->poolWaiver->id)->value('recorded_by'))->not->toBeNull()
-        ->and(app(PricingService::class)->price($this->member, $event)->amountPaid)->toBe(25.0);
+        ->and(app(PricingService::class)->price($this->member, $event)->amountPaidCents)->toBe(2500);
 });
 
 test('the day-pass fold explains that a pool day pass needs the waiver, and drops the note once signed', function () {

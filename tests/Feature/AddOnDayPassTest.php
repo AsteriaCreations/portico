@@ -148,7 +148,7 @@ test('the live running total reflects an already-purchased pool day pass before 
     $poolLine = $breakdown->addOnLines[0];
 
     expect($poolLine->coveredBy)->toBe(AddOnCoverageSource::DayPass)
-        ->and($poolLine->coverage)->toEqual(15.0);
+        ->and($poolLine->coverageCents)->toBe(1500);
 });
 
 test('checking in after buying a pool day pass records covered_by as DayPass, not Subscription, when both exist', function () {

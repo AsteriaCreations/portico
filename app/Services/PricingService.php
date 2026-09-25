@@ -8,6 +8,7 @@ use App\Models\AddOn;
 use App\Models\Event;
 use App\Models\Member;
 use App\Models\Plan;
+use App\Support\Cents;
 use Illuminate\Support\Collection;
 
 /**
@@ -79,26 +80,26 @@ class PricingService
      */
     private function build(Member $member, Event $event, bool $regularActive, Collection $subscribableAddOns, array $activeAddOnSubscriptionIds, array $addOnDayPassIds): PriceBreakdown
     {
-        $entryFee = (float) $event->entry_fee;
+        $entryFee = Cents::of($event->entry_fee);
 
         if ($member->category->is_comped) {
             $addOnLines = $subscribableAddOns
                 ->map(function (AddOn $addOn) use ($event) {
                     $fee = $addOn->priceFor($event);
 
-                    return $fee !== null ? new AddOnPriceLine($addOn, $fee, $fee, AddOnCoverageSource::Comp) : null;
+                    return $fee !== null ? new AddOnPriceLine($addOn, Cents::of($fee), Cents::of($fee), AddOnCoverageSource::Comp) : null;
                 })
                 ->filter()
                 ->values()
                 ->all();
 
             return new PriceBreakdown(
-                entryFee: $entryFee,
-                entryCoverage: $entryFee,
+                entryFeeCents: $entryFee,
+                entryCoverageCents: $entryFee,
                 entryCoveredBy: EntryCoverageSource::Comp,
                 addOnLines: $addOnLines,
-                voucherCoverage: 0.0,
-                amountPaid: 0.0,
+                voucherCoverageCents: 0,
+                amountPaidCents: 0,
             );
         }
 
@@ -106,45 +107,46 @@ class PricingService
             $entryCoverage = $entryFee;
             $entryCoveredBy = EntryCoverageSource::Host;
         } elseif ($entryFee > 0 && $regularActive) {
-            $credit = (float) (Plan::currentFor(AddOn::entry(), $event->event_date)?->credit ?? 0);
+            $credit = Cents::of(Plan::currentFor(AddOn::entry(), $event->event_date)?->credit);
             $entryCoverage = min($entryFee, $credit);
             $entryCoveredBy = EntryCoverageSource::RegularSubscription;
         } else {
-            $entryCoverage = 0.0;
+            $entryCoverage = 0;
             $entryCoveredBy = EntryCoverageSource::None;
         }
 
         $addOnLines = [];
         foreach ($subscribableAddOns as $addOn) {
-            $fee = $addOn->priceFor($event);
-            if ($fee === null) {
+            $price = $addOn->priceFor($event);
+            if ($price === null) {
                 continue;
             }
+            $fee = Cents::of($price);
 
             if (in_array($addOn->id, $addOnDayPassIds, true)) {
                 $coverage = $fee;
                 $coveredBy = AddOnCoverageSource::DayPass;
             } elseif (in_array($addOn->id, $activeAddOnSubscriptionIds, true)) {
                 $credit = Plan::currentFor($addOn, $event->event_date)?->credit;
-                $coverage = $credit !== null ? min($fee, (float) $credit) : $fee;
+                $coverage = $credit !== null ? min($fee, Cents::of($credit)) : $fee;
                 $coveredBy = AddOnCoverageSource::Subscription;
             } else {
-                $coverage = 0.0;
+                $coverage = 0;
                 $coveredBy = AddOnCoverageSource::None;
             }
 
             $addOnLines[] = new AddOnPriceLine($addOn, $fee, $coverage, $coveredBy);
         }
 
-        $amountPaid = ($entryFee - $entryCoverage) + collect($addOnLines)->sum(fn (AddOnPriceLine $line) => $line->amountDue());
+        $amountPaid = ($entryFee - $entryCoverage) + array_sum(array_map(fn (AddOnPriceLine $line) => $line->amountDueCents(), $addOnLines));
 
         return new PriceBreakdown(
-            entryFee: $entryFee,
-            entryCoverage: $entryCoverage,
+            entryFeeCents: $entryFee,
+            entryCoverageCents: $entryCoverage,
             entryCoveredBy: $entryCoveredBy,
             addOnLines: $addOnLines,
-            voucherCoverage: 0.0,
-            amountPaid: $amountPaid,
+            voucherCoverageCents: 0,
+            amountPaidCents: $amountPaid,
         );
     }
 
@@ -161,12 +163,12 @@ class PricingService
     public function applyEventComp(PriceBreakdown $breakdown): PriceBreakdown
     {
         return new PriceBreakdown(
-            entryFee: $breakdown->entryFee,
-            entryCoverage: $breakdown->entryFee,
+            entryFeeCents: $breakdown->entryFeeCents,
+            entryCoverageCents: $breakdown->entryFeeCents,
             entryCoveredBy: EntryCoverageSource::EventComp,
             addOnLines: $breakdown->addOnLines,
-            voucherCoverage: $breakdown->voucherCoverage,
-            amountPaid: max(0.0, $breakdown->amountPaid - ($breakdown->entryFee - $breakdown->entryCoverage)),
+            voucherCoverageCents: $breakdown->voucherCoverageCents,
+            amountPaidCents: max(0, $breakdown->amountPaidCents - ($breakdown->entryFeeCents - $breakdown->entryCoverageCents)),
         );
     }
 
@@ -176,18 +178,19 @@ class PricingService
      * at check-in, not a deterministic function of member+event — see
      * docs/BLUEPRINT.md "Vouchers". Always capped at both the
      * payer's available balance and what's still due; never goes negative.
+     * All three amounts are cents.
      */
-    public function applyVoucher(PriceBreakdown $breakdown, float $availableBalance, float $requestedAmount): PriceBreakdown
+    public function applyVoucher(PriceBreakdown $breakdown, int $availableBalanceCents, int $requestedCents): PriceBreakdown
     {
-        $applied = max(0.0, min($requestedAmount, $availableBalance, $breakdown->amountPaid));
+        $applied = max(0, min($requestedCents, $availableBalanceCents, $breakdown->amountPaidCents));
 
         return new PriceBreakdown(
-            entryFee: $breakdown->entryFee,
-            entryCoverage: $breakdown->entryCoverage,
+            entryFeeCents: $breakdown->entryFeeCents,
+            entryCoverageCents: $breakdown->entryCoverageCents,
             entryCoveredBy: $breakdown->entryCoveredBy,
             addOnLines: $breakdown->addOnLines,
-            voucherCoverage: $applied,
-            amountPaid: $breakdown->amountPaid - $applied,
+            voucherCoverageCents: $applied,
+            amountPaidCents: $breakdown->amountPaidCents - $applied,
         );
     }
 }

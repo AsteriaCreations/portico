@@ -3,19 +3,25 @@
 namespace App\Services;
 
 use App\Enums\EntryCoverageSource;
+use App\Support\Cents;
 
+/**
+ * Amounts are integer cents -- see App\Support\Cents. As floats, a visit
+ * covered exactly by credit plus a voucher could leave 7.2e-16 "due", which
+ * counted as money changing hands and drew a transaction fee.
+ */
 final readonly class PriceBreakdown
 {
     /**
      * @param  AddOnPriceLine[]  $addOnLines  one per subscribable add-on priced for this event (Pool, at launch) — empty for a comped-off or otherwise inapplicable add-on, never for a non-subscribable one.
      */
     public function __construct(
-        public float $entryFee,
-        public float $entryCoverage,
+        public int $entryFeeCents,
+        public int $entryCoverageCents,
         public EntryCoverageSource $entryCoveredBy,
         public array $addOnLines,
-        public float $voucherCoverage,
-        public float $amountPaid,
+        public int $voucherCoverageCents,
+        public int $amountPaidCents,
     ) {}
 
     /**
@@ -27,11 +33,11 @@ final readonly class PriceBreakdown
     public function toAttendanceAttributes(): array
     {
         return [
-            'entry_fee' => $this->entryFee,
-            'entry_coverage' => $this->entryCoverage,
+            'entry_fee' => Cents::toDecimal($this->entryFeeCents),
+            'entry_coverage' => Cents::toDecimal($this->entryCoverageCents),
             'entry_covered_by' => $this->entryCoveredBy,
-            'voucher_coverage' => $this->voucherCoverage,
-            'amount_paid' => $this->amountPaid,
+            'voucher_coverage' => Cents::toDecimal($this->voucherCoverageCents),
+            'amount_paid' => Cents::toDecimal($this->amountPaidCents),
         ];
     }
 

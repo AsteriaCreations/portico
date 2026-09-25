@@ -27,3 +27,15 @@ test('converts back to a float that is exactly zero when the cents are', functio
         ->and(Cents::toFloat(3005))->toBe(30.05)
         ->and(Cents::toFloat(-5))->toBe(-0.05);
 });
+
+test('writes cents as a two-decimal string for a decimal(8,2) column', function (int $cents, string $decimal) {
+    expect(Cents::toDecimal($cents))->toBe($decimal);
+})->with([
+    [0, '0.00'],
+    [5, '0.05'],
+    [30, '0.30'],
+    [3005, '30.05'],
+    [-30, '-0.30'],
+    [-2010, '-20.10'],
+    [99999999, '999999.99'],
+]);
