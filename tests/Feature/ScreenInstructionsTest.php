@@ -38,7 +38,25 @@ test('resource and page screens each show their instructions panel exactly once'
     ['/admin/feature-flags', 'How to use Feature Flags'],
     ['/admin/membership-settings', 'How to use Membership Settings'],
     ['/admin/role-labels', 'How to use Role Labels'],
+    ['/admin/paperwork-types', 'How to use Paperwork Types'],
 ]);
+
+// Guard: a new resource that isn't added to AdminPanelProvider's instructions
+// loop fails here instead of silently shipping without a panel.
+test('every resource shows an instructions panel on its list page', function () {
+    $owner = User::factory()->create(['active' => true, 'role' => Role::Owner]);
+
+    $resources = collect(glob(app_path('Filament/Admin/Resources/*/*Resource.php')))
+        ->map(fn (string $path): string => 'App\\Filament\\Admin\\Resources\\'.basename(dirname($path)).'\\'.basename($path, '.php'));
+
+    expect($resources)->not->toBeEmpty();
+
+    foreach ($resources as $resource) {
+        $content = $this->actingAs($owner)->get($resource::getUrl('index'))->assertSuccessful()->getContent();
+
+        expect(str_contains($content, 'How to use'))->toBeTrue($resource.' has no instructions panel');
+    }
+});
 
 test('active patrons and check-in keep their existing instructions panel', function () {
     $volunteer = User::factory()->create(['active' => true, 'role' => Role::Volunteer]);
