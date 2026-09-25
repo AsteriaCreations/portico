@@ -60,7 +60,8 @@ class ChangePassword extends Page
                     ->revealable()
                     ->required()
                     ->rule(Password::default())
-                    ->helperText(__('At least 12 characters with upper and lower case, a number, and a symbol.')),
+                    ->different('current_password')
+                    ->helperText(__('At least 12 characters with upper and lower case, a number, and a symbol, and different from your current password.')),
                 TextInput::make('new_password_confirmation')
                     ->label('Confirm new password')
                     ->password()
@@ -81,6 +82,9 @@ class ChangePassword extends Page
                 $user->password = $data['new_password'];
                 $user->must_change_password = false;
                 $user->save();
+                // Anywhere else still signed in with the old password is
+                // signed out; this browser stays in.
+                $user->endSessions(exceptSessionId: session()->getId());
 
                 Notification::make()->title(__('Password updated'))->success()->send();
 

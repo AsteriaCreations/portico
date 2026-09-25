@@ -95,6 +95,10 @@ hierarchy (`App\Filament\Admin\Pages\RoleLabels`, `Role::displayLabel()`).
   (`assign-member-skills` gate). Event cost is fixed — Manager cannot adjust it.
 - **Owner** — everything Admin, plus the one deliberate hole in the hierarchy below.
 
+Nobody manages a staff account ranked above their own, or grants a role above their own
+(so only an Owner manages Owners). `UserObserver` enforces it on every save;
+`UserPolicy` mirrors it in the UI.
+
 **One non-monotonic exception**: the monthly Manager & Owner subscription perk is gated
 to exactly `Manager` or `Owner` — Admin cannot grant it, despite sitting between them in
 rank. Everywhere else, `atLeast()` monotonicity holds.
