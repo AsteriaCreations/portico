@@ -6,6 +6,7 @@ use App\Enums\Role;
 use App\Models\MembershipSetting;
 use App\Models\RegisterShift;
 use App\Services\RegisterShiftService;
+use App\Support\Cents;
 use Filament\Widgets\StatsOverviewWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
 
@@ -41,17 +42,18 @@ class RegisterVarianceWidget extends StatsOverviewWidget
             ->get();
 
         $service = app(RegisterShiftService::class);
-        $variances = $shifts->map(fn (RegisterShift $shift) => $service->variance($shift));
+        // In cents: a float total of balanced shifts isn't reliably 0.0.
+        $variances = $shifts->map(fn (RegisterShift $shift) => $service->varianceCents($shift));
         $total = $variances->sum();
 
         return [
-            Stat::make(__('Total register variance this week'), MembershipSetting::formatMoney($total))
+            Stat::make(__('Total register variance this week'), MembershipSetting::formatMoney(Cents::toFloat($total)))
                 ->color(match (true) {
-                    $total == 0.0 => 'success',
+                    $total === 0 => 'success',
                     $total > 0 => 'warning',
                     default => 'danger',
                 }),
-            Stat::make(__('Shifts with variance'), __(':count of :total', ['count' => $variances->filter(fn (?float $v) => $v !== null && $v !== 0.0)->count(), 'total' => $shifts->count()])),
+            Stat::make(__('Shifts with variance'), __(':count of :total', ['count' => $variances->filter(fn (?int $v) => $v !== null && $v !== 0)->count(), 'total' => $shifts->count()])),
         ];
     }
 }

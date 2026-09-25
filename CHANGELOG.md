@@ -76,6 +76,14 @@ is fixes only.
 
 ### Fixed
 
+- A register drawer that balanced to the cent could be reported as over or short by $0.00
+  (e.g. $50.00 opening + $0.05 cash − $20.00 dropped, counted at $30.05), and counted as a
+  "shift with variance" on the weekly widget: the expected-cash sums were done in PHP
+  floats, leaving variances like 3.6e-15. About one in seven balanced drawers was affected.
+  `RegisterShiftService` now sums in integer cents (new `App\Support\Cents` helper), and
+  the desk's close-box message and the variance widget compare cents. Variance is never
+  stored, so past shifts now show correctly too. First of the changes moving money
+  arithmetic off floats.
 - An add-on with a per-night limit (`max_per_night`, e.g. a single rentable room) could
   be sold past that limit by two registers at once. The desk's picker greyed a sold-out
   add-on out, but only for sales committed before the page last rendered. The limit is now

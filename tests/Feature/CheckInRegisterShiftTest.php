@@ -230,6 +230,22 @@ test('a Door user can open a shift, take a cash check-in, record a drop, and clo
         ->and(app(RegisterShiftService::class)->variance($closed))->toEqual(0.0);
 });
 
+test('closing a drawer that balances to the cent reports it as exact, not $0.00 over', function () {
+    $livewire = Livewire::test(CheckIn::class)
+        ->set('registerId', $this->register->id)
+        ->callAction('openShift', data: ['opening_count' => 50])
+        ->assertHasNoActionErrors();
+
+    $shift = app(RegisterShiftService::class)->currentOpenShift($this->register);
+    app(RegisterShiftService::class)->recordMiscPayment($shift, auth()->user(), 0.05, 'cash', 'vendor');
+
+    $livewire->callAction('recordDrop', data: ['amount' => 20])
+        ->assertHasNoActionErrors()
+        ->callAction('closeShift', data: ['closing_count' => 30.05])
+        ->assertHasNoActionErrors()
+        ->assertNotified(__('Box closed — :amount :label', ['amount' => '$0.00', 'label' => __('exact')]));
+});
+
 test('a register can be closed and reopened for a mid-shift changeover, and check-ins attribute to the new shift', function () {
     $livewire = Livewire::test(CheckIn::class)
         ->set('registerId', $this->register->id)

@@ -31,6 +31,7 @@ use App\Services\PriceBreakdown;
 use App\Services\PricingService;
 use App\Services\RegisterShiftService;
 use App\Services\SubscriptionBundleService;
+use App\Support\Cents;
 use BackedEnum;
 use Carbon\Carbon;
 use Filament\Actions\Action;
@@ -910,10 +911,10 @@ class CheckIn extends Page implements HasTable
 
                 $service = app(RegisterShiftService::class);
                 $closed = $service->closeShift($shift, auth()->user(), (float) $data['closing_count'], $data['notes'] ?? null);
-                $variance = $service->variance($closed) ?? 0.0;
-                $label = $variance == 0.0 ? __('exact') : ($variance > 0 ? __('over') : __('short'));
+                $variance = $service->varianceCents($closed) ?? 0;
+                $label = $variance === 0 ? __('exact') : ($variance > 0 ? __('over') : __('short'));
 
-                Notification::make()->title(__('Box closed — :amount :label', ['amount' => $this->formatCurrency(abs($variance)), 'label' => $label]))->success()->send();
+                Notification::make()->title(__('Box closed — :amount :label', ['amount' => $this->formatCurrency(Cents::toFloat(abs($variance))), 'label' => $label]))->success()->send();
             });
     }
 

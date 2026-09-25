@@ -182,3 +182,43 @@ test('revenueBreakdown folds a pool day pass into the other bucket', function ()
         'other' => 15.0,
     ]);
 });
+
+// Each drawer balances to the cent. Before cents arithmetic, adding these up
+// as floats left a variance like 3.6e-15, so the desk reported "$0.00 over"
+// or "$0.00 short" and the shift counted as having a variance.
+dataset('balanced drawers', [
+    // opening, cash check-ins, cash misc payments, drops, counted at close
+    [50.00, 0.05, 0.00, 20.00, 30.05],
+    [50.00, 17.80, 10.30, 20.00, 58.10],
+    [50.00, 21.35, 0.00, 20.00, 51.35],
+    [50.00, 21.35, 10.30, 20.00, 61.65],
+    [50.00, 24.90, 0.00, 20.00, 54.90],
+]);
+
+test('a drawer that balances to the cent has a variance of exactly zero', function (float $opening, float $checkIns, float $misc, float $drops, float $counted) {
+    $shift = $this->service->openShift($this->register, $this->user, $opening);
+    Attendance::factory()->create(['register_shift_id' => $shift->id, 'payment_method' => 'cash', 'amount_paid' => $checkIns]);
+    if ($misc > 0) {
+        $this->service->recordMiscPayment($shift, $this->user, $misc, 'cash', 'vendor');
+    }
+    $this->service->recordDrop($shift, $this->user, $drops);
+    $closed = $this->service->closeShift($shift, $this->user, $counted);
+
+    expect($this->service->variance($closed))->toBe(0.0)
+        ->and($this->service->varianceCents($closed))->toBe(0);
+})->with('balanced drawers');
+
+test('the cents methods agree with their float counterparts', function () {
+    $shift = $this->service->openShift($this->register, $this->user, 50.00);
+    Attendance::factory()->create(['register_shift_id' => $shift->id, 'payment_method' => 'cash', 'amount_paid' => 21.35]);
+    $this->service->recordMiscPayment($shift, $this->user, 10.30, 'cash', 'vendor');
+    $this->service->recordDrop($shift, $this->user, 20.00);
+    $closed = $this->service->closeShift($shift, $this->user, 61.60);
+
+    expect($this->service->cashReceivedCents($closed))->toBe(3165)
+        ->and($this->service->totalDropsCents($closed))->toBe(2000)
+        ->and($this->service->expectedClosingCountCents($closed))->toBe(6165)
+        ->and($this->service->varianceCents($closed))->toBe(-5)
+        ->and($this->service->variance($closed))->toBe(-0.05)
+        ->and($this->service->expectedClosingCount($closed))->toBe(61.65);
+});

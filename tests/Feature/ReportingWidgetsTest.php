@@ -28,6 +28,7 @@ use App\Models\EventType;
 use App\Models\Member;
 use App\Models\MembershipSetting;
 use App\Models\MiscellaneousPayment;
+use App\Models\RegisterDrop;
 use App\Models\RegisterShift;
 use App\Models\Subscription;
 use App\Models\User;
@@ -564,6 +565,24 @@ test('register variance widget sums variance across shifts closed this week only
     expect($totalStat->getValue())->toBe('$10.00')
         ->and($totalStat->getColor())->toBe('warning')
         ->and($countStat->getValue())->toBe('1 of 2');
+});
+
+test('register variance widget counts a drawer that balances to the cent as exact', function () {
+    $this->actingAs(User::factory()->create(['active' => true, 'role' => Role::Manager]));
+
+    // $50.00 + $0.05 cash - $20.00 dropped = $30.05 counted. As floats this
+    // summed to a 3.6e-15 variance and the shift counted as "with variance".
+    $shift = RegisterShift::factory()->create(['opening_count' => 50, 'closing_count' => 30.05, 'closed_at' => now()]);
+    MiscellaneousPayment::factory()->create(['register_shift_id' => $shift->id, 'payment_method' => 'cash', 'amount' => 0.05]);
+    RegisterDrop::factory()->create(['register_shift_id' => $shift->id, 'amount' => 20]);
+
+    $stats = (fn () => $this->getStats())->call(new RegisterVarianceWidget);
+    $totalStat = collect($stats)->first(fn ($stat) => $stat->getLabel() === 'Total register variance this week');
+    $countStat = collect($stats)->first(fn ($stat) => $stat->getLabel() === 'Shifts with variance');
+
+    expect($totalStat->getValue())->toBe('$0.00')
+        ->and($totalStat->getColor())->toBe('success')
+        ->and($countStat->getValue())->toBe('0 of 1');
 });
 
 test('register variance widget is restricted to manager and up', function () {
