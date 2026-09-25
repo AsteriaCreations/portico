@@ -1477,7 +1477,6 @@ class CheckIn extends Page implements HasTable
 
                 $decision = app(AdmissionPolicy::class)->decide($member, $event);
                 abort_if($decision->blocksCheckIn(), 403);
-                abort_unless(app(CapacityService::class)->hasRoom($event->event_date), 403);
 
                 // Re-fetched at submit time, not render time. A forged "cash"
                 // submission with no register actually open never reaches
@@ -1489,13 +1488,26 @@ class CheckIn extends Page implements HasTable
                 $paymentMethod = $data['payment_method'] ?? null;
                 $pricingData = $this->pricingData;
 
+                // Ensures the settings row exists before lockForAdmission() needs it.
+                MembershipSetting::current();
+                $capacity = app(CapacityService::class);
+
                 // Wrapped in a transaction so a race that slips past the
                 // check above — two submissions landing close enough that
                 // both saw no existing row — fails atomically on the
                 // database's own unique constraint rather than leaving a
                 // half-written subscription purchase with no attendance row behind.
                 try {
-                    [$attendance, $breakdown, $subscriptionTotal, $voucherApplied, $addOnTotal] = DB::transaction(function () use ($member, $event, $data, $pricingData, $openShift, $paymentMethod): array {
+                    $result = DB::transaction(function () use ($member, $event, $data, $pricingData, $openShift, $paymentMethod, $capacity): ?array {
+                        // First statement in the transaction, before any
+                        // other read -- see lockForAdmission(). Null means
+                        // the building filled up after this page was loaded,
+                        // possibly by another register a moment ago.
+                        $capacity->lockForAdmission();
+                        if (! $capacity->hasRoom($event->event_date)) {
+                            return null;
+                        }
+
                         $month = $event->event_date->clone()->startOfMonth();
                         $subscriptionTotal = 0.0;
 
@@ -1696,13 +1708,45 @@ class CheckIn extends Page implements HasTable
                         throw $exception;
                     }
 
+                    // 23000 covers every integrity violation, not just the
+                    // attendance unique key -- a subscription month another
+                    // register sold at the same moment rolls back this whole
+                    // check-in too. Only claim "already checked in" when the
+                    // row is really there; otherwise nothing was saved, and
+                    // the member must not be waved through on that basis.
+                    if ($this->getExistingAttendance()) {
+                        Notification::make()
+                            ->title(__('Already checked in — another register just recorded this at the same moment.'))
+                            ->warning()
+                            ->send();
+
+                        return;
+                    }
+
+                    report($exception);
+
                     Notification::make()
-                        ->title(__('Already checked in — another register just recorded this at the same moment.'))
-                        ->warning()
+                        ->title(__('Check-in not saved — another register changed this member\'s record at the same moment.'))
+                        ->body(__('Nothing was recorded or charged. Reselect the member and try again.'))
+                        ->danger()
+                        ->persistent()
                         ->send();
 
                     return;
                 }
+
+                if ($result === null) {
+                    Notification::make()
+                        ->title(__('Building at capacity — check-in not saved.'))
+                        ->body(__('The building filled up after this screen loaded. Nothing was recorded or charged.'))
+                        ->warning()
+                        ->persistent()
+                        ->send();
+
+                    return;
+                }
+
+                [$attendance, $breakdown, $subscriptionTotal, $voucherApplied, $addOnTotal] = $result;
 
                 // Cleared so the next transaction (same member, or the next
                 // one after registerGuestAction re-selects a new guest) never

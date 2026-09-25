@@ -67,6 +67,23 @@ is fixes only.
   screens, comp-request approval, Skill assignment, per-user capabilities, the Technical
   and Upstream Updates pages, and the Owner-only club name.
 
+### Fixed
+
+- Two registers could admit two different members into the last spot under the venue
+  capacity: each counted occupancy before either had committed. The capacity check now
+  runs inside the check-in transaction, behind a row lock every admission takes
+  (`CapacityService::lockForAdmission()`), so the second waits for the first and then sees
+  it. The register that loses the race gets a "Building at capacity" warning, not an error
+  page, and nothing is recorded or charged.
+- A check-in rolled back by any database integrity error was reported as "Already checked
+  in", even when no attendance row existed — for example, when another register sold the
+  same member the same subscription month at the same moment. The member could then be
+  waved through with nothing recorded. That message now appears only when the attendance
+  row really exists; otherwise the desk says the check-in was not saved.
+- CI now also runs the full Pest suite on MariaDB, not only migrations and seeds: SQLite
+  has no row locks, so no locking guarantee was ever actually tested. The new
+  `CheckInConcurrencyTest` stages real two-register races there.
+
 ### Security
 
 - Repository hardening ahead of wider public use: `main` and `v*` release tags are now

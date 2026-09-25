@@ -181,6 +181,17 @@ Tests run against **SQLite in-memory** (`phpunit.xml`), while the production DDL
 MySQL/MariaDB-flavoured. `.env.testing` exists for running `artisan --env=testing` by
 hand against a disposable `database/testing.sqlite`.
 
+SQLite has no row locks, so `lockForUpdate()` is a no-op there and no concurrency
+guarantee can be tested on it. CI therefore also runs the whole suite on MariaDB, where
+`tests/Feature/CheckInConcurrencyTest.php` stages real two-register races (it skips itself
+on SQLite). Anything that relies on a lock needs a test there. To run the suite on MariaDB
+locally, point it at a throwaway database (it is wiped) with real environment variables,
+which override `phpunit.xml`'s own; the concurrency tests also need the `mysqli` extension:
+
+```bash
+DB_CONNECTION=mariadb DB_DATABASE=portico_test DB_USERNAME=... DB_PASSWORD=... php artisan test
+```
+
 ## Working on the code
 
 - Work one thin vertical slice at a time. Prefer a plan before a large change.
