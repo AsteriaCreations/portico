@@ -37,7 +37,7 @@
             as staff sign in/out elsewhere. --}}
             <p role="status" class="mt-2 text-sm text-gray-500">
                 {{ __('Also in the building (signed in):') }}
-                {{ $this->getSignedInStaff()->map(fn ($user) => "{$user->name} ({$user->role->displayLabel()})")->implode(', ') }}
+                {{ $this->signedInStaffSummary() }}
             </p>
         @endif
     </x-filament::section>

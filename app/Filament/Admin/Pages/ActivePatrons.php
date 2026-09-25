@@ -7,6 +7,7 @@ use App\Filament\Concerns\TranslatesPageLabels;
 use App\Models\Attendance;
 use App\Models\AttendanceBehaviorNote;
 use App\Models\Event;
+use App\Models\MembershipSetting;
 use App\Models\User;
 use App\Services\CapacityService;
 use BackedEnum;
@@ -85,6 +86,19 @@ class ActivePatrons extends Page implements HasTable
     public function getSignedInStaff(): Collection
     {
         return User::signedInStaffQuery()->orderBy('name')->get();
+    }
+
+    /**
+     * "Vera Volunteer (Volunteer), Dana DM (DM)", or names only when the
+     * club has turned roles off (MembershipSetting::active_patrons_show_staff_roles).
+     */
+    public function signedInStaffSummary(): string
+    {
+        $showRoles = MembershipSetting::current()->active_patrons_show_staff_roles;
+
+        return $this->getSignedInStaff()
+            ->map(fn (User $user): string => $showRoles ? "{$user->name} ({$user->role->displayLabel()})" : $user->name)
+            ->implode(', ');
     }
 
     public function table(Table $table): Table

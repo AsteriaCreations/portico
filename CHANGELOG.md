@@ -11,6 +11,12 @@ is fixes only.
 
 ### Added
 
+- Membership Settings → **Show staff roles on Active Patrons**: turn it off to list signed-in
+  staff by name only in Active Patrons' "Also in the building" note, without each person's
+  role. On by default, so upgrading changes nothing. New
+  `membership_settings.active_patrons_show_staff_roles` column: **run `php artisan
+  migrate`**.
+
 - **Reset password** on a staff account (Users list and the user's edit page, Admin+):
   sets a random, readable temporary password (e.g. `Maple-Otter-4172!`, always passing the
   password rule), shows it once in a notification to pass on, signs the account out

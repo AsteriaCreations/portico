@@ -509,3 +509,19 @@ test('the "also in the building" note renders on the page for signed-in staff, a
 
     Livewire::test(ActivePatrons::class)->assertSee('Vera Volunteer (Volunteer)');
 });
+
+test('the "also in the building" note lists names only once staff roles are turned off, and roles again once restored', function () {
+    $this->actingAs(User::factory()->create(['active' => true, 'role' => Role::Manager, 'name' => 'Mo Manager']));
+    $volunteer = User::factory()->create(['active' => true, 'role' => Role::Volunteer, 'name' => 'Vera Volunteer']);
+    createSignedInSession($volunteer);
+
+    MembershipSetting::current()->update(['active_patrons_show_staff_roles' => false]);
+
+    Livewire::test(ActivePatrons::class)
+        ->assertSee('Vera Volunteer')
+        ->assertDontSee('Vera Volunteer (Volunteer)');
+
+    MembershipSetting::current()->update(['active_patrons_show_staff_roles' => true]);
+
+    Livewire::test(ActivePatrons::class)->assertSee('Vera Volunteer (Volunteer)');
+});
