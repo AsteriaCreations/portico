@@ -4,6 +4,7 @@ namespace App\Filament\Admin\Pages;
 
 use App\Enums\AdmissionOutcome;
 use App\Enums\Role;
+use App\Exceptions\CheckInRefused;
 use App\Filament\Concerns\TranslatesPageLabels;
 use App\Models\AddOn;
 use App\Models\AddOnDayPass;
@@ -1498,14 +1499,19 @@ class CheckIn extends Page implements HasTable
                 // database's own unique constraint rather than leaving a
                 // half-written subscription purchase with no attendance row behind.
                 try {
-                    $result = DB::transaction(function () use ($member, $event, $data, $pricingData, $openShift, $paymentMethod, $capacity): ?array {
+                    [$attendance, $breakdown, $subscriptionTotal, $voucherApplied, $addOnTotal] = DB::transaction(function () use ($member, $event, $data, $pricingData, $openShift, $paymentMethod, $capacity): array {
                         // First statement in the transaction, before any
-                        // other read -- see lockForAdmission(). Null means
-                        // the building filled up after this page was loaded,
-                        // possibly by another register a moment ago.
+                        // other read -- see lockForAdmission(). Every
+                        // capped thing sold here (building spots, add-ons
+                        // with max_per_night) is re-checked under it, since
+                        // another register may have taken the last one
+                        // after this page was loaded.
                         $capacity->lockForAdmission();
                         if (! $capacity->hasRoom($event->event_date)) {
-                            return null;
+                            throw new CheckInRefused(
+                                __('Building at capacity — check-in not saved.'),
+                                __('The building filled up after this screen loaded. Nothing was recorded or charged.'),
+                            );
                         }
 
                         $month = $event->event_date->clone()->startOfMonth();
@@ -1605,6 +1611,19 @@ class CheckIn extends Page implements HasTable
                             : collect();
                         $addOnTotal = (float) $selectedAddOns->sum('price');
 
+                        // The picker's disableOptionWhen() only knows the
+                        // sales committed when it last rendered. The whole
+                        // check-in is refused rather than quietly dropping
+                        // the add-on, so the desk never charges for less
+                        // than the member was told they're getting.
+                        $soldOut = $selectedAddOns->first(fn (AddOn $addOn): bool => ! $addOn->hasRoomOn($event->event_date));
+                        if ($soldOut) {
+                            throw new CheckInRefused(
+                                __(':add_on sold out for tonight — check-in not saved.', ['add_on' => $soldOut->name]),
+                                __('Another register sold the last one after this screen loaded. Nothing was recorded or charged. Remove it and check in again.'),
+                            );
+                        }
+
                         $compReasonId = null;
                         if (($pricingData['comp_entry'] ?? false) && Gate::allows('grant-event-comp')) {
                             $breakdown = app(PricingService::class)->applyEventComp($breakdown);
@@ -1703,6 +1722,15 @@ class CheckIn extends Page implements HasTable
 
                         return [$attendance, $breakdown, $subscriptionTotal, $voucherApplied, $addOnTotal];
                     });
+                } catch (CheckInRefused $refused) {
+                    Notification::make()
+                        ->title($refused->title)
+                        ->body($refused->body)
+                        ->warning()
+                        ->persistent()
+                        ->send();
+
+                    return;
                 } catch (QueryException $exception) {
                     if ($exception->getCode() !== '23000') {
                         throw $exception;
@@ -1734,19 +1762,6 @@ class CheckIn extends Page implements HasTable
 
                     return;
                 }
-
-                if ($result === null) {
-                    Notification::make()
-                        ->title(__('Building at capacity — check-in not saved.'))
-                        ->body(__('The building filled up after this screen loaded. Nothing was recorded or charged.'))
-                        ->warning()
-                        ->persistent()
-                        ->send();
-
-                    return;
-                }
-
-                [$attendance, $breakdown, $subscriptionTotal, $voucherApplied, $addOnTotal] = $result;
 
                 // Cleared so the next transaction (same member, or the next
                 // one after registerGuestAction re-selects a new guest) never
