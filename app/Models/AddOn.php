@@ -107,11 +107,16 @@ class AddOn extends Model
      * real add_ons row. Callers never need an extra
      * ->where('active', true) of their own.
      *
+     * Excludes the Entry row: it's subscribable too (the Regular
+     * subscription), but every caller already handles it separately via
+     * AddOn::entry() -- including it here gave the check-in desk a second,
+     * duplicate "Entry Subscription (covers tonight)" picker.
+     *
      * @return Builder<self>
      */
     public function scopeSubscribable(Builder $query): Builder
     {
-        return $query->where('subscribable', true)->where('active', true);
+        return $query->where('subscribable', true)->where('active', true)->where('kind', AddOnKind::Addon);
     }
 
     /**

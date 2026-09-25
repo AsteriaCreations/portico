@@ -96,6 +96,17 @@ test('the live price breakdown updates as a subscription is selected, without ch
         ->and(Subscription::where('member_id', $member->id)->exists())->toBeFalse();
 });
 
+test('an eligible member gets one Regular subscription picker, not a duplicate Entry one', function () {
+    $member = clearMember($this->irregular, ['subscription_eligible' => true]);
+    $event = Event::factory()->create(['event_date' => now()->toDateString(), 'entry_fee' => 40, 'pool_fee' => 10]);
+
+    Livewire::test(CheckIn::class)
+        ->fillForm(['event_id' => $event->id, 'member_id' => $member->id])
+        ->assertSee('Regular Subscription (covers tonight)')
+        ->assertSee('Pool Subscription (covers tonight)')
+        ->assertDontSee('Entry Subscription (covers tonight)');
+});
+
 test('the live Due total reflects a club-configured currency, not a hardcoded dollar sign', function () {
     MembershipSetting::current()->update(['currency' => 'JPY']);
     $member = clearMember($this->irregular);
