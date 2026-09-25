@@ -161,11 +161,12 @@ server. Apache as a Windows service (§2) has none of those constraints.
 
 ### Node.js
 
-**Node is optional for the admin panel.** The panel runs on Filament's own assets, which are
-committed under `public/`; the Vite build (`public/build/`) is only used by the stock
-welcome page, which works without it. You need Node only for `scripts/deploy.ps1`'s default
-`npm install && npm run build` step (§7) — install Node, or pass `-SkipNpm` and skip this
-section.
+**Install Node.** The admin panel's theme (`resources/css/filament/admin/theme.css`) is
+compiled by Vite into `public/build/`: it provides the Tailwind classes the app's own screens
+use (the Check-In Desk, Active Patrons, the dashboard widgets, every "How to use" panel).
+`scripts/deploy.ps1` builds it on every deploy (§7). Without a build the panel still loads,
+because the theme is only used once it exists, but those screens lose their spacing, colours
+and layout.
 
 If you do install it, use the current LTS (24, or 22); check `package.json`'s
 `engines`/the Vite version if in doubt, as older Node lines fall below Vite's floor. The
@@ -473,9 +474,10 @@ build`, `php artisan migrate --force`, `storage:link` / `config:clear` /
 `optimize`, then restarts the service — in a `finally` block, so a failure
 partway through never leaves the box down. Flags for the common variations:
 
-- `-SkipNpm` — skip `npm install && npm run build`. The admin panel doesn't use the Vite
-  build (§1, "Node.js"), so this is safe whenever Node isn't installed or the update
-  touched no front-end asset (most don't).
+- `-SkipNpm` — skip `npm install && npm run build`. Only when the update changed no Blade
+  view, CSS or JS: the panel theme is compiled from the classes in the views (§1,
+  "Node.js"), so skipping after a view change leaves any new class unstyled until the next
+  build.
 - `-SkipMigrate` — this update has no schema change.
 - `-MigrateFresh` — **pre-launch only, destroys data** — rebuilds the schema
   from scratch instead of a forward-only `migrate --force`.

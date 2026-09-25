@@ -11,6 +11,19 @@ is fixes only.
 
 ### Added
 
+- **A Filament panel theme** (`resources/css/filament/admin/theme.css`, registered with
+  `->viteTheme()`). Filament's own stylesheet only contains its `fi-*` classes, so every
+  Tailwind utility in the app's own views (`text-sm`, `mt-2`, `gap-4`, `grid`,
+  `text-danger-600`, `sm:hidden`, …, 79 in all) had silently done nothing: the Check-In
+  Desk's status rows, Active Patrons' header, several dashboard widgets and every "How to use"
+  panel rendered with default browser styling. The theme compiles every class found under
+  `app/Filament`, `resources/views/filament` and `resources/views/components`. **Deploy with
+  `npm run build`** (`scripts/deploy.ps1` does it unless `-SkipNpm`); Node is no longer
+  optional. The theme is only loaded once a build has produced it, so an install that never
+  built assets keeps working exactly as before rather than failing on a missing Vite
+  manifest. CI gains a job that builds the assets; tests run `withoutVite()`.
+  `PanelCssGuardTest` now checks the theme scans every folder of panel views.
+
 - Membership Settings → **Show staff roles on Active Patrons**: turn it off to list signed-in
   staff by name only in Active Patrons' "Also in the building" note, without each person's
   role. On by default, so upgrading changes nothing. New
