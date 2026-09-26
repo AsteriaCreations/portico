@@ -76,15 +76,16 @@ class UserObserver
 
     /**
      * Nobody promotes an account above their own role, themselves included
-     * -- an Admin can't make anyone an Owner. Creating an account with such
-     * a role is refused by CreateUser (the role picker only offers roles up
-     * to your own, and Filament rejects any value outside them).
+     * -- an Admin can't make anyone an Owner, unless there's no active Owner
+     * at all (User::canGrantRole()). Creating an account with such a role is
+     * refused by CreateUser (the role picker only offers grantable roles, and
+     * Filament rejects any value outside them).
      */
     private function guardRoleGrant(User $user): void
     {
         $role = $this->normalizeRole($user->role);
 
-        if ($user->isDirty('role') && $role !== null && ! $this->actorRole()->atLeast($role)) {
+        if ($user->isDirty('role') && $role !== null && ! User::canGrantRole($this->actorRole(), $role)) {
             throw ValidationException::withMessages([
                 'role' => __('You can’t give an account a role above your own.'),
             ]);

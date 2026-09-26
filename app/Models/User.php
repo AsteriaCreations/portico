@@ -133,6 +133,25 @@ class User extends Authenticatable implements FilamentUser
     }
 
     /**
+     * Whether someone holding $actorRole may give an account $role. Normally
+     * only up to your own rank. The one exception: while the installation
+     * has no active Owner, an Admin may grant Owner -- otherwise an install
+     * seeded with only an Admin (or one whose Owners were all deactivated)
+     * could never get one back. The same rule backs the Users form's role
+     * picker, CreateUser and UserObserver.
+     */
+    public static function canGrantRole(Role $actorRole, Role $role): bool
+    {
+        if ($actorRole->atLeast($role)) {
+            return true;
+        }
+
+        return $role === Role::Owner
+            && $actorRole->atLeast(Role::Admin)
+            && ! static::query()->where('role', Role::Owner->value)->where('active', true)->exists();
+    }
+
+    /**
      * Volunteer+ staff don't pass through check-in the way a patron does,
      * so Attendance says nothing about whether they're in the building --
      * but an unexpired session does. "Signed in" is deliberately defined as

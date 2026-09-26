@@ -173,6 +173,8 @@ test('an inactive owner does not count as the last active owner', function () {
 // --- Rank: nobody manages an account above their own ----------------------
 
 test('an admin cannot create an owner or promote anyone, themselves included, to owner', function () {
+    User::factory()->create(['role' => Role::Owner, 'active' => true]);
+
     Livewire::test(CreateUser::class)
         ->fillForm([
             'name' => 'Would-be Owner',
@@ -215,6 +217,8 @@ test('an admin cannot edit, deactivate, delete or reset an owner, even directly'
 });
 
 test('the role picker never offers a role above your own', function () {
+    User::factory()->create(['role' => Role::Owner, 'active' => true]);
+
     $options = Livewire::test(CreateUser::class)
         ->instance()
         ->form
@@ -223,6 +227,68 @@ test('the role picker never offers a role above your own', function () {
 
     expect(array_keys($options))->not->toContain(Role::Owner->value)
         ->toContain(Role::Admin->value);
+});
+
+// --- First Owner: with no active Owner, an Admin may grant Owner -----------
+
+test('with no active owner, the role picker offers owner to an admin', function () {
+    $options = Livewire::test(CreateUser::class)
+        ->instance()
+        ->form
+        ->getComponent('role')
+        ->getOptions();
+
+    expect(array_keys($options))->toContain(Role::Owner->value);
+});
+
+test('with no active owner, an admin can create an owner or promote themselves', function () {
+    Livewire::test(CreateUser::class)
+        ->fillForm([
+            'name' => 'First Owner',
+            'email' => 'first-owner@example.com',
+            'password' => 'Sup3r-Secret-Passw0rd',
+            'role' => Role::Owner->value,
+            'active' => true,
+        ])
+        ->call('create')
+        ->assertHasNoFormErrors();
+
+    expect(User::where('email', 'first-owner@example.com')->value('role'))->toBe(Role::Owner);
+});
+
+test('with no active owner, an admin can promote their own account to owner', function () {
+    $this->admin->update(['role' => Role::Owner]);
+
+    expect($this->admin->refresh()->role)->toBe(Role::Owner);
+});
+
+test('an inactive owner does not stop an admin granting owner', function () {
+    User::factory()->create(['role' => Role::Owner, 'active' => false]);
+
+    $this->admin->update(['role' => Role::Owner]);
+
+    expect($this->admin->refresh()->role)->toBe(Role::Owner);
+});
+
+test('the first-owner exception is for admins only', function () {
+    $manager = User::factory()->create(['role' => Role::Manager, 'active' => true]);
+    $this->actingAs($manager);
+
+    $door = User::factory()->create(['role' => Role::Door, 'active' => true]);
+
+    expect(fn () => $door->update(['role' => Role::Owner]))->toThrow(ValidationException::class)
+        ->and(fn () => $door->update(['role' => Role::Admin]))->toThrow(ValidationException::class);
+    expect(User::canGrantRole(Role::Manager, Role::Owner))->toBeFalse();
+});
+
+test('once an owner exists, an admin can no longer grant owner', function () {
+    $this->admin->update(['role' => Role::Owner]);
+
+    $otherAdmin = User::factory()->create(['role' => Role::Admin, 'active' => true]);
+    $this->actingAs($otherAdmin);
+
+    expect(fn () => $otherAdmin->update(['role' => Role::Owner]))->toThrow(ValidationException::class);
+    expect($otherAdmin->refresh()->role)->toBe(Role::Admin);
 });
 
 test('an owner can manage owners, and an admin can still manage admins and below', function () {
