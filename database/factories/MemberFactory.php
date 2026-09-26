@@ -19,7 +19,9 @@ class MemberFactory extends Factory
     public function definition(): array
     {
         return [
-            'member_number' => fake()->unique()->numberBetween(1, 9999),
+            // Well above the small numbers tests hard-code (e.g. 42), so a random
+            // one can't collide with them on the unique index.
+            'member_number' => fake()->unique()->numberBetween(100000, 999999),
             'username' => fake()->unique()->userName(),
             'preferred_name' => null,
             'first_name' => fake()->firstName(),
