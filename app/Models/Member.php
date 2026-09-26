@@ -40,6 +40,7 @@ class Member extends Model
             'probation_override_start' => 'date',
             'missing_paperwork' => 'boolean',
             'is_deceased' => 'boolean',
+            'guest_followup_sent_at' => 'datetime',
         ];
     }
 
@@ -61,6 +62,11 @@ class Member extends Model
     public function sponsoredGuests(): HasMany
     {
         return $this->hasMany(Member::class, 'sponsor_id');
+    }
+
+    public function guestFollowupSentBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'guest_followup_sent_by');
     }
 
     public function subscriptions(): HasMany
@@ -140,6 +146,36 @@ class Member extends Model
     public function isProspective(): bool
     {
         return $this->category->name === 'Prospective';
+    }
+
+    public function isGuest(): bool
+    {
+        return $this->category?->name === 'Guest';
+    }
+
+    /**
+     * Records that the club has sent this guest its follow-up (welcome email,
+     * waiver, membership info -- whatever it sends), and who marked it. Set
+     * only through here, not mass assignment, so the plain edit form can't
+     * change it. Returns false for a non-guest, which is left untouched.
+     */
+    public function markGuestFollowupSent(User $by): bool
+    {
+        if (! $this->isGuest()) {
+            return false;
+        }
+
+        $this->forceFill(['guest_followup_sent_at' => now(), 'guest_followup_sent_by' => $by->id])->save();
+
+        return true;
+    }
+
+    /**
+     * Undoes markGuestFollowupSent(), e.g. after marking the wrong guest.
+     */
+    public function clearGuestFollowup(): void
+    {
+        $this->forceFill(['guest_followup_sent_at' => null, 'guest_followup_sent_by' => null])->save();
     }
 
     public function hasActiveSubscriptionFor(AddOn $addOn, CarbonInterface $coveredMonth): bool

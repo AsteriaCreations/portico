@@ -10,6 +10,7 @@ use Filament\Actions\BulkAction;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
+use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
 use Filament\Notifications\Notification;
 use Filament\Tables\Columns\IconColumn;
@@ -75,6 +76,13 @@ class MembersTable
                     ->boolean()
                     ->state(fn (Member $record) => $record->isOnProbation())
                     ->tooltip(fn (bool $state): string => $state ? __('On probation') : __('Not on probation')),
+                TextColumn::make('guest_followup_sent_at')
+                    ->label('Guest follow-up sent')
+                    ->date('M j, Y')
+                    ->placeholder('—')
+                    ->tooltip(fn (Member $record): ?string => $record->guestFollowupSentBy ? __('Marked by :name', ['name' => $record->guestFollowupSentBy->name]) : null)
+                    ->sortable()
+                    ->toggleable(),
             ])
             ->filters([
                 SelectFilter::make('category_id')
@@ -118,6 +126,39 @@ class MembersTable
                                 ->where(fn (Builder $q) => $q->whereNotNull('probation_override_start')->where('probation_override_start', '>', $cutoff))
                                 ->orWhere(fn (Builder $q) => $q->whereNull('probation_override_start')->whereNotNull('date_vetted')->where('date_vetted', '>', $cutoff))
                         );
+                    }),
+                // For the guest follow-up round: filter to guests not yet sent
+                // it (optionally with "Registered" below for a date range),
+                // export the list, send, then "Mark follow-up sent".
+                SelectFilter::make('guest_followup')
+                    ->label('Guest follow-up')
+                    ->options([
+                        'pending' => __('Guests not yet sent follow-up'),
+                        'sent' => __('Guests already sent follow-up'),
+                    ])
+                    ->query(fn (Builder $query, array $data): Builder => match ($data['value'] ?? null) {
+                        'pending' => $query->whereHas('category', fn (Builder $q) => $q->where('name', 'Guest'))->whereNull('guest_followup_sent_at'),
+                        'sent' => $query->whereHas('category', fn (Builder $q) => $q->where('name', 'Guest'))->whereNotNull('guest_followup_sent_at'),
+                        default => $query,
+                    }),
+                Filter::make('registered')
+                    ->schema([
+                        DatePicker::make('registered_from')->label('Registered from'),
+                        DatePicker::make('registered_until')->label('Registered until'),
+                    ])
+                    ->query(fn (Builder $query, array $data): Builder => $query
+                        ->when($data['registered_from'] ?? null, fn (Builder $q, string $date) => $q->whereDate('created_at', '>=', $date))
+                        ->when($data['registered_until'] ?? null, fn (Builder $q, string $date) => $q->whereDate('created_at', '<=', $date)))
+                    ->indicateUsing(function (array $data): array {
+                        $indicators = [];
+                        if ($data['registered_from'] ?? null) {
+                            $indicators[] = __('Registered from :date', ['date' => Carbon::parse($data['registered_from'])->translatedFormat('M j, Y')]);
+                        }
+                        if ($data['registered_until'] ?? null) {
+                            $indicators[] = __('Registered until :date', ['date' => Carbon::parse($data['registered_until'])->translatedFormat('M j, Y')]);
+                        }
+
+                        return $indicators;
                     }),
             ])
             ->recordActions([
@@ -166,6 +207,38 @@ class MembersTable
 
                             Notification::make()
                                 ->title(trans_choice('Paperwork required for :count member|Paperwork required for :count members', $records->count()))
+                                ->success()
+                                ->send();
+                        }),
+                    BulkAction::make('markGuestFollowupSent')
+                        ->label('Mark follow-up sent')
+                        ->icon('heroicon-o-paper-airplane')
+                        ->requiresConfirmation()
+                        ->modalDescription(__('Records that each selected guest has been sent the club\'s follow-up, and that you marked it. Selected members who aren\'t guests are skipped.'))
+                        ->authorizeIndividualRecords('update')
+                        ->deselectRecordsAfterCompletion()
+                        ->action(function (Collection $records): void {
+                            $marked = $records->filter(fn (Member $record): bool => $record->markGuestFollowupSent(auth()->user()))->count();
+                            $skipped = $records->count() - $marked;
+
+                            Notification::make()
+                                ->title(trans_choice('Follow-up marked sent for :count guest|Follow-up marked sent for :count guests', $marked))
+                                ->body($skipped > 0 ? trans_choice(':count selected member isn\'t a guest and was skipped.|:count selected members aren\'t guests and were skipped.', $skipped) : null)
+                                ->success()
+                                ->send();
+                        }),
+                    BulkAction::make('clearGuestFollowup')
+                        ->label('Mark follow-up not sent')
+                        ->icon('heroicon-o-arrow-uturn-left')
+                        ->requiresConfirmation()
+                        ->modalDescription(__('Clears the follow-up mark on each selected member, e.g. after marking the wrong guest.'))
+                        ->authorizeIndividualRecords('update')
+                        ->deselectRecordsAfterCompletion()
+                        ->action(function (Collection $records): void {
+                            $records->each(fn (Member $record) => $record->clearGuestFollowup());
+
+                            Notification::make()
+                                ->title(trans_choice('Follow-up cleared for :count member|Follow-up cleared for :count members', $records->count()))
                                 ->success()
                                 ->send();
                         }),

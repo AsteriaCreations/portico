@@ -5,4 +5,5 @@
     <p>{!! __('Tick several members to <strong>Change category</strong> or <strong>Require paperwork</strong> (e.g. when rolling out a new waiver) for all of them at once.') !!}</p>
     <p>{!! __('<strong>Export member list (CSV)</strong> exports whatever the table is currently filtered to; <strong>Export email list (CSV)</strong> is for mailing opted-in members. First and last name, date of birth and email are masked in the table until you click <strong>Show personal info</strong> (Membership Settings decides whether they start hidden).') !!}</p>
     <p>{!! __('To add many members at once, use <strong>Download member template</strong>, fill it in, then <strong>Bulk upload members</strong>.') !!}</p>
+    <p>{!! __('<strong>Following up with new guests:</strong> filter <strong>Guest follow-up</strong> to &quot;not yet sent&quot; (add <strong>Registered</strong> for a date range), use <strong>Export member list (CSV)</strong> for their emails, send whatever the club sends, then tick them and <strong>Mark follow-up sent</strong>. <strong>Mark follow-up not sent</strong> undoes a mistake.') !!}</p>
 </x-screen-instructions>
