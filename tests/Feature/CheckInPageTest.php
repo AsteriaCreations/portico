@@ -2306,6 +2306,51 @@ test('two guests registered with the same name but different usernames both regi
     expect($usernames->sort()->values()->all())->toBe(['jamieguestly1', 'jamieguestly2']);
 });
 
+test('once a member reaches the guest limit for the night, the action is replaced by a note', function () {
+    MembershipSetting::current()->update(['max_guests_per_night' => 1]);
+    $member = clearMember($this->irregular);
+    $event = Event::factory()->create(['event_date' => now()->toDateString(), 'entry_fee' => 20]);
+
+    $livewire = Livewire::test(CheckIn::class)
+        ->fillForm(['event_id' => $event->id, 'member_id' => $member->id])
+        ->callAction('checkIn', data: ['checked_in_at' => now()->subMinute()])
+        ->assertHasNoActionErrors()
+        ->assertDontSee('Guest limit reached')
+        ->callAction('registerGuest', data: [
+            'username' => 'firstguest',
+            'preferred_name' => 'First',
+            'first_name' => 'First',
+            'last_name' => 'Guest',
+            'email' => 'first@example.com',
+        ])
+        ->assertHasNoActionErrors();
+
+    // registerGuest auto-selected the new guest; re-select the host.
+    $livewire->fillForm(['event_id' => $event->id, 'member_id' => $member->id])
+        ->assertActionHidden('registerGuest')
+        ->assertSee('Guest limit reached — 1 per member per night.');
+
+    $attendance = Attendance::where('member_id', $member->id)->firstOrFail();
+    expect($member->fresh()->hasGuestAllowanceLeft($attendance))->toBeFalse()
+        ->and(Member::where('sponsor_id', $member->id)->count())->toBe(1);
+});
+
+test('guests registered on an earlier visit do not count toward tonight\'s guest limit', function () {
+    MembershipSetting::current()->update(['max_guests_per_night' => 1]);
+    $member = clearMember($this->irregular);
+    $guestCategory = Category::firstOrCreate(['name' => 'Guest'], ['is_comped' => false]);
+    $returningGuest = Member::factory()->create(['category_id' => $guestCategory->id, 'sponsor_id' => $member->id]);
+    $returningGuest->forceFill(['created_at' => now()->subWeek()])->save();
+    $event = Event::factory()->create(['event_date' => now()->toDateString(), 'entry_fee' => 20]);
+
+    Livewire::test(CheckIn::class)
+        ->fillForm(['event_id' => $event->id, 'member_id' => $member->id])
+        ->callAction('checkIn', data: ['checked_in_at' => now()->subMinute()])
+        ->assertHasNoActionErrors()
+        ->assertActionVisible('registerGuest')
+        ->assertDontSee('Guest limit reached');
+});
+
 test('member search matches on username before falling back to name', function () {
     // Name search is off by default — enable it so the fallback tier has something to do.
     MembershipSetting::current()->update(['member_search_fields' => ['username', 'name']]);

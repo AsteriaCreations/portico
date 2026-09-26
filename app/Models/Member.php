@@ -320,6 +320,29 @@ class Member extends Model
     }
 
     /**
+     * Whether this member may register another guest on the visit
+     * $attendance records, under Membership Settings' "Max guests per member
+     * per night" (blank = no limit). Only guests they registered since
+     * checking in on that visit count -- not returning guests who check in
+     * under them, and not a calendar day, so a late event running past
+     * midnight doesn't reset the count.
+     */
+    public function hasGuestAllowanceLeft(Attendance $attendance): bool
+    {
+        $max = MembershipSetting::current()->max_guests_per_night;
+
+        if ($max === null) {
+            return true;
+        }
+
+        if (! $attendance->checked_in_at) {
+            return false;
+        }
+
+        return $this->sponsoredGuests()->where('created_at', '>=', $attendance->checked_in_at)->count() < $max;
+    }
+
+    /**
      * Next available member_number, for MemberObserver to assign on create.
      * A plain MAX+1 rather than a counter table — a collision under
      * concurrent creates surfaces as a unique-constraint violation on

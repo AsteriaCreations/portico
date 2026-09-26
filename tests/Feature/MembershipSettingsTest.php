@@ -76,6 +76,7 @@ test('saving updates the singleton row', function () {
             'subscription_eligibility_window_months' => 24,
             'probation_period_days' => 45,
             'guests_allowed_during_probation' => true,
+            'max_guests_per_night' => 2,
             'venue_capacity' => 200,
             'default_opening_float' => 75.25,
             'event_window_buffer_minutes' => 10,
@@ -98,6 +99,7 @@ test('saving updates the singleton row', function () {
         ->and($setting->subscription_eligibility_window_months)->toBe(24)
         ->and($setting->probation_period_days)->toBe(45)
         ->and($setting->guests_allowed_during_probation)->toBeTrue()
+        ->and($setting->max_guests_per_night)->toBe(2)
         ->and($setting->venue_capacity)->toBe(200)
         ->and($setting->default_opening_float)->toBe('75.25')
         ->and($setting->event_window_buffer_minutes)->toBe(10)
