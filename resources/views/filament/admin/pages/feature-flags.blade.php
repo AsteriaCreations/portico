@@ -3,6 +3,7 @@
         <p>{{ __('Each toggle turns a whole feature area on or off for this club — read the helper text under a toggle before flipping it, it explains exactly what it hides and what it never touches.') }}</p>
         <p>{!! __('Turning a feature off only stops <strong>new</strong> use of it — it never deletes, hides, or retroactively rewrites anything already recorded (an existing subscription still works after its add-on is turned off, for example).') !!}</p>
         <p>{{ __('Leave everything on unless you\'re certain this club doesn\'t use that feature.') }}</p>
+        <p>{{ __('When you turn a feature on, any setup it still needs (a price, a waiver, a screen to fill in) arrives as reminders in your notifications — the bell at the top. Each one has an Open button that takes you straight there.') }}</p>
     </x-screen-instructions>
 
     <x-filament::section>

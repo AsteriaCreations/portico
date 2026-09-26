@@ -5,6 +5,7 @@ namespace App\Filament\Admin\Pages;
 use App\Enums\Role;
 use App\Filament\Concerns\TranslatesPageLabels;
 use App\Models\MembershipSetting;
+use App\Services\FeatureSetupReminders;
 use BackedEnum;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Toggle;
@@ -162,9 +163,23 @@ class FeatureFlags extends Page
         return Action::make('save')
             ->label('Save settings')
             ->action(function (): void {
-                MembershipSetting::current()->update($this->form->getState());
+                $setting = MembershipSetting::current();
+                $state = $this->form->getState();
 
-                Notification::make()->title(__('Settings saved'))->success()->send();
+                $turnedOn = collect($state)
+                    ->filter(fn (mixed $value, string $flag): bool => (bool) $value && ! $setting->{$flag})
+                    ->keys()
+                    ->all();
+
+                $setting->update($state);
+
+                $reminders = app(FeatureSetupReminders::class)->sendFor(auth()->user(), $turnedOn);
+
+                Notification::make()
+                    ->title(__('Settings saved'))
+                    ->body($reminders > 0 ? trans_choice(':count setup reminder added to your notifications (the bell).|:count setup reminders added to your notifications (the bell).', $reminders) : null)
+                    ->success()
+                    ->send();
             });
     }
 }

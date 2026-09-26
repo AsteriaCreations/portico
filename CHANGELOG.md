@@ -11,6 +11,13 @@ is fixes only.
 
 ### Added
 
+- **Setup reminders when a feature is turned on.** Saving Feature Flags with a feature newly
+  switched on sends the person who saved it a notification (the bell) for each setup step it
+  still needs, with an **Open** button to that screen. For example, turning on Pool reminds you to
+  set the Pool subscription price and link the Pool Waiver; Register shift tracking reminds you to
+  add registers and mark cash as needing the register. Steps already done, and screens the person
+  can't open, are skipped. The list lives in `App\Services\FeatureSetupReminders`. No migration.
+
 - **Guest follow-up** on the Members list, for sending newly registered guests whatever the club
   sends them (welcome email, waiver, membership info). A **Guest follow-up** filter lists guests
   not yet sent it (or already sent), and a **Registered** date-range filter narrows by sign-up
