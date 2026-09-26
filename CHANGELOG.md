@@ -9,6 +9,15 @@ is fixes only.
 
 ## [Unreleased]
 
+### Changed
+
+- `/` now redirects to the admin panel (the sign-in page when signed out) instead of showing
+  Laravel's stock welcome page. The welcome page, the empty `resources/css/app.css` and
+  `resources/js/app.js`, and the Vite font setup only it used are removed, so `npm run build`
+  now builds just the panel theme. That also ends the build-time download of a web font from
+  Bunny Fonts and the "optimized font fallbacks require fontaine" warning. The panel is
+  unaffected: Filament ships its own font.
+
 ## [0.3.0] — 2026-09-26
 
 **Upgrading from 0.2.0:** run `php artisan migrate` (12 new migrations; every new setting defaults
