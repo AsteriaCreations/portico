@@ -4,6 +4,7 @@ namespace App\Filament\Admin\Resources\Users\Schemas;
 
 use App\Enums\Role;
 use App\Models\Member;
+use App\Models\User;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
@@ -36,10 +37,10 @@ class UserForm
                     // Not ->options(Role::class) -- that resolves labels via
                     // Role::getLabel() only, which never consults a club's
                     // own per-role alias. See Role::displayLabel().
-                    // Only roles at or below your own -- UserObserver refuses
-                    // a grant above it on save regardless.
+                    // Only roles you may grant (User::canGrantRole()) --
+                    // UserObserver refuses anything else on save regardless.
                     ->options(fn () => collect(Role::cases())
-                        ->filter(fn (Role $role): bool => auth()->user()?->role->atLeast($role) ?? false)
+                        ->filter(fn (Role $role): bool => auth()->check() && User::canGrantRole(auth()->user()->role, $role))
                         ->mapWithKeys(fn (Role $role) => [$role->value => $role->displayLabel()])
                         ->all())
                     ->default(Role::Door)

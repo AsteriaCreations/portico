@@ -141,6 +141,11 @@ is fixes only.
 
 ### Fixed
 
+- An install with no active Owner could never get one. The seeder creates only an Admin,
+  and the rank rule stopped anyone from granting a role above their own, so no one could
+  grant Owner. Now, while there's no active Owner, an Admin may grant Owner, to another
+  account or their own (`User::canGrantRole()`, used by the role picker, `CreateUser`
+  and `UserObserver`). Once an Owner exists, the normal rule applies again.
 - The Check-In Desk's "Checked in tonight" list showed everyone twice: once as a stacked
   card above the table, once in it. The phone-card and table layouts were switched with
   Tailwind's `sm:hidden` / `hidden sm:block`, which aren't in the panel's compiled CSS (the
