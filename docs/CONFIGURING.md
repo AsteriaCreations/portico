@@ -83,7 +83,8 @@ rarely need to touch most of them.
 | Setting | Default | Notes |
 |---|---|---|
 | Subscription eligibility threshold | `5` | Attended-events count that unlocks a subscription. |
-| Probation period (days) | `90` | Reporting-only — never blocks admission or changes pricing. |
+| Probation period (days) | `90` | Never blocks admission or changes pricing. A member on probation can't register a guest, unless the next setting allows it. |
+| Allow guests during probation | off | Lets a member still on probation register a guest at the Check-In Desk. |
 | Venue capacity | *(blank)* | Building-wide occupancy cap across concurrent events. **Blank = not enforced.** |
 | Default cash drawer opening float | *(blank)* | Pre-fills the opening count when a shift is opened. |
 | Event window buffer (minutes) | `15` | Slack around an event's start/end for the check-in picker (also handles an event running past midnight). |
@@ -122,6 +123,7 @@ records intact and reviewable.
 | Instructor per-head pay | No Instructor Pay Rates tab on Event Types or instructor payout breakdown. |
 | Patron visit notes | No visit-note column on Active Patrons. |
 | Patron behavior notes | No adding new behavior notes on Active Patrons (existing ones stay reviewable by Manager+). |
+| Guests | No "Register a guest" on the Check-In Desk. Guests already registered keep their records and can still check in. |
 | Upstream update checking | *(default off)* No Upstream Updates page and no scheduled git fetch. Only useful if this fork tracks an upstream remote. |
 | Web-triggered deploy | *(default off)* No "Run update now" button on Upstream Updates. Also needs a Deploy Scheduled Task name configured and a Scheduled Task registered on the server — see [`docs/DEPLOYMENT.md`](DEPLOYMENT.md) §7 "Web-triggered updates". |
 

@@ -290,6 +290,21 @@ class Member extends Model
     }
 
     /**
+     * Whether this member may register a guest, as far as club policy goes:
+     * guests are switched on (Feature Flags), and the member isn't on
+     * probation unless the club allows guests during it (Membership
+     * Settings). The Check-In Desk separately requires the sponsor to be
+     * checked in tonight.
+     */
+    public function canSponsorGuests(): bool
+    {
+        $settings = MembershipSetting::current();
+
+        return $settings->guests_enabled
+            && ($settings->guests_allowed_during_probation || ! $this->isOnProbation());
+    }
+
+    /**
      * Next available member_number, for MemberObserver to assign on create.
      * A plain MAX+1 rather than a counter table — a collision under
      * concurrent creates surfaces as a unique-constraint violation on

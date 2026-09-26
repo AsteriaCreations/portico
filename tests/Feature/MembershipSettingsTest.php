@@ -38,6 +38,7 @@ test('mount fills the form from the current singleton row', function () {
     MembershipSetting::current()->update([
         'subscription_eligibility_threshold' => 7,
         'probation_period_days' => 60,
+        'guests_allowed_during_probation' => true,
         'venue_capacity' => 150,
         'default_opening_float' => 200.50,
         'event_window_buffer_minutes' => 20,
@@ -54,6 +55,7 @@ test('mount fills the form from the current singleton row', function () {
         ->assertSchemaStateSet([
             'subscription_eligibility_threshold' => 7,
             'probation_period_days' => 60,
+            'guests_allowed_during_probation' => true,
             'venue_capacity' => 150,
             'default_opening_float' => 200.50,
             'event_window_buffer_minutes' => 20,
@@ -72,6 +74,7 @@ test('saving updates the singleton row', function () {
         ->fillForm([
             'subscription_eligibility_threshold' => 10,
             'probation_period_days' => 45,
+            'guests_allowed_during_probation' => true,
             'venue_capacity' => 200,
             'default_opening_float' => 75.25,
             'event_window_buffer_minutes' => 10,
@@ -89,6 +92,7 @@ test('saving updates the singleton row', function () {
 
     expect($setting->subscription_eligibility_threshold)->toBe(10)
         ->and($setting->probation_period_days)->toBe(45)
+        ->and($setting->guests_allowed_during_probation)->toBeTrue()
         ->and($setting->venue_capacity)->toBe(200)
         ->and($setting->default_opening_float)->toBe('75.25')
         ->and($setting->event_window_buffer_minutes)->toBe(10)

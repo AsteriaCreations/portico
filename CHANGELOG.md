@@ -11,6 +11,13 @@ is fixes only.
 
 ### Added
 
+- Feature Flags → **Guests**: turn off "Register a guest" on the Check-In Desk for a club
+  that doesn't allow guests. Membership Settings → **Allow guests during probation**: lets
+  a member still on probation register one. Defaults keep today's behavior (guests on,
+  blocked during probation), and the rule lives in `Member::canSponsorGuests()`. New
+  `membership_settings.guests_enabled` and `guests_allowed_during_probation` columns:
+  **run `php artisan migrate`**.
+
 - **A Filament panel theme** (`resources/css/filament/admin/theme.css`, registered with
   `->viteTheme()`). Filament's own stylesheet only contains its `fi-*` classes, so every
   Tailwind utility in the app's own views (`text-sm`, `mt-2`, `gap-4`, `grid`,

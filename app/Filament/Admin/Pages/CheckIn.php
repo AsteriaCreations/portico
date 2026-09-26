@@ -1319,13 +1319,13 @@ class CheckIn extends Page implements HasTable
             ])
             ->visible(fn (): bool => $sponsor
                 && $attendance?->checked_in_at
-                && ! $sponsor->isOnProbation())
+                && $sponsor->canSponsorGuests())
             ->action(function (array $data) use ($sponsor): void {
                 if ($this->haltForTraining(__('Practice: guest registration simulated.'))) {
                     return;
                 }
 
-                abort_unless($sponsor && ! $sponsor->isOnProbation(), 403);
+                abort_unless($sponsor && $sponsor->canSponsorGuests(), 403);
 
                 $guestCategory = Category::where('name', 'Guest')->firstOrFail();
                 $sponsorLabel = $sponsor->displayName();

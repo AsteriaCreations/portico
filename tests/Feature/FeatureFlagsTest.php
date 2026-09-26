@@ -47,6 +47,7 @@ test('mount fills the form from the current singleton row', function () {
         'register_shifts_enabled' => false,
         'visit_notes_enabled' => false,
         'behavior_notes_enabled' => false,
+        'guests_enabled' => false,
     ]);
 
     $this->actingAs(userWithRoleForFeatureFlags(Role::Manager));
@@ -63,6 +64,7 @@ test('mount fills the form from the current singleton row', function () {
             'register_shifts_enabled' => false,
             'visit_notes_enabled' => false,
             'behavior_notes_enabled' => false,
+            'guests_enabled' => false,
         ]);
 });
 
@@ -81,6 +83,7 @@ test('saving updates the singleton row', function () {
             'register_shifts_enabled' => false,
             'visit_notes_enabled' => false,
             'behavior_notes_enabled' => false,
+            'guests_enabled' => false,
         ])
         ->callAction('save')
         ->assertHasNoActionErrors();
@@ -96,5 +99,6 @@ test('saving updates the singleton row', function () {
         ->and($setting->prepay_enabled)->toBeFalse()
         ->and($setting->register_shifts_enabled)->toBeFalse()
         ->and($setting->visit_notes_enabled)->toBeFalse()
-        ->and($setting->behavior_notes_enabled)->toBeFalse();
+        ->and($setting->behavior_notes_enabled)->toBeFalse()
+        ->and($setting->guests_enabled)->toBeFalse();
 });
