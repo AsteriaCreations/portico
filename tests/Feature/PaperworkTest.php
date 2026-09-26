@@ -11,6 +11,7 @@ use App\Models\Category;
 use App\Models\Event;
 use App\Models\Member;
 use App\Models\MemberPaperwork;
+use App\Models\MembershipSetting;
 use App\Models\PaperworkType;
 use App\Models\Plan;
 use App\Models\User;
@@ -148,6 +149,42 @@ test('the day-pass fold explains that a pool day pass needs the waiver, and drop
         ->assertHasNoActionErrors()
         ->assertDontSee('Pool day pass — requires a signed Pool Waiver')
         ->assertActionVisible('purchaseAddOnDayPass');
+});
+
+test('with pool switched off, the desk neither warns about nor asks for the pool waiver', function () {
+    $this->actingAs(User::factory()->create(['active' => true, 'role' => Role::Door]));
+    MembershipSetting::current()->update(['pool_enabled' => false]);
+    $event = Event::factory()->create(['event_date' => now()->toDateString(), 'entry_fee' => 20, 'pool_fee' => 0]);
+
+    Livewire::test(CheckIn::class)
+        ->fillForm(['member_id' => $this->member->id])
+        ->assertDontSee('Pool Waiver missing or expired')
+        ->assertDontSee('Pool day pass — requires a signed Pool Waiver')
+        ->assertActionHidden('recordGatedPaperwork')
+        ->fillForm(['event_id' => $event->id])
+        ->assertDontSee('Pool Waiver missing or expired')
+        ->assertActionHidden('recordGatedPaperwork');
+});
+
+test('with pool switched off, an event that still charges a pool fee still asks for the waiver', function () {
+    $this->actingAs(User::factory()->create(['active' => true, 'role' => Role::Door]));
+    MembershipSetting::current()->update(['pool_enabled' => false]);
+    $event = Event::factory()->create(['event_date' => now()->toDateString(), 'entry_fee' => 20, 'pool_fee' => 5]);
+
+    Livewire::test(CheckIn::class)
+        ->fillForm(['event_id' => $event->id, 'member_id' => $this->member->id])
+        ->assertSee('Pool Waiver missing or expired')
+        ->assertActionVisible('recordGatedPaperwork');
+});
+
+test('an inactive gated add-on does not ask for its waiver', function () {
+    $this->actingAs(User::factory()->create(['active' => true, 'role' => Role::Door]));
+    $this->pool->update(['active' => false]);
+
+    Livewire::test(CheckIn::class)
+        ->fillForm(['member_id' => $this->member->id])
+        ->assertDontSee('Pool Waiver missing or expired')
+        ->assertActionHidden('recordGatedPaperwork');
 });
 
 test('recordGatedPaperwork is hidden when the member has every gating waiver', function () {
