@@ -57,6 +57,7 @@ class MembershipSettings extends Page
         $this->form->fill(MembershipSetting::current()->only([
             'subscription_eligibility_threshold',
             'probation_period_days',
+            'guests_allowed_during_probation',
             'venue_capacity',
             'default_opening_float',
             'event_window_buffer_minutes',
@@ -90,9 +91,13 @@ class MembershipSettings extends Page
                     ->required(),
                 TextInput::make('probation_period_days')
                     ->label('Probation period (days)')
-                    ->helperText(__('Reporting-only — never affects admission or pricing.'))
+                    ->helperText(__('Never affects admission or pricing. A member on probation can\'t bring a guest, unless the setting below allows it.'))
                     ->numeric()
                     ->minValue(0)
+                    ->required(),
+                Toggle::make('guests_allowed_during_probation')
+                    ->label('Allow guests during probation')
+                    ->helperText(__('Lets a member still on probation register a guest at the Check-In Desk. Off by default. Turning guests off entirely is on Feature Flags.'))
                     ->required(),
                 TextInput::make('venue_capacity')
                     ->label('Venue capacity')

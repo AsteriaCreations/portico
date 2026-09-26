@@ -267,12 +267,14 @@
                         {{ __('Checked in at :time — paid :amount', ['time' => $attendance->checked_in_at->translatedFormat('g:i A'), 'amount' => \App\Models\MembershipSetting::formatMoney($attendance->amount_paid)]) }}
                     </p>
 
-                    @if ($member->isOnProbation())
-                        <p class="mt-2 text-sm text-gray-500">{{ __('On probation — cannot bring a guest yet.') }}</p>
-                    @else
+                    {{-- Nothing at all when guests are switched off (Feature Flags);
+                    the probation note only when that's what's stopping them. --}}
+                    @if ($member->canSponsorGuests())
                         <div class="mt-4">
                             {{ $this->registerGuestAction }}
                         </div>
+                    @elseif (\App\Models\MembershipSetting::current()->guests_enabled)
+                        <p class="mt-2 text-sm text-gray-500">{{ __('On probation — cannot bring a guest yet.') }}</p>
                     @endif
                 @endif
             </x-filament::section>
