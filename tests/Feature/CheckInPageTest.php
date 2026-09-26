@@ -97,6 +97,46 @@ test('the live price breakdown updates as a subscription is selected, without ch
         ->and(Subscription::where('member_id', $member->id)->exists())->toBeFalse();
 });
 
+test('the Due line includes the price of a subscription bought in this check-in, matching what is charged', function () {
+    $member = clearMember($this->irregular, ['subscription_eligible' => true]);
+    $event = Event::factory()->create(['event_date' => now()->toDateString(), 'entry_fee' => 40, 'pool_fee' => 0]);
+
+    $component = Livewire::test(CheckIn::class)
+        ->fillForm(['event_id' => $event->id, 'member_id' => $member->id])
+        ->assertSee('Due: $40.00')
+        ->fillForm(['subscription_regular_duration' => '1'], 'pricingForm');
+
+    // $15 entry left after the $25 credit, plus the $60 subscription itself.
+    expect($component->instance()->getLiveSubscriptionTotalCents())->toBe(6000)
+        ->and($component->instance()->getLiveDueTotal())->toBe(75.0);
+    $component->assertSee('Due: $75.00');
+
+    $component->callAction('checkIn', data: ['checked_in_at' => now()])->assertHasNoActionErrors();
+
+    $charged = Attendance::where('member_id', $member->id)->sum('amount_paid')
+        + Subscription::where('member_id', $member->id)->sum('amount_paid');
+    expect((float) $charged)->toBe(75.0);
+});
+
+test('the Due line adds nothing for a month the member already has covered', function () {
+    $member = clearMember($this->irregular, ['subscription_eligible' => true]);
+    $event = Event::factory()->create(['event_date' => now()->toDateString(), 'entry_fee' => 40, 'pool_fee' => 0]);
+
+    $component = Livewire::test(CheckIn::class)
+        ->fillForm(['event_id' => $event->id, 'member_id' => $member->id])
+        ->set('pricingData.subscription_regular_duration', '1');
+
+    Subscription::create([
+        'member_id' => $member->id,
+        'add_on_id' => AddOn::entry()->id,
+        'covered_month' => now()->startOfMonth()->toDateString(),
+        'amount_paid' => 60,
+        'paid_on' => now(),
+    ]);
+
+    expect($component->instance()->getLiveSubscriptionTotalCents())->toBe(0);
+});
+
 test('an eligible member gets one Regular subscription picker, not a duplicate Entry one', function () {
     $member = clearMember($this->irregular, ['subscription_eligible' => true]);
     $event = Event::factory()->create(['event_date' => now()->toDateString(), 'entry_fee' => 40, 'pool_fee' => 10]);

@@ -307,7 +307,7 @@
                 {{-- role="status" (implicit aria-live="polite" + aria-atomic) so this
                 announces itself to screen readers as pricingForm() selections
                 change it, without staff needing to re-navigate to it after every toggle. --}}
-                <p role="status" class="mt-3 text-xl font-bold">{{ __('Due: :amount', ['amount' => \App\Models\MembershipSetting::formatMoney(\App\Support\Cents::toFloat($this->getLivePriceBreakdown()->amountPaidCents) + $this->getLiveAddOnTotal())]) }}</p>
+                <p role="status" class="mt-3 text-xl font-bold">{{ __('Due: :amount', ['amount' => \App\Models\MembershipSetting::formatMoney($this->getLiveDueTotal())]) }}</p>
 
                 @if ($hasRoom)
                     <div class="mt-4">
