@@ -114,6 +114,8 @@ records intact and reviewable.
 
 ![Feature Flags](screenshots/feature-flags.jpg)
 
+Turning a feature **on** sends whoever saved it a notification (the bell) for each setup step it still needs, such as a Pool price or a linked waiver, with an **Open** button to the right screen. Steps already done are skipped.
+
 | Flag | Off means |
 |---|---|
 | Vouchers | No Vouchers resource and no voucher redemption at check-in. |
