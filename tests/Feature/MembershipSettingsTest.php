@@ -80,6 +80,7 @@ test('saving updates the singleton row', function () {
             'event_window_buffer_minutes' => 10,
             'age_of_majority' => 19,
             'alcohol_flag_age' => 20,
+            'watchlist_notify_label' => 'the Signal group',
             'currency' => 'EUR',
             'hide_member_pii_by_default' => false,
             'active_patrons_show_staff_roles' => false,
@@ -98,6 +99,7 @@ test('saving updates the singleton row', function () {
         ->and($setting->event_window_buffer_minutes)->toBe(10)
         ->and($setting->age_of_majority)->toBe(19)
         ->and($setting->alcohol_flag_age)->toBe(20)
+        ->and($setting->watchlist_notify_label)->toBe('the Signal group')
         ->and($setting->currency)->toBe('EUR')
         ->and($setting->hide_member_pii_by_default)->toBeFalse()
         ->and($setting->active_patrons_show_staff_roles)->toBeFalse()

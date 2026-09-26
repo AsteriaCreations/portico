@@ -40,7 +40,7 @@ class AdmissionPolicy
         }
 
         if ($member->on_watchlist) {
-            return new AdmissionDecision(AdmissionOutcome::Warn, __('Notify :label', ['label' => config('membership.watchlist_notify_label')]), $member->watchlist_reason);
+            return new AdmissionDecision(AdmissionOutcome::Warn, __('Notify :label', ['label' => MembershipSetting::watchlistNotifyLabel()]), $member->watchlist_reason);
         }
 
         if ($this->needsCapture($member)) {

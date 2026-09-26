@@ -63,6 +63,7 @@ class MembershipSettings extends Page
             'event_window_buffer_minutes',
             'age_of_majority',
             'alcohol_flag_age',
+            'watchlist_notify_label',
             'currency',
             'locale',
             'org_name',
@@ -128,6 +129,10 @@ class MembershipSettings extends Page
                     ->numeric()
                     ->minValue(0)
                     ->required(),
+                TextInput::make('watchlist_notify_label')
+                    ->label('Watchlist: who staff notify')
+                    ->helperText(fn (): string => __('Where staff post a heads-up before admitting a watchlisted member, e.g. "the Signal group". The desk shows "Notify …" and asks staff to confirm they did. Leave blank to use the server default (currently ":default").', ['default' => config('membership.watchlist_notify_label')]))
+                    ->maxLength(60),
                 TextInput::make('currency')
                     ->label('Currency code')
                     ->helperText(__('A 3-letter ISO 4217 currency code (e.g. USD, EUR, GBP, CAD) — used everywhere a dollar figure is shown, from the check-in desk\'s live totals to every money column in the admin panel.'))

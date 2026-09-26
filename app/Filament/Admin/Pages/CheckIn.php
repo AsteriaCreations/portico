@@ -628,7 +628,7 @@ class CheckIn extends Page implements HasTable
         if (! $event) {
             $provisional = match (true) {
                 $member->is_deceased, $member->isCurrentlyBanned() => ['stop', __('Do not admit')],
-                $member->on_watchlist => ['check', __('Watchlist — notify :label, then confirm at check-in', ['label' => config('membership.watchlist_notify_label')])],
+                $member->on_watchlist => ['check', __('Watchlist — notify :label, then confirm at check-in', ['label' => MembershipSetting::watchlistNotifyLabel()])],
                 $policy->needsCapture($member) => ['check', __('Prospective — finish sign-up to admit')],
                 $policy->needsPaperworkCapture($member) => ['check', __('Missing paperwork — confirm on file to admit')],
                 default => ['go', __("No flags yet — pick tonight's event")],
@@ -1448,7 +1448,7 @@ class CheckIn extends Page implements HasTable
             ->schema([
                 ...($requiresAcknowledgement ? [
                     Checkbox::make('acknowledged')
-                        ->label(__('I have notified :label per the watchlist note.', ['label' => config('membership.watchlist_notify_label')]))
+                        ->label(__('I have notified :label per the watchlist note.', ['label' => MembershipSetting::watchlistNotifyLabel()]))
                         ->accepted()
                         ->required(),
                 ] : []),
@@ -1644,7 +1644,7 @@ class CheckIn extends Page implements HasTable
             ->label(__('Mark arrived'))
             ->schema($requiresAcknowledgement ? [
                 Checkbox::make('acknowledged')
-                    ->label(__('I have notified :label per the watchlist note.', ['label' => config('membership.watchlist_notify_label')]))
+                    ->label(__('I have notified :label per the watchlist note.', ['label' => MembershipSetting::watchlistNotifyLabel()]))
                     ->accepted()
                     ->required(),
             ] : [])
@@ -1759,7 +1759,7 @@ class CheckIn extends Page implements HasTable
 
                 return $decision->requiresAcknowledgement() ? [
                     Checkbox::make('acknowledged')
-                        ->label(__('I have notified :label per the note.', ['label' => config('membership.watchlist_notify_label')]))
+                        ->label(__('I have notified :label per the note.', ['label' => MembershipSetting::watchlistNotifyLabel()]))
                         ->accepted()
                         ->required(),
                 ] : [];

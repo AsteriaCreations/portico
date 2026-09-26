@@ -11,6 +11,12 @@ is fixes only.
 
 ### Added
 
+- Membership Settings → **Watchlist: who staff notify**: set the "Notify …" channel name
+  from the admin panel instead of `WATCHLIST_NOTIFY_LABEL` in `.env`. Blank keeps using the
+  `.env` value, so upgrading changes nothing. Read through
+  `MembershipSetting::watchlistNotifyLabel()`. New `membership_settings.watchlist_notify_label`
+  column: **run `php artisan migrate`**.
+
 - Feature Flags → **Guests**: turn off "Register a guest" on the Check-In Desk for a club
   that doesn't allow guests. Membership Settings → **Allow guests during probation**: lets
   a member still on probation register one. Defaults keep today's behavior (guests on,
