@@ -11,6 +11,13 @@ is fixes only.
 
 ### Added
 
+- Membership Settings → **Count attended events from the last (months)**: an optional window
+  for subscription eligibility, so only recent attendance counts toward the threshold. Blank
+  counts all-time, as before. The Check-In Desk's "(3/5 events attended)" note uses the same
+  count (`Member::eligibilityAttendanceCount()`) and names the window when one is set. New
+  `membership_settings.subscription_eligibility_window_months` column: **run `php artisan
+  migrate`**.
+
 - Membership Settings → **Watchlist: who staff notify**: set the "Notify …" channel name
   from the admin panel instead of `WATCHLIST_NOTIFY_LABEL` in `.env`. Blank keeps using the
   `.env` value, so upgrading changes nothing. Read through

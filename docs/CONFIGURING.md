@@ -83,6 +83,7 @@ rarely need to touch most of them.
 | Setting | Default | Notes |
 |---|---|---|
 | Subscription eligibility threshold | `5` | Attended-events count that unlocks a subscription. |
+| Count attended events from the last (months) | *(blank — all-time)* | Only events attended within this many months count toward the threshold. A member flagged "Subscription eligible" by hand stays eligible. |
 | Probation period (days) | `90` | Never blocks admission or changes pricing. A member on probation can't register a guest, unless the next setting allows it. |
 | Allow guests during probation | off | Lets a member still on probation register a guest at the Check-In Desk. |
 | Venue capacity | *(blank)* | Building-wide occupancy cap across concurrent events. **Blank = not enforced.** |

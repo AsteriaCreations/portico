@@ -64,6 +64,29 @@ test('prepaid attendance without a check-in time does not count toward eligibili
     expect($member->isSubscriptionEligible())->toBeFalse();
 });
 
+test('with an eligibility window set, only events attended inside it count', function () {
+    MembershipSetting::current()->update(['subscription_eligibility_threshold' => 3, 'subscription_eligibility_window_months' => 12]);
+
+    $member = Member::factory()->create(['subscription_eligible' => false]);
+    foreach ([now()->subMonths(2), now()->subMonths(6), now()->subMonths(18), now()->subMonths(30)] as $checkedInAt) {
+        $member->attendance()->create(['event_id' => Event::factory()->create()->id, 'checked_in_at' => $checkedInAt]);
+    }
+
+    expect($member->eligibilityAttendanceCount())->toBe(2)
+        ->and($member->isSubscriptionEligible())->toBeFalse();
+
+    MembershipSetting::current()->update(['subscription_eligibility_window_months' => null]);
+
+    expect($member->eligibilityAttendanceCount())->toBe(4)
+        ->and($member->isSubscriptionEligible())->toBeTrue();
+});
+
+test('the manual flag still grants eligibility with a window set', function () {
+    MembershipSetting::current()->update(['subscription_eligibility_window_months' => 1]);
+
+    expect(Member::factory()->create(['subscription_eligible' => true])->isSubscriptionEligible())->toBeTrue();
+});
+
 test('the manual subscription_eligible flag grants eligibility regardless of attendance count', function () {
     $member = Member::factory()->create(['subscription_eligible' => true]);
 

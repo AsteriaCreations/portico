@@ -218,10 +218,17 @@
                     </div>
                 @else
                     @php
-                        $attendedCount = $member->attendance()->whereNotNull('checked_in_at')->count();
+                        $attendedCount = $member->eligibilityAttendanceCount();
                         $subscriptionThreshold = \App\Models\MembershipSetting::current()->subscription_eligibility_threshold;
+                        $windowMonths = \App\Models\MembershipSetting::current()->subscription_eligibility_window_months;
                     @endphp
-                    <p class="text-sm text-gray-500">{{ __('Not yet subscription-eligible (:attended/:threshold events attended)', ['attended' => $attendedCount, 'threshold' => $subscriptionThreshold]) }}</p>
+                    <p class="text-sm text-gray-500">
+                        @if ($windowMonths)
+                            {{ __('Not yet subscription-eligible (:attended/:threshold events attended in the last :months months)', ['attended' => $attendedCount, 'threshold' => $subscriptionThreshold, 'months' => $windowMonths]) }}
+                        @else
+                            {{ __('Not yet subscription-eligible (:attended/:threshold events attended)', ['attended' => $attendedCount, 'threshold' => $subscriptionThreshold]) }}
+                        @endif
+                    </p>
                 @endif
 
                 {{-- Unlike Buy Subscription above, not gated by isSubscriptionEligible() --

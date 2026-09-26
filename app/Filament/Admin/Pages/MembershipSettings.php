@@ -56,6 +56,7 @@ class MembershipSettings extends Page
     {
         $this->form->fill(MembershipSetting::current()->only([
             'subscription_eligibility_threshold',
+            'subscription_eligibility_window_months',
             'probation_period_days',
             'guests_allowed_during_probation',
             'venue_capacity',
@@ -86,10 +87,17 @@ class MembershipSettings extends Page
             ->components([
                 TextInput::make('subscription_eligibility_threshold')
                     ->label('Subscription eligibility threshold')
-                    ->helperText(__('A member becomes eligible for either subscription plan once they\'ve attended this many events, all-time.'))
+                    ->helperText(__('A member becomes eligible to subscribe once they\'ve attended this many events — all-time, or within the window below.'))
                     ->numeric()
                     ->minValue(0)
                     ->required(),
+                TextInput::make('subscription_eligibility_window_months')
+                    ->label('Count attended events from the last (months)')
+                    ->helperText(__('Only events attended in this many months count toward the threshold above. Leave blank to count all-time. A member flagged "Subscription eligible" by hand stays eligible either way.'))
+                    ->numeric()
+                    ->integer()
+                    ->minValue(1)
+                    ->maxValue(120),
                 TextInput::make('probation_period_days')
                     ->label('Probation period (days)')
                     ->helperText(__('Never affects admission or pricing. A member on probation can\'t bring a guest, unless the setting below allows it.'))
