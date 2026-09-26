@@ -139,6 +139,21 @@ test('a prospective member with incomplete identity requires capture', function 
         ->and($decision->message)->toBe('Complete sign-up');
 });
 
+test('a prospective member missing only an email needs capture only while email is required', function () {
+    $member = memberAgedAsOf($this->prospective, '1990-01-01', ['email' => null]);
+    $event = Event::factory()->create(['event_date' => '2026-07-19']);
+
+    expect($this->policy->decide($member, $event)->outcome)->toBe(AdmissionOutcome::Capture);
+
+    MembershipSetting::current()->update(['member_email_required' => false]);
+
+    expect($this->policy->decide($member, $event)->outcome)->toBe(AdmissionOutcome::Ok);
+
+    $member->update(['last_name' => null]);
+
+    expect($this->policy->decide($member->fresh(), $event)->outcome)->toBe(AdmissionOutcome::Capture);
+});
+
 test('a prospective member with complete identity does not require capture', function () {
     $member = memberAgedAsOf($this->prospective, '1990-01-01');
     $event = Event::factory()->create(['event_date' => '2026-07-19']);
