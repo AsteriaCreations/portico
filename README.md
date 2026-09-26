@@ -28,12 +28,15 @@ Where to look next:
 - Laravel 13, PHP 8.4+
 - Filament v5 (admin panel + a custom check-in page) — TALL stack
 - MariaDB / MySQL 8
+- Node (to build the admin panel's theme; see [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md))
 - Pest for tests
 
 ## Setup
 
 ```bash
 composer install
+npm install
+npm run build
 cp .env.example .env
 php artisan key:generate
 ```
@@ -62,7 +65,9 @@ Adds ~70 members across every category (including a few banned/watchlisted/under
 
 After `migrate:fresh --seed`, with the app served (see [Production / LAN deployment](#production--lan-deployment), or `php artisan serve` for a quick local look):
 
-- `/admin/login` shows the sign-in page, styled — no `npm` build is needed for the panel.
+- `/admin/login` shows the sign-in page, styled. The panel works without `npm run build`, but the
+  app's own screens (the Check-In Desk, Active Patrons, the help panels) then lose their spacing
+  and colours, so build once after install and after any update that changes a view.
 - Log in: `test@example.com` / `password` in `local`, or your `ADMIN_EMAIL` / `ADMIN_PASSWORD` otherwise.
 - The **Dashboard** loads with an empty "in the building" widget.
 - **Check-In Desk** shows the member/event pickers; **Analytics**, **Members**, and **Feature Flags** all render (empty until you add data, or run `DemoDataSeeder`).
@@ -225,7 +230,7 @@ This app has no Laravel scheduler (same as backups above) — register it in Win
 
 ## Project status
 
-Current release: **`v0.2.0`** — see [`CHANGELOG.md`](CHANGELOG.md). Portico is `0.x`, so a
+Current release: **`v0.3.0`** — see [`CHANGELOG.md`](CHANGELOG.md). Portico is `0.x`, so a
 minor release may include a migration; see [`CONTRIBUTING.md`](CONTRIBUTING.md) "Versioning
 & releases".
 
@@ -241,7 +246,7 @@ Built through the blueprint's step-by-step build order:
 
 The app has grown substantially since via many incremental slices — vouchers, guests, prepay / building-capacity, ban exceptions, per-event comp, feature flags, showrunner / instructor payouts, membership settings, member skill tracking, analytics, and more. The commit history is the detailed record; `CONTRIBUTING.md` covers the conventions and the architecture rules that hold across all of it.
 
-Portico ships a **feature-flag mechanism** (`/admin/feature-flags`, Manager+) so a club can turn off the optional parts it doesn't use — vouchers, add-ons, the pool component, prepay, register shifts, the showrunner comp-request pipeline, showrunner and instructor payouts, the Manager/Owner perk, suspensions, and visit and behavior notes — and opt in to the two operations features that are off by default: upstream update checking and the web-triggered deploy button. Flags stop new writes; they never hide data already collected. [`docs/CONFIGURING.md`](docs/CONFIGURING.md) lists every flag and its default.
+Portico ships a **feature-flag mechanism** (`/admin/feature-flags`, Manager+) so a club can turn off the optional parts it doesn't use — vouchers, add-ons, the pool component, prepay, register shifts, the showrunner comp-request pipeline, showrunner and instructor payouts, the Manager/Owner perk, suspensions, visit and behavior notes, and guests — and opt in to the two operations features that are off by default: upstream update checking and the web-triggered deploy button. Flags stop new writes; they never hide data already collected. Turning one on sends a setup reminder to the notification bell for each step it still needs. [`docs/CONFIGURING.md`](docs/CONFIGURING.md) lists every flag and its default.
 
 ## License
 
