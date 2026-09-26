@@ -11,6 +11,14 @@ is fixes only.
 
 ### Added
 
+- Membership Settings → **Max guests per member per night**: caps how many new guests one member
+  may register at the Check-In Desk in a night. Counted from the member's check-in that night,
+  so an event running past midnight doesn't reset it, and returning guests who check in under
+  them don't count. At the limit, the desk shows "Guest limit reached" in place of **Register
+  a guest**; the limit is re-checked with the sponsor's row locked, so two registers can't both
+  go over. Blank means no limit, as before (`Member::hasGuestAllowanceLeft()`). New
+  `membership_settings.max_guests_per_night` column: **run `php artisan migrate`**.
+
 - Membership Settings → **Week starts on**: the first day of the club's week, for the "this
   week" Analytics figures and the Cleaning Checklist reset. Blank follows the language (Monday
   in English), which is what they always did. All week boundaries now go through

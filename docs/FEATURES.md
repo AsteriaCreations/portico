@@ -19,7 +19,7 @@ CHECK-IN DESK
 - Per-event comp (Manager+ waives one visit's entry fee)
 - Event Add-Ons (room rental, sleepover — priced extras)
 - Pool day pass (single-visit pool coverage)
-- Guest registration (sponsor-gated, full identity capture); can be switched off, and optionally allowed during probation
+- Guest registration (sponsor-gated, full identity capture); can be switched off, optionally allowed during probation, and optionally capped per member per night
 - Appears-under-21 enforcement on guest registration and Prospective promotion (DOB required only when checked)
 - Overnight guest tracking (room rental / sleepover add-ons) — sponsor stays accountable, guest stays visible on Active Patrons until checked out, regardless of calendar days
 - Prepay events (pay ahead of the event date)

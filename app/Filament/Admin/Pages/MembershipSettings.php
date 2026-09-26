@@ -59,6 +59,7 @@ class MembershipSettings extends Page
             'subscription_eligibility_window_months',
             'probation_period_days',
             'guests_allowed_during_probation',
+            'max_guests_per_night',
             'venue_capacity',
             'default_opening_float',
             'event_window_buffer_minutes',
@@ -110,6 +111,13 @@ class MembershipSettings extends Page
                     ->label('Allow guests during probation')
                     ->helperText(__('Lets a member still on probation register a guest at the Check-In Desk. Off by default. Turning guests off entirely is on Feature Flags.'))
                     ->required(),
+                TextInput::make('max_guests_per_night')
+                    ->label('Max guests per member per night')
+                    ->helperText(__('How many new guests one member may register at the Check-In Desk in a night, counted from when they checked in (so a late event doesn\'t reset it at midnight). Returning guests who check in under them don\'t count. Leave blank for no limit.'))
+                    ->numeric()
+                    ->integer()
+                    ->minValue(1)
+                    ->maxValue(50),
                 TextInput::make('venue_capacity')
                     ->label('Venue capacity')
                     ->helperText(__('Hard cap on how many people can be in the building at once. Leave blank to not enforce a capacity limit.'))

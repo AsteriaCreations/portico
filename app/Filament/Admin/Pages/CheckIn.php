@@ -59,6 +59,7 @@ use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 
@@ -1319,7 +1320,8 @@ class CheckIn extends Page implements HasTable
             ])
             ->visible(fn (): bool => $sponsor
                 && $attendance?->checked_in_at
-                && $sponsor->canSponsorGuests())
+                && $sponsor->canSponsorGuests()
+                && $sponsor->hasGuestAllowanceLeft($attendance))
             ->action(function (array $data) use ($sponsor): void {
                 if ($this->haltForTraining(__('Practice: guest registration simulated.'))) {
                     return;
@@ -1337,23 +1339,44 @@ class CheckIn extends Page implements HasTable
                 // isn't silently retried with a different value: it's manual
                 // and required, so staff need to see it and pick another one.
                 try {
-                    $guest = Member::create([
-                        'username' => $data['username'],
-                        'preferred_name' => $data['preferred_name'],
-                        'first_name' => $data['first_name'],
-                        'last_name' => $data['last_name'],
-                        'email' => filled($data['email'] ?? null) ? $data['email'] : null,
-                        'dob' => $data['dob'] ?? null,
-                        'category_id' => $guestCategory->id,
-                        'sponsor_id' => $sponsor->id,
-                        'notes' => "Guest of {$sponsorLabel}.",
-                    ]);
+                    // The guest limit is re-checked with the sponsor's row
+                    // locked, so two registers can't both see "one left" and
+                    // each add a guest.
+                    $guest = DB::transaction(function () use ($data, $sponsor, $guestCategory, $sponsorLabel): ?Member {
+                        Member::whereKey($sponsor->id)->lockForUpdate()->first();
+                        $attendance = $this->getExistingAttendance();
+
+                        if (! $attendance || ! $sponsor->hasGuestAllowanceLeft($attendance)) {
+                            return null;
+                        }
+
+                        return Member::create([
+                            'username' => $data['username'],
+                            'preferred_name' => $data['preferred_name'],
+                            'first_name' => $data['first_name'],
+                            'last_name' => $data['last_name'],
+                            'email' => filled($data['email'] ?? null) ? $data['email'] : null,
+                            'dob' => $data['dob'] ?? null,
+                            'category_id' => $guestCategory->id,
+                            'sponsor_id' => $sponsor->id,
+                            'notes' => "Guest of {$sponsorLabel}.",
+                        ]);
+                    });
                 } catch (QueryException $exception) {
                     if ($exception->getCode() !== '23000') {
                         throw $exception;
                     }
 
                     Notification::make()->title(__('That username was just taken — please choose another.'))->danger()->send();
+
+                    return;
+                }
+
+                if (! $guest) {
+                    Notification::make()
+                        ->title(__('Guest limit reached — :max per member per night. No guest was registered.', ['max' => MembershipSetting::current()->max_guests_per_night]))
+                        ->danger()
+                        ->send();
 
                     return;
                 }

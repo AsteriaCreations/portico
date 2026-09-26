@@ -276,7 +276,9 @@
 
                     {{-- Nothing at all when guests are switched off (Feature Flags);
                     the probation note only when that's what's stopping them. --}}
-                    @if ($member->canSponsorGuests())
+                    @if ($member->canSponsorGuests() && ! $member->hasGuestAllowanceLeft($attendance))
+                        <p class="mt-2 text-sm text-gray-500">{{ __('Guest limit reached — :max per member per night.', ['max' => \App\Models\MembershipSetting::current()->max_guests_per_night]) }}</p>
+                    @elseif ($member->canSponsorGuests())
                         <div class="mt-4">
                             {{ $this->registerGuestAction }}
                         </div>
