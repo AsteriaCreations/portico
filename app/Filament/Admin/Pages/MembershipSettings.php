@@ -62,6 +62,7 @@ class MembershipSettings extends Page
             'venue_capacity',
             'default_opening_float',
             'event_window_buffer_minutes',
+            'week_starts_on',
             'age_of_majority',
             'alcohol_flag_age',
             'watchlist_notify_label',
@@ -126,6 +127,19 @@ class MembershipSettings extends Page
                     ->numeric()
                     ->minValue(0)
                     ->required(),
+                Select::make('week_starts_on')
+                    ->label('Week starts on')
+                    ->helperText(__('The first day of the club\'s week, for the "this week" figures on Analytics and when the Cleaning Checklist resets. Blank follows the language setting (Monday in English). Changing it mid-week re-opens this week\'s checklist tasks, since their ticks belong to the old week.'))
+                    ->placeholder(__('Follow the language setting'))
+                    ->options([
+                        0 => __('Sunday'),
+                        1 => __('Monday'),
+                        2 => __('Tuesday'),
+                        3 => __('Wednesday'),
+                        4 => __('Thursday'),
+                        5 => __('Friday'),
+                        6 => __('Saturday'),
+                    ]),
                 TextInput::make('age_of_majority')
                     ->label('Age of majority')
                     ->helperText(__('AdmissionPolicy blocks a member below this age outright. Jurisdiction-specific — adjust if your club isn\'t in an 18-is-adult jurisdiction.'))

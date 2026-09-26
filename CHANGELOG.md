@@ -11,6 +11,12 @@ is fixes only.
 
 ### Added
 
+- Membership Settings → **Week starts on**: the first day of the club's week, for the "this
+  week" Analytics figures and the Cleaning Checklist reset. Blank follows the language (Monday
+  in English), which is what they always did. All week boundaries now go through
+  `MembershipSetting::startOfWeek()` / `endOfWeek()`. New `membership_settings.week_starts_on`
+  column: **run `php artisan migrate`**.
+
 - Membership Settings → **Require email at sign-up**: turn off for a club that doesn't collect
   email at the door. The Check-In Desk then accepts a Prospective's sign-up or a new guest
   without one, and a Prospective with no email no longer counts as needing sign-up. On by

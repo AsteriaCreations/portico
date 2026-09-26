@@ -87,6 +87,7 @@ test('saving updates the singleton row', function () {
             'active_patrons_show_staff_roles' => false,
             'checkin_display_name_field' => 'full_name',
             'member_email_required' => false,
+            'week_starts_on' => 0,
         ])
         ->callAction('save')
         ->assertHasNoActionErrors();
@@ -107,7 +108,8 @@ test('saving updates the singleton row', function () {
         ->and($setting->hide_member_pii_by_default)->toBeFalse()
         ->and($setting->active_patrons_show_staff_roles)->toBeFalse()
         ->and($setting->checkin_display_name_field)->toBe('full_name')
-        ->and($setting->member_email_required)->toBeFalse();
+        ->and($setting->member_email_required)->toBeFalse()
+        ->and($setting->week_starts_on)->toBe(0);
 });
 
 test('currency is uppercased on save and rejected if not a recognized code', function () {
@@ -222,4 +224,22 @@ test('the admin panel brand name falls back to config app.name until org_name is
     MembershipSetting::current()->update(['org_name' => 'Riverside Social Club']);
 
     expect(Filament::getPanel('admin')->getBrandName())->toBe('Riverside Social Club');
+});
+
+test('the club week follows the language by default, and the chosen start day once set', function () {
+    $this->travelTo('2026-09-23 12:00:00'); // a Wednesday; English weeks start on Monday
+
+    expect(MembershipSetting::startOfWeek()->toDateTimeString())->toBe('2026-09-21 00:00:00')
+        ->and(MembershipSetting::endOfWeek()->toDateTimeString())->toBe('2026-09-27 23:59:59');
+
+    MembershipSetting::current()->update(['week_starts_on' => 0]); // Sunday
+
+    expect(MembershipSetting::startOfWeek()->toDateTimeString())->toBe('2026-09-20 00:00:00')
+        ->and(MembershipSetting::endOfWeek()->toDateTimeString())->toBe('2026-09-26 23:59:59');
+
+    MembershipSetting::current()->update(['week_starts_on' => 5]); // Friday, so Wednesday is late in the week
+
+    expect(MembershipSetting::startOfWeek()->toDateTimeString())->toBe('2026-09-18 00:00:00')
+        ->and(MembershipSetting::endOfWeek()->toDateTimeString())->toBe('2026-09-24 23:59:59')
+        ->and(MembershipSetting::startOfWeek(now()->subWeek())->toDateString())->toBe('2026-09-11');
 });

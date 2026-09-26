@@ -4,6 +4,7 @@ namespace App\Filament\Admin\Pages;
 
 use App\Filament\Concerns\TranslatesPageLabels;
 use App\Models\CleaningTask;
+use App\Models\MembershipSetting;
 use BackedEnum;
 use Filament\Actions\Action;
 use Filament\Notifications\Notification;
@@ -23,7 +24,7 @@ use UnitEnum;
  * by role. Different crew members complete different individual tasks off
  * the same list, so completion is tracked per task, not as one "whole list
  * done" action -- each task resets independently at the start of a new
- * calendar week (now()->startOfWeek(), the same convention this app's
+ * club week (MembershipSetting::startOfWeek(), the same convention this app's
  * "weekly" widgets already use).
  */
 class CleaningChecklist extends Page implements HasTable
@@ -57,12 +58,12 @@ class CleaningChecklist extends Page implements HasTable
                 IconColumn::make('completed_this_week')
                     ->label('Done this week')
                     ->boolean()
-                    ->getStateUsing(fn (CleaningTask $record): bool => $record->isCompletedForWeek(now()->startOfWeek()))
+                    ->getStateUsing(fn (CleaningTask $record): bool => $record->isCompletedForWeek(MembershipSetting::startOfWeek()))
                     ->tooltip(fn (bool $state): string => $state ? __('Completed this week') : __('Not yet completed this week')),
                 TextColumn::make('completed_by')
                     ->label('Completed by')
                     ->getStateUsing(fn (CleaningTask $record) => $record->completions()
-                        ->whereDate('for_week_start', now()->startOfWeek())
+                        ->whereDate('for_week_start', MembershipSetting::startOfWeek())
                         ->first()?->completedBy?->name),
             ])
             ->recordActions([$this->completeAction()]);
@@ -71,17 +72,17 @@ class CleaningChecklist extends Page implements HasTable
     public function completeAction(): Action
     {
         return Action::make('complete')
-            ->label(fn (CleaningTask $record): string => $record->isCompletedForWeek(now()->startOfWeek()) ? 'Completed' : 'Mark done')
-            ->disabled(fn (CleaningTask $record): bool => $record->isCompletedForWeek(now()->startOfWeek()))
+            ->label(fn (CleaningTask $record): string => $record->isCompletedForWeek(MembershipSetting::startOfWeek()) ? 'Completed' : 'Mark done')
+            ->disabled(fn (CleaningTask $record): bool => $record->isCompletedForWeek(MembershipSetting::startOfWeek()))
             ->action(function (CleaningTask $record): void {
                 // Re-checked here, not just via canAccess() gating the page —
                 // same defensive pattern as ActivePatrons::departAction().
                 abort_unless(Gate::allows('access-cleaning-checklist'), 403);
 
-                if (! $record->isCompletedForWeek(now()->startOfWeek())) {
+                if (! $record->isCompletedForWeek(MembershipSetting::startOfWeek())) {
                     $record->completions()->create([
                         'completed_by' => auth()->id(),
-                        'for_week_start' => now()->startOfWeek()->toDateString(),
+                        'for_week_start' => MembershipSetting::startOfWeek()->toDateString(),
                     ]);
                 }
 
