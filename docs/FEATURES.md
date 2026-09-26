@@ -56,6 +56,7 @@ MEMBER MANAGEMENT
 - Append-only audit logs: status changes, username changes
 - Username rename (audited, race-safe)
 - Bulk member recategorization
+- Guest follow-up tracking — filter new guests not yet sent the club's follow-up (with a registered-date range), export them, and bulk-mark them sent (who and when recorded)
 - Email opt-in flag + bulk email CSV export
 - Member status extract (filtered CSV export)
 - Member skill tracking — a Skills catalog (Manager+) plus a member-to-skills association; assigning a skill to a member sits behind a dedicated Admin+ gate, above the Manager+ bar for the rest of member editing

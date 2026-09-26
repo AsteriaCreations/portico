@@ -117,7 +117,7 @@ class ListMembers extends ListRecords
             ->label('Export member list (CSV)')
             ->icon(Heroicon::OutlinedArrowDownTray)
             ->action(function (): StreamedResponse {
-                $members = $this->getTableQueryForExport()->with('category')->get();
+                $members = $this->getTableQueryForExport()->with(['category', 'sponsor'])->get();
 
                 return response()->streamDownload(function () use ($members): void {
                     $handle = fopen('php://output', 'w');
@@ -125,6 +125,7 @@ class ListMembers extends ListRecords
                         'Member Number', 'Username', 'Preferred Name', 'First Name', 'Last Name', 'Email', 'Category',
                         'Active', 'Banned', 'Ban Reason', 'Watchlist', 'Watchlist Reason', 'Deceased',
                         'Missing Paperwork', 'Subscription Eligible', 'On Probation', 'DOB',
+                        'Registered', 'Sponsor', 'Guest Follow-up Sent',
                     ]);
 
                     foreach ($members as $member) {
@@ -146,6 +147,9 @@ class ListMembers extends ListRecords
                             $member->subscription_eligible ? 'Yes' : 'No',
                             $member->isOnProbation() ? 'Yes' : 'No',
                             $member->dob?->toDateString(),
+                            $member->created_at?->toDateString(),
+                            $member->sponsor?->username,
+                            $member->guest_followup_sent_at?->toDateString(),
                         ]);
                     }
 

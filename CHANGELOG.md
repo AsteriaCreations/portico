@@ -11,6 +11,14 @@ is fixes only.
 
 ### Added
 
+- **Guest follow-up** on the Members list, for sending newly registered guests whatever the club
+  sends them (welcome email, waiver, membership info). A **Guest follow-up** filter lists guests
+  not yet sent it (or already sent), and a **Registered** date-range filter narrows by sign-up
+  date. The **Mark follow-up sent** bulk action records when and by whom, skipping non-guests;
+  **Mark follow-up not sent** undoes it. Manager+, like the rest of the list. **Export member list
+  (CSV)** gains Registered, Sponsor and Guest Follow-up Sent columns. New
+  `members.guest_followup_sent_at` / `guest_followup_sent_by` columns: **run `php artisan migrate`**.
+
 - Membership Settings → **Max guests per member per night**: caps how many new guests one member
   may register at the Check-In Desk in a night. Counted from the member's check-in that night,
   so an event running past midnight doesn't reset it, and returning guests who check in under

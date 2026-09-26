@@ -381,3 +381,78 @@ test('a member\'s existing skills survive an unrelated edit by a Manager', funct
 
     expect($member->skills()->pluck('skills.id')->all())->toEqual([$skill->id]);
 });
+
+test('the guest follow-up filter lists guests not yet sent it, or already sent it', function () {
+    $guestCategory = Category::factory()->create(['name' => 'Guest']);
+    $pending = Member::factory()->create(['category_id' => $guestCategory->id]);
+    $sent = Member::factory()->create(['category_id' => $guestCategory->id]);
+    $sent->forceFill(['guest_followup_sent_at' => now()])->save();
+    $regular = Member::factory()->create(['category_id' => $this->category->id]);
+
+    Livewire::test(ListMembers::class)
+        ->filterTable('guest_followup', 'pending')
+        ->assertCanSeeTableRecords([$pending])
+        ->assertCanNotSeeTableRecords([$sent, $regular])
+        ->filterTable('guest_followup', 'sent')
+        ->assertCanSeeTableRecords([$sent])
+        ->assertCanNotSeeTableRecords([$pending, $regular]);
+});
+
+test('the registered filter narrows the list to a date range', function () {
+    $lastWeek = Member::factory()->create(['category_id' => $this->category->id]);
+    $lastWeek->forceFill(['created_at' => now()->subDays(8)])->save();
+    $thisWeek = Member::factory()->create(['category_id' => $this->category->id]);
+
+    Livewire::test(ListMembers::class)
+        ->filterTable('registered', ['registered_from' => now()->subDays(3)->toDateString(), 'registered_until' => now()->toDateString()])
+        ->assertCanSeeTableRecords([$thisWeek])
+        ->assertCanNotSeeTableRecords([$lastWeek]);
+});
+
+test('marking follow-up sent records when and by whom for guests, and skips non-guests', function () {
+    $guestCategory = Category::factory()->create(['name' => 'Guest']);
+    $guest = Member::factory()->create(['category_id' => $guestCategory->id]);
+    $regular = Member::factory()->create(['category_id' => $this->category->id]);
+
+    Livewire::test(ListMembers::class)
+        ->callTableBulkAction('markGuestFollowupSent', [$guest, $regular])
+        ->assertHasNoTableBulkActionErrors()
+        ->filterTable('guest_followup', 'pending')
+        ->assertCanNotSeeTableRecords([$guest]);
+
+    expect($guest->fresh()->guest_followup_sent_at)->not->toBeNull()
+        ->and($guest->fresh()->guest_followup_sent_by)->toBe(auth()->id())
+        ->and($regular->fresh()->guest_followup_sent_at)->toBeNull();
+
+    Livewire::test(ListMembers::class)
+        ->callTableBulkAction('clearGuestFollowup', [$guest])
+        ->assertHasNoTableBulkActionErrors();
+
+    expect($guest->fresh()->guest_followup_sent_at)->toBeNull()
+        ->and($guest->fresh()->guest_followup_sent_by)->toBeNull();
+});
+
+test('the follow-up mark cannot be set by mass assignment, such as the plain edit form', function () {
+    $member = Member::factory()->create(['category_id' => $this->category->id]);
+
+    $member->update(['guest_followup_sent_at' => now(), 'guest_followup_sent_by' => auth()->id()]);
+
+    expect($member->fresh()->guest_followup_sent_at)->toBeNull();
+});
+
+test('the member status export includes registered date, sponsor and follow-up sent', function () {
+    $guestCategory = Category::factory()->create(['name' => 'Guest']);
+    $sponsor = Member::factory()->create(['category_id' => $this->category->id, 'username' => 'thesponsor']);
+    $guest = Member::factory()->create(['category_id' => $guestCategory->id, 'sponsor_id' => $sponsor->id, 'username' => 'theguest']);
+    $guest->forceFill(['guest_followup_sent_at' => '2026-09-20 18:00:00'])->save();
+
+    $livewire = Livewire::test(ListMembers::class)
+        ->callAction('exportMemberStatus')
+        ->assertFileDownloaded();
+
+    $content = base64_decode(data_get($livewire->effects, 'download.content'));
+
+    expect($content)->toContain('Registered,Sponsor,"Guest Follow-up Sent"')
+        ->toContain('thesponsor')
+        ->toContain('2026-09-20');
+});
