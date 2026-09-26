@@ -41,7 +41,7 @@ class AddOnRevenueWidget extends StatsOverviewWidget
         $rows = DB::table('attendance_add_ons')
             ->join('attendance', 'attendance.id', '=', 'attendance_add_ons.attendance_id')
             ->whereNotNull('attendance.checked_in_at')
-            ->whereBetween('attendance_add_ons.created_at', [now()->startOfWeek(), now()->endOfWeek()])
+            ->whereBetween('attendance_add_ons.created_at', [MembershipSetting::startOfWeek(), MembershipSetting::endOfWeek()])
             ->groupBy('attendance_add_ons.name')
             ->orderBy('attendance_add_ons.name')
             ->selectRaw('attendance_add_ons.name as name, COUNT(*) as qty, SUM(attendance_add_ons.price) as revenue')

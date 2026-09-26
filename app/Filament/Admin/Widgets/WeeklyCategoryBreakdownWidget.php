@@ -30,7 +30,7 @@ class WeeklyCategoryBreakdownWidget extends StatsOverviewWidget
             ->join('members', 'members.id', '=', 'attendance.member_id')
             ->join('categories', 'categories.id', '=', 'members.category_id')
             ->whereNotNull('attendance.checked_in_at')
-            ->whereBetween('attendance.checked_in_at', [now()->startOfWeek(), now()->endOfWeek()])
+            ->whereBetween('attendance.checked_in_at', [MembershipSetting::startOfWeek(), MembershipSetting::endOfWeek()])
             ->groupBy('categories.id', 'categories.name', 'categories.sort_order')
             ->orderBy('categories.sort_order')
             ->selectRaw('categories.name as name, COUNT(*) as visits, SUM(attendance.amount_paid) as revenue')

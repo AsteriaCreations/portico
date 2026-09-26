@@ -41,7 +41,7 @@ class CompCostWidget extends StatsOverviewWidget
             ->join('comp_reasons', 'comp_reasons.id', '=', 'attendance.comp_reason_id')
             ->whereNotNull('attendance.checked_in_at')
             ->where('attendance.entry_covered_by', EntryCoverageSource::EventComp->value)
-            ->whereBetween('attendance.checked_in_at', [now()->startOfWeek(), now()->endOfWeek()])
+            ->whereBetween('attendance.checked_in_at', [MembershipSetting::startOfWeek(), MembershipSetting::endOfWeek()])
             ->groupBy('comp_reasons.id', 'comp_reasons.name', 'comp_reasons.sort_order')
             ->orderBy('comp_reasons.sort_order')
             ->selectRaw('comp_reasons.name as name, COUNT(*) as comps, SUM(attendance.entry_coverage) as foregone')

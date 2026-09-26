@@ -38,7 +38,7 @@ class RegisterVarianceWidget extends StatsOverviewWidget
     {
         $shifts = RegisterShift::query()
             ->whereNotNull('closed_at')
-            ->whereBetween('closed_at', [now()->startOfWeek(), now()->endOfWeek()])
+            ->whereBetween('closed_at', [MembershipSetting::startOfWeek(), MembershipSetting::endOfWeek()])
             ->get();
 
         $service = app(RegisterShiftService::class);

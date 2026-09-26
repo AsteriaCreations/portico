@@ -60,7 +60,7 @@ class SubscriptionOverviewWidget extends StatsOverviewWidget
         $stats[] = Stat::make(
             __('Subscription revenue this week'),
             MembershipSetting::formatMoney(
-                Subscription::whereBetween('paid_on', [now()->startOfWeek(), now()->endOfWeek()])->sum('amount_paid'),
+                Subscription::whereBetween('paid_on', [MembershipSetting::startOfWeek(), MembershipSetting::endOfWeek()])->sum('amount_paid'),
             ),
         );
 

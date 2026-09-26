@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Number;
@@ -18,7 +19,7 @@ use Illuminate\Support\Str;
  * supplies the initial defaults for a fresh install — it's just no longer
  * read anywhere else in the app afterward.
  */
-#[Fillable(['subscription_eligibility_threshold', 'subscription_eligibility_window_months', 'probation_period_days', 'guests_allowed_during_probation', 'venue_capacity', 'default_opening_float', 'event_window_buffer_minutes', 'age_of_majority', 'alcohol_flag_age', 'watchlist_notify_label', 'currency', 'locale', 'org_name', 'role_labels', 'member_search_fields', 'checkin_display_name_field', 'member_email_required', 'hide_member_pii_by_default', 'active_patrons_show_staff_roles', 'vouchers_enabled', 'add_ons_enabled', 'showrunner_comp_requests_enabled', 'manager_perk_enabled', 'suspensions_enabled', 'pool_enabled', 'prepay_enabled', 'register_shifts_enabled', 'showrunner_payouts_enabled', 'instructor_payouts_enabled', 'showrunner_door_includes_pool', 'showrunner_door_includes_addons', 'visit_notes_enabled', 'behavior_notes_enabled', 'guests_enabled', 'upstream_check_enabled', 'upstream_remote', 'upstream_branch', 'deploy_trigger_enabled', 'deploy_task_name'])]
+#[Fillable(['subscription_eligibility_threshold', 'subscription_eligibility_window_months', 'probation_period_days', 'guests_allowed_during_probation', 'venue_capacity', 'default_opening_float', 'event_window_buffer_minutes', 'week_starts_on', 'age_of_majority', 'alcohol_flag_age', 'watchlist_notify_label', 'currency', 'locale', 'org_name', 'role_labels', 'member_search_fields', 'checkin_display_name_field', 'member_email_required', 'hide_member_pii_by_default', 'active_patrons_show_staff_roles', 'vouchers_enabled', 'add_ons_enabled', 'showrunner_comp_requests_enabled', 'manager_perk_enabled', 'suspensions_enabled', 'pool_enabled', 'prepay_enabled', 'register_shifts_enabled', 'showrunner_payouts_enabled', 'instructor_payouts_enabled', 'showrunner_door_includes_pool', 'showrunner_door_includes_addons', 'visit_notes_enabled', 'behavior_notes_enabled', 'guests_enabled', 'upstream_check_enabled', 'upstream_remote', 'upstream_branch', 'deploy_trigger_enabled', 'deploy_task_name'])]
 class MembershipSetting extends Model
 {
     protected function casts(): array
@@ -31,6 +32,7 @@ class MembershipSetting extends Model
             'venue_capacity' => 'integer',
             'default_opening_float' => 'decimal:2',
             'event_window_buffer_minutes' => 'integer',
+            'week_starts_on' => 'integer',
             'age_of_majority' => 'integer',
             'alcohol_flag_age' => 'integer',
             'role_labels' => 'array',
@@ -202,6 +204,28 @@ class MembershipSetting extends Model
     public static function watchlistNotifyLabel(): string
     {
         return static::current()->watchlist_notify_label ?: (string) config('membership.watchlist_notify_label');
+    }
+
+    /**
+     * The start of the club's week containing $date (default now). Every
+     * "this week" figure -- the weekly Analytics widgets and the Cleaning
+     * Checklist reset -- goes through this and endOfWeek(). week_starts_on
+     * is a Carbon day number (0 = Sunday … 6 = Saturday); null follows the
+     * install's language, which is what these used before the setting existed.
+     */
+    public static function startOfWeek(?CarbonInterface $date = null): CarbonInterface
+    {
+        return ($date ?? now())->copy()->startOfWeek(static::current()->week_starts_on);
+    }
+
+    /**
+     * The end of the club's week containing $date (default now); see startOfWeek().
+     */
+    public static function endOfWeek(?CarbonInterface $date = null): CarbonInterface
+    {
+        $startsOn = static::current()->week_starts_on;
+
+        return ($date ?? now())->copy()->endOfWeek($startsOn === null ? null : ($startsOn + 6) % 7);
     }
 
     public static function formatMoney(float $amount): string
