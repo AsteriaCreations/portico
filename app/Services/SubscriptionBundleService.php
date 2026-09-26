@@ -54,6 +54,22 @@ class SubscriptionBundleService
     }
 
     /**
+     * What buying $months of $addOn at the check-in desk would charge right
+     * now, in cents, without writing anything -- backs the desk's live Due
+     * line. Mirrors CheckInService: priced as of today, and a single month
+     * that's already covered is skipped (so costs nothing). Zero when no
+     * plan is effective, since the purchase would be skipped too.
+     */
+    public function quoteCents(Member $member, AddOn $addOn, int $months, CarbonInterface $month): int
+    {
+        if ($months <= 1 && $member->hasActiveSubscriptionFor($addOn, $month)) {
+            return 0;
+        }
+
+        return Cents::of(Plan::currentFor($addOn, now(), max($months, 1))?->price);
+    }
+
+    /**
      * @return Collection<int, Subscription>
      */
     public function purchase(

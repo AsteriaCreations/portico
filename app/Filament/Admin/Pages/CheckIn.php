@@ -388,6 +388,46 @@ class CheckIn extends Page implements HasTable
         return $breakdown;
     }
 
+    /**
+     * What the subscriptions picked in Payment options would cost, in cents
+     * -- paid in this same check-in on top of entry, so the Due line has to
+     * include it. Same targets and eligibility check as CheckInService, and
+     * priced by the same SubscriptionBundleService::quoteCents() rule.
+     */
+    public function getLiveSubscriptionTotalCents(): int
+    {
+        $member = $this->getSelectedMember();
+        $event = $this->getSelectedEvent();
+
+        if (! $member || ! $event || ! $member->isSubscriptionEligible()) {
+            return 0;
+        }
+
+        $month = $event->event_date->clone()->startOfMonth();
+        $service = app(SubscriptionBundleService::class);
+
+        return collect([AddOn::entry()->id => 'subscription_regular_duration'])
+            ->union(AddOn::subscribable()->get()
+                ->filter(fn (AddOn $addOn) => $addOn->isCurrentlyPurchasable())
+                ->mapWithKeys(fn (AddOn $addOn) => [$addOn->id => "subscription_addon_{$addOn->id}_duration"]))
+            ->map(fn (string $field, int $addOnId): int => in_array($this->pricingData[$field] ?? 'none', ['none', null], true)
+                ? 0
+                : $service->quoteCents($member, AddOn::find($addOnId), (int) $this->pricingData[$field], $month))
+            ->sum();
+    }
+
+    /**
+     * The Due line: entry/pool after coverage, comp and voucher, plus
+     * add-ons, plus any subscription bought in this check-in. The payment
+     * method's transaction fee isn't known until the Check in dialog, so
+     * it's left out here.
+     */
+    public function getLiveDueTotal(): float
+    {
+        return Cents::toFloat(($this->getLivePriceBreakdown()?->amountPaidCents ?? 0) + $this->getLiveSubscriptionTotalCents())
+            + $this->getLiveAddOnTotal();
+    }
+
     // Add-ons never go through PricingService/PriceBreakdown — they're a flat
     // additive charge on top of entry/pool, never comped or voucher-covered,
     // so they're tracked as a separate live total rather than a third
@@ -1343,7 +1383,9 @@ class CheckIn extends Page implements HasTable
         $options = ['none' => __('No subscription payment')];
         $eventMonth = $event->event_date->clone()->startOfMonth();
 
-        $monthlyPlan = Plan::currentFor($addOn, $event->event_date);
+        // As of now, like the bundles below and the charge itself
+        // (CheckInService) -- the desk collects today's price.
+        $monthlyPlan = Plan::currentFor($addOn, now());
         if ($monthlyPlan && ! $member->hasActiveSubscriptionFor($addOn, $eventMonth)) {
             $options[1] = __('This month — :amount', ['amount' => $this->formatCurrency($monthlyPlan->price)]);
         }
@@ -1435,7 +1477,7 @@ class CheckIn extends Page implements HasTable
                 && $this->getDecision()?->outcome !== AdmissionOutcome::Capture
                 && ($event === null || app(CapacityService::class)->hasRoom($event->event_date)))
             ->action(function (array $data): void {
-                if ($this->haltForTraining(__('Practice check-in complete — :amount would have been charged. Nothing was saved.', ['amount' => $this->formatCurrency(Cents::toFloat($this->getLivePriceBreakdown()?->amountPaidCents ?? 0) + $this->getLiveAddOnTotal())]))) {
+                if ($this->haltForTraining(__('Practice check-in complete — :amount would have been charged. Nothing was saved.', ['amount' => $this->formatCurrency($this->getLiveDueTotal())]))) {
                     return;
                 }
 

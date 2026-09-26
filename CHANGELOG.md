@@ -146,6 +146,11 @@ is fixes only.
   only appears for an add-on that's actually in play: still on sale, or charged by tonight's
   event (an older event whose pool fee predates the flag being turned off). It no longer
   appears for an inactive add-on either.
+- The Check-In Desk's **Due** line left out the price of a subscription bought in the same
+  check-in. It showed only the entry left after the subscription's credit, while the member
+  was charged that plus the subscription. Due now includes it, priced by the same rule as
+  the charge (`SubscriptionBundleService::quoteCents()`). The "This month — $X" option also
+  shows today's plan price, which is what's charged, rather than the event date's.
 - An install with no active Owner could never get one. The seeder creates only an Admin,
   and the rank rule stopped anyone from granting a role above their own, so no one could
   grant Owner. Now, while there's no active Owner, an Admin may grant Owner, to another
