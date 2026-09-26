@@ -9,6 +9,14 @@ is fixes only.
 
 ## [Unreleased]
 
+## [0.3.0] — 2026-09-26
+
+**Upgrading from 0.2.0:** run `php artisan migrate` (12 new migrations; every new setting defaults
+to the old behavior), and build the front-end assets with `npm run build`, which the new panel
+theme needs (`scripts/deploy.ps1` does both; don't pass `-SkipNpm` this time). Then run
+`php artisan attendance:find-stray-fees` once: a read-only report of past check-ins charged a
+transaction fee with nothing due (see Fixed).
+
 ### Added
 
 - **Setup reminders when a feature is turned on.** Saving Feature Flags with a feature newly
@@ -126,6 +134,13 @@ is fixes only.
   labels and titles do the same through small traits in `App\Filament\Concerns`, and the
   panel's navigation groups translate lazily so they follow the installation's language.
 
+- The printable desk reference cards (Check-In, Active Patrons, Record Departures) are served at
+  `/admin/desk-reference-cards` (sign-in required) and linked from the Dashboard, Check-In and
+  Active Patrons help panels, each link jumping to its own card. Before, only someone with file
+  access to the server could open them.
+- Paperwork Types gets its "How to use this screen" panel, the one screen without one, and a
+  test now fails the build if any admin screen ships without a panel.
+
 - Age of majority and the check-ID/no-alcohol flag age (18/21 by default) are now
   club-configurable on the Membership Settings page, instead of hardcoded in
   `AdmissionPolicy` — both are jurisdiction-specific. Setting them equal disables the
@@ -178,9 +193,9 @@ is fixes only.
   as a worked example. Also new: which account should own the install, the `php.ini`
   gotchas (absolute `extension_dir`, the `bcmath`/`exif`/`zip` lines the Windows template
   lacks), the Apache VS17-vs-VS18 pairing note, Node and MariaDB notes, `schtasks.exe`
-  examples, fuller mkcert/TLS steps, and a post-launch smoke-test checklist (§8). Node is
-  documented as optional: the admin panel doesn't use the Vite build, so it's needed only
-  for `deploy.ps1`'s default `npm` step (`-SkipNpm` skips it).
+  examples, fuller mkcert/TLS steps, and a post-launch smoke-test checklist (§8). (It
+  first described Node as optional; the panel theme under Added now needs `npm run build`,
+  and the guide says so.)
 - `README.md` brought up to date: current release (`v0.2.0`), the full feature-flag list,
   configurable currency and check-in display name, the complete seed set, the
   `SYSTEM_USER_EMAIL` override, the optional `upstream:check` job and one-command deploy
@@ -193,6 +208,21 @@ is fixes only.
   register shifts and miscellaneous payments, Analytics and the Manager-level settings
   screens, comp-request approval, Skill assignment, per-user capabilities, the Technical
   and Upstream Updates pages, and the Owner-only club name.
+- The printable desk reference cards and every screen's help panel were checked against the
+  code and corrected. The Check-In card follows the current desk (status line first, payment
+  taken in the Check in dialog) and adds Mark arrived, Mark as returned, training mode and the
+  cash box. Field and tab names on Comp Reasons, Payment Methods and Members now match the
+  screens, and panels now cover bulk uploads, Duplicate, the personal-info toggle, one-time
+  payment methods and transaction fees.
+- Example text, test literals and the deploy docs no longer carry identifiers from the private
+  deployment Portico was extracted from.
+- The CodeQL job skips private repositories, where uploading results needs a paid GitHub
+  feature, so a private fork no longer fails CI on every push. Unchanged on public repos.
+- Dependency updates: `concurrently` 9 → 10 (dev only), `actions/checkout` 4 → 7 and
+  `actions/cache` 4 → 6 in CI.
+- Test-suite reliability: `FeatureFlagsTest` passes under `--parallel`, and the payment-method
+  and member test factories no longer produce values that can collide with a unique index or
+  overflow a column (random failures seen only on MariaDB CI). Test data only.
 
 ### Fixed
 
@@ -213,8 +243,9 @@ is fixes only.
   and `UserObserver`). Once an Owner exists, the normal rule applies again.
 - The Check-In Desk's "Checked in tonight" list showed everyone twice: once as a stacked
   card above the table, once in it. The phone-card and table layouts were switched with
-  Tailwind's `sm:hidden` / `hidden sm:block`, which aren't in the panel's compiled CSS (the
-  app runs no Tailwind build for its own Blade views), so both always rendered. The roster
+  Tailwind's `sm:hidden` / `hidden sm:block`, which weren't in the panel's compiled CSS (the
+  app had no Tailwind build for its own views until the panel theme under Added), so both
+  always rendered. The roster
   now switches them with a small scoped `<style>` block, and a new `PanelCssGuardTest` fails
   the build on any panel view using a show/hide utility the compiled CSS lacks.
 - Deleting an event that had any check-ins, prepays, comp requests, day passes or ban
@@ -269,6 +300,13 @@ is fixes only.
 - CI now also runs the full Pest suite on MariaDB, not only migrations and seeds: SQLite
   has no row locks, so no locking guarantee was ever actually tested. The new
   `CheckInConcurrencyTest` stages real two-register races there.
+- The check-in desk showed no under-21 note for a member who was also watchlisted, an
+  unfinished Prospective or missing paperwork, since the note was only ever the status headline
+  and those outcomes outrank it. It's now always listed with the member's flags, and appears
+  before an event is picked (as of today).
+- An eligible member was offered two subscription pickers at the desk, "Regular Subscription"
+  and "Entry Subscription", and picking both bought two. `AddOn::subscribable()` returned the
+  Entry row, which every caller already handles separately; it now returns ordinary add-ons only.
 
 ### Security
 
@@ -385,5 +423,6 @@ is fixes only.
 - CI runs the full Pest suite on SQLite plus a `migrate:fresh --seed` smoke on MariaDB,
   the production target.
 
+[0.3.0]: https://github.com/AsteriaCreations/portico/releases/tag/v0.3.0
 [0.2.0]: https://github.com/AsteriaCreations/portico/releases/tag/v0.2.0
 [0.1.0]: https://github.com/AsteriaCreations/portico/releases/tag/v0.1.0
