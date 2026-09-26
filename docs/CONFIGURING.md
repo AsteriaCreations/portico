@@ -90,6 +90,7 @@ rarely need to touch most of them.
 | Event window buffer (minutes) | `15` | Slack around an event's start/end for the check-in picker (also handles an event running past midnight). |
 | Age of majority | `18` | `AdmissionPolicy` blocks a member below this age outright. Jurisdiction-specific. |
 | Check-ID / no-alcohol flag age | `21` | A member below this age (but at or above "Age of majority") is admitted but flagged. Set equal to "Age of majority" to disable the flag. |
+| Watchlist: who staff notify | *(blank — uses `WATCHLIST_NOTIFY_LABEL`)* | Where staff post a heads-up before admitting a watchlisted member; the desk shows "Notify …" and asks staff to confirm. Blank falls back to the `.env` value (default "the staff channel"). |
 | Currency code | `USD` | A 3-letter ISO 4217 code, used everywhere a money figure is shown — the check-in desk's live totals, every Analytics widget, and every money column in the admin panel. |
 | Language | *(blank — server default, English)* | The admin panel's language for everyone on this install. Lists only languages that have a `lang/{code}.json` translation file; with none installed, English is the only choice. Names you enter yourself (categories, comp reasons, plans, …) are never translated. |
 | Displayed organization name | *(blank)* | Panel brand override — see "Name & branding". |
@@ -146,7 +147,7 @@ DB_PASSWORD=...
 ADMIN_EMAIL=you@yourclub
 ADMIN_PASSWORD=a-real-password
 
-WATCHLIST_NOTIFY_LABEL="your #members channel"   # wording in the admission warning
+WATCHLIST_NOTIFY_LABEL="your #members channel"   # default for the watchlist warning; Membership Settings can override it
 SYSTEM_USER_EMAIL=system@yourclub.internal       # attributes automated grants
 
 BACKUP_DESTINATION="D:/backups/portico"          # a folder that syncs off the machine

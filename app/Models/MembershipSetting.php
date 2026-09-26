@@ -18,7 +18,7 @@ use Illuminate\Support\Str;
  * supplies the initial defaults for a fresh install — it's just no longer
  * read anywhere else in the app afterward.
  */
-#[Fillable(['subscription_eligibility_threshold', 'probation_period_days', 'guests_allowed_during_probation', 'venue_capacity', 'default_opening_float', 'event_window_buffer_minutes', 'age_of_majority', 'alcohol_flag_age', 'currency', 'locale', 'org_name', 'role_labels', 'member_search_fields', 'checkin_display_name_field', 'hide_member_pii_by_default', 'active_patrons_show_staff_roles', 'vouchers_enabled', 'add_ons_enabled', 'showrunner_comp_requests_enabled', 'manager_perk_enabled', 'suspensions_enabled', 'pool_enabled', 'prepay_enabled', 'register_shifts_enabled', 'showrunner_payouts_enabled', 'instructor_payouts_enabled', 'showrunner_door_includes_pool', 'showrunner_door_includes_addons', 'visit_notes_enabled', 'behavior_notes_enabled', 'guests_enabled', 'upstream_check_enabled', 'upstream_remote', 'upstream_branch', 'deploy_trigger_enabled', 'deploy_task_name'])]
+#[Fillable(['subscription_eligibility_threshold', 'probation_period_days', 'guests_allowed_during_probation', 'venue_capacity', 'default_opening_float', 'event_window_buffer_minutes', 'age_of_majority', 'alcohol_flag_age', 'watchlist_notify_label', 'currency', 'locale', 'org_name', 'role_labels', 'member_search_fields', 'checkin_display_name_field', 'hide_member_pii_by_default', 'active_patrons_show_staff_roles', 'vouchers_enabled', 'add_ons_enabled', 'showrunner_comp_requests_enabled', 'manager_perk_enabled', 'suspensions_enabled', 'pool_enabled', 'prepay_enabled', 'register_shifts_enabled', 'showrunner_payouts_enabled', 'instructor_payouts_enabled', 'showrunner_door_includes_pool', 'showrunner_door_includes_addons', 'visit_notes_enabled', 'behavior_notes_enabled', 'guests_enabled', 'upstream_check_enabled', 'upstream_remote', 'upstream_branch', 'deploy_trigger_enabled', 'deploy_task_name'])]
 class MembershipSetting extends Model
 {
     protected function casts(): array
@@ -190,6 +190,16 @@ class MembershipSetting extends Model
     // columns don't call this -- see the panel-wide Table::configureUsing()
     // default in AppServiceProvider instead, which covers those the same
     // way without touching every individual column.
+    /**
+     * The name staff see in "Notify <label>" for a watchlisted member. Set on
+     * Membership Settings; blank falls back to WATCHLIST_NOTIFY_LABEL in .env
+     * (config/membership.php), which is how installs set it before this existed.
+     */
+    public static function watchlistNotifyLabel(): string
+    {
+        return static::current()->watchlist_notify_label ?: (string) config('membership.watchlist_notify_label');
+    }
+
     public static function formatMoney(float $amount): string
     {
         return Number::currency($amount, in: static::current()->currency) ?: number_format($amount, 2);
