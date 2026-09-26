@@ -73,6 +73,7 @@ test('saving updates the singleton row', function () {
     Livewire::test(MembershipSettings::class)
         ->fillForm([
             'subscription_eligibility_threshold' => 10,
+            'subscription_eligibility_window_months' => 24,
             'probation_period_days' => 45,
             'guests_allowed_during_probation' => true,
             'venue_capacity' => 200,
@@ -92,6 +93,7 @@ test('saving updates the singleton row', function () {
     $setting = MembershipSetting::current();
 
     expect($setting->subscription_eligibility_threshold)->toBe(10)
+        ->and($setting->subscription_eligibility_window_months)->toBe(24)
         ->and($setting->probation_period_days)->toBe(45)
         ->and($setting->guests_allowed_during_probation)->toBeTrue()
         ->and($setting->venue_capacity)->toBe(200)

@@ -161,15 +161,30 @@ class Member extends Model
     }
 
     /**
-     * Eligible once attended events (all-time) reach the configured threshold,
-     * or a manager has manually flagged the member — the latter exists to
+     * Eligible once attended events reach the configured threshold, or a
+     * manager has manually flagged the member — the latter exists to
      * grandfather in members whose pre-system attendance history isn't in the
      * attendance table.
      */
     public function isSubscriptionEligible(): bool
     {
         return $this->subscription_eligible
-            || $this->attendance()->whereNotNull('checked_in_at')->count() >= MembershipSetting::current()->subscription_eligibility_threshold;
+            || $this->eligibilityAttendanceCount() >= MembershipSetting::current()->subscription_eligibility_threshold;
+    }
+
+    /**
+     * Attended events that count toward subscription eligibility: all-time,
+     * or only those in the last N months when Membership Settings sets a
+     * window. Also what the Check-In Desk shows as "(3/5 events attended)".
+     */
+    public function eligibilityAttendanceCount(): int
+    {
+        $windowMonths = MembershipSetting::current()->subscription_eligibility_window_months;
+
+        return $this->attendance()
+            ->whereNotNull('checked_in_at')
+            ->when($windowMonths, fn ($query) => $query->where('checked_in_at', '>=', now()->subMonthsNoOverflow($windowMonths)))
+            ->count();
     }
 
     public function hasBanExceptionFor(Event $event): bool
