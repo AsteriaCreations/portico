@@ -975,7 +975,7 @@ class CheckIn extends Page implements HasTable
                 TextInput::make('preferred_name')->required()->maxLength(60),
                 TextInput::make('first_name')->required()->maxLength(60),
                 TextInput::make('last_name')->required()->maxLength(60),
-                TextInput::make('email')->required()->email()->maxLength(120),
+                TextInput::make('email')->required(fn (): bool => MembershipSetting::current()->member_email_required)->email()->maxLength(120),
                 Checkbox::make('appears_under_21')
                     ->label(__('Appears to be under :age', ['age' => MembershipSetting::current()->alcohol_flag_age]))
                     ->live(),
@@ -1002,7 +1002,7 @@ class CheckIn extends Page implements HasTable
                     'preferred_name' => $data['preferred_name'],
                     'first_name' => $data['first_name'],
                     'last_name' => $data['last_name'],
-                    'email' => $data['email'],
+                    'email' => filled($data['email'] ?? null) ? $data['email'] : null,
                     'dob' => $data['dob'] ?? $member->dob,
                     'category_id' => $irregular->id,
                 ]);
@@ -1308,7 +1308,7 @@ class CheckIn extends Page implements HasTable
                 TextInput::make('preferred_name')->required()->maxLength(60),
                 TextInput::make('first_name')->required()->maxLength(60),
                 TextInput::make('last_name')->required()->maxLength(60),
-                TextInput::make('email')->email()->required()->maxLength(120),
+                TextInput::make('email')->email()->required(fn (): bool => MembershipSetting::current()->member_email_required)->maxLength(120),
                 Checkbox::make('appears_under_21')
                     ->label(__('Appears to be under :age', ['age' => MembershipSetting::current()->alcohol_flag_age]))
                     ->live(),
@@ -1342,7 +1342,7 @@ class CheckIn extends Page implements HasTable
                         'preferred_name' => $data['preferred_name'],
                         'first_name' => $data['first_name'],
                         'last_name' => $data['last_name'],
-                        'email' => $data['email'],
+                        'email' => filled($data['email'] ?? null) ? $data['email'] : null,
                         'dob' => $data['dob'] ?? null,
                         'category_id' => $guestCategory->id,
                         'sponsor_id' => $sponsor->id,

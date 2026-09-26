@@ -86,6 +86,7 @@ test('saving updates the singleton row', function () {
             'hide_member_pii_by_default' => false,
             'active_patrons_show_staff_roles' => false,
             'checkin_display_name_field' => 'full_name',
+            'member_email_required' => false,
         ])
         ->callAction('save')
         ->assertHasNoActionErrors();
@@ -105,7 +106,8 @@ test('saving updates the singleton row', function () {
         ->and($setting->currency)->toBe('EUR')
         ->and($setting->hide_member_pii_by_default)->toBeFalse()
         ->and($setting->active_patrons_show_staff_roles)->toBeFalse()
-        ->and($setting->checkin_display_name_field)->toBe('full_name');
+        ->and($setting->checkin_display_name_field)->toBe('full_name')
+        ->and($setting->member_email_required)->toBeFalse();
 });
 
 test('currency is uppercased on save and rejected if not a recognized code', function () {

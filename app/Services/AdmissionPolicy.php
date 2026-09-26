@@ -86,7 +86,8 @@ class AdmissionPolicy
 
     private function hasIncompleteIdentity(Member $member): bool
     {
-        return blank($member->first_name) || blank($member->last_name) || blank($member->email);
+        return blank($member->first_name) || blank($member->last_name)
+            || (MembershipSetting::current()->member_email_required && blank($member->email));
     }
 
     // Member-only, same shape as needsCapture() -- missing_paperwork isn't

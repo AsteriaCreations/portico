@@ -11,6 +11,12 @@ is fixes only.
 
 ### Added
 
+- Membership Settings → **Require email at sign-up**: turn off for a club that doesn't collect
+  email at the door. The Check-In Desk then accepts a Prospective's sign-up or a new guest
+  without one, and a Prospective with no email no longer counts as needing sign-up. On by
+  default, so upgrading changes nothing. New `membership_settings.member_email_required`
+  column: **run `php artisan migrate`**.
+
 - Membership Settings → **Count attended events from the last (months)**: an optional window
   for subscription eligibility, so only recent attendance counts toward the threshold. Blank
   counts all-time, as before. The Check-In Desk's "(3/5 events attended)" note uses the same

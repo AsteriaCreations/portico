@@ -626,7 +626,7 @@ Five subtleties this encodes: **Door has bounded write** (it may set the five id
 
 ## Prospective → Irregular (the sign-up transition)
 
-Per your definitions: Prospective = "vetted, never been here"; Irregular = "vetted, been here at least once." So the **first successful check-in is the transition.** At that check-in the Door volunteer captures preferred name, first name, last name, email, and — only if under 21 — DOB; on save, the member's category flips to Irregular. This is why Door needs bounded write, and it's the one place Door touches DOB.
+Per your definitions: Prospective = "vetted, never been here"; Irregular = "vetted, been here at least once." So the **first successful check-in is the transition.** At that check-in the Door volunteer captures preferred name, first name, last name, email (unless Membership Settings makes it optional), and — only if under 21 — DOB; on save, the member's category flips to Irregular. This is why Door needs bounded write, and it's the one place Door touches DOB.
 
 ---
 

@@ -70,6 +70,7 @@ class MembershipSettings extends Page
             'org_name',
             'member_search_fields',
             'checkin_display_name_field',
+            'member_email_required',
             'hide_member_pii_by_default',
             'active_patrons_show_staff_roles',
             'showrunner_door_includes_pool',
@@ -198,6 +199,10 @@ class MembershipSettings extends Page
                         'full_name' => __('Full name'),
                         'username' => __('Username'),
                     ])
+                    ->required(),
+                Toggle::make('member_email_required')
+                    ->label('Require email at sign-up')
+                    ->helperText(__('Whether the Check-In Desk requires an email address when a Prospective finishes sign-up or a guest is registered. Turn off for a club that doesn\'t collect email at the door. Name is always required.'))
                     ->required(),
                 Toggle::make('hide_member_pii_by_default')
                     ->label('Hide personal info by default on the Members list')

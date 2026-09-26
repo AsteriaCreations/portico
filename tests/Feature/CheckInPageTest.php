@@ -808,6 +808,46 @@ test('save and promote does not require dob when "appears to be under 21" is lef
         ->assertHasNoActionErrors();
 });
 
+test('save and promote requires an email by default, and accepts none when the club turns that off', function () {
+    $member = clearMember($this->prospective, ['first_name' => null, 'last_name' => null, 'email' => null]);
+    $data = ['preferred_name' => 'Newb', 'first_name' => 'New', 'last_name' => 'Member'];
+
+    Livewire::test(CheckIn::class)
+        ->fillForm(['member_id' => $member->id])
+        ->callAction('saveAndPromote', data: $data)
+        ->assertHasActionErrors(['email' => 'required']);
+
+    MembershipSetting::current()->update(['member_email_required' => false]);
+
+    Livewire::test(CheckIn::class)
+        ->fillForm(['member_id' => $member->id])
+        ->callAction('saveAndPromote', data: $data)
+        ->assertHasNoActionErrors();
+
+    $member->refresh();
+    expect($member->category->name)->toBe('Irregular')
+        ->and($member->email)->toBeNull();
+});
+
+test('registering a guest needs no email when the club turns that off', function () {
+    MembershipSetting::current()->update(['member_email_required' => false]);
+    $member = clearMember($this->irregular);
+    $event = Event::factory()->create(['event_date' => now()->toDateString(), 'entry_fee' => 20]);
+
+    Livewire::test(CheckIn::class)
+        ->fillForm(['event_id' => $event->id, 'member_id' => $member->id])
+        ->callAction('checkIn', data: ['checked_in_at' => now()])
+        ->callAction('registerGuest', data: [
+            'username' => 'noemailguest',
+            'preferred_name' => 'Sam',
+            'first_name' => 'Sam',
+            'last_name' => 'Noemail',
+        ])
+        ->assertHasNoActionErrors();
+
+    expect(Member::where('username', 'noemailguest')->value('email'))->toBeNull();
+});
+
 test('a member already checked in for an event cannot be checked in again', function () {
     $member = clearMember($this->irregular);
     $event = Event::factory()->create(['event_date' => now()->toDateString()]);
