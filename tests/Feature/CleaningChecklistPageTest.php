@@ -5,6 +5,7 @@ use App\Enums\Role;
 use App\Filament\Admin\Pages\CleaningChecklist;
 use App\Models\CleaningTask;
 use App\Models\CleaningTaskCompletion;
+use App\Models\MembershipSetting;
 use App\Models\User;
 use App\Models\UserCapability;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -99,4 +100,17 @@ test('a completion from last week does not count as completed this week', functi
     ]);
 
     expect($task->isCompletedForWeek(now()->startOfWeek()))->toBeFalse();
+});
+
+test('with the week set to start on Sunday, a completion is filed under that Sunday', function () {
+    $this->travelTo('2026-09-23 12:00:00'); // a Wednesday
+    MembershipSetting::current()->update(['week_starts_on' => 0]);
+
+    $crew = crewUser();
+    $this->actingAs($crew);
+    $task = CleaningTask::factory()->create(['active' => true]);
+
+    Livewire::test(CleaningChecklist::class)->callTableAction('complete', $task)->assertHasNoTableActionErrors();
+
+    expect(CleaningTaskCompletion::where('cleaning_task_id', $task->id)->firstOrFail()->for_week_start->toDateString())->toBe('2026-09-20');
 });

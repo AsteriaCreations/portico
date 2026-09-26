@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Number;
@@ -18,21 +19,25 @@ use Illuminate\Support\Str;
  * supplies the initial defaults for a fresh install — it's just no longer
  * read anywhere else in the app afterward.
  */
-#[Fillable(['subscription_eligibility_threshold', 'probation_period_days', 'venue_capacity', 'default_opening_float', 'event_window_buffer_minutes', 'age_of_majority', 'alcohol_flag_age', 'currency', 'locale', 'org_name', 'role_labels', 'member_search_fields', 'checkin_display_name_field', 'hide_member_pii_by_default', 'active_patrons_show_staff_roles', 'vouchers_enabled', 'add_ons_enabled', 'showrunner_comp_requests_enabled', 'manager_perk_enabled', 'suspensions_enabled', 'pool_enabled', 'prepay_enabled', 'register_shifts_enabled', 'showrunner_payouts_enabled', 'instructor_payouts_enabled', 'showrunner_door_includes_pool', 'showrunner_door_includes_addons', 'visit_notes_enabled', 'behavior_notes_enabled', 'upstream_check_enabled', 'upstream_remote', 'upstream_branch', 'deploy_trigger_enabled', 'deploy_task_name'])]
+#[Fillable(['subscription_eligibility_threshold', 'subscription_eligibility_window_months', 'probation_period_days', 'guests_allowed_during_probation', 'venue_capacity', 'default_opening_float', 'event_window_buffer_minutes', 'week_starts_on', 'age_of_majority', 'alcohol_flag_age', 'watchlist_notify_label', 'currency', 'locale', 'org_name', 'role_labels', 'member_search_fields', 'checkin_display_name_field', 'member_email_required', 'hide_member_pii_by_default', 'active_patrons_show_staff_roles', 'vouchers_enabled', 'add_ons_enabled', 'showrunner_comp_requests_enabled', 'manager_perk_enabled', 'suspensions_enabled', 'pool_enabled', 'prepay_enabled', 'register_shifts_enabled', 'showrunner_payouts_enabled', 'instructor_payouts_enabled', 'showrunner_door_includes_pool', 'showrunner_door_includes_addons', 'visit_notes_enabled', 'behavior_notes_enabled', 'guests_enabled', 'upstream_check_enabled', 'upstream_remote', 'upstream_branch', 'deploy_trigger_enabled', 'deploy_task_name'])]
 class MembershipSetting extends Model
 {
     protected function casts(): array
     {
         return [
             'subscription_eligibility_threshold' => 'integer',
+            'subscription_eligibility_window_months' => 'integer',
             'probation_period_days' => 'integer',
+            'guests_allowed_during_probation' => 'boolean',
             'venue_capacity' => 'integer',
             'default_opening_float' => 'decimal:2',
             'event_window_buffer_minutes' => 'integer',
+            'week_starts_on' => 'integer',
             'age_of_majority' => 'integer',
             'alcohol_flag_age' => 'integer',
             'role_labels' => 'array',
             'member_search_fields' => 'array',
+            'member_email_required' => 'boolean',
             'hide_member_pii_by_default' => 'boolean',
             'active_patrons_show_staff_roles' => 'boolean',
             'vouchers_enabled' => 'boolean',
@@ -49,6 +54,7 @@ class MembershipSetting extends Model
             'showrunner_door_includes_addons' => 'boolean',
             'visit_notes_enabled' => 'boolean',
             'behavior_notes_enabled' => 'boolean',
+            'guests_enabled' => 'boolean',
             'upstream_check_enabled' => 'boolean',
             'deploy_trigger_enabled' => 'boolean',
         ];
@@ -93,6 +99,8 @@ class MembershipSetting extends Model
             // app's original hardcoded behavior exactly, so upgrading never
             // silently changes what staff see. See Member::displayName().
             'checkin_display_name_field' => 'preferred_name',
+            // What the desk always did. See AdmissionPolicy::hasIncompleteIdentity().
+            'member_email_required' => true,
             // Default true so an install upgrading to this version keeps a
             // feature it may already rely on; a fresh install turns off what
             // it doesn't need on the Feature Flags page.
@@ -121,6 +129,10 @@ class MembershipSetting extends Model
             // had; a fresh install can turn these off on the Feature Flags page.
             'visit_notes_enabled' => true,
             'behavior_notes_enabled' => true,
+            // What the desk always did: guests on, but not while the sponsor
+            // is on probation. See Member::canSponsorGuests().
+            'guests_enabled' => true,
+            'guests_allowed_during_probation' => false,
             // Off and unconfigured -- a fresh install has no upstream remote
             // at all, and this never silently starts running git commands.
             // See App\Services\UpstreamUpdateChecker.
@@ -184,6 +196,38 @@ class MembershipSetting extends Model
     // columns don't call this -- see the panel-wide Table::configureUsing()
     // default in AppServiceProvider instead, which covers those the same
     // way without touching every individual column.
+    /**
+     * The name staff see in "Notify <label>" for a watchlisted member. Set on
+     * Membership Settings; blank falls back to WATCHLIST_NOTIFY_LABEL in .env
+     * (config/membership.php), which is how installs set it before this existed.
+     */
+    public static function watchlistNotifyLabel(): string
+    {
+        return static::current()->watchlist_notify_label ?: (string) config('membership.watchlist_notify_label');
+    }
+
+    /**
+     * The start of the club's week containing $date (default now). Every
+     * "this week" figure -- the weekly Analytics widgets and the Cleaning
+     * Checklist reset -- goes through this and endOfWeek(). week_starts_on
+     * is a Carbon day number (0 = Sunday … 6 = Saturday); null follows the
+     * install's language, which is what these used before the setting existed.
+     */
+    public static function startOfWeek(?CarbonInterface $date = null): CarbonInterface
+    {
+        return ($date ?? now())->copy()->startOfWeek(static::current()->week_starts_on);
+    }
+
+    /**
+     * The end of the club's week containing $date (default now); see startOfWeek().
+     */
+    public static function endOfWeek(?CarbonInterface $date = null): CarbonInterface
+    {
+        $startsOn = static::current()->week_starts_on;
+
+        return ($date ?? now())->copy()->endOfWeek($startsOn === null ? null : ($startsOn + 6) % 7);
+    }
+
     public static function formatMoney(float $amount): string
     {
         return Number::currency($amount, in: static::current()->currency) ?: number_format($amount, 2);

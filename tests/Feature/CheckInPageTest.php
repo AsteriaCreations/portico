@@ -808,6 +808,46 @@ test('save and promote does not require dob when "appears to be under 21" is lef
         ->assertHasNoActionErrors();
 });
 
+test('save and promote requires an email by default, and accepts none when the club turns that off', function () {
+    $member = clearMember($this->prospective, ['first_name' => null, 'last_name' => null, 'email' => null]);
+    $data = ['preferred_name' => 'Newb', 'first_name' => 'New', 'last_name' => 'Member'];
+
+    Livewire::test(CheckIn::class)
+        ->fillForm(['member_id' => $member->id])
+        ->callAction('saveAndPromote', data: $data)
+        ->assertHasActionErrors(['email' => 'required']);
+
+    MembershipSetting::current()->update(['member_email_required' => false]);
+
+    Livewire::test(CheckIn::class)
+        ->fillForm(['member_id' => $member->id])
+        ->callAction('saveAndPromote', data: $data)
+        ->assertHasNoActionErrors();
+
+    $member->refresh();
+    expect($member->category->name)->toBe('Irregular')
+        ->and($member->email)->toBeNull();
+});
+
+test('registering a guest needs no email when the club turns that off', function () {
+    MembershipSetting::current()->update(['member_email_required' => false]);
+    $member = clearMember($this->irregular);
+    $event = Event::factory()->create(['event_date' => now()->toDateString(), 'entry_fee' => 20]);
+
+    Livewire::test(CheckIn::class)
+        ->fillForm(['event_id' => $event->id, 'member_id' => $member->id])
+        ->callAction('checkIn', data: ['checked_in_at' => now()])
+        ->callAction('registerGuest', data: [
+            'username' => 'noemailguest',
+            'preferred_name' => 'Sam',
+            'first_name' => 'Sam',
+            'last_name' => 'Noemail',
+        ])
+        ->assertHasNoActionErrors();
+
+    expect(Member::where('username', 'noemailguest')->value('email'))->toBeNull();
+});
+
 test('a member already checked in for an event cannot be checked in again', function () {
     $member = clearMember($this->irregular);
     $event = Event::factory()->create(['event_date' => now()->toDateString()]);
@@ -1669,7 +1709,37 @@ test('the register-guest action is hidden when the checked-in host is on probati
         ->fillForm(['event_id' => $event->id, 'member_id' => $member->id])
         ->callAction('checkIn', data: ['checked_in_at' => now()])
         ->assertHasNoActionErrors()
-        ->assertActionHidden('registerGuest');
+        ->assertActionHidden('registerGuest')
+        ->assertSee('On probation — cannot bring a guest yet.');
+});
+
+test('a host on probation can register a guest when the club allows guests during probation', function () {
+    MembershipSetting::current()->update(['probation_period_days' => 90, 'guests_allowed_during_probation' => true]);
+    $member = clearMember($this->irregular, ['date_vetted' => now()->subDays(10)]);
+    $event = Event::factory()->create(['event_date' => now()->toDateString(), 'entry_fee' => 20]);
+
+    Livewire::test(CheckIn::class)
+        ->fillForm(['event_id' => $event->id, 'member_id' => $member->id])
+        ->callAction('checkIn', data: ['checked_in_at' => now()])
+        ->assertHasNoActionErrors()
+        ->assertActionVisible('registerGuest')
+        ->assertDontSee('On probation — cannot bring a guest yet.');
+});
+
+test('with guests switched off, the register-guest action is hidden with no probation note, and a forged call creates nothing', function () {
+    MembershipSetting::current()->update(['guests_enabled' => false]);
+    $member = clearMember($this->irregular);
+    $event = Event::factory()->create(['event_date' => now()->toDateString(), 'entry_fee' => 20]);
+
+    Livewire::test(CheckIn::class)
+        ->fillForm(['event_id' => $event->id, 'member_id' => $member->id])
+        ->callAction('checkIn', data: ['checked_in_at' => now()])
+        ->assertHasNoActionErrors()
+        ->assertActionHidden('registerGuest')
+        ->assertDontSee('On probation — cannot bring a guest yet.');
+
+    expect($member->fresh()->canSponsorGuests())->toBeFalse()
+        ->and(Member::where('sponsor_id', $member->id)->exists())->toBeFalse();
 });
 
 test('registering a guest creates a Guest-category member linked to the sponsor', function () {

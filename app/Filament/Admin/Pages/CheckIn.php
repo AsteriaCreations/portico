@@ -628,7 +628,7 @@ class CheckIn extends Page implements HasTable
         if (! $event) {
             $provisional = match (true) {
                 $member->is_deceased, $member->isCurrentlyBanned() => ['stop', __('Do not admit')],
-                $member->on_watchlist => ['check', __('Watchlist — notify :label, then confirm at check-in', ['label' => config('membership.watchlist_notify_label')])],
+                $member->on_watchlist => ['check', __('Watchlist — notify :label, then confirm at check-in', ['label' => MembershipSetting::watchlistNotifyLabel()])],
                 $policy->needsCapture($member) => ['check', __('Prospective — finish sign-up to admit')],
                 $policy->needsPaperworkCapture($member) => ['check', __('Missing paperwork — confirm on file to admit')],
                 default => ['go', __("No flags yet — pick tonight's event")],
@@ -975,7 +975,7 @@ class CheckIn extends Page implements HasTable
                 TextInput::make('preferred_name')->required()->maxLength(60),
                 TextInput::make('first_name')->required()->maxLength(60),
                 TextInput::make('last_name')->required()->maxLength(60),
-                TextInput::make('email')->required()->email()->maxLength(120),
+                TextInput::make('email')->required(fn (): bool => MembershipSetting::current()->member_email_required)->email()->maxLength(120),
                 Checkbox::make('appears_under_21')
                     ->label(__('Appears to be under :age', ['age' => MembershipSetting::current()->alcohol_flag_age]))
                     ->live(),
@@ -1002,7 +1002,7 @@ class CheckIn extends Page implements HasTable
                     'preferred_name' => $data['preferred_name'],
                     'first_name' => $data['first_name'],
                     'last_name' => $data['last_name'],
-                    'email' => $data['email'],
+                    'email' => filled($data['email'] ?? null) ? $data['email'] : null,
                     'dob' => $data['dob'] ?? $member->dob,
                     'category_id' => $irregular->id,
                 ]);
@@ -1308,7 +1308,7 @@ class CheckIn extends Page implements HasTable
                 TextInput::make('preferred_name')->required()->maxLength(60),
                 TextInput::make('first_name')->required()->maxLength(60),
                 TextInput::make('last_name')->required()->maxLength(60),
-                TextInput::make('email')->email()->required()->maxLength(120),
+                TextInput::make('email')->email()->required(fn (): bool => MembershipSetting::current()->member_email_required)->maxLength(120),
                 Checkbox::make('appears_under_21')
                     ->label(__('Appears to be under :age', ['age' => MembershipSetting::current()->alcohol_flag_age]))
                     ->live(),
@@ -1319,13 +1319,13 @@ class CheckIn extends Page implements HasTable
             ])
             ->visible(fn (): bool => $sponsor
                 && $attendance?->checked_in_at
-                && ! $sponsor->isOnProbation())
+                && $sponsor->canSponsorGuests())
             ->action(function (array $data) use ($sponsor): void {
                 if ($this->haltForTraining(__('Practice: guest registration simulated.'))) {
                     return;
                 }
 
-                abort_unless($sponsor && ! $sponsor->isOnProbation(), 403);
+                abort_unless($sponsor && $sponsor->canSponsorGuests(), 403);
 
                 $guestCategory = Category::where('name', 'Guest')->firstOrFail();
                 $sponsorLabel = $sponsor->displayName();
@@ -1342,7 +1342,7 @@ class CheckIn extends Page implements HasTable
                         'preferred_name' => $data['preferred_name'],
                         'first_name' => $data['first_name'],
                         'last_name' => $data['last_name'],
-                        'email' => $data['email'],
+                        'email' => filled($data['email'] ?? null) ? $data['email'] : null,
                         'dob' => $data['dob'] ?? null,
                         'category_id' => $guestCategory->id,
                         'sponsor_id' => $sponsor->id,
@@ -1448,7 +1448,7 @@ class CheckIn extends Page implements HasTable
             ->schema([
                 ...($requiresAcknowledgement ? [
                     Checkbox::make('acknowledged')
-                        ->label(__('I have notified :label per the watchlist note.', ['label' => config('membership.watchlist_notify_label')]))
+                        ->label(__('I have notified :label per the watchlist note.', ['label' => MembershipSetting::watchlistNotifyLabel()]))
                         ->accepted()
                         ->required(),
                 ] : []),
@@ -1644,7 +1644,7 @@ class CheckIn extends Page implements HasTable
             ->label(__('Mark arrived'))
             ->schema($requiresAcknowledgement ? [
                 Checkbox::make('acknowledged')
-                    ->label(__('I have notified :label per the watchlist note.', ['label' => config('membership.watchlist_notify_label')]))
+                    ->label(__('I have notified :label per the watchlist note.', ['label' => MembershipSetting::watchlistNotifyLabel()]))
                     ->accepted()
                     ->required(),
             ] : [])
@@ -1759,7 +1759,7 @@ class CheckIn extends Page implements HasTable
 
                 return $decision->requiresAcknowledgement() ? [
                     Checkbox::make('acknowledged')
-                        ->label(__('I have notified :label per the note.', ['label' => config('membership.watchlist_notify_label')]))
+                        ->label(__('I have notified :label per the note.', ['label' => MembershipSetting::watchlistNotifyLabel()]))
                         ->accepted()
                         ->required(),
                 ] : [];

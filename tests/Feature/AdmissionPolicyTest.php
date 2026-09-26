@@ -116,6 +116,19 @@ test('the watchlist warning message uses the configured notify-channel label', f
     expect($decision->message)->toBe('Notify the Signal group');
 });
 
+test('a notify label set on Membership Settings overrides the .env default, and blank falls back to it', function () {
+    config(['membership.watchlist_notify_label' => 'the Signal group']);
+
+    $member = memberAgedAsOf($this->irregular, '1990-01-01', ['on_watchlist' => true]);
+    $event = Event::factory()->create(['event_date' => '2026-07-19']);
+
+    MembershipSetting::current()->update(['watchlist_notify_label' => 'the door-staff chat']);
+    expect($this->policy->decide($member, $event)->message)->toBe('Notify the door-staff chat');
+
+    MembershipSetting::current()->update(['watchlist_notify_label' => null]);
+    expect($this->policy->decide($member, $event)->message)->toBe('Notify the Signal group');
+});
+
 test('a prospective member with incomplete identity requires capture', function () {
     $member = memberAgedAsOf($this->prospective, '1990-01-01', ['first_name' => null]);
     $event = Event::factory()->create(['event_date' => '2026-07-19']);
@@ -124,6 +137,21 @@ test('a prospective member with incomplete identity requires capture', function 
 
     expect($decision->outcome)->toBe(AdmissionOutcome::Capture)
         ->and($decision->message)->toBe('Complete sign-up');
+});
+
+test('a prospective member missing only an email needs capture only while email is required', function () {
+    $member = memberAgedAsOf($this->prospective, '1990-01-01', ['email' => null]);
+    $event = Event::factory()->create(['event_date' => '2026-07-19']);
+
+    expect($this->policy->decide($member, $event)->outcome)->toBe(AdmissionOutcome::Capture);
+
+    MembershipSetting::current()->update(['member_email_required' => false]);
+
+    expect($this->policy->decide($member, $event)->outcome)->toBe(AdmissionOutcome::Ok);
+
+    $member->update(['last_name' => null]);
+
+    expect($this->policy->decide($member->fresh(), $event)->outcome)->toBe(AdmissionOutcome::Capture);
 });
 
 test('a prospective member with complete identity does not require capture', function () {

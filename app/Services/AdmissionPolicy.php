@@ -40,7 +40,7 @@ class AdmissionPolicy
         }
 
         if ($member->on_watchlist) {
-            return new AdmissionDecision(AdmissionOutcome::Warn, __('Notify :label', ['label' => config('membership.watchlist_notify_label')]), $member->watchlist_reason);
+            return new AdmissionDecision(AdmissionOutcome::Warn, __('Notify :label', ['label' => MembershipSetting::watchlistNotifyLabel()]), $member->watchlist_reason);
         }
 
         if ($this->needsCapture($member)) {
@@ -86,7 +86,8 @@ class AdmissionPolicy
 
     private function hasIncompleteIdentity(Member $member): bool
     {
-        return blank($member->first_name) || blank($member->last_name) || blank($member->email);
+        return blank($member->first_name) || blank($member->last_name)
+            || (MembershipSetting::current()->member_email_required && blank($member->email));
     }
 
     // Member-only, same shape as needsCapture() -- missing_paperwork isn't

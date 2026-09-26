@@ -11,6 +11,38 @@ is fixes only.
 
 ### Added
 
+- Membership Settings → **Week starts on**: the first day of the club's week, for the "this
+  week" Analytics figures and the Cleaning Checklist reset. Blank follows the language (Monday
+  in English), which is what they always did. All week boundaries now go through
+  `MembershipSetting::startOfWeek()` / `endOfWeek()`. New `membership_settings.week_starts_on`
+  column: **run `php artisan migrate`**.
+
+- Membership Settings → **Require email at sign-up**: turn off for a club that doesn't collect
+  email at the door. The Check-In Desk then accepts a Prospective's sign-up or a new guest
+  without one, and a Prospective with no email no longer counts as needing sign-up. On by
+  default, so upgrading changes nothing. New `membership_settings.member_email_required`
+  column: **run `php artisan migrate`**.
+
+- Membership Settings → **Count attended events from the last (months)**: an optional window
+  for subscription eligibility, so only recent attendance counts toward the threshold. Blank
+  counts all-time, as before. The Check-In Desk's "(3/5 events attended)" note uses the same
+  count (`Member::eligibilityAttendanceCount()`) and names the window when one is set. New
+  `membership_settings.subscription_eligibility_window_months` column: **run `php artisan
+  migrate`**.
+
+- Membership Settings → **Watchlist: who staff notify**: set the "Notify …" channel name
+  from the admin panel instead of `WATCHLIST_NOTIFY_LABEL` in `.env`. Blank keeps using the
+  `.env` value, so upgrading changes nothing. Read through
+  `MembershipSetting::watchlistNotifyLabel()`. New `membership_settings.watchlist_notify_label`
+  column: **run `php artisan migrate`**.
+
+- Feature Flags → **Guests**: turn off "Register a guest" on the Check-In Desk for a club
+  that doesn't allow guests. Membership Settings → **Allow guests during probation**: lets
+  a member still on probation register one. Defaults keep today's behavior (guests on,
+  blocked during probation), and the rule lives in `Member::canSponsorGuests()`. New
+  `membership_settings.guests_enabled` and `guests_allowed_during_probation` columns:
+  **run `php artisan migrate`**.
+
 - **A Filament panel theme** (`resources/css/filament/admin/theme.css`, registered with
   `->viteTheme()`). Filament's own stylesheet only contains its `fi-*` classes, so every
   Tailwind utility in the app's own views (`text-sm`, `mt-2`, `gap-4`, `grid`,

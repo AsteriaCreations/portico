@@ -64,6 +64,7 @@ class FeatureFlags extends Page
             'instructor_payouts_enabled',
             'visit_notes_enabled',
             'behavior_notes_enabled',
+            'guests_enabled',
             'upstream_check_enabled',
             'deploy_trigger_enabled',
         ]));
@@ -95,6 +96,10 @@ class FeatureFlags extends Page
                         Toggle::make('behavior_notes_enabled')
                             ->label('Patron behavior notes enabled')
                             ->helperText(__('Turns off adding new behavior notes on Active Patrons. Notes already written stay reviewable by Manager+ on the member\'s profile regardless of this setting. Leave on unless this club doesn\'t want this kind of accountability record.'))
+                            ->required(),
+                        Toggle::make('guests_enabled')
+                            ->label('Guests enabled')
+                            ->helperText(__('Turns off "Register a guest" on the Check-In Desk. Guests already registered keep their records and can still be checked in. Whether a member on probation may bring one is on Membership Settings. Leave on unless this club doesn\'t allow guests.'))
                             ->required(),
                     ]),
                 Section::make(__('Records'))

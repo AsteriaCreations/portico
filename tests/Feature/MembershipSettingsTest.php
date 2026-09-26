@@ -38,6 +38,7 @@ test('mount fills the form from the current singleton row', function () {
     MembershipSetting::current()->update([
         'subscription_eligibility_threshold' => 7,
         'probation_period_days' => 60,
+        'guests_allowed_during_probation' => true,
         'venue_capacity' => 150,
         'default_opening_float' => 200.50,
         'event_window_buffer_minutes' => 20,
@@ -54,6 +55,7 @@ test('mount fills the form from the current singleton row', function () {
         ->assertSchemaStateSet([
             'subscription_eligibility_threshold' => 7,
             'probation_period_days' => 60,
+            'guests_allowed_during_probation' => true,
             'venue_capacity' => 150,
             'default_opening_float' => 200.50,
             'event_window_buffer_minutes' => 20,
@@ -71,16 +73,21 @@ test('saving updates the singleton row', function () {
     Livewire::test(MembershipSettings::class)
         ->fillForm([
             'subscription_eligibility_threshold' => 10,
+            'subscription_eligibility_window_months' => 24,
             'probation_period_days' => 45,
+            'guests_allowed_during_probation' => true,
             'venue_capacity' => 200,
             'default_opening_float' => 75.25,
             'event_window_buffer_minutes' => 10,
             'age_of_majority' => 19,
             'alcohol_flag_age' => 20,
+            'watchlist_notify_label' => 'the Signal group',
             'currency' => 'EUR',
             'hide_member_pii_by_default' => false,
             'active_patrons_show_staff_roles' => false,
             'checkin_display_name_field' => 'full_name',
+            'member_email_required' => false,
+            'week_starts_on' => 0,
         ])
         ->callAction('save')
         ->assertHasNoActionErrors();
@@ -88,16 +95,21 @@ test('saving updates the singleton row', function () {
     $setting = MembershipSetting::current();
 
     expect($setting->subscription_eligibility_threshold)->toBe(10)
+        ->and($setting->subscription_eligibility_window_months)->toBe(24)
         ->and($setting->probation_period_days)->toBe(45)
+        ->and($setting->guests_allowed_during_probation)->toBeTrue()
         ->and($setting->venue_capacity)->toBe(200)
         ->and($setting->default_opening_float)->toBe('75.25')
         ->and($setting->event_window_buffer_minutes)->toBe(10)
         ->and($setting->age_of_majority)->toBe(19)
         ->and($setting->alcohol_flag_age)->toBe(20)
+        ->and($setting->watchlist_notify_label)->toBe('the Signal group')
         ->and($setting->currency)->toBe('EUR')
         ->and($setting->hide_member_pii_by_default)->toBeFalse()
         ->and($setting->active_patrons_show_staff_roles)->toBeFalse()
-        ->and($setting->checkin_display_name_field)->toBe('full_name');
+        ->and($setting->checkin_display_name_field)->toBe('full_name')
+        ->and($setting->member_email_required)->toBeFalse()
+        ->and($setting->week_starts_on)->toBe(0);
 });
 
 test('currency is uppercased on save and rejected if not a recognized code', function () {
@@ -212,4 +224,22 @@ test('the admin panel brand name falls back to config app.name until org_name is
     MembershipSetting::current()->update(['org_name' => 'Riverside Social Club']);
 
     expect(Filament::getPanel('admin')->getBrandName())->toBe('Riverside Social Club');
+});
+
+test('the club week follows the language by default, and the chosen start day once set', function () {
+    $this->travelTo('2026-09-23 12:00:00'); // a Wednesday; English weeks start on Monday
+
+    expect(MembershipSetting::startOfWeek()->toDateTimeString())->toBe('2026-09-21 00:00:00')
+        ->and(MembershipSetting::endOfWeek()->toDateTimeString())->toBe('2026-09-27 23:59:59');
+
+    MembershipSetting::current()->update(['week_starts_on' => 0]); // Sunday
+
+    expect(MembershipSetting::startOfWeek()->toDateTimeString())->toBe('2026-09-20 00:00:00')
+        ->and(MembershipSetting::endOfWeek()->toDateTimeString())->toBe('2026-09-26 23:59:59');
+
+    MembershipSetting::current()->update(['week_starts_on' => 5]); // Friday, so Wednesday is late in the week
+
+    expect(MembershipSetting::startOfWeek()->toDateTimeString())->toBe('2026-09-18 00:00:00')
+        ->and(MembershipSetting::endOfWeek()->toDateTimeString())->toBe('2026-09-24 23:59:59')
+        ->and(MembershipSetting::startOfWeek(now()->subWeek())->toDateString())->toBe('2026-09-11');
 });

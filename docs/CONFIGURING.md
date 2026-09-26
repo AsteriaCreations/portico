@@ -83,16 +83,21 @@ rarely need to touch most of them.
 | Setting | Default | Notes |
 |---|---|---|
 | Subscription eligibility threshold | `5` | Attended-events count that unlocks a subscription. |
-| Probation period (days) | `90` | Reporting-only — never blocks admission or changes pricing. |
+| Count attended events from the last (months) | *(blank — all-time)* | Only events attended within this many months count toward the threshold. A member flagged "Subscription eligible" by hand stays eligible. |
+| Probation period (days) | `90` | Never blocks admission or changes pricing. A member on probation can't register a guest, unless the next setting allows it. |
+| Allow guests during probation | off | Lets a member still on probation register a guest at the Check-In Desk. |
 | Venue capacity | *(blank)* | Building-wide occupancy cap across concurrent events. **Blank = not enforced.** |
 | Default cash drawer opening float | *(blank)* | Pre-fills the opening count when a shift is opened. |
 | Event window buffer (minutes) | `15` | Slack around an event's start/end for the check-in picker (also handles an event running past midnight). |
+| Week starts on | *(blank — follows the language; Monday in English)* | First day of the club's week, for the "this week" figures on Analytics and when the Cleaning Checklist resets. Changing it mid-week re-opens this week's checklist tasks. |
 | Age of majority | `18` | `AdmissionPolicy` blocks a member below this age outright. Jurisdiction-specific. |
 | Check-ID / no-alcohol flag age | `21` | A member below this age (but at or above "Age of majority") is admitted but flagged. Set equal to "Age of majority" to disable the flag. |
+| Watchlist: who staff notify | *(blank — uses `WATCHLIST_NOTIFY_LABEL`)* | Where staff post a heads-up before admitting a watchlisted member; the desk shows "Notify …" and asks staff to confirm. Blank falls back to the `.env` value (default "the staff channel"). |
 | Currency code | `USD` | A 3-letter ISO 4217 code, used everywhere a money figure is shown — the check-in desk's live totals, every Analytics widget, and every money column in the admin panel. |
 | Language | *(blank — server default, English)* | The admin panel's language for everyone on this install. Lists only languages that have a `lang/{code}.json` translation file; with none installed, English is the only choice. Names you enter yourself (categories, comp reasons, plans, …) are never translated. |
 | Displayed organization name | *(blank)* | Panel brand override — see "Name & branding". |
 | Searchable member fields | `Username` | Which fields the member search boxes match on, and what shows in member dropdown labels. |
+| Require email at sign-up | on | Whether the Check-In Desk requires an email when a Prospective finishes sign-up or a guest is registered. Name is always required. |
 | Hide personal info by default on the Members list | on | Whether the Members table masks name/DOB/email until "Show personal info". |
 | Showrunner commission includes pool / add-on revenue | off / off | Whether those revenue lines count toward the Showrunner's door cut. |
 | Upstream remote / branch | *(blank)* / `main` | A git remote already added on the server (this app never runs `git remote add` itself) that this fork tracks for updates. |
@@ -122,6 +127,7 @@ records intact and reviewable.
 | Instructor per-head pay | No Instructor Pay Rates tab on Event Types or instructor payout breakdown. |
 | Patron visit notes | No visit-note column on Active Patrons. |
 | Patron behavior notes | No adding new behavior notes on Active Patrons (existing ones stay reviewable by Manager+). |
+| Guests | No "Register a guest" on the Check-In Desk. Guests already registered keep their records and can still check in. |
 | Upstream update checking | *(default off)* No Upstream Updates page and no scheduled git fetch. Only useful if this fork tracks an upstream remote. |
 | Web-triggered deploy | *(default off)* No "Run update now" button on Upstream Updates. Also needs a Deploy Scheduled Task name configured and a Scheduled Task registered on the server — see [`docs/DEPLOYMENT.md`](DEPLOYMENT.md) §7 "Web-triggered updates". |
 
@@ -144,7 +150,7 @@ DB_PASSWORD=...
 ADMIN_EMAIL=you@yourclub
 ADMIN_PASSWORD=a-real-password
 
-WATCHLIST_NOTIFY_LABEL="your #members channel"   # wording in the admission warning
+WATCHLIST_NOTIFY_LABEL="your #members channel"   # default for the watchlist warning; Membership Settings can override it
 SYSTEM_USER_EMAIL=system@yourclub.internal       # attributes automated grants
 
 BACKUP_DESTINATION="D:/backups/portico"          # a folder that syncs off the machine

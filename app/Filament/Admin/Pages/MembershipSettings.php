@@ -56,17 +56,22 @@ class MembershipSettings extends Page
     {
         $this->form->fill(MembershipSetting::current()->only([
             'subscription_eligibility_threshold',
+            'subscription_eligibility_window_months',
             'probation_period_days',
+            'guests_allowed_during_probation',
             'venue_capacity',
             'default_opening_float',
             'event_window_buffer_minutes',
+            'week_starts_on',
             'age_of_majority',
             'alcohol_flag_age',
+            'watchlist_notify_label',
             'currency',
             'locale',
             'org_name',
             'member_search_fields',
             'checkin_display_name_field',
+            'member_email_required',
             'hide_member_pii_by_default',
             'active_patrons_show_staff_roles',
             'showrunner_door_includes_pool',
@@ -84,15 +89,26 @@ class MembershipSettings extends Page
             ->components([
                 TextInput::make('subscription_eligibility_threshold')
                     ->label('Subscription eligibility threshold')
-                    ->helperText(__('A member becomes eligible for either subscription plan once they\'ve attended this many events, all-time.'))
+                    ->helperText(__('A member becomes eligible to subscribe once they\'ve attended this many events — all-time, or within the window below.'))
                     ->numeric()
                     ->minValue(0)
                     ->required(),
+                TextInput::make('subscription_eligibility_window_months')
+                    ->label('Count attended events from the last (months)')
+                    ->helperText(__('Only events attended in this many months count toward the threshold above. Leave blank to count all-time. A member flagged "Subscription eligible" by hand stays eligible either way.'))
+                    ->numeric()
+                    ->integer()
+                    ->minValue(1)
+                    ->maxValue(120),
                 TextInput::make('probation_period_days')
                     ->label('Probation period (days)')
-                    ->helperText(__('Reporting-only — never affects admission or pricing.'))
+                    ->helperText(__('Never affects admission or pricing. A member on probation can\'t bring a guest, unless the setting below allows it.'))
                     ->numeric()
                     ->minValue(0)
+                    ->required(),
+                Toggle::make('guests_allowed_during_probation')
+                    ->label('Allow guests during probation')
+                    ->helperText(__('Lets a member still on probation register a guest at the Check-In Desk. Off by default. Turning guests off entirely is on Feature Flags.'))
                     ->required(),
                 TextInput::make('venue_capacity')
                     ->label('Venue capacity')
@@ -111,6 +127,19 @@ class MembershipSettings extends Page
                     ->numeric()
                     ->minValue(0)
                     ->required(),
+                Select::make('week_starts_on')
+                    ->label('Week starts on')
+                    ->helperText(__('The first day of the club\'s week, for the "this week" figures on Analytics and when the Cleaning Checklist resets. Blank follows the language setting (Monday in English). Changing it mid-week re-opens this week\'s checklist tasks, since their ticks belong to the old week.'))
+                    ->placeholder(__('Follow the language setting'))
+                    ->options([
+                        0 => __('Sunday'),
+                        1 => __('Monday'),
+                        2 => __('Tuesday'),
+                        3 => __('Wednesday'),
+                        4 => __('Thursday'),
+                        5 => __('Friday'),
+                        6 => __('Saturday'),
+                    ]),
                 TextInput::make('age_of_majority')
                     ->label('Age of majority')
                     ->helperText(__('AdmissionPolicy blocks a member below this age outright. Jurisdiction-specific — adjust if your club isn\'t in an 18-is-adult jurisdiction.'))
@@ -123,6 +152,10 @@ class MembershipSettings extends Page
                     ->numeric()
                     ->minValue(0)
                     ->required(),
+                TextInput::make('watchlist_notify_label')
+                    ->label('Watchlist: who staff notify')
+                    ->helperText(fn (): string => __('Where staff post a heads-up before admitting a watchlisted member, e.g. "the Signal group". The desk shows "Notify …" and asks staff to confirm they did. Leave blank to use the server default (currently ":default").', ['default' => config('membership.watchlist_notify_label')]))
+                    ->maxLength(60),
                 TextInput::make('currency')
                     ->label('Currency code')
                     ->helperText(__('A 3-letter ISO 4217 currency code (e.g. USD, EUR, GBP, CAD) — used everywhere a dollar figure is shown, from the check-in desk\'s live totals to every money column in the admin panel.'))
@@ -180,6 +213,10 @@ class MembershipSettings extends Page
                         'full_name' => __('Full name'),
                         'username' => __('Username'),
                     ])
+                    ->required(),
+                Toggle::make('member_email_required')
+                    ->label('Require email at sign-up')
+                    ->helperText(__('Whether the Check-In Desk requires an email address when a Prospective finishes sign-up or a guest is registered. Turn off for a club that doesn\'t collect email at the door. Name is always required.'))
                     ->required(),
                 Toggle::make('hide_member_pii_by_default')
                     ->label('Hide personal info by default on the Members list')

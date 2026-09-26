@@ -19,7 +19,7 @@ CHECK-IN DESK
 - Per-event comp (Manager+ waives one visit's entry fee)
 - Event Add-Ons (room rental, sleepover — priced extras)
 - Pool day pass (single-visit pool coverage)
-- Guest registration (sponsor-gated, full identity capture)
+- Guest registration (sponsor-gated, full identity capture); can be switched off, and optionally allowed during probation
 - Appears-under-21 enforcement on guest registration and Prospective promotion (DOB required only when checked)
 - Overnight guest tracking (room rental / sleepover add-ons) — sponsor stays accountable, guest stays visible on Active Patrons until checked out, regardless of calendar days
 - Prepay events (pay ahead of the event date)
@@ -125,9 +125,9 @@ REPORTING & ANALYTICS
 
 SETTINGS & CONFIGURATION
 ---------------------------
-- Membership Settings page (subscription threshold, probation period, venue capacity, opening float, event window buffer, age of majority / alcohol-flag age, currency code, PII-hide default)
+- Membership Settings page (subscription threshold and optional eligibility window, probation period and guests-during-probation, venue capacity, opening float, event window buffer, week start, age of majority / alcohol-flag age, watchlist notify label, email-required-at-sign-up, currency code, PII-hide default)
 - Owner-only organization display name — rebrands the admin panel (header/tab/login) for a club running this software under its own name; falls back to the default app name when unset
-- Feature Flags page (vouchers, add-ons, showrunner comp requests, manager perk, suspensions, pool, prepay, register shifts, showrunner payouts, instructor payouts, visit notes, behavior notes)
+- Feature Flags page (vouchers, add-ons, showrunner comp requests, manager perk, suspensions, pool, prepay, register shifts, showrunner payouts, instructor payouts, visit notes, behavior notes, guests)
 - Role Labels page — relabel any of the seven role names for display (e.g. rename "Showrunner"/"DM" to a club's own terminology) without touching the underlying permission hierarchy
 - Payment Methods settings (with register-shift requirement flag)
 - Comp Reasons settings (with optional voucher-grant amount)

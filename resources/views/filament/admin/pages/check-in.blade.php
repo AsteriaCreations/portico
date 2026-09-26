@@ -218,10 +218,17 @@
                     </div>
                 @else
                     @php
-                        $attendedCount = $member->attendance()->whereNotNull('checked_in_at')->count();
+                        $attendedCount = $member->eligibilityAttendanceCount();
                         $subscriptionThreshold = \App\Models\MembershipSetting::current()->subscription_eligibility_threshold;
+                        $windowMonths = \App\Models\MembershipSetting::current()->subscription_eligibility_window_months;
                     @endphp
-                    <p class="text-sm text-gray-500">{{ __('Not yet subscription-eligible (:attended/:threshold events attended)', ['attended' => $attendedCount, 'threshold' => $subscriptionThreshold]) }}</p>
+                    <p class="text-sm text-gray-500">
+                        @if ($windowMonths)
+                            {{ __('Not yet subscription-eligible (:attended/:threshold events attended in the last :months months)', ['attended' => $attendedCount, 'threshold' => $subscriptionThreshold, 'months' => $windowMonths]) }}
+                        @else
+                            {{ __('Not yet subscription-eligible (:attended/:threshold events attended)', ['attended' => $attendedCount, 'threshold' => $subscriptionThreshold]) }}
+                        @endif
+                    </p>
                 @endif
 
                 {{-- Unlike Buy Subscription above, not gated by isSubscriptionEligible() --
@@ -267,12 +274,14 @@
                         {{ __('Checked in at :time — paid :amount', ['time' => $attendance->checked_in_at->translatedFormat('g:i A'), 'amount' => \App\Models\MembershipSetting::formatMoney($attendance->amount_paid)]) }}
                     </p>
 
-                    @if ($member->isOnProbation())
-                        <p class="mt-2 text-sm text-gray-500">{{ __('On probation — cannot bring a guest yet.') }}</p>
-                    @else
+                    {{-- Nothing at all when guests are switched off (Feature Flags);
+                    the probation note only when that's what's stopping them. --}}
+                    @if ($member->canSponsorGuests())
                         <div class="mt-4">
                             {{ $this->registerGuestAction }}
                         </div>
+                    @elseif (\App\Models\MembershipSetting::current()->guests_enabled)
+                        <p class="mt-2 text-sm text-gray-500">{{ __('On probation — cannot bring a guest yet.') }}</p>
                     @endif
                 @endif
             </x-filament::section>

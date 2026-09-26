@@ -4,6 +4,7 @@ namespace App\Filament\Admin\Widgets;
 
 use App\Enums\Role;
 use App\Models\Attendance;
+use App\Models\MembershipSetting;
 use Filament\Widgets\ChartWidget;
 
 class WeeklyAttendanceChartWidget extends ChartWidget
@@ -32,13 +33,13 @@ class WeeklyAttendanceChartWidget extends ChartWidget
     protected function getData(): array
     {
         $weeks = collect(range(self::WEEKS - 1, 0))
-            ->map(fn (int $weeksAgo) => now()->subWeeks($weeksAgo)->startOfWeek());
+            ->map(fn (int $weeksAgo) => MembershipSetting::startOfWeek(now()->subWeeks($weeksAgo)));
 
         return [
             'datasets' => [[
                 'label' => 'Attendance',
                 'data' => $weeks->map(fn ($weekStart) => Attendance::query()
-                    ->whereBetween('checked_in_at', [$weekStart, $weekStart->copy()->endOfWeek()])
+                    ->whereBetween('checked_in_at', [$weekStart, MembershipSetting::endOfWeek($weekStart)])
                     ->count())->all(),
             ]],
             'labels' => $weeks->map(fn ($weekStart) => $weekStart->translatedFormat('M j'))->all(),
