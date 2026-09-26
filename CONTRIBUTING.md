@@ -93,7 +93,10 @@ hierarchy (`App\Filament\Admin\Pages\RoleLabels`, `Role::displayLabel()`).
 - **Admin** — everything Manager + create/edit/delete events (incl. their fees and the
   door-prepay flag) + manage user accounts + associate a Skill with a member
   (`assign-member-skills` gate). Event cost is fixed — Manager cannot adjust it.
-- **Owner** — everything Admin, plus the one deliberate hole in the hierarchy below.
+- **Owner** — everything Admin, plus the one deliberate hole in the hierarchy below, and
+  the sole say on taking a member off the watchlist (`resolve-watchlist` gate, enforced in
+  `MemberObserver` on every save path; Manager+ can still put someone on it and set its
+  review date).
 
 Nobody manages a staff account ranked above their own, or grants a role above their own
 (so only an Owner manages Owners). The one exception: while there's no active Owner, an

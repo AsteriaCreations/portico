@@ -5,6 +5,7 @@ namespace App\Filament\Admin\Resources\Members\Schemas;
 use App\Models\Member;
 use App\Models\MembershipSetting;
 use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
@@ -82,12 +83,27 @@ class MemberForm
                 Section::make(__('Status flags'))
                     ->columns(2)
                     ->components([
+                        // Only an Owner can switch this off (resolve-watchlist).
+                        // Locked here for everyone else; MemberObserver
+                        // enforces it on every save path regardless.
                         Toggle::make('on_watchlist')
                             ->live()
-                            ->required(),
+                            ->required()
+                            ->disabled(fn (?Member $record): bool => (bool) $record?->on_watchlist && Gate::denies('resolve-watchlist'))
+                            ->helperText(fn (?Member $record): ?string => $record?->on_watchlist && Gate::denies('resolve-watchlist')
+                                ? __('Only an Owner can take a member off the watchlist.')
+                                : null),
                         TextInput::make('watchlist_reason')
                             ->required(fn (Get $get): bool => (bool) $get('on_watchlist'))
                             ->default(null),
+                        DatePicker::make('watchlist_review_on')
+                            ->label('Watchlist review date')
+                            ->helperText(__('When an Owner should decide whether this member comes off the watchlist. Leave blank to keep them on indefinitely.'))
+                            ->visible(fn (Get $get): bool => (bool) $get('on_watchlist')),
+                        Placeholder::make('watchlist_probation')
+                            ->label('Watchlist probation')
+                            ->content(fn (?Member $record): string => __('Until :date', ['date' => $record->watchlistProbationEndsOn()->translatedFormat('M j, Y')]))
+                            ->visible(fn (?Member $record): bool => (bool) $record?->isOnWatchlistProbation()),
                         Toggle::make('is_banned')
                             ->live()
                             ->required(),

@@ -9,7 +9,23 @@ is fixes only.
 
 ## [Unreleased]
 
+### Added
+
+- Watchlist review dates. Manager+ can give a watchlist entry an optional review date (blank =
+  stays on indefinitely); the Members nav badge counts entries whose date has arrived, with a
+  matching table filter. An Owner resolves a review from the member's edit page: remove (optionally
+  starting watchlist probation), extend to a new date, or keep on indefinitely. Each decision is
+  kept in an append-only `watchlist_reviews` log.
+- Watchlist probation, set on Membership Settings: a length in days (blank = none) and whether it
+  also blocks guest sponsoring. A member on it shows "Recently off watchlist" at the Check-In Desk
+  and on Active Patrons; it never changes the admit decision.
+
 ### Changed
+
+- Only an Owner can take a member off the watchlist, on every save path. Manager+ can still put
+  members on it. **Upgrading:** run `php artisan migrate` (3 new migrations; nothing changes
+  until someone sets a review date or a probation length).
+
 
 - `/` now redirects to the admin panel (the sign-in page when signed out) instead of showing
   Laravel's stock welcome page. The welcome page, the empty `resources/css/app.css` and

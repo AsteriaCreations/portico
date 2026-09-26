@@ -67,6 +67,8 @@ class MembershipSettings extends Page
             'age_of_majority',
             'alcohol_flag_age',
             'watchlist_notify_label',
+            'watchlist_probation_days',
+            'watchlist_probation_blocks_guests',
             'currency',
             'locale',
             'org_name',
@@ -164,6 +166,16 @@ class MembershipSettings extends Page
                     ->label('Watchlist: who staff notify')
                     ->helperText(fn (): string => __('Where staff post a heads-up before admitting a watchlisted member, e.g. "the Signal group". The desk shows "Notify …" and asks staff to confirm they did. Leave blank to use the server default (currently ":default").', ['default' => config('membership.watchlist_notify_label')]))
                     ->maxLength(60),
+                TextInput::make('watchlist_probation_days')
+                    ->label('Watchlist probation (days)')
+                    ->helperText(__('When an Owner takes a member off the watchlist, they can start this many days of probation — staff see "Recently off watchlist" at the Check-In Desk and on Active Patrons. Leave blank for no probation.'))
+                    ->numeric()
+                    ->integer()
+                    ->minValue(1)
+                    ->maxValue(3650),
+                Toggle::make('watchlist_probation_blocks_guests')
+                    ->label('Watchlist probation blocks guests')
+                    ->helperText(__('A member on watchlist probation can\'t register a guest at the Check-In Desk. Off: the probation is informational only.')),
                 TextInput::make('currency')
                     ->label('Currency code')
                     ->helperText(__('A 3-letter ISO 4217 currency code (e.g. USD, EUR, GBP, CAD) — used everywhere a dollar figure is shown, from the check-in desk\'s live totals to every money column in the admin panel.'))

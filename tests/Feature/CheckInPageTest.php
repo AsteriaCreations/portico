@@ -298,6 +298,17 @@ test('the watchlist reason on the member status card is hidden from a door volun
         ->assertDontSee('See manager first');
 });
 
+test('a member on watchlist probation is flagged at the desk without changing the admit decision', function () {
+    MembershipSetting::current()->update(['watchlist_probation_days' => 30]);
+    $member = clearMember($this->irregular, ['watchlist_probation_start' => today()]);
+    $this->actingAs(User::factory()->create(['active' => true, 'role' => Role::Door]));
+
+    Livewire::test(CheckIn::class)
+        ->fillForm(['member_id' => $member->id])
+        ->assertSee('Recently off watchlist')
+        ->assertDontSee('Acknowledge before admitting');
+});
+
 test('the status line reads "Ready to admit" for a clear member at an event', function () {
     $member = clearMember($this->irregular);
     $event = Event::factory()->create(['event_date' => now()->toDateString(), 'entry_fee' => 20, 'pool_fee' => 0]);
