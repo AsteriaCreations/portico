@@ -19,7 +19,9 @@ class PaymentMethodFactory extends Factory
     {
         return [
             'label' => fake()->unique()->word(),
-            'code' => fake()->unique()->slug(2),
+            // lexify() keeps it a fixed 15 characters: slug(2) can return more words
+            // than asked and overflow the 30-character column on MySQL/MariaDB.
+            'code' => fake()->unique()->lexify('method-????????'),
             'requires_register_shift' => false,
             'one_time_only' => false,
             'transaction_fee' => 0,
