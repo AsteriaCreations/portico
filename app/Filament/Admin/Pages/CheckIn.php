@@ -623,6 +623,11 @@ class CheckIn extends Page implements HasTable
      * has no valid signing for -- the Pool Waiver, at launch. Backs both the
      * warning lines below and recordGatedPaperworkAction().
      *
+     * Only for an add-on that's actually in play: one still on sale, or one
+     * tonight's event still charges for (a pool_fee set before the Pool flag
+     * went off). With Pool switched off there's nothing to sign for, so no
+     * warning and no "Record a waiver signature" button.
+     *
      * @return Collection<int, PaperworkType>
      */
     public function gatedPaperworkTypesMissing(?Member $member): Collection
@@ -631,12 +636,16 @@ class CheckIn extends Page implements HasTable
             return collect();
         }
 
+        $event = $this->getSelectedEvent();
+
         return PaperworkType::query()
             ->where('active', true)
             ->whereNotNull('gates_add_on_id')
             ->with('addOn')
             ->get()
-            ->reject(fn (PaperworkType $type) => ! $type->addOn || $member->hasValidPaperwork($type))
+            ->filter(fn (PaperworkType $type): bool => $type->addOn?->active
+                && ($type->addOn->isCurrentlyPurchasable() || ($event && $type->addOn->priceFor($event) !== null)))
+            ->reject(fn (PaperworkType $type): bool => $member->hasValidPaperwork($type))
             ->values();
     }
 

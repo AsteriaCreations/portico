@@ -141,6 +141,11 @@ is fixes only.
 
 ### Fixed
 
+- With the Pool feature flag off, the Check-In Desk still said "Pool unavailable — Pool
+  Waiver missing or expired" and offered **Record a waiver signature**. The waiver prompt now
+  only appears for an add-on that's actually in play: still on sale, or charged by tonight's
+  event (an older event whose pool fee predates the flag being turned off). It no longer
+  appears for an inactive add-on either.
 - An install with no active Owner could never get one. The seeder creates only an Admin,
   and the rank rule stopped anyone from granting a role above their own, so no one could
   grant Owner. Now, while there's no active Owner, an Admin may grant Owner, to another
