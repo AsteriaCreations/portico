@@ -2,9 +2,9 @@
 
 use Illuminate\Support\Facades\Route;
 
-Route::get('/', function () {
-    return view('welcome');
-});
+// Everything lives in the admin panel; the bare address just sends people
+// there (to the sign-in page if they aren't signed in).
+Route::redirect('/', '/admin');
 
 // Printable desk-reference cards (Check-In / Active Patrons / Record
 // Departures) -- a standalone document with its own print layout, so it's

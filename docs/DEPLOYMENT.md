@@ -283,7 +283,7 @@ Safe** — `mod_php` won't load a non-TS PHP.
    ```
 
    Then reboot once and confirm it comes up on its own.
-5. **Verify.** The app lives at **`/admin`** — `/` is just the stock Laravel welcome route.
+5. **Verify.** The app lives at **`/admin`**; `/` redirects there.
    On the box:
 
    ```
