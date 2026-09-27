@@ -39,6 +39,8 @@ is fixes only.
   first/last name and email pre-filled for staff to check against the new paperwork (plus DOB if
   they appear under 21), then records the Standard Paperwork signing and clears the flag. Door can
   do this, the same bounded write as completing a Prospective's sign-up; the category is unchanged.
+  The desk's status line now reads "Record new paperwork to admit" (not "Finish sign-up to admit")
+  for such a member, and flags them "Missing paperwork".
 - New members start out active. The Members form's "Is active" switch now defaults on, matching
   the database default; before, a member created without touching it was saved inactive.
 - Deleting a visit no longer bypasses the rules. The row Delete on every attendance tab is now
