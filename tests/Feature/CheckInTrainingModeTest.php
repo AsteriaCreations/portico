@@ -139,6 +139,26 @@ test('promoting a Prospective in training mode leaves the member untouched', fun
         ->and($member->fresh()->email)->toBe('');
 });
 
+test('recording new paperwork in training mode leaves the member and their paperwork untouched', function () {
+    $member = trainingClearMember($this->irregular, ['missing_paperwork' => true]);
+
+    Livewire::test(CheckIn::class)
+        ->set('trainingMode', true)
+        ->fillForm(['member_id' => $member->id])
+        ->callAction('confirmPaperwork', data: [
+            'preferred_name' => 'Real',
+            'first_name' => 'Real',
+            'last_name' => 'Name',
+            'email' => 'real@example.com',
+        ])
+        ->assertHasNoActionErrors();
+
+    $member->refresh();
+    expect($member->missing_paperwork)->toBeTrue()
+        ->and($member->last_name)->toBe('Doe')
+        ->and($member->paperwork()->count())->toBe(0);
+});
+
 test('registering a guest in training mode creates no new member', function () {
     $sponsor = trainingClearMember($this->irregular);
     $event = Event::factory()->create(['event_date' => now()->toDateString(), 'entry_fee' => 20]);

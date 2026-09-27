@@ -74,7 +74,10 @@ class MemberForm
                         // "Paperwork & waivers" relation manager now, one
                         // row per signing (a renewable waiver like the Pool
                         // Waiver needs a history, not a single field).
+                        // Matches the column's DB default -- a new member is
+                        // active unless someone deliberately says otherwise.
                         Toggle::make('is_active')
+                            ->default(true)
                             ->required(),
                         Toggle::make('subscription_eligible')
                             ->label('Subscription eligible (manual override)')

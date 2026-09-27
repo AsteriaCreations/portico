@@ -45,6 +45,7 @@ use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
+use Filament\Schemas\Components\Component;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
 use Filament\Support\Enums\Alignment;
@@ -636,7 +637,7 @@ class CheckIn extends Page implements HasTable
                 $member->is_deceased, $member->isCurrentlyBanned() => ['stop', __('Do not admit')],
                 $member->on_watchlist => ['check', __('Watchlist — notify :label, then confirm at check-in', ['label' => MembershipSetting::watchlistNotifyLabel()])],
                 $policy->needsCapture($member) => ['check', __('Prospective — finish sign-up to admit')],
-                $policy->needsPaperworkCapture($member) => ['check', __('Missing paperwork — confirm on file to admit')],
+                $policy->needsPaperworkCapture($member) => ['check', __('Missing paperwork — record new paperwork to admit')],
                 default => ['go', __("No flags yet — pick tonight's event")],
             };
 
@@ -977,19 +978,7 @@ class CheckIn extends Page implements HasTable
     {
         return Action::make('saveAndPromote')
             ->label(__('Save & promote to Irregular'))
-            ->schema([
-                TextInput::make('preferred_name')->required()->maxLength(60),
-                TextInput::make('first_name')->required()->maxLength(60),
-                TextInput::make('last_name')->required()->maxLength(60),
-                TextInput::make('email')->required(fn (): bool => MembershipSetting::current()->member_email_required)->email()->maxLength(120),
-                Checkbox::make('appears_under_21')
-                    ->label(__('Appears to be under :age', ['age' => MembershipSetting::current()->alcohol_flag_age]))
-                    ->live(),
-                DatePicker::make('dob')
-                    ->label(__('Date of birth'))
-                    ->required(fn (Get $get): bool => (bool) $get('appears_under_21'))
-                    ->visible(fn (Get $get): bool => (bool) $get('appears_under_21')),
-            ])
+            ->schema($this->identityCaptureSchema())
             // Member-only, not $this->getDecision() -- Capture doesn't depend on an
             // event, so this needs to be available the moment a member is selected,
             // before any event is picked (AdmissionPolicy::needsCapture()).
@@ -1017,24 +1006,63 @@ class CheckIn extends Page implements HasTable
             });
     }
 
-    // A plain confirmation, not a data-collection form like
-    // saveAndPromoteAction() -- staff have physically seen the waiver on
-    // file, so this clears the flag and records a Standard Paperwork
-    // signing (member_paperwork) as of today. AdmissionPolicy::
-    // needsPaperworkCapture() decides visibility, member-only for the same
-    // reason as saveAndPromoteAction().
+    /**
+     * The identity fields Door may write at the desk: shared by the
+     * Prospective sign-up and the missing-paperwork re-capture, so the two
+     * forms can't drift apart. Raw DOB is asked for only when the member
+     * appears under the alcohol-flag age, and never pre-filled -- Door
+     * writes DOB but doesn't read it (see docs/BLUEPRINT.md "Roles & permissions").
+     *
+     * @return array<int, Component>
+     */
+    private function identityCaptureSchema(): array
+    {
+        return [
+            TextInput::make('preferred_name')->required()->maxLength(60),
+            TextInput::make('first_name')->required()->maxLength(60),
+            TextInput::make('last_name')->required()->maxLength(60),
+            TextInput::make('email')->required(fn (): bool => MembershipSetting::current()->member_email_required)->email()->maxLength(120),
+            Checkbox::make('appears_under_21')
+                ->label(__('Appears to be under :age', ['age' => MembershipSetting::current()->alcohol_flag_age]))
+                ->live(),
+            DatePicker::make('dob')
+                ->label(__('Date of birth'))
+                ->required(fn (Get $get): bool => (bool) $get('appears_under_21'))
+                ->visible(fn (Get $get): bool => (bool) $get('appears_under_21')),
+        ];
+    }
+
+    // New paperwork means re-recording who the member is, not just ticking a
+    // box: the same identity form as saveAndPromoteAction(), pre-filled so
+    // staff correct only what changed, but with no category change. Saving
+    // updates those fields, records a Standard Paperwork signing
+    // (member_paperwork) as of today, and clears the flag.
+    // AdmissionPolicy::needsPaperworkCapture() decides visibility,
+    // member-only for the same reason as saveAndPromoteAction().
     public function confirmPaperworkAction(): Action
     {
         return Action::make('confirmPaperwork')
-            ->label(__('Confirm paperwork on file'))
+            ->label(__('Record new paperwork'))
+            ->modalDescription(__('Check each detail against the new paperwork and correct anything that has changed.'))
+            ->schema($this->identityCaptureSchema())
+            ->fillForm(fn (): array => $this->getSelectedMember()?->only(['preferred_name', 'first_name', 'last_name', 'email']) ?? [])
             ->visible(fn (): bool => ($member = $this->getSelectedMember()) && app(AdmissionPolicy::class)->needsPaperworkCapture($member))
-            ->action(function (): void {
-                if ($this->haltForTraining(__('Practice: paperwork confirmation simulated.'))) {
+            ->action(function (array $data): void {
+                if ($this->haltForTraining(__('Practice: paperwork recording simulated.'))) {
                     return;
                 }
 
                 $member = $this->getSelectedMember();
                 abort_unless($member, 404);
+                abort_unless(app(AdmissionPolicy::class)->needsPaperworkCapture($member), 403);
+
+                $member->update([
+                    'preferred_name' => $data['preferred_name'],
+                    'first_name' => $data['first_name'],
+                    'last_name' => $data['last_name'],
+                    'email' => filled($data['email'] ?? null) ? $data['email'] : null,
+                    'dob' => $data['dob'] ?? $member->dob,
+                ]);
 
                 if ($standard = PaperworkType::where('name', 'Standard Paperwork')->first()) {
                     $member->paperwork()->create([
@@ -1046,7 +1074,7 @@ class CheckIn extends Page implements HasTable
 
                 $member->update(['missing_paperwork' => false]);
 
-                Notification::make()->title(__('Paperwork confirmed'))->success()->send();
+                Notification::make()->title(__('Paperwork recorded'))->success()->send();
             });
     }
 

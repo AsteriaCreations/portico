@@ -736,7 +736,7 @@ test('a member missing paperwork must be captured before checking in', function 
         ->fillForm(['event_id' => $event->id, 'member_id' => $member->id])
         ->assertActionHidden('checkIn')
         ->assertActionVisible('confirmPaperwork')
-        ->callAction('confirmPaperwork')
+        ->callAction('confirmPaperwork', data: ['preferred_name' => 'Pat'])
         ->assertHasNoActionErrors()
         ->assertActionVisible('checkIn')
         ->callAction('checkIn', data: [

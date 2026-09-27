@@ -48,7 +48,7 @@ class AdmissionPolicy
         }
 
         if ($this->needsPaperworkCapture($member)) {
-            return new AdmissionDecision(AdmissionOutcome::Capture, __('Missing paperwork — confirm on file before check-in'));
+            return new AdmissionDecision(AdmissionOutcome::Capture, __('Missing paperwork — record new paperwork before check-in'));
         }
 
         if ($this->isUnderAlcoholFlagAge($member, $event)) {
@@ -94,10 +94,10 @@ class AdmissionPolicy
     // event-dependent either, so this can surface the moment a member is
     // selected. Deliberately its own check rather than folded into
     // needsCapture(): that one's resolving action (saveAndPromoteAction)
-    // collects identity fields and promotes Prospective -> Irregular, which
-    // is wrong for an already-Irregular member who just needs their
-    // paperwork confirmed (CheckIn::confirmPaperworkAction, which also
-    // records a Standard Paperwork signing in member_paperwork).
+    // promotes Prospective -> Irregular, which is wrong for an
+    // already-Irregular member. CheckIn::confirmPaperworkAction re-captures
+    // the same identity fields from the new paperwork without a category
+    // change, and records a Standard Paperwork signing in member_paperwork.
     public function needsPaperworkCapture(Member $member): bool
     {
         return $member->missing_paperwork;

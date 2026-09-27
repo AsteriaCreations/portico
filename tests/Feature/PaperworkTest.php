@@ -88,18 +88,65 @@ test('PricingService drops the pool line for a member without a valid pool waive
         ->and($breakdown->amountPaidCents)->toBe(2500);
 });
 
-test('confirmPaperworkAction clears missing_paperwork and records a Standard Paperwork signing', function () {
+test('recording new paperwork pre-fills the member\'s current details but never their DOB', function () {
+    $this->actingAs(User::factory()->create(['active' => true, 'role' => Role::Door]));
+    $this->member->update(['missing_paperwork' => true, 'preferred_name' => 'Patty']);
+
+    Livewire::test(CheckIn::class)
+        ->fillForm(['member_id' => $this->member->id])
+        ->mountAction('confirmPaperwork')
+        ->assertSchemaStateSet([
+            'preferred_name' => 'Patty',
+            'first_name' => 'Pat',
+            'last_name' => 'Doe',
+            'email' => 'pat@example.com',
+            'dob' => null,
+        ]);
+});
+
+test('Door recording new paperwork updates the details, records a Standard Paperwork signing and clears the flag, without changing category', function () {
     $this->actingAs(User::factory()->create(['active' => true, 'role' => Role::Door]));
     $this->member->update(['missing_paperwork' => true]);
 
     Livewire::test(CheckIn::class)
         ->fillForm(['member_id' => $this->member->id])
-        ->callAction('confirmPaperwork');
+        ->callAction('confirmPaperwork', data: [
+            'preferred_name' => 'Patty',
+            'first_name' => 'Pat',
+            'last_name' => 'Smith',
+            'email' => 'pat.smith@example.com',
+        ])
+        ->assertHasNoActionErrors();
 
     $this->member->refresh();
-    expect($this->member->missing_paperwork)->toBeFalse()
+    expect($this->member->last_name)->toBe('Smith')
+        ->and($this->member->email)->toBe('pat.smith@example.com')
+        ->and($this->member->preferred_name)->toBe('Patty')
+        ->and($this->member->dob->toDateString())->toBe('1990-01-01')
+        ->and($this->member->category_id)->toBe($this->irregular->id)
+        ->and($this->member->missing_paperwork)->toBeFalse()
         ->and($this->member->paperwork()->where('paperwork_type_id', $this->standard->id)->count())->toBe(1)
         ->and(app(AdmissionPolicy::class)->needsPaperworkCapture($this->member))->toBeFalse();
+});
+
+test('recording new paperwork requires a DOB once "appears to be under" is ticked, and saves it', function () {
+    $this->actingAs(User::factory()->create(['active' => true, 'role' => Role::Door]));
+    $this->member->update(['missing_paperwork' => true]);
+    $details = ['preferred_name' => 'Pat', 'first_name' => 'Pat', 'last_name' => 'Doe', 'email' => 'pat@example.com', 'appears_under_21' => true];
+
+    Livewire::test(CheckIn::class)
+        ->fillForm(['member_id' => $this->member->id])
+        ->callAction('confirmPaperwork', data: $details)
+        ->assertHasActionErrors(['dob' => 'required']);
+
+    expect($this->member->fresh()->missing_paperwork)->toBeTrue();
+
+    Livewire::test(CheckIn::class)
+        ->fillForm(['member_id' => $this->member->id])
+        ->callAction('confirmPaperwork', data: [...$details, 'dob' => '2005-06-01'])
+        ->assertHasNoActionErrors();
+
+    expect($this->member->fresh()->dob->toDateString())->toBe('2005-06-01');
 });
 
 test('the check-in page warns when a gating waiver is missing', function () {
