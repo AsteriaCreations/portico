@@ -34,6 +34,13 @@ is fixes only.
 
 ### Changed
 
+- A member flagged missing paperwork is now re-recorded at the Check-In Desk, not just ticked off.
+  "Confirm paperwork on file" became "Record new paperwork": it opens the member's preferred name,
+  first/last name and email pre-filled for staff to check against the new paperwork (plus DOB if
+  they appear under 21), then records the Standard Paperwork signing and clears the flag. Door can
+  do this, the same bounded write as completing a Prospective's sign-up; the category is unchanged.
+- New members start out active. The Members form's "Is active" switch now defaults on, matching
+  the database default; before, a member created without touching it was saved inactive.
 - Deleting a visit no longer bypasses the rules. The row Delete on every attendance tab is now
   "Remove", and the bulk delete only removes visits with nothing paid. A visit that has voucher
   activity, behavior notes, a comp request or a payment correction can't be removed at all, with a

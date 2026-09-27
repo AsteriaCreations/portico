@@ -36,6 +36,22 @@ test('creating a member via the admin form auto-assigns member_number, ignoring 
     expect($member->member_number)->toBe(1);
 });
 
+test('a new member starts out active unless staff switch it off', function () {
+    Livewire::test(CreateMember::class)
+        ->assertSchemaStateSet(['is_active' => true])
+        ->fillForm(['username' => 'defaultactive', 'category_id' => $this->category->id])
+        ->call('create')
+        ->assertHasNoFormErrors();
+
+    Livewire::test(CreateMember::class)
+        ->fillForm(['username' => 'inactive', 'category_id' => $this->category->id, 'is_active' => false])
+        ->call('create')
+        ->assertHasNoFormErrors();
+
+    expect(Member::where('username', 'defaultactive')->value('is_active'))->toBeTrue()
+        ->and(Member::where('username', 'inactive')->value('is_active'))->toBeFalse();
+});
+
 test('member_number auto-assignment is sequential across successive admin-created members', function () {
     Member::factory()->create(['member_number' => 7]);
 

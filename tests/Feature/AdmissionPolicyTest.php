@@ -279,7 +279,7 @@ test('a member missing paperwork requires capture', function () {
     $decision = $this->policy->decide($member, $event);
 
     expect($decision->outcome)->toBe(AdmissionOutcome::Capture)
-        ->and($decision->message)->toBe('Missing paperwork — confirm on file before check-in');
+        ->and($decision->message)->toBe('Missing paperwork — record new paperwork before check-in');
 });
 
 test('a prospective member with incomplete identity is captured ahead of a missing-paperwork flag', function () {

@@ -191,7 +191,7 @@
             {{-- Independent of the Prospective capture block above -- both can
             show at once if a member somehow has both gaps. --}}
             @if (app(\App\Services\AdmissionPolicy::class)->needsPaperworkCapture($member))
-                <p class="mt-4 font-medium">{{ __('Missing paperwork — confirm on file before check-in.') }}</p>
+                <p class="mt-4 font-medium">{{ __('Missing paperwork — record their details from the new paperwork before check-in.') }}</p>
                 <div class="mt-2">
                     {{ $this->confirmPaperworkAction }}
                 </div>

@@ -81,7 +81,8 @@ hierarchy (`App\Filament\Admin\Pages\RoleLabels`, `Role::displayLabel()`).
   is seeing a behavior note's full text on Active Patrons regardless of who wrote it
   (without the author, unlike Manager+).
 - **Door** — check-in, take payment, see the admit *decision*, complete a Prospective's
-  identity fields (first/last/email, plus DOB only if under 21), collect a subscription
+  identity fields (first/last/email, plus DOB only if under 21) or re-record them for a
+  member flagged missing paperwork, collect a subscription
   payment or redeem voucher credit *as part of check-in*. Door has **bounded write**:
   those identity fields, plus creating that one `subscriptions` row — nothing else. This
   is a narrower capability than the Subscriptions/Vouchers **resources**, which stay

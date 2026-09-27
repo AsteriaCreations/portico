@@ -695,7 +695,7 @@ These are `App\Enums\Role`'s case names — the actual permission tier, gates, a
 
 ‡ Two surfaces, one gate: the admin Dashboard (`RecordDeparturesWidget`, anonymous headcount) and the Active Patrons page (`/admin/active-patrons`, departs one specific known person across every currently-active event at once). Neither lives on the check-in page, and the real floor for both is Volunteer, not Door — every tier from Volunteer up has it, same as every other row in this table, but this is the one capability Volunteer has that Showrunner doesn't.
 
-Five subtleties this encodes: **Door has bounded write** (it may set the five identity fields on a Prospective, and create one new `subscriptions` row during check-in if the member is eligible — nothing else); **DOB read ≠ DOB write** (Door enters it during sign-up but afterward sees only the derived under-21 flag); **collecting a subscription payment or voucher credit at check-in is not the same capability as the Subscriptions/Vouchers resources** — those are bounded, desk-level actions open to every role, while full browse/edit access to historical records stays Manager+ (issuing/correcting vouchers is Admin+ only); **the monthly subscription perk breaks the nested-role model** — Manager and Owner qualify, Admin doesn't, even though Admin sits between them in rank; and **Owner is a superset of Admin** in every other respect — everything Admin can do, Owner can also do, plus the perk.
+Five subtleties this encodes: **Door has bounded write** (it may set the five identity fields on a Prospective or on a member flagged missing paperwork, and create one new `subscriptions` row during check-in if the member is eligible — nothing else); **DOB read ≠ DOB write** (Door enters it during sign-up but afterward sees only the derived under-21 flag); **collecting a subscription payment or voucher credit at check-in is not the same capability as the Subscriptions/Vouchers resources** — those are bounded, desk-level actions open to every role, while full browse/edit access to historical records stays Manager+ (issuing/correcting vouchers is Admin+ only); **the monthly subscription perk breaks the nested-role model** — Manager and Owner qualify, Admin doesn't, even though Admin sits between them in rank; and **Owner is a superset of Admin** in every other respect — everything Admin can do, Owner can also do, plus the perk.
 
 ---
 
@@ -716,7 +716,9 @@ Five subtleties this encodes: **Door has bounded write** (it may set the five id
 
 ## Prospective → Irregular (the sign-up transition)
 
-Per your definitions: Prospective = "vetted, never been here"; Irregular = "vetted, been here at least once." So the **first successful check-in is the transition.** At that check-in the Door volunteer captures preferred name, first name, last name, email (unless Membership Settings makes it optional), and — only if under 21 — DOB; on save, the member's category flips to Irregular. This is why Door needs bounded write, and it's the one place Door touches DOB.
+Per your definitions: Prospective = "vetted, never been here"; Irregular = "vetted, been here at least once." So the **first successful check-in is the transition.** At that check-in the Door volunteer captures preferred name, first name, last name, email (unless Membership Settings makes it optional), and — only if under 21 — DOB; on save, the member's category flips to Irregular. This is why Door needs bounded write.
+
+The same form re-appears for a member flagged **missing paperwork** (`missing_paperwork`): new paperwork means re-recording who the member is, so "Record new paperwork" opens those identity fields pre-filled with what's on file (never the raw DOB, which Door can't read), with the same under-21 DOB rule. Saving updates the fields, records a Standard Paperwork signing in `member_paperwork`, and clears the flag, with no category change. These two forms are the only places Door touches DOB.
 
 ---
 
