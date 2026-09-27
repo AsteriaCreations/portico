@@ -16,9 +16,10 @@ is fixes only.
   matching table filter. An Owner resolves a review from the member's edit page: remove (optionally
   starting watchlist probation), extend to a new date, or keep on indefinitely. Each decision is
   kept in an append-only `watchlist_reviews` log.
-- Watchlist probation, set on Membership Settings: a length in days (blank = none) and whether it
-  also blocks guest sponsoring. A member on it shows "Recently off watchlist" at the Check-In Desk
-  and on Active Patrons; it never changes the admit decision.
+- Watchlist probation, set on Membership Settings. By default it's the same as new-member
+  probation (same length, same guest rule); a club can pick Custom (its own length and guest rule)
+  or Off. A member on it shows "Recently off watchlist" at the Check-In Desk and on Active Patrons;
+  it never changes the admit decision.
 - Same-night "Convert entry to subscription" at the Check-In Desk (Manager+), for a
   subscription-eligible member who paid a door entry and then wants to subscribe. It records the
   subscription and re-prices the visit's entry with the subscription credit, on the visit's own
@@ -29,8 +30,9 @@ is fixes only.
 ### Changed
 
 - Only an Owner can take a member off the watchlist, on every save path. Manager+ can still put
-  members on it. **Upgrading:** run `php artisan migrate` (3 new migrations; nothing changes
-  until someone sets a review date or a probation length).
+  members on it. **Upgrading:** run `php artisan migrate` (4 new migrations; nothing changes
+  until someone sets a review date, and probation only starts when an Owner removes someone with
+  it ticked). An install that already set its own watchlist probation length keeps it as Custom.
 - Amount paid and payment method are now read-only on every attendance edit form (a member's
   Attendance tab, and an event's Attendance, Prepay List and Comp List tabs). A hand edit there
   silently changed a register shift's expected cash. **Upgrading:** run `php artisan migrate`
