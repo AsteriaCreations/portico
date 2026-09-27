@@ -373,7 +373,7 @@ CREATE INDEX ix_subs_lookup        ON subscriptions(member_id, add_on_id, covere
 CREATE INDEX ix_vouchers_member    ON vouchers(member_id);
 ```
 
-**This DDL covers the core domain plus a few early additions** (`ban_exceptions`, `member_status_changes`, `occupancy_adjustments`, `comp_reasons`). It is not kept in lockstep with every table added since — `payment_methods`, `comp_requests`, `add_on_day_passes`, `miscellaneous_payments`, `registers`/`register_shifts`, `membership_settings` (incl. its feature-flag columns), `member_username_changes`, `skills`/`member_skill`, `showrunner_payout_tiers`/`instructor_pay_rates`, `attendance_behavior_notes`, and `paperwork_types`/`member_paperwork` are all real, in-use tables that this block doesn't define. **Migrations under `database/migrations/` are the source of truth for the schema** — read those for the current shape of any table.
+**This DDL covers the core domain plus a few early additions** (`ban_exceptions`, `member_status_changes`, `occupancy_adjustments`, `comp_reasons`). It is not kept in lockstep with every table added since — `payment_methods`, `comp_requests`, `add_on_day_passes`, `miscellaneous_payments`, `registers`/`register_shifts`, `membership_settings` (incl. its feature-flag columns), `member_username_changes`, `skills`/`member_skill`, `showrunner_payout_tiers`/`instructor_pay_rates`, `attendance_behavior_notes`, `paperwork_types`/`member_paperwork`, and `payment_corrections` are all real, in-use tables that this block doesn't define. **Migrations under `database/migrations/` are the source of truth for the schema** — read those for the current shape of any table.
 
 Note the **snapshot columns**: a check-in records how each component's price was reached *at that moment*, so later fee changes never rewrite history. Entry lives on `attendance` itself; every other chargeable a visit draws on (Pool, and any other subscribable add-on) is its own `attendance_add_ons` row — a single shared shape for "a charge that can be comped/subscribed/day-passed," rather than a second hardcoded pair of columns per new chargeable. `voucher_coverage` is a further, independent settlement line on `attendance` — it discounts the *combined* total still due after entry and every add-on line's own coverage, not a specific component (see Vouchers below).
 
@@ -483,6 +483,41 @@ applyEventComp(breakdown):
 ```
 
 Fully overrides whatever `price()` already computed for entry — comp-by-category, regular-subscription coverage, or nothing — same as comp-by-category already overrides a subscription in the pipeline. `comp_reason_id` (optional) records why, from the extensible `comp_reasons` list — a manager can add a new reason as one comes up; it's editable settings data, not a hardcoded enum, same pattern as `event_types`/`plans`. Enforced server-side (not just a hidden checkbox): the check-in page only *applies* the comp if the submitting user passes the `grant-event-comp` gate (Manager+), regardless of what's in the submitted payload.
+
+---
+
+## Payment corrections (same-night entry → subscription)
+
+Standard procedure is that a recorded payment isn't changed. The one sanctioned exception: a subscription-eligible member who paid a normal door entry and comes back **the same night** wanting to subscribe instead. A **Manager+** does it from the Check-In Desk ("Convert entry to subscription", `correct-entry-payment` gate). It is never a hand edit: `amount_paid`/`payment_method` are read-only on every attendance edit form.
+
+`App\Services\EntryCorrectionService` owns the rules and the write. A visit qualifies only if all of these hold:
+- the event is currently active;
+- the member has arrived;
+- it was a plain paid entry (fee > 0, no coverage, no voucher, no per-event comp);
+- the member is eligible and has no entry subscription for that month;
+- a plan is in effect;
+- its register shift isn't closed;
+- it hasn't been corrected before.
+
+The correction posts to the **visit's own register shift and payment method**, so the drawer stays exact with no report changes:
+
+```
+subscription row   = current plan price, covered_month = event's month
+attendance         : entry re-priced with the Regular credit;
+                     amount_paid = old amount_paid - old entry due + new entry due
+                     (add-ons, pool lines and any transaction fee untouched; no new fee)
+net                = subscription + new entry due - old entry due
+                     > 0 collect, < 0 refund
+```
+
+Each one writes an append-only `payment_corrections` row with these fields:
+- `attendance_id`, `subscription_id`, `register_shift_id`, `payment_method`
+- `old_amount_paid`, `new_amount_paid`, `subscription_amount`
+- `net_amount`, signed
+- `reason`, required
+- `corrected_by`, `created_at`
+
+Every active Owner gets a notification. Manager+ reviews them under Records → Payment corrections and on the member's page.
 
 ---
 
@@ -618,6 +653,7 @@ These are `App\Enums\Role`'s case names — the actual permission tier, gates, a
 | Browse the full voucher ledger (resource) | | ✓ | ✓ | ✓ |
 | Edit fees/credits (`plans`), manage `event_types`, `comp_reasons`, `categories`, `payment_methods`, run reports | | ✓ | ✓ | ✓ |
 | Waive one visit's entry fee (per-event comp), e.g. a House Sub | | ✓ | ✓ | ✓ |
+| Convert tonight's paid entry into a subscription (audited payment correction; collect or refund the difference) | | ✓ | ✓ | ✓ |
 | Grant a one-time ban exception for a specific event; view the ban/watchlist change log | | ✓ | ✓ | ✓ |
 | Put a member on the watchlist, set its review date, see reviews due | | ✓ | ✓ | ✓ |
 | Take a member off the watchlist / resolve a watchlist review (remove, with optional probation; extend; keep on indefinitely) | | | | ✓ |

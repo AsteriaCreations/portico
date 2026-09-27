@@ -66,13 +66,19 @@ class PrepayListRelationManager extends RelationManager
                     ->label('Member')
                     ->relationship('member', 'username')
                     ->disabled(),
+                // Locked: see AttendanceRelationManager. The amount is still
+                // set when the prepay is added (amount_override).
                 TextInput::make('amount_paid')
                     ->label('Amount paid')
-                    ->required()
                     ->numeric()
-                    ->prefix('$'),
+                    ->prefix('$')
+                    ->disabled()
+                    ->dehydrated(false)
+                    ->helperText(__('Locked once recorded. Payment changes go through an audited correction at the Check-In Desk.')),
                 Select::make('payment_method')
-                    ->options(PaymentMethod::options()),
+                    ->options(PaymentMethod::options())
+                    ->disabled()
+                    ->dehydrated(false),
                 Textarea::make('notes')
                     ->maxLength(255)
                     ->columnSpanFull(),

@@ -72,6 +72,14 @@ class Attendance extends Model
     }
 
     /**
+     * Append-only -- see App\Services\EntryCorrectionService.
+     */
+    public function paymentCorrections(): HasMany
+    {
+        return $this->hasMany(PaymentCorrection::class);
+    }
+
+    /**
      * Per-visit, not per-member -- a guest can be overnight on one attendance
      * row and not another. Driven by the club's existing Private room
      * rental/Sleepover add-ons rather than a separate flag; see

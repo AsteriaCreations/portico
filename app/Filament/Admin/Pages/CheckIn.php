@@ -27,6 +27,7 @@ use App\Services\AdmissionPolicy;
 use App\Services\CapacityService;
 use App\Services\CheckInRequest;
 use App\Services\CheckInService;
+use App\Services\EntryCorrectionService;
 use App\Services\PriceBreakdown;
 use App\Services\PricingService;
 use App\Services\RegisterShiftService;
@@ -1734,6 +1735,66 @@ class CheckIn extends Page implements HasTable
                 $attendance->update(['departed_at' => null]);
 
                 Notification::make()->title(__('Marked as returned'))->success()->send();
+            });
+    }
+
+    /**
+     * Same-night "they paid entry, now they want to subscribe" -- an audited
+     * exception to standard procedure. The rules and the write live in
+     * EntryCorrectionService; this only shows the quote, collects the
+     * reason, and re-checks the gate.
+     */
+    public function convertEntryToSubscriptionAction(): Action
+    {
+        $attendance = $this->getExistingAttendance();
+        $service = app(EntryCorrectionService::class);
+
+        return Action::make('convertEntryToSubscription')
+            ->label(__('Convert entry to subscription'))
+            ->icon(Heroicon::OutlinedArrowsRightLeft)
+            ->color('warning')
+            ->visible(fn (): bool => $attendance !== null
+                && Gate::allows('correct-entry-payment')
+                && $service->refusalReason($attendance) === null)
+            ->modalDescription(function () use ($attendance, $service): string {
+                $quote = $service->quoteCents($attendance);
+                $method = PaymentMethod::where('code', $attendance->payment_method)->value('label') ?? $attendance->payment_method ?? __('no payment method');
+                $register = $attendance->registerShift?->register;
+                $atOtherRegister = $register && $register->id !== $this->registerId;
+
+                return __('Subscription :subscription + entry now :new_entry, against the :old_entry already paid. :settlement (:method).', [
+                    'subscription' => $this->formatCurrency(Cents::toFloat($quote['subscription'])),
+                    'new_entry' => $this->formatCurrency(Cents::toFloat($quote['new_entry'])),
+                    'old_entry' => $this->formatCurrency(Cents::toFloat($quote['old_entry'])),
+                    'settlement' => EntryCorrectionService::settlementLabel($quote['net']),
+                    'method' => $method,
+                ]).($atOtherRegister ? ' '.__('Settle it at register :register.', ['register' => $register->name]) : '')
+                    .' '.__('This is recorded as a payment correction and the Owner is notified.');
+            })
+            ->schema([
+                TextInput::make('reason')
+                    ->label(__('Reason'))
+                    ->required()
+                    ->maxLength(255),
+            ])
+            ->action(function (array $data): void {
+                if ($this->haltForTraining(__('Practice: entry conversion simulated.'))) {
+                    return;
+                }
+
+                abort_unless(Gate::allows('correct-entry-payment'), 403);
+
+                $attendance = $this->getExistingAttendance();
+                abort_unless($attendance, 404);
+
+                $correction = app(EntryCorrectionService::class)->convertToSubscription($attendance, auth()->user(), $data['reason']);
+
+                Notification::make()
+                    ->title(__('Entry converted to subscription'))
+                    ->body(EntryCorrectionService::settlementLabel(Cents::of($correction->net_amount)))
+                    ->success()
+                    ->persistent()
+                    ->send();
             });
     }
 

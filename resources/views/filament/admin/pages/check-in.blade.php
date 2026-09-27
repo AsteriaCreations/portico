@@ -286,6 +286,11 @@
                         <p class="mt-2 text-sm text-gray-500">{{ __('On probation — cannot bring a guest yet.') }}</p>
                     @endif
                 @endif
+
+                {{-- Manager+ only, and only while EntryCorrectionService allows it. --}}
+                <div class="mt-4">
+                    {{ $this->convertEntryToSubscriptionAction }}
+                </div>
             </x-filament::section>
         @elseif ($attendance)
             <x-filament::section>

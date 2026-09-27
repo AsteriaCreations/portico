@@ -144,6 +144,15 @@ class Member extends Model
     }
 
     /**
+     * Every same-night entry→subscription correction on any of this
+     * member's visits -- see App\Services\EntryCorrectionService.
+     */
+    public function paymentCorrections(): HasManyThrough
+    {
+        return $this->hasManyThrough(PaymentCorrection::class, Attendance::class);
+    }
+
+    /**
      * Available account credit, always summed live from the ledger — never
      * stored, so it can't drift the way the old spreadsheet balance did.
      */

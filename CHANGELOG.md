@@ -19,14 +19,22 @@ is fixes only.
 - Watchlist probation, set on Membership Settings: a length in days (blank = none) and whether it
   also blocks guest sponsoring. A member on it shows "Recently off watchlist" at the Check-In Desk
   and on Active Patrons; it never changes the admit decision.
+- Same-night "Convert entry to subscription" at the Check-In Desk (Manager+), for a
+  subscription-eligible member who paid a door entry and then wants to subscribe. It records the
+  subscription and re-prices the visit's entry with the subscription credit, on the visit's own
+  register shift and payment method, and shows what to collect or refund. Every conversion needs a
+  reason and is kept in an append-only `payment_corrections` log (Records → Payment corrections,
+  and on the member's page). Active Owners are notified.
 
 ### Changed
 
 - Only an Owner can take a member off the watchlist, on every save path. Manager+ can still put
   members on it. **Upgrading:** run `php artisan migrate` (3 new migrations; nothing changes
   until someone sets a review date or a probation length).
-
-
+- Amount paid and payment method are now read-only on every attendance edit form (a member's
+  Attendance tab, and an event's Attendance, Prepay List and Comp List tabs). A hand edit there
+  silently changed a register shift's expected cash. **Upgrading:** run `php artisan migrate`
+  (1 new migration).
 - `/` now redirects to the admin panel (the sign-in page when signed out) instead of showing
   Laravel's stock welcome page. The welcome page, the empty `resources/css/app.css` and
   `resources/js/app.js`, and the Vite font setup only it used are removed, so `npm run build`

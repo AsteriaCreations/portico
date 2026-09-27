@@ -53,11 +53,14 @@ class CompListRelationManager extends RelationManager
                     ->label('Reason')
                     ->relationship('compReason', 'name')
                     ->required(),
+                // Locked: see AttendanceRelationManager.
                 TextInput::make('amount_paid')
                     ->label('Amount paid')
-                    ->required()
                     ->numeric()
-                    ->prefix('$'),
+                    ->prefix('$')
+                    ->disabled()
+                    ->dehydrated(false)
+                    ->helperText(__('Locked once recorded. Payment changes go through an audited correction at the Check-In Desk.')),
                 Textarea::make('notes')
                     ->maxLength(255)
                     ->columnSpanFull(),
