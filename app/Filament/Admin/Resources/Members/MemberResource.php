@@ -11,6 +11,7 @@ use App\Filament\Admin\Resources\Members\RelationManagers\BehaviorNotesRelationM
 use App\Filament\Admin\Resources\Members\RelationManagers\MemberPaperworkRelationManager;
 use App\Filament\Admin\Resources\Members\RelationManagers\MemberStatusChangesRelationManager;
 use App\Filament\Admin\Resources\Members\RelationManagers\MemberUsernameChangesRelationManager;
+use App\Filament\Admin\Resources\Members\RelationManagers\WatchlistReviewsRelationManager;
 use App\Filament\Admin\Resources\Members\Schemas\MemberForm;
 use App\Filament\Admin\Resources\Members\Tables\MembersTable;
 use App\Filament\Concerns\TranslatesResourceLabels;
@@ -53,7 +54,30 @@ class MemberResource extends Resource
             MemberPaperworkRelationManager::class,
             MemberStatusChangesRelationManager::class,
             MemberUsernameChangesRelationManager::class,
+            WatchlistReviewsRelationManager::class,
         ];
+    }
+
+    /**
+     * Watchlist entries whose review date has arrived, for Manager+ (the
+     * resource's own floor) to see and raise with an Owner. Computed on each
+     * render -- no cron, nothing stored. Hidden at zero.
+     */
+    public static function getNavigationBadge(): ?string
+    {
+        $due = Member::query()->watchlistReviewDue()->count();
+
+        return $due > 0 ? (string) $due : null;
+    }
+
+    public static function getNavigationBadgeColor(): ?string
+    {
+        return 'danger';
+    }
+
+    public static function getNavigationBadgeTooltip(): ?string
+    {
+        return __('Watchlist reviews due');
     }
 
     public static function getPages(): array

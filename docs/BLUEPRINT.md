@@ -95,6 +95,8 @@ CREATE TABLE members (
   -- status flags (were cell colours) --
   on_watchlist      BOOLEAN NOT NULL DEFAULT FALSE,
   watchlist_reason  VARCHAR(255),                    -- MANAGER-ONLY
+  watchlist_review_on DATE,                          -- when an Owner decides; NULL => stays on indefinitely
+  watchlist_probation_start DATE,                    -- set by an Owner's "remove with probation" (see below)
   is_banned         BOOLEAN NOT NULL DEFAULT FALSE,
   ban_reason        VARCHAR(255),                    -- MANAGER-ONLY
   probation_override_start DATE,                    -- manual override; NULL => basis is date_vetted (see below)
@@ -109,6 +111,31 @@ CREATE TABLE members (
 -- on_probation is NOT a stored column — it's derived (Member::isOnProbation()):
 --   on probation while today < (probation_override_start ?? date_vetted) + probation_period_days (config, default 90)
 --   reporting-only: never affects admission or pricing.
+-- Watchlist review is derived too (Member::isWatchlistReviewDue()): due while
+--   on_watchlist and watchlist_review_on <= today. Manager+ sees a count on the
+--   Members nav badge; only an Owner resolves it (remove / extend / keep on).
+-- Watchlist probation (Member::isOnWatchlistProbation()), separate from the
+--   new-member probation above: while off the watchlist and
+--   today < watchlist_probation_start + watchlist_probation_days (Membership
+--   Settings; NULL => none). A desk/Active Patrons flag only -- never affects
+--   admission; blocks guest sponsoring only if watchlist_probation_blocks_guests.
+
+-- WATCHLIST REVIEWS — append-only record of each Owner decision on a
+-- watchlist entry. The on/off flip itself is still logged in
+-- member_status_changes.
+CREATE TABLE watchlist_reviews (
+  id                 INT AUTO_INCREMENT PRIMARY KEY,
+  member_id          INT NOT NULL,
+  decision           ENUM('removed','extended','kept_indefinitely') NOT NULL,
+  previous_review_on DATE,
+  new_review_on      DATE,                             -- set only for 'extended'
+  probation_started  BOOLEAN NOT NULL DEFAULT FALSE,
+  notes              VARCHAR(255),
+  decided_by         INT NOT NULL,
+  created_at         TIMESTAMP NULL,                   -- append-only: no updated_at, no edit/delete path
+  FOREIGN KEY (member_id)  REFERENCES members(id),
+  FOREIGN KEY (decided_by) REFERENCES users(id)
+);
 
 -- BAN EXCEPTIONS — a one-time exception admitting a specific banned member to
 -- a specific event without lifting the ban itself (e.g. a re-introduction to
@@ -128,8 +155,9 @@ CREATE TABLE ban_exceptions (
 
 -- MEMBER STATUS CHANGES — append-only audit trail for is_banned/on_watchlist
 -- changes: who changed it, to what, when, and why. Edit access to those two
--- fields stays Manager+ same as always; this log is the accountability
--- mechanism, not a tighter gate. Written by a model observer, not a form.
+-- fields stays Manager+, except that taking someone OFF the watchlist is
+-- Owner-only (enforced by the same observer). Written by a model observer,
+-- not a form.
 CREATE TABLE member_status_changes (
   id          INT AUTO_INCREMENT PRIMARY KEY,
   member_id   INT NOT NULL,
@@ -564,7 +592,7 @@ decide(member, event):
 
 `age_of_majority` (default `18`) and `alcohol_flag_age` (default `21`) are club-configurable on the Membership Settings page, not hardcoded — both are jurisdiction-specific. Setting them equal disables the FLAG outcome entirely (nobody below the majority threshold ever reaches the flag check, since they're already BLOCKed).
 
-Comp status affects **price**, not admission. The **decision** is public; the **reason string** is gated to Manager+. `on_probation` and `missing_paperwork` deliberately never appear here — they're reporting-only.
+Comp status affects **price**, not admission. The **decision** is public; the **reason string** is gated to Manager+. `on_probation`, watchlist probation, and `missing_paperwork` deliberately never appear here — they're reporting-only (watchlist probation shows at the desk as an informational flag).
 
 ---
 
@@ -591,6 +619,8 @@ These are `App\Enums\Role`'s case names — the actual permission tier, gates, a
 | Edit fees/credits (`plans`), manage `event_types`, `comp_reasons`, `categories`, `payment_methods`, run reports | | ✓ | ✓ | ✓ |
 | Waive one visit's entry fee (per-event comp), e.g. a House Sub | | ✓ | ✓ | ✓ |
 | Grant a one-time ban exception for a specific event; view the ban/watchlist change log | | ✓ | ✓ | ✓ |
+| Put a member on the watchlist, set its review date, see reviews due | | ✓ | ✓ | ✓ |
+| Take a member off the watchlist / resolve a watchlist review (remove, with optional probation; extend; keep on indefinitely) | | | | ✓ |
 | Manage an event's admin-run Prepay List (single add or bulk upload) | | ✓ | ✓ | ✓ |
 | Manage an event's admin-run Comp List | | ✓ | ✓ | ✓ |
 | Record known departures, adjusting tonight's building occupancy ‡ | ✓ | ✓ | ✓ | ✓ |

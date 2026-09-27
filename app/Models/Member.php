@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\WatchlistReviewDecision;
 use Carbon\CarbonInterface;
 use Database\Factories\MemberFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -14,11 +15,12 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 
 #[Fillable([
     'member_number', 'username', 'preferred_name', 'first_name', 'last_name', 'email', 'email_opt_in',
     'category_id', 'sponsor_id', 'date_vetted', 'dob', 'is_active', 'subscription_eligible',
-    'on_watchlist', 'watchlist_reason', 'is_banned', 'ban_reason', 'banned_until', 'probation_override_start',
+    'on_watchlist', 'watchlist_reason', 'watchlist_review_on', 'is_banned', 'ban_reason', 'banned_until', 'probation_override_start',
     'missing_paperwork', 'is_deceased', 'hospitality_note', 'notes',
 ])]
 class Member extends Model
@@ -35,6 +37,8 @@ class Member extends Model
             'email_opt_in' => 'boolean',
             'subscription_eligible' => 'boolean',
             'on_watchlist' => 'boolean',
+            'watchlist_review_on' => 'date',
+            'watchlist_probation_start' => 'date',
             'is_banned' => 'boolean',
             'banned_until' => 'date',
             'probation_override_start' => 'date',
@@ -102,6 +106,11 @@ class Member extends Model
     public function usernameChanges(): HasMany
     {
         return $this->hasMany(MemberUsernameChange::class);
+    }
+
+    public function watchlistReviews(): HasMany
+    {
+        return $this->hasMany(WatchlistReview::class);
     }
 
     /**
@@ -352,7 +361,109 @@ class Member extends Model
         $settings = MembershipSetting::current();
 
         return $settings->guests_enabled
-            && ($settings->guests_allowed_during_probation || ! $this->isOnProbation());
+            && ($settings->guests_allowed_during_probation || ! $this->isOnProbation())
+            && (! $settings->watchlist_probation_blocks_guests || ! $this->isOnWatchlistProbation());
+    }
+
+    /**
+     * A watchlist entry whose review date has arrived, waiting on an Owner's
+     * decision. No date means the member stays on indefinitely and is never
+     * due. Computed, never stored -- nothing flips on its own.
+     */
+    public function isWatchlistReviewDue(): bool
+    {
+        return $this->on_watchlist
+            && $this->watchlist_review_on !== null
+            && ! $this->watchlist_review_on->isFuture();
+    }
+
+    /**
+     * Same condition as isWatchlistReviewDue(), for the Members nav badge and
+     * table filter.
+     */
+    public function scopeWatchlistReviewDue(Builder $query): void
+    {
+        $query->where('on_watchlist', true)->whereDate('watchlist_review_on', '<=', today());
+    }
+
+    /**
+     * Probation after an Owner took the member off the watchlist -- separate
+     * from new-member probation (isOnProbation()). Its length is Membership
+     * Settings' watchlist_probation_days, read live, so changing the setting
+     * moves every current probation's end. Informational at the desk; it
+     * only blocks anything (guest sponsoring) when the club turns that on.
+     */
+    public function isOnWatchlistProbation(): bool
+    {
+        $end = $this->watchlistProbationEndsOn();
+
+        return $end !== null && today()->lt($end);
+    }
+
+    /**
+     * The first day the member is no longer on watchlist probation, or null
+     * when they aren't on it at all (never started, back on the watchlist, or
+     * the club has no probation length set).
+     */
+    public function watchlistProbationEndsOn(): ?CarbonInterface
+    {
+        $days = MembershipSetting::current()->watchlist_probation_days;
+
+        if ($this->on_watchlist || $this->watchlist_probation_start === null || ! $days) {
+            return null;
+        }
+
+        return $this->watchlist_probation_start->clone()->addDays($days);
+    }
+
+    /**
+     * Records an Owner's decision on this member's watchlist entry, in one
+     * transaction: the member update (which MemberObserver logs and guards)
+     * plus the append-only watchlist_reviews row. Callers check the
+     * resolve-watchlist gate first; the observer re-checks a removal.
+     */
+    public function resolveWatchlistReview(
+        User $by,
+        WatchlistReviewDecision $decision,
+        ?CarbonInterface $newReviewOn = null,
+        bool $startProbation = false,
+        ?string $notes = null,
+    ): WatchlistReview {
+        abort_unless($this->on_watchlist, 422, 'This member is not on the watchlist.');
+
+        $startProbation = $decision === WatchlistReviewDecision::Removed
+            && $startProbation
+            && (bool) MembershipSetting::current()->watchlist_probation_days;
+
+        if ($decision === WatchlistReviewDecision::Extended) {
+            abort_unless($newReviewOn && $newReviewOn->isFuture(), 422, 'An extended review date must be after today.');
+        } else {
+            $newReviewOn = null;
+        }
+
+        return DB::transaction(function () use ($by, $decision, $newReviewOn, $startProbation, $notes): WatchlistReview {
+            $previousReviewOn = $this->watchlist_review_on;
+
+            match ($decision) {
+                WatchlistReviewDecision::Removed => $this->forceFill([
+                    'on_watchlist' => false,
+                    'watchlist_probation_start' => $startProbation ? today() : $this->watchlist_probation_start,
+                ]),
+                WatchlistReviewDecision::Extended => $this->forceFill(['watchlist_review_on' => $newReviewOn]),
+                WatchlistReviewDecision::KeptIndefinitely => $this->forceFill(['watchlist_review_on' => null]),
+            };
+
+            $this->save();
+
+            return $this->watchlistReviews()->create([
+                'decision' => $decision,
+                'previous_review_on' => $previousReviewOn,
+                'new_review_on' => $newReviewOn,
+                'probation_started' => $startProbation,
+                'notes' => $notes,
+                'decided_by' => $by->id,
+            ]);
+        });
     }
 
     /**

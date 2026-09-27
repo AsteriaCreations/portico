@@ -7,13 +7,16 @@ use App\Models\Event;
 use App\Models\Member;
 use App\Models\MemberStatusChange;
 use App\Models\MemberUsernameChange;
+use Illuminate\Support\Facades\Gate;
+use Illuminate\Validation\ValidationException;
 
 /**
  * Writes an audit-trail row whenever is_banned, on_watchlist, is_deceased,
  * missing_paperwork, is_active, or username changes, regardless of which
  * save path triggered it (Filament edit form, tinker, a future API) — the
  * model layer is the one place all of these are always dirty-checked no
- * matter how the write happened.
+ * matter how the write happened. Also the one place that enforces
+ * Owner-only watchlist removal (the resolve-watchlist gate).
  */
 class MemberObserver
 {
@@ -58,6 +61,17 @@ class MemberObserver
         }
 
         if ($member->isDirty('on_watchlist')) {
+            if (! $member->on_watchlist) {
+                if (Gate::denies('resolve-watchlist')) {
+                    throw ValidationException::withMessages([
+                        'on_watchlist' => __('Only an Owner can take a member off the watchlist.'),
+                    ]);
+                }
+
+                // The review date belongs to the entry that just ended.
+                $member->watchlist_review_on = null;
+            }
+
             MemberStatusChange::create([
                 'member_id' => $member->id,
                 'status' => MemberStatusField::Watchlist,

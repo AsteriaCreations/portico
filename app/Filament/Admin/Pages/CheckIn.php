@@ -611,6 +611,10 @@ class CheckIn extends Page implements HasTable
         if ($member->on_watchlist) {
             $flags[] = __('On watchlist').($showReason && $member->watchlist_reason ? ' — '.$member->watchlist_reason : '');
         }
+        // Informational only -- never changes the admission decision.
+        if ($member->isOnWatchlistProbation()) {
+            $flags[] = __('Recently off watchlist — probation until :date', ['date' => $member->watchlistProbationEndsOn()->translatedFormat('M j, Y')]);
+        }
         if ($policy->needsCapture($member)) {
             $flags[] = __('Prospective — sign-up incomplete');
         }

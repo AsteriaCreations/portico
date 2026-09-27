@@ -81,6 +81,12 @@ class AppServiceProvider extends ServiceProvider
         // everyone), unlike grant-manager-subscription-perk's allow-list.
         Gate::define('manage-org-name', fn (User $user): bool => $user->role->atLeast(Role::Owner));
 
+        // Taking anyone off the watchlist is the Owner's call -- Manager+ can
+        // still put someone on it and set/change its review date. Enforced on
+        // every save path by MemberObserver, and re-checked by EditMember's
+        // review action. See Member::resolveWatchlistReview().
+        Gate::define('resolve-watchlist', fn (User $user): bool => $user->role->atLeast(Role::Owner));
+
         // Orthogonal to role -- a capability grants nothing rank-related on
         // its own. See App\Enums\Capability.
         Gate::define('access-cleaning-checklist', fn (User $user): bool => $user->hasCapability(Capability::CleaningCrew));

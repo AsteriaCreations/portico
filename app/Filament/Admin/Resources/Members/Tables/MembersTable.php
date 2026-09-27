@@ -62,6 +62,13 @@ class MembersTable
                 IconColumn::make('on_watchlist')
                     ->boolean()
                     ->tooltip(fn (bool $state): string => $state ? __('On watchlist') : __('Not on watchlist')),
+                TextColumn::make('watchlist_review_on')
+                    ->label('Watchlist review')
+                    ->date('M j, Y')
+                    ->placeholder('—')
+                    ->color(fn (Member $record): ?string => $record->isWatchlistReviewDue() ? 'danger' : null)
+                    ->sortable()
+                    ->toggleable(),
                 IconColumn::make('is_banned')
                     ->label('Banned')
                     ->boolean()
@@ -90,6 +97,23 @@ class MembersTable
                     ->relationship('category', 'name'),
                 TernaryFilter::make('on_watchlist')
                     ->label('Watchlist'),
+                // Same condition as MemberResource's nav badge.
+                Filter::make('watchlist_review_due')
+                    ->label('Watchlist review due')
+                    ->toggle()
+                    ->query(fn (Builder $query): Builder => $query->watchlistReviewDue()),
+                // Mirrors Member::isOnWatchlistProbation() as a date cutoff,
+                // same portable style as the on_probation filter below.
+                Filter::make('on_watchlist_probation')
+                    ->label('On watchlist probation')
+                    ->toggle()
+                    ->query(function (Builder $query): Builder {
+                        $days = MembershipSetting::current()->watchlist_probation_days;
+
+                        return $days
+                            ? $query->where('on_watchlist', false)->whereDate('watchlist_probation_start', '>', today()->subDays($days))
+                            : $query->whereRaw('1 = 0');
+                    }),
                 TernaryFilter::make('is_banned')
                     ->label('Banned')
                     // Redefines true/false as "currently banned" (accounts

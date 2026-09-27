@@ -171,6 +171,13 @@ class ActivePatrons extends Page implements HasTable
                         ->icon(Heroicon::OutlinedExclamationTriangle)
                         ->wrap()
                         ->visible(fn (): bool => Gate::allows('view-sensitive-member-fields')),
+                    TextColumn::make('watchlistProbation')
+                        ->label('Watchlist probation')
+                        ->color('warning')
+                        ->icon(Heroicon::OutlinedEye)
+                        ->getStateUsing(fn (Attendance $record): ?string => $record->member?->isOnWatchlistProbation()
+                            ? __('Recently off watchlist — probation until :date', ['date' => $record->member->watchlistProbationEndsOn()->translatedFormat('M j, Y')])
+                            : null),
                     TextColumn::make('visit_note')
                         ->label('Visit note')
                         ->icon(Heroicon::OutlinedPencilSquare)
@@ -192,7 +199,15 @@ class ActivePatrons extends Page implements HasTable
                 Filter::make('watchlist_only')
                     ->label('Watchlist only')
                     ->toggle()
-                    ->query(fn (Builder $query): Builder => $query->whereHas('member', fn ($q) => $q->where('on_watchlist', true))),
+                    // Includes members on watchlist probation -- the people
+                    // staff were asked to keep an eye on either way.
+                    ->query(function (Builder $query): Builder {
+                        $days = MembershipSetting::current()->watchlist_probation_days;
+
+                        return $query->whereHas('member', fn ($q) => $q
+                            ->where('on_watchlist', true)
+                            ->when($days, fn ($q) => $q->orWhereDate('watchlist_probation_start', '>', today()->subDays($days))));
+                    }),
             ])
             ->recordActions([$this->departAction()])
             ->poll('15s');
