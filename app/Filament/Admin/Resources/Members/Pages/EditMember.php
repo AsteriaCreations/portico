@@ -55,10 +55,10 @@ class EditMember extends EditRecord
                     ->live()
                     ->required(),
                 Checkbox::make('start_probation')
-                    ->label(fn (): string => __('Start :days days of watchlist probation', ['days' => MembershipSetting::current()->watchlist_probation_days]))
+                    ->label(fn (): string => __('Start :days days of watchlist probation', ['days' => MembershipSetting::watchlistProbationDays()]))
                     ->default(true)
                     ->visible(fn (Get $get): bool => self::decisionFrom($get('decision')) === WatchlistReviewDecision::Removed
-                        && (bool) MembershipSetting::current()->watchlist_probation_days),
+                        && MembershipSetting::watchlistProbationDays() !== null),
                 DatePicker::make('new_review_on')
                     ->label('New review date')
                     ->minDate(today()->addDay())

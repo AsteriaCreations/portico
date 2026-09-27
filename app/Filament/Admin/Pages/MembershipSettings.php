@@ -14,6 +14,7 @@ use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
+use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Support\Facades\Gate;
@@ -67,6 +68,7 @@ class MembershipSettings extends Page
             'age_of_majority',
             'alcohol_flag_age',
             'watchlist_notify_label',
+            'watchlist_probation_mode',
             'watchlist_probation_days',
             'watchlist_probation_blocks_guests',
             'currency',
@@ -166,16 +168,28 @@ class MembershipSettings extends Page
                     ->label('Watchlist: who staff notify')
                     ->helperText(fn (): string => __('Where staff post a heads-up before admitting a watchlisted member, e.g. "the Signal group". The desk shows "Notify …" and asks staff to confirm they did. Leave blank to use the server default (currently ":default").', ['default' => config('membership.watchlist_notify_label')]))
                     ->maxLength(60),
+                Select::make('watchlist_probation_mode')
+                    ->label('Watchlist probation')
+                    ->helperText(__('When an Owner takes a member off the watchlist, they can start a probation — staff see "Recently off watchlist" at the Check-In Desk and on Active Patrons. "Same as new-member probation" uses the probation period above and the same guest rule.'))
+                    ->options([
+                        'same' => __('Same as new-member probation'),
+                        'custom' => __('Custom'),
+                        'off' => __('Off'),
+                    ])
+                    ->live()
+                    ->required(),
                 TextInput::make('watchlist_probation_days')
                     ->label('Watchlist probation (days)')
-                    ->helperText(__('When an Owner takes a member off the watchlist, they can start this many days of probation — staff see "Recently off watchlist" at the Check-In Desk and on Active Patrons. Leave blank for no probation.'))
                     ->numeric()
                     ->integer()
                     ->minValue(1)
-                    ->maxValue(3650),
+                    ->maxValue(3650)
+                    ->required(fn (Get $get): bool => $get('watchlist_probation_mode') === 'custom')
+                    ->visible(fn (Get $get): bool => $get('watchlist_probation_mode') === 'custom'),
                 Toggle::make('watchlist_probation_blocks_guests')
                     ->label('Watchlist probation blocks guests')
-                    ->helperText(__('A member on watchlist probation can\'t register a guest at the Check-In Desk. Off: the probation is informational only.')),
+                    ->helperText(__('A member on watchlist probation can\'t register a guest at the Check-In Desk. Off: the probation is informational only.'))
+                    ->visible(fn (Get $get): bool => $get('watchlist_probation_mode') === 'custom'),
                 TextInput::make('currency')
                     ->label('Currency code')
                     ->helperText(__('A 3-letter ISO 4217 currency code (e.g. USD, EUR, GBP, CAD) — used everywhere a dollar figure is shown, from the check-in desk\'s live totals to every money column in the admin panel.'))

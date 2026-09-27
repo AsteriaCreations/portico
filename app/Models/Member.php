@@ -371,7 +371,7 @@ class Member extends Model
 
         return $settings->guests_enabled
             && ($settings->guests_allowed_during_probation || ! $this->isOnProbation())
-            && (! $settings->watchlist_probation_blocks_guests || ! $this->isOnWatchlistProbation());
+            && (! MembershipSetting::watchlistProbationBlocksGuests() || ! $this->isOnWatchlistProbation());
     }
 
     /**
@@ -397,10 +397,11 @@ class Member extends Model
 
     /**
      * Probation after an Owner took the member off the watchlist -- separate
-     * from new-member probation (isOnProbation()). Its length is Membership
-     * Settings' watchlist_probation_days, read live, so changing the setting
-     * moves every current probation's end. Informational at the desk; it
-     * only blocks anything (guest sponsoring) when the club turns that on.
+     * from new-member probation (isOnProbation()), though by default the same
+     * length (MembershipSetting::watchlistProbationDays()), read live, so
+     * changing the setting moves every current probation's end.
+     * Informational at the desk; it only blocks guest sponsoring when
+     * watchlistProbationBlocksGuests() says so.
      */
     public function isOnWatchlistProbation(): bool
     {
@@ -416,7 +417,7 @@ class Member extends Model
      */
     public function watchlistProbationEndsOn(): ?CarbonInterface
     {
-        $days = MembershipSetting::current()->watchlist_probation_days;
+        $days = MembershipSetting::watchlistProbationDays();
 
         if ($this->on_watchlist || $this->watchlist_probation_start === null || ! $days) {
             return null;
@@ -442,7 +443,7 @@ class Member extends Model
 
         $startProbation = $decision === WatchlistReviewDecision::Removed
             && $startProbation
-            && (bool) MembershipSetting::current()->watchlist_probation_days;
+            && MembershipSetting::watchlistProbationDays() !== null;
 
         if ($decision === WatchlistReviewDecision::Extended) {
             abort_unless($newReviewOn && $newReviewOn->isFuture(), 422, 'An extended review date must be after today.');

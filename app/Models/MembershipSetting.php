@@ -19,7 +19,7 @@ use Illuminate\Support\Str;
  * supplies the initial defaults for a fresh install — it's just no longer
  * read anywhere else in the app afterward.
  */
-#[Fillable(['subscription_eligibility_threshold', 'subscription_eligibility_window_months', 'probation_period_days', 'guests_allowed_during_probation', 'max_guests_per_night', 'venue_capacity', 'default_opening_float', 'event_window_buffer_minutes', 'week_starts_on', 'age_of_majority', 'alcohol_flag_age', 'watchlist_notify_label', 'watchlist_probation_days', 'watchlist_probation_blocks_guests', 'currency', 'locale', 'org_name', 'role_labels', 'member_search_fields', 'checkin_display_name_field', 'member_email_required', 'hide_member_pii_by_default', 'active_patrons_show_staff_roles', 'vouchers_enabled', 'add_ons_enabled', 'showrunner_comp_requests_enabled', 'manager_perk_enabled', 'suspensions_enabled', 'pool_enabled', 'prepay_enabled', 'register_shifts_enabled', 'showrunner_payouts_enabled', 'instructor_payouts_enabled', 'showrunner_door_includes_pool', 'showrunner_door_includes_addons', 'visit_notes_enabled', 'behavior_notes_enabled', 'guests_enabled', 'upstream_check_enabled', 'upstream_remote', 'upstream_branch', 'deploy_trigger_enabled', 'deploy_task_name'])]
+#[Fillable(['subscription_eligibility_threshold', 'subscription_eligibility_window_months', 'probation_period_days', 'guests_allowed_during_probation', 'max_guests_per_night', 'venue_capacity', 'default_opening_float', 'event_window_buffer_minutes', 'week_starts_on', 'age_of_majority', 'alcohol_flag_age', 'watchlist_notify_label', 'watchlist_probation_mode', 'watchlist_probation_days', 'watchlist_probation_blocks_guests', 'currency', 'locale', 'org_name', 'role_labels', 'member_search_fields', 'checkin_display_name_field', 'member_email_required', 'hide_member_pii_by_default', 'active_patrons_show_staff_roles', 'vouchers_enabled', 'add_ons_enabled', 'showrunner_comp_requests_enabled', 'manager_perk_enabled', 'suspensions_enabled', 'pool_enabled', 'prepay_enabled', 'register_shifts_enabled', 'showrunner_payouts_enabled', 'instructor_payouts_enabled', 'showrunner_door_includes_pool', 'showrunner_door_includes_addons', 'visit_notes_enabled', 'behavior_notes_enabled', 'guests_enabled', 'upstream_check_enabled', 'upstream_remote', 'upstream_branch', 'deploy_trigger_enabled', 'deploy_task_name'])]
 class MembershipSetting extends Model
 {
     protected function casts(): array
@@ -207,6 +207,41 @@ class MembershipSetting extends Model
     public static function watchlistNotifyLabel(): string
     {
         return static::current()->watchlist_notify_label ?: (string) config('membership.watchlist_notify_label');
+    }
+
+    /**
+     * How many days watchlist probation lasts, or null when it's off.
+     * watchlist_probation_mode 'same' follows new-member probation, so
+     * changing that setting moves this too; 'custom' is the club's own
+     * watchlist_probation_days. Every caller goes through here, never the
+     * raw columns.
+     */
+    public static function watchlistProbationDays(): ?int
+    {
+        $settings = static::current();
+
+        $days = match ($settings->watchlist_probation_mode) {
+            'custom' => $settings->watchlist_probation_days,
+            'off' => null,
+            default => $settings->probation_period_days,
+        };
+
+        return $days ?: null;
+    }
+
+    /**
+     * Whether watchlist probation stops the member sponsoring guests. 'same'
+     * mirrors the new-member rule (guests_allowed_during_probation).
+     */
+    public static function watchlistProbationBlocksGuests(): bool
+    {
+        $settings = static::current();
+
+        return match ($settings->watchlist_probation_mode) {
+            'custom' => $settings->watchlist_probation_blocks_guests,
+            'off' => false,
+            default => ! $settings->guests_allowed_during_probation,
+        };
     }
 
     /**

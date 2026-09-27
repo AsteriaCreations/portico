@@ -11,6 +11,7 @@ use App\Models\MemberStatusChange;
 use App\Models\User;
 use App\Models\WatchlistReview;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\ValidationException;
 use Livewire\Livewire;
@@ -114,7 +115,7 @@ test('the resolve-watchlist gate is Owner only', function (Role $role, bool $all
 // ---- Owner review decisions -----------------------------------------------
 
 test('removing with probation clears the watchlist, starts probation, and records the review', function () {
-    MembershipSetting::current()->update(['watchlist_probation_days' => 90]);
+    MembershipSetting::current()->update(['watchlist_probation_mode' => 'custom', 'watchlist_probation_days' => 90]);
     $owner = User::factory()->create(['role' => Role::Owner]);
     actingAs($owner);
     $member = watchlisted(['watchlist_review_on' => today()]);
@@ -133,7 +134,8 @@ test('removing with probation clears the watchlist, starts probation, and record
         ->and($review->decided_by)->toBe($owner->id);
 });
 
-test('removing without a probation length set starts no probation', function () {
+test('removing with watchlist probation off starts no probation', function () {
+    MembershipSetting::current()->update(['watchlist_probation_mode' => 'off']);
     $owner = User::factory()->create(['role' => Role::Owner]);
     actingAs($owner);
     $member = watchlisted();
@@ -172,7 +174,7 @@ test('keeping indefinitely clears the review date and keeps the member on', func
 });
 
 test('the Owner resolves a review from the member edit page', function () {
-    MembershipSetting::current()->update(['watchlist_probation_days' => 30]);
+    MembershipSetting::current()->update(['watchlist_probation_mode' => 'custom', 'watchlist_probation_days' => 30]);
     actingAs(User::factory()->create(['role' => Role::Owner]));
     $member = watchlisted(['watchlist_review_on' => today()]);
 
@@ -210,7 +212,7 @@ test('a watchlist review can never be updated or deleted, even by an Owner', fun
 // ---- Watchlist probation --------------------------------------------------
 
 test('watchlist probation lasts the configured number of days', function () {
-    MembershipSetting::current()->update(['watchlist_probation_days' => 30]);
+    MembershipSetting::current()->update(['watchlist_probation_mode' => 'custom', 'watchlist_probation_days' => 30]);
 
     $inside = Member::factory()->create(['watchlist_probation_start' => today()->subDays(29)]);
     $past = Member::factory()->create(['watchlist_probation_start' => today()->subDays(30)]);
@@ -220,21 +222,73 @@ test('watchlist probation lasts the configured number of days', function () {
         ->and($past->isOnWatchlistProbation())->toBeFalse();
 });
 
-test('no probation length set means nobody is on watchlist probation', function () {
+test('watchlist probation off means nobody is on it', function () {
+    MembershipSetting::current()->update(['watchlist_probation_mode' => 'off']);
     $member = Member::factory()->create(['watchlist_probation_start' => today()]);
 
     expect($member->isOnWatchlistProbation())->toBeFalse();
 });
 
+test('custom mode with no length set means nobody is on watchlist probation', function () {
+    MembershipSetting::current()->update(['watchlist_probation_mode' => 'custom', 'watchlist_probation_days' => null]);
+    $member = Member::factory()->create(['watchlist_probation_start' => today()]);
+
+    expect($member->isOnWatchlistProbation())->toBeFalse();
+});
+
+test('by default watchlist probation is the same length as new-member probation, and follows it', function () {
+    MembershipSetting::current()->update(['probation_period_days' => 60, 'watchlist_probation_days' => 7]);
+    $member = Member::factory()->create(['watchlist_probation_start' => today()]);
+
+    expect($member->watchlistProbationEndsOn()->toDateString())->toBe(today()->addDays(60)->toDateString());
+
+    MembershipSetting::current()->update(['probation_period_days' => 90]);
+
+    expect($member->watchlistProbationEndsOn()->toDateString())->toBe(today()->addDays(90)->toDateString());
+});
+
+test('by default watchlist probation follows the new-member guest rule', function () {
+    MembershipSetting::current()->update(['guests_enabled' => true, 'guests_allowed_during_probation' => false, 'watchlist_probation_blocks_guests' => false]);
+    $member = Member::factory()->create(['watchlist_probation_start' => today(), 'date_vetted' => today()->subYears(2)]);
+
+    expect($member->canSponsorGuests())->toBeFalse();
+
+    MembershipSetting::current()->update(['guests_allowed_during_probation' => true]);
+
+    expect($member->canSponsorGuests())->toBeTrue();
+});
+
+test('an upgraded install that set its own length keeps it as custom', function () {
+    MembershipSetting::current();
+    DB::table('membership_settings')->update(['watchlist_probation_mode' => 'same', 'watchlist_probation_days' => 45]);
+
+    $migration = require database_path('migrations/2026_09_26_224017_add_watchlist_probation_mode_to_membership_settings_table.php');
+    $migration->down();
+    $migration->up();
+
+    expect(MembershipSetting::current()->watchlist_probation_mode)->toBe('custom')
+        ->and(MembershipSetting::watchlistProbationDays())->toBe(45);
+});
+
+test('the review action hides "start probation" when watchlist probation is off', function () {
+    MembershipSetting::current()->update(['watchlist_probation_mode' => 'off']);
+    actingAs(User::factory()->create(['role' => Role::Owner]));
+    $member = watchlisted();
+
+    Livewire::test(EditMember::class, ['record' => $member->getRouteKey()])
+        ->mountAction('reviewWatchlist')
+        ->assertFormFieldHidden('start_probation');
+});
+
 test('a member put back on the watchlist is no longer on watchlist probation', function () {
-    MembershipSetting::current()->update(['watchlist_probation_days' => 30]);
+    MembershipSetting::current()->update(['watchlist_probation_mode' => 'custom', 'watchlist_probation_days' => 30]);
     $member = watchlisted(['watchlist_probation_start' => today()]);
 
     expect($member->isOnWatchlistProbation())->toBeFalse();
 });
 
 test('watchlist probation blocks guest sponsoring only when the club turns that on', function () {
-    MembershipSetting::current()->update(['watchlist_probation_days' => 30, 'guests_enabled' => true]);
+    MembershipSetting::current()->update(['watchlist_probation_mode' => 'custom', 'watchlist_probation_days' => 30, 'guests_enabled' => true]);
     $member = Member::factory()->create(['watchlist_probation_start' => today(), 'date_vetted' => today()->subYears(2)]);
 
     expect($member->canSponsorGuests())->toBeTrue();

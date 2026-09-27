@@ -202,7 +202,7 @@ class ActivePatrons extends Page implements HasTable
                     // Includes members on watchlist probation -- the people
                     // staff were asked to keep an eye on either way.
                     ->query(function (Builder $query): Builder {
-                        $days = MembershipSetting::current()->watchlist_probation_days;
+                        $days = MembershipSetting::watchlistProbationDays();
 
                         return $query->whereHas('member', fn ($q) => $q
                             ->where('on_watchlist', true)

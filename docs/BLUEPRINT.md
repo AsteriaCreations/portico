@@ -114,11 +114,15 @@ CREATE TABLE members (
 -- Watchlist review is derived too (Member::isWatchlistReviewDue()): due while
 --   on_watchlist and watchlist_review_on <= today. Manager+ sees a count on the
 --   Members nav badge; only an Owner resolves it (remove / extend / keep on).
--- Watchlist probation (Member::isOnWatchlistProbation()), separate from the
---   new-member probation above: while off the watchlist and
---   today < watchlist_probation_start + watchlist_probation_days (Membership
---   Settings; NULL => none). A desk/Active Patrons flag only -- never affects
---   admission; blocks guest sponsoring only if watchlist_probation_blocks_guests.
+-- Watchlist probation (Member::isOnWatchlistProbation()), tracked separately
+--   from the new-member probation above: while off the watchlist and
+--   today < watchlist_probation_start + MembershipSetting::watchlistProbationDays().
+--   membership_settings.watchlist_probation_mode picks the rule:
+--     'same' (default) -> probation_period_days, and blocks guests exactly when
+--                         new-member probation does (! guests_allowed_during_probation)
+--     'custom'         -> watchlist_probation_days / watchlist_probation_blocks_guests
+--     'off'            -> no watchlist probation
+--   A desk/Active Patrons flag only -- never affects admission.
 
 -- WATCHLIST REVIEWS — append-only record of each Owner decision on a
 -- watchlist entry. The on/off flip itself is still logged in

@@ -108,7 +108,7 @@ class MembersTable
                     ->label('On watchlist probation')
                     ->toggle()
                     ->query(function (Builder $query): Builder {
-                        $days = MembershipSetting::current()->watchlist_probation_days;
+                        $days = MembershipSetting::watchlistProbationDays();
 
                         return $days
                             ? $query->where('on_watchlist', false)->whereDate('watchlist_probation_start', '>', today()->subDays($days))
