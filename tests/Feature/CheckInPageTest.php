@@ -749,6 +749,27 @@ test('a member missing paperwork must be captured before checking in', function 
         ->and(Attendance::where('member_id', $member->id)->exists())->toBeTrue();
 });
 
+test('the status line names missing paperwork, not sign-up, when that is the only gap', function () {
+    $member = clearMember($this->irregular, ['missing_paperwork' => true]);
+    $event = Event::factory()->create(['event_date' => now()->toDateString(), 'entry_fee' => 20]);
+
+    Livewire::test(CheckIn::class)
+        ->fillForm(['event_id' => $event->id, 'member_id' => $member->id])
+        ->assertSee('Record new paperwork to admit')
+        ->assertDontSee('Finish sign-up to admit')
+        ->assertDontSee('Paperwork not confirmed');
+});
+
+test('the status line still asks for sign-up when a Prospective is also missing paperwork', function () {
+    $member = clearMember($this->prospective, ['first_name' => null, 'missing_paperwork' => true]);
+    $event = Event::factory()->create(['event_date' => now()->toDateString(), 'entry_fee' => 20]);
+
+    Livewire::test(CheckIn::class)
+        ->fillForm(['event_id' => $event->id, 'member_id' => $member->id])
+        ->assertSee('Finish sign-up to admit')
+        ->assertDontSee('Record new paperwork to admit');
+});
+
 test('confirmPaperwork is hidden once paperwork is already on file', function () {
     $member = clearMember($this->irregular, ['missing_paperwork' => false]);
 

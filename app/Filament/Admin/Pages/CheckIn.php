@@ -621,7 +621,7 @@ class CheckIn extends Page implements HasTable
             $flags[] = __('Prospective — sign-up incomplete');
         }
         if ($policy->needsPaperworkCapture($member)) {
-            $flags[] = __('Paperwork not confirmed');
+            $flags[] = __('Missing paperwork');
         }
 
         $event = $this->getSelectedEvent();
@@ -652,7 +652,9 @@ class CheckIn extends Page implements HasTable
         return match ($decision->outcome) {
             AdmissionOutcome::Block => ['tone' => 'stop', 'headline' => __('Do not admit'), 'detail' => null, 'flags' => $flags],
             AdmissionOutcome::Warn => ['tone' => 'check', 'headline' => __('Acknowledge before admitting'), 'detail' => $decision->message, 'flags' => $flags],
-            AdmissionOutcome::Capture => ['tone' => 'check', 'headline' => __('Finish sign-up to admit'), 'detail' => $decision->message, 'flags' => $flags],
+            // Capture has two causes; a Prospective's sign-up outranks
+            // missing paperwork in decide(), so the headline follows suit.
+            AdmissionOutcome::Capture => ['tone' => 'check', 'headline' => $policy->needsCapture($member) ? __('Finish sign-up to admit') : __('Record new paperwork to admit'), 'detail' => $decision->message, 'flags' => $flags],
             AdmissionOutcome::Flag => ['tone' => 'check', 'headline' => __('Check ID — under :age, no alcohol, mark hand', ['age' => MembershipSetting::current()->alcohol_flag_age]), 'detail' => null, 'flags' => $flags],
             AdmissionOutcome::Ok => ['tone' => 'go', 'headline' => __('Ready to admit'), 'detail' => null, 'flags' => $flags],
         };
