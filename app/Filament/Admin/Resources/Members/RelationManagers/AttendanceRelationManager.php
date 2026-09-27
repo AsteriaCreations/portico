@@ -3,6 +3,7 @@
 namespace App\Filament\Admin\Resources\Members\RelationManagers;
 
 use App\Enums\EntryCoverageSource;
+use App\Filament\Concerns\RemovesVisits;
 use App\Filament\Concerns\TranslatesRelationManagerTitle;
 use App\Models\Attendance;
 use App\Models\AttendanceAddOn;
@@ -11,8 +12,6 @@ use App\Models\PaymentMethod;
 use App\Services\PricingService;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\CreateAction;
-use Filament\Actions\DeleteAction;
-use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\Select;
@@ -27,6 +26,7 @@ use Illuminate\Validation\Rules\Unique;
 
 class AttendanceRelationManager extends RelationManager
 {
+    use RemovesVisits;
     use TranslatesRelationManagerTitle;
 
     protected static string $relationship = 'attendance';
@@ -149,11 +149,11 @@ class AttendanceRelationManager extends RelationManager
             ])
             ->recordActions([
                 EditAction::make(),
-                DeleteAction::make(),
+                $this->removeVisitAction(),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
-                    DeleteBulkAction::make(),
+                    $this->deleteUnpaidVisitsBulkAction(),
                 ]),
             ]);
     }

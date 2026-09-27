@@ -11,6 +11,7 @@ use App\Models\RegisterDrop;
 use App\Models\RegisterShift;
 use App\Models\Subscription;
 use App\Models\User;
+use App\Models\VisitRemoval;
 use App\Support\Cents;
 use Illuminate\Support\Facades\DB;
 
@@ -116,7 +117,26 @@ class RegisterShiftService
             ->whereIn('payment_method', $cashCodes)
             ->sum('amount_paid');
 
-        return Cents::of($attendanceCash) + Cents::of($subscriptionCash) + Cents::of($miscCash) + Cents::of($addOnDayPassCash);
+        return Cents::of($attendanceCash) + Cents::of($subscriptionCash) + Cents::of($miscCash) + Cents::of($addOnDayPassCash)
+            + $this->removedAfterCloseCents($shift, $cashCodes->all());
+    }
+
+    /**
+     * Paid visits an Owner removed after this shift had already closed. Their
+     * attendance rows are gone, so the SUMs above no longer see them; adding
+     * them back keeps a closed shift's expected cash and variance exactly as
+     * they were at close. A removal while the shift is open isn't added back:
+     * that money really was handed back from this drawer. See
+     * VisitRemovalService.
+     *
+     * @param  string[]|null  $paymentMethods  null for every method
+     */
+    private function removedAfterCloseCents(RegisterShift $shift, ?array $paymentMethods = null): int
+    {
+        return Cents::of(VisitRemoval::where('register_shift_id', $shift->id)
+            ->where('after_shift_closed', true)
+            ->when($paymentMethods !== null, fn ($query) => $query->whereIn('payment_method', $paymentMethods))
+            ->sum('amount_paid'));
     }
 
     /**
@@ -132,7 +152,7 @@ class RegisterShiftService
             + Cents::of(AddOnDayPass::where('register_shift_id', $shift->id)->sum('amount_paid'));
 
         return [
-            'event' => Cents::toFloat(Cents::of(Attendance::where('register_shift_id', $shift->id)->sum('amount_paid'))),
+            'event' => Cents::toFloat(Cents::of(Attendance::where('register_shift_id', $shift->id)->sum('amount_paid')) + $this->removedAfterCloseCents($shift)),
             'subscription' => Cents::toFloat(Cents::of(Subscription::where('register_shift_id', $shift->id)->sum('amount_paid'))),
             'other' => Cents::toFloat($other),
         ];

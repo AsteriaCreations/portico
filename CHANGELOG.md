@@ -26,8 +26,19 @@ is fixes only.
   register shift and payment method, and shows what to collect or refund. Every conversion needs a
   reason and is kept in an append-only `payment_corrections` log (Records → Payment corrections,
   and on the member's page). Active Owners are notified.
+- Audited removal of a paid visit. "Remove" on an attendance tab takes a $0 visit off quietly, as
+  before; a paid one needs a reason, is kept in an append-only `visit_removals` log (Records →
+  Visit removals), and notifies active Owners. A Manager can do it while the visit's register shift
+  is open (the refund comes out of that drawer); once it has closed, only an Owner can, and the
+  closed shift's expected cash and variance don't change.
 
 ### Changed
+
+- Deleting a visit no longer bypasses the rules. The row Delete on every attendance tab is now
+  "Remove", and the bulk delete only removes visits with nothing paid. A visit that has voucher
+  activity, behavior notes, a comp request or a payment correction can't be removed at all, with a
+  message saying why; before, that crashed with a database error. **Upgrading:** run
+  `php artisan migrate` (1 new migration).
 
 - Only an Owner can take a member off the watchlist, on every save path. Manager+ can still put
   members on it. **Upgrading:** run `php artisan migrate` (4 new migrations; nothing changes
