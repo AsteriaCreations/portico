@@ -12,6 +12,7 @@ use App\Filament\Admin\Resources\Events\EventResource;
 use App\Filament\Admin\Resources\EventTypes\EventTypeResource;
 use App\Filament\Admin\Resources\Members\MemberResource;
 use App\Filament\Admin\Resources\PaperworkTypes\PaperworkTypeResource;
+use App\Filament\Admin\Resources\PaymentCorrections\PaymentCorrectionResource;
 use App\Filament\Admin\Resources\PaymentMethods\PaymentMethodResource;
 use App\Filament\Admin\Resources\Plans\PlanResource;
 use App\Filament\Admin\Resources\Registers\RegisterResource;
@@ -127,6 +128,7 @@ class AdminPanelProvider extends PanelProvider
             EventResource::class => 'events',
             MemberResource::class => 'members',
             PaperworkTypeResource::class => 'paperwork-types',
+            PaymentCorrectionResource::class => 'payment-corrections',
             PaymentMethodResource::class => 'payment-methods',
             PlanResource::class => 'plans',
             RegisterShiftResource::class => 'register-shifts',

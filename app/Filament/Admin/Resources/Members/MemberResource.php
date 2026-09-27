@@ -11,6 +11,7 @@ use App\Filament\Admin\Resources\Members\RelationManagers\BehaviorNotesRelationM
 use App\Filament\Admin\Resources\Members\RelationManagers\MemberPaperworkRelationManager;
 use App\Filament\Admin\Resources\Members\RelationManagers\MemberStatusChangesRelationManager;
 use App\Filament\Admin\Resources\Members\RelationManagers\MemberUsernameChangesRelationManager;
+use App\Filament\Admin\Resources\Members\RelationManagers\PaymentCorrectionsRelationManager;
 use App\Filament\Admin\Resources\Members\RelationManagers\WatchlistReviewsRelationManager;
 use App\Filament\Admin\Resources\Members\Schemas\MemberForm;
 use App\Filament\Admin\Resources\Members\Tables\MembersTable;
@@ -55,6 +56,7 @@ class MemberResource extends Resource
             MemberStatusChangesRelationManager::class,
             MemberUsernameChangesRelationManager::class,
             WatchlistReviewsRelationManager::class,
+            PaymentCorrectionsRelationManager::class,
         ];
     }
 

@@ -49,13 +49,18 @@ class AttendanceRelationManager extends RelationManager
                 TextInput::make('entry_fee')->numeric()->prefix('$')->disabled(),
                 TextInput::make('entry_coverage')->numeric()->prefix('$')->disabled(),
                 Select::make('entry_covered_by')->options(EntryCoverageSource::class)->disabled(),
+                // Locked: see Events\RelationManagers\AttendanceRelationManager.
                 TextInput::make('amount_paid')
                     ->label('Amount paid')
-                    ->required()
                     ->numeric()
-                    ->prefix('$'),
+                    ->prefix('$')
+                    ->disabled()
+                    ->dehydrated(false)
+                    ->helperText(__('Locked. Payment changes go through an audited correction at the Check-In Desk.')),
                 Select::make('payment_method')
-                    ->options(PaymentMethod::options()),
+                    ->options(PaymentMethod::options())
+                    ->disabled()
+                    ->dehydrated(false),
                 TextInput::make('on_behalf_note')
                     ->maxLength(120),
                 Textarea::make('notes')

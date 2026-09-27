@@ -51,6 +51,11 @@ class AppServiceProvider extends ServiceProvider
 
         Gate::define('grant-event-comp', fn (User $user): bool => $user->role->atLeast(Role::Manager));
 
+        // Same-night "convert entry to subscription" -- see
+        // App\Services\EntryCorrectionService. Its own gate rather than a
+        // bare Manager+ check, same idiom as grant-event-comp.
+        Gate::define('correct-entry-payment', fn (User $user): bool => $user->role->atLeast(Role::Manager));
+
         // Stronger than MemberResource's own Manager+ policy floor -- a
         // Manager can edit everything else on the form, but only Admin+ can
         // associate a skill with a member. See MemberForm's skills field,
