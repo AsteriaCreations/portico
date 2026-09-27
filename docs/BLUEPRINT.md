@@ -377,7 +377,7 @@ CREATE INDEX ix_subs_lookup        ON subscriptions(member_id, add_on_id, covere
 CREATE INDEX ix_vouchers_member    ON vouchers(member_id);
 ```
 
-**This DDL covers the core domain plus a few early additions** (`ban_exceptions`, `member_status_changes`, `occupancy_adjustments`, `comp_reasons`). It is not kept in lockstep with every table added since — `payment_methods`, `comp_requests`, `add_on_day_passes`, `miscellaneous_payments`, `registers`/`register_shifts`, `membership_settings` (incl. its feature-flag columns), `member_username_changes`, `skills`/`member_skill`, `showrunner_payout_tiers`/`instructor_pay_rates`, `attendance_behavior_notes`, `paperwork_types`/`member_paperwork`, and `payment_corrections` are all real, in-use tables that this block doesn't define. **Migrations under `database/migrations/` are the source of truth for the schema** — read those for the current shape of any table.
+**This DDL covers the core domain plus a few early additions** (`ban_exceptions`, `member_status_changes`, `occupancy_adjustments`, `comp_reasons`). It is not kept in lockstep with every table added since — `payment_methods`, `comp_requests`, `add_on_day_passes`, `miscellaneous_payments`, `registers`/`register_shifts`, `membership_settings` (incl. its feature-flag columns), `member_username_changes`, `skills`/`member_skill`, `showrunner_payout_tiers`/`instructor_pay_rates`, `attendance_behavior_notes`, `paperwork_types`/`member_paperwork`, `payment_corrections`, and `visit_removals` are all real, in-use tables that this block doesn't define. **Migrations under `database/migrations/` are the source of truth for the schema** — read those for the current shape of any table.
 
 Note the **snapshot columns**: a check-in records how each component's price was reached *at that moment*, so later fee changes never rewrite history. Entry lives on `attendance` itself; every other chargeable a visit draws on (Pool, and any other subscribable add-on) is its own `attendance_add_ons` row — a single shared shape for "a charge that can be comped/subscribed/day-passed," rather than a second hardcoded pair of columns per new chargeable. `voucher_coverage` is a further, independent settlement line on `attendance` — it discounts the *combined* total still due after entry and every add-on line's own coverage, not a specific component (see Vouchers below).
 
@@ -525,6 +525,24 @@ Every active Owner gets a notification. Manager+ reviews them under Records → 
 
 ---
 
+## Removing a visit
+
+`App\Services\VisitRemovalService` is the only way an attendance row is removed. The row action on every attendance tab is "Remove". The bulk delete is limited by `AttendancePolicy::delete()` to $0 visits.
+
+- **$0 visit** (a prepay or Comp List entry taken off, a duplicate): Manager+, no reason, no log, as it always was.
+- **Paid visit, register shift still open (or no shift):** Manager+. A reason is required. The desk refunds it from that drawer, so the shift's expected cash drops by `amount_paid`.
+- **Paid visit, shift already closed:** Owner only, reason required. `RegisterShiftService` adds the removal back (`after_shift_closed`), so a closed shift's expected cash, variance and revenue never change after the fact. Any refund happens outside the drawer.
+- **Never removable:** a visit with voucher activity, behavior notes, a comp request or a payment correction. Those are append-only histories of the visit; the action is hidden and the service refuses with a message.
+
+Each paid removal writes an append-only `visit_removals` snapshot. The attendance row itself is gone, so the snapshot stands in for it:
+- `member_id`, `event_id`, `register_shift_id`, `payment_method`, `amount_paid`
+- `checked_in_at`, `after_shift_closed`
+- `reason`, `removed_by`, `created_at`
+
+Every active Owner gets a notification. Manager+ reviews removals under Records → Visit removals. A removal counts as recorded activity, so the event can then only be archived, not deleted.
+
+---
+
 ## Add-ons (chargeable extras, some subscribable)
 
 `add_ons` is one editable catalog for two different shapes of "extra charge":
@@ -658,6 +676,8 @@ These are `App\Enums\Role`'s case names — the actual permission tier, gates, a
 | Edit fees/credits (`plans`), manage `event_types`, `comp_reasons`, `categories`, `payment_methods`, run reports | | ✓ | ✓ | ✓ |
 | Waive one visit's entry fee (per-event comp), e.g. a House Sub | | ✓ | ✓ | ✓ |
 | Convert tonight's paid entry into a subscription (audited payment correction; collect or refund the difference) | | ✓ | ✓ | ✓ |
+| Remove a paid visit while its register shift is open (reason required, logged, Owner notified) | | ✓ | ✓ | ✓ |
+| Remove a paid visit after its register shift has closed | | | | ✓ |
 | Grant a one-time ban exception for a specific event; view the ban/watchlist change log | | ✓ | ✓ | ✓ |
 | Put a member on the watchlist, set its review date, see reviews due | | ✓ | ✓ | ✓ |
 | Take a member off the watchlist / resolve a watchlist review (remove, with optional probation; extend; keep on indefinitely) | | | | ✓ |

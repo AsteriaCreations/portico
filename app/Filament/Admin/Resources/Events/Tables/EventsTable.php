@@ -30,7 +30,7 @@ class EventsTable
             // Loaded once for the page so each row's Archive/Delete visibility
             // (Event::hasRecordedActivity(), canBeArchived()) reads flags
             // instead of running its own queries.
-            ->modifyQueryUsing(fn (Builder $query): Builder => $query->withExists(['attendance', 'compRequests', 'addOnDayPasses', 'banExceptions']))
+            ->modifyQueryUsing(fn (Builder $query): Builder => $query->withExists(['attendance', 'compRequests', 'addOnDayPasses', 'banExceptions', 'visitRemovals']))
             ->defaultSort('event_date', 'desc')
             ->columns([
                 TextColumn::make('event_date')

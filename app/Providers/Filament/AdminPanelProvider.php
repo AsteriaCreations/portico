@@ -21,6 +21,7 @@ use App\Filament\Admin\Resources\ShowrunnerPayoutTiers\ShowrunnerPayoutTierResou
 use App\Filament\Admin\Resources\Skills\SkillResource;
 use App\Filament\Admin\Resources\Subscriptions\SubscriptionResource;
 use App\Filament\Admin\Resources\Users\UserResource;
+use App\Filament\Admin\Resources\VisitRemovals\VisitRemovalResource;
 use App\Filament\Admin\Resources\Vouchers\VoucherResource;
 use App\Filament\Admin\Widgets\RecordDeparturesWidget;
 use App\Http\Middleware\RequirePasswordChange;
@@ -137,6 +138,7 @@ class AdminPanelProvider extends PanelProvider
             SkillResource::class => 'skills',
             SubscriptionResource::class => 'subscriptions',
             UserResource::class => 'users',
+            VisitRemovalResource::class => 'visit-removals',
             VoucherResource::class => 'vouchers',
         ] as $scope => $view) {
             $panel->renderHook(

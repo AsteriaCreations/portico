@@ -3,6 +3,7 @@
 namespace App\Filament\Admin\Resources\Events\RelationManagers;
 
 use App\Filament\Concerns\ReadOnlyWhenEventArchived;
+use App\Filament\Concerns\RemovesVisits;
 use App\Filament\Concerns\TranslatesRelationManagerTitle;
 use App\Models\Attendance;
 use App\Models\AttendanceAddOn;
@@ -16,8 +17,6 @@ use App\Services\PricingService;
 use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\CreateAction;
-use Filament\Actions\DeleteAction;
-use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Select;
@@ -43,6 +42,7 @@ class PrepayListRelationManager extends RelationManager
 {
     use PrunesUploadedFiles;
     use ReadOnlyWhenEventArchived;
+    use RemovesVisits;
     use TranslatesRelationManagerTitle;
 
     protected static string $relationship = 'attendance';
@@ -169,11 +169,11 @@ class PrepayListRelationManager extends RelationManager
             ])
             ->recordActions([
                 EditAction::make(),
-                DeleteAction::make(),
+                $this->removeVisitAction(),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
-                    DeleteBulkAction::make(),
+                    $this->deleteUnpaidVisitsBulkAction(),
                 ]),
             ]);
     }

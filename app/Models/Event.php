@@ -83,6 +83,14 @@ class Event extends Model
         return $this->hasMany(BanException::class);
     }
 
+    /**
+     * Paid visits removed from this event -- see VisitRemovalService.
+     */
+    public function visitRemovals(): HasMany
+    {
+        return $this->hasMany(VisitRemoval::class);
+    }
+
     public function archivedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'archived_by');
@@ -96,7 +104,7 @@ class Event extends Model
     /**
      * Anything that points at this event and would block (or be lost by) a
      * hard delete: attendance and prepays, comp requests, day passes, ban
-     * exceptions. An event with none of these was created by mistake or never
+     * exceptions, removed paid visits. An event with none of these was created by mistake or never
      * used, and can simply be deleted; otherwise it can only be archived.
      */
     public function hasRecordedActivity(): bool
@@ -104,7 +112,8 @@ class Event extends Model
         return $this->hasAnyAttendance()
             || ($this->comp_requests_exists ?? $this->compRequests()->exists())
             || ($this->add_on_day_passes_exists ?? $this->addOnDayPasses()->exists())
-            || ($this->ban_exceptions_exists ?? $this->banExceptions()->exists());
+            || ($this->ban_exceptions_exists ?? $this->banExceptions()->exists())
+            || ($this->visit_removals_exists ?? $this->visitRemovals()->exists());
     }
 
     /**

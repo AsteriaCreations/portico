@@ -3,6 +3,7 @@
 namespace App\Filament\Admin\Resources\Events\RelationManagers;
 
 use App\Filament\Concerns\ReadOnlyWhenEventArchived;
+use App\Filament\Concerns\RemovesVisits;
 use App\Filament\Concerns\TranslatesRelationManagerTitle;
 use App\Models\Attendance;
 use App\Models\AttendanceAddOn;
@@ -12,8 +13,6 @@ use App\Services\CapacityService;
 use App\Services\PricingService;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\CreateAction;
-use Filament\Actions\DeleteAction;
-use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
@@ -35,6 +34,7 @@ use Filament\Tables\Table;
 class CompListRelationManager extends RelationManager
 {
     use ReadOnlyWhenEventArchived;
+    use RemovesVisits;
     use TranslatesRelationManagerTitle;
 
     protected static string $relationship = 'attendance';
@@ -145,11 +145,11 @@ class CompListRelationManager extends RelationManager
             ])
             ->recordActions([
                 EditAction::make(),
-                DeleteAction::make(),
+                $this->removeVisitAction(),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
-                    DeleteBulkAction::make(),
+                    $this->deleteUnpaidVisitsBulkAction(),
                 ]),
             ]);
     }
