@@ -6,6 +6,7 @@ use App\Filament\Admin\Resources\Members\Pages\CreateMember;
 use App\Filament\Admin\Resources\Members\Pages\EditMember;
 use App\Filament\Admin\Resources\Members\Pages\ListMembers;
 use App\Models\Category;
+use App\Models\Event;
 use App\Models\Member;
 use App\Models\MembershipSetting;
 use App\Models\MemberStatusChange;
@@ -134,7 +135,8 @@ test('the email list export is empty when no member is opted in with an email', 
 test('the members table can be filtered by watchlist, banned, and probation status', function () {
     $watchlisted = Member::factory()->create(['category_id' => $this->category->id, 'on_watchlist' => true, 'watchlist_reason' => 'reason']);
     $banned = Member::factory()->create(['category_id' => $this->category->id, 'is_banned' => true, 'ban_reason' => 'reason']);
-    $onProbation = Member::factory()->create(['category_id' => $this->category->id, 'date_vetted' => now()->subDays(10)]);
+    $onProbation = Member::factory()->create(['category_id' => $this->category->id]);
+    $onProbation->attendance()->create(['event_id' => Event::factory()->create()->id, 'checked_in_at' => now()->subDays(10)]);
     $clear = Member::factory()->create(['category_id' => $this->category->id]);
 
     $livewire = Livewire::test(ListMembers::class);
@@ -152,6 +154,39 @@ test('the members table can be filtered by watchlist, banned, and probation stat
         ->filterTable('on_probation', true)
         ->assertCanSeeTableRecords([$onProbation])
         ->assertCanNotSeeTableRecords([$watchlisted, $banned, $clear]);
+});
+
+test('the probation filter matches Member::isOnProbation() for first entries, the override, and never-in members', function () {
+    MembershipSetting::current()->update(['probation_period_days' => 90]);
+    $arrive = fn (Member $member, $at) => $member->attendance()->create(['event_id' => Event::factory()->create()->id, 'checked_in_at' => $at]);
+
+    $firstEntryInside = Member::factory()->create(['category_id' => $this->category->id]);
+    $arrive($firstEntryInside, now()->subDays(89));
+    $firstEntryOutside = Member::factory()->create(['category_id' => $this->category->id]);
+    $arrive($firstEntryOutside, now()->subDays(90));
+    $arrive($firstEntryOutside, now()->subDays(1));
+    $vettedButNeverIn = Member::factory()->create(['category_id' => $this->category->id, 'date_vetted' => now()->subDays(5)]);
+    $prepaidOnly = Member::factory()->create(['category_id' => $this->category->id]);
+    $arrive($prepaidOnly, null);
+    $recentOverride = Member::factory()->create(['category_id' => $this->category->id, 'probation_override_start' => now()->subDays(5)]);
+    $arrive($recentOverride, now()->subYears(2));
+    $oldOverride = Member::factory()->create(['category_id' => $this->category->id, 'probation_override_start' => now()->subDays(120)]);
+    $arrive($oldOverride, now()->subDays(5));
+
+    $inside = [$firstEntryInside, $recentOverride];
+    $outside = [$firstEntryOutside, $vettedButNeverIn, $prepaidOnly, $oldOverride];
+
+    foreach ($inside as $member) {
+        expect($member->isOnProbation())->toBeTrue();
+    }
+    foreach ($outside as $member) {
+        expect($member->isOnProbation())->toBeFalse();
+    }
+
+    Livewire::test(ListMembers::class)
+        ->filterTable('on_probation', true)
+        ->assertCanSeeTableRecords($inside)
+        ->assertCanNotSeeTableRecords($outside);
 });
 
 test('the banned_until field is hidden on the member form once suspensions_enabled is off', function () {

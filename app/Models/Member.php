@@ -340,22 +340,39 @@ class Member extends Model
 
     /**
      * Reporting-only — never affects admission or pricing (see
-     * AdmissionPolicy). Computed from date_vetted, same "derived, never
+     * AdmissionPolicy). Computed from probationStart(), same "derived, never
      * stored" pattern as subscription eligibility and the under-21 flag,
-     * rather than a manually-toggled boolean. probation_override_start lets
-     * a manager set when the clock actually started for an edge case
-     * date_vetted doesn't cover — it replaces date_vetted as the basis, it
-     * isn't an on/off flag like subscription_eligible's manual override.
+     * rather than a manually-toggled boolean.
      */
     public function isOnProbation(): bool
     {
-        $start = $this->probation_override_start ?? $this->date_vetted;
+        $start = $this->probationStart();
 
         if ($start === null) {
             return false;
         }
 
         return now()->lt($start->clone()->addDays(MembershipSetting::current()->probation_period_days));
+    }
+
+    /**
+     * When the probation clock started: the date of the member's first entry
+     * (first arrived attendance — a prepaid-but-not-arrived row doesn't
+     * count), which is also when a new member first does paperwork at the
+     * desk. date_vetted plays no part. probation_override_start lets a
+     * manager set when the clock actually started for an edge case — it
+     * replaces the first entry as the basis, it isn't an on/off flag like
+     * subscription_eligible's manual override. Null = never been in.
+     */
+    public function probationStart(): ?CarbonInterface
+    {
+        if ($this->probation_override_start !== null) {
+            return $this->probation_override_start;
+        }
+
+        $firstEntry = $this->attendance()->whereNotNull('checked_in_at')->min('checked_in_at');
+
+        return $firstEntry === null ? null : Carbon::parse($firstEntry)->startOfDay();
     }
 
     /**

@@ -119,7 +119,7 @@ class MemberForm
                             ->visible(fn (Get $get): bool => (bool) $get('is_banned') && MembershipSetting::current()->suspensions_enabled),
                         DatePicker::make('probation_override_start')
                             ->label('Probation start override')
-                            ->helperText(__('Leave blank to base probation on Date Vetted above. On probation for :days days from whichever date applies — reporting-only, never affects admission.', ['days' => MembershipSetting::current()->probation_period_days])),
+                            ->helperText(__('Leave blank to start probation on the member\'s first entry. On probation for :days days from whichever date applies — reporting-only, never affects admission.', ['days' => MembershipSetting::current()->probation_period_days])),
                         Toggle::make('missing_paperwork')
                             ->required(),
                         Toggle::make('is_deceased')

@@ -99,7 +99,7 @@ CREATE TABLE members (
   watchlist_probation_start DATE,                    -- set by an Owner's "remove with probation" (see below)
   is_banned         BOOLEAN NOT NULL DEFAULT FALSE,
   ban_reason        VARCHAR(255),                    -- MANAGER-ONLY
-  probation_override_start DATE,                    -- manual override; NULL => basis is date_vetted (see below)
+  probation_override_start DATE,                    -- manual override; NULL => basis is the first entry (see below)
   missing_paperwork BOOLEAN NOT NULL DEFAULT FALSE,
   is_deceased       BOOLEAN NOT NULL DEFAULT FALSE,   -- blocks admission, same as is_banned
   hospitality_note  VARCHAR(120),
@@ -109,7 +109,9 @@ CREATE TABLE members (
   FOREIGN KEY (sponsor_id)  REFERENCES members(id)
 );
 -- on_probation is NOT a stored column — it's derived (Member::isOnProbation()):
---   on probation while today < (probation_override_start ?? date_vetted) + probation_period_days (config, default 90)
+--   on probation while today < (probation_override_start ?? date of first entry) + probation_period_days (config, default 90)
+--   first entry = earliest attendance.checked_in_at (a prepaid-but-not-arrived row doesn't count),
+--   the visit where a new member first does paperwork. date_vetted plays no part.
 --   reporting-only: never affects admission or pricing.
 -- Watchlist review is derived too (Member::isWatchlistReviewDue()): due while
 --   on_watchlist and watchlist_review_on <= today. Manager+ sees a count on the
@@ -709,7 +711,7 @@ Five subtleties this encodes: **Door has bounded write** (it may set the five id
 - **Attendance & revenue by event type** → `GROUP BY event_type_id` over attendance joined to events — the analytics the spreadsheet never captured.
 - **Member's voucher balance** → `SUM(vouchers.amount)` per member — never a stored column.
 - **A Manager or Owner's monthly subscription perk availability** → does a `subscriptions` row with `comp_source = 'manager_monthly_perk'` exist for that user this calendar month.
-- **On probation** → `today < (probation_override_start ?? date_vetted) + probation_period_days` (config, default 90) — reporting-only, same "derived, never stored" shape as subscription eligibility and under-21.
+- **On probation** → `today < (probation_override_start ?? date of first entry) + probation_period_days` (config, default 90) — reporting-only, same "derived, never stored" shape as subscription eligibility and under-21.
 - **Volunteer+ staff currently in the building** → `User::signedInStaffQuery()` — any `active`, Volunteer+ user with an unexpired `sessions` row (`last_activity` within `config('session.lifetime')`). No stored "checked in" flag for staff, who don't pass through the desk the way a patron does.
 
 ---
@@ -777,7 +779,7 @@ Each case asserts the stored `entry_coverage` / the pool add-on line's `coverage
 
 **Ban exceptions**: a banned member with a `ban_exceptions` row for the specific event being checked into is warned (not blocked) and can check in after acknowledgement · an exception granted for one event does not cover a different event · the ban/watchlist audit log (`member_status_changes`) gets a row — capturing who, the new value, and the reason — whenever `is_banned` or `on_watchlist` changes on an authenticated save, and no row for an unrelated field edit or an unauthenticated (console) one · the log itself can never be edited or deleted, by anyone.
 
-**Probation (computed)**: within the configured period of `date_vetted` → on probation · past it → not · `probation_override_start`, when set, replaces `date_vetted` as the basis · neither date set → not on probation, no error.
+**Probation (computed)**: within the configured period of the member's first entry (first arrived attendance) → on probation · past it → not · a recent `date_vetted` or a not-yet-arrived prepay doesn't start it · `probation_override_start`, when set, replaces the first entry as the basis · never been in and no override → not on probation, no error.
 
 **Guests**: "Register a guest" is hidden until the selected member is actually checked in tonight (hidden for a not-yet-selected member and for a prepaid/not-yet-arrived attendance) · hidden (and server-side rejected even via a forged call) when the checked-in host is on probation · registering requires `username`, `preferred_name`, `first_name`, `last_name`, and `email` (`username` validated unique, with a race-safe fallback for two registers claiming the same one at once — no more auto-generated username) and creates a Guest-category member with `sponsor_id` set and a "Guest of {sponsor}" note · the new guest is auto-selected and can be checked in immediately · any role including Door can register one, once their host qualifies · two guests with the same name get distinct usernames · banning/watchlisting a guest who's checked in tonight appends a note to the sponsor, but the same guest banned on an unrelated later date leaves the sponsor untouched, and lifting a ban never writes a note.
 

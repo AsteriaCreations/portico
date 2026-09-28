@@ -34,6 +34,10 @@ is fixes only.
 
 ### Changed
 
+- New-member probation now starts on the member's first entry (first arrived check-in, where a new
+  member first does paperwork) instead of Date Vetted, which no longer affects probation. A member
+  who has never been in isn't on probation; "Probation start override" still wins when set. No
+  migration: probation is computed, so every member's status moves to the new rule on deploy.
 - A member flagged missing paperwork is now re-recorded at the Check-In Desk, not just ticked off.
   "Confirm paperwork on file" became "Record new paperwork": it opens the member's preferred name,
   first/last name and email pre-filled for staff to check against the new paperwork (plus DOB if
