@@ -34,6 +34,10 @@ is fixes only.
 
 ### Changed
 
+- **Mark follow-up sent** on the Members list now also moves each guest to Irregular: once the
+  club has welcomed them, they're a standard member. **Mark follow-up not sent** moves anyone still in
+  Irregular back to Guest (someone recategorized since keeps their category), and the "already sent"
+  follow-up filter now lists welcomed guests whatever their category. No migration.
 - New-member probation now starts on the member's first entry (first arrived check-in, where a new
   member first does paperwork) instead of Date Vetted, which no longer affects probation. A member
   who has never been in isn't on probation; "Probation start override" still wins when set. No

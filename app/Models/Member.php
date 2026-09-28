@@ -173,9 +173,10 @@ class Member extends Model
 
     /**
      * Records that the club has sent this guest its follow-up (welcome email,
-     * waiver, membership info -- whatever it sends), and who marked it. Set
-     * only through here, not mass assignment, so the plain edit form can't
-     * change it. Returns false for a non-guest, which is left untouched.
+     * waiver, membership info -- whatever it sends), and who marked it, and
+     * moves the guest to Irregular: once welcomed they're a standard member.
+     * Set only through here, not mass assignment, so the plain edit form
+     * can't change it. Returns false for a non-guest, which is left untouched.
      */
     public function markGuestFollowupSent(User $by): bool
     {
@@ -183,17 +184,31 @@ class Member extends Model
             return false;
         }
 
-        $this->forceFill(['guest_followup_sent_at' => now(), 'guest_followup_sent_by' => $by->id])->save();
+        $this->forceFill([
+            'guest_followup_sent_at' => now(),
+            'guest_followup_sent_by' => $by->id,
+            'category_id' => Category::where('name', 'Irregular')->firstOrFail()->id,
+        ])->save();
+        $this->unsetRelation('category');
 
         return true;
     }
 
     /**
-     * Undoes markGuestFollowupSent(), e.g. after marking the wrong guest.
+     * Undoes markGuestFollowupSent(), e.g. after marking the wrong guest:
+     * clears the mark and, if they're still the Irregular it made them,
+     * moves them back to Guest. A member recategorized since is left in
+     * their category.
      */
     public function clearGuestFollowup(): void
     {
-        $this->forceFill(['guest_followup_sent_at' => null, 'guest_followup_sent_by' => null])->save();
+        $revertToGuest = $this->guest_followup_sent_at !== null && $this->category?->name === 'Irregular';
+
+        $this->forceFill(array_merge(
+            ['guest_followup_sent_at' => null, 'guest_followup_sent_by' => null],
+            $revertToGuest ? ['category_id' => Category::where('name', 'Guest')->firstOrFail()->id] : [],
+        ))->save();
+        $this->unsetRelation('category');
     }
 
     public function hasActiveSubscriptionFor(AddOn $addOn, CarbonInterface $coveredMonth): bool

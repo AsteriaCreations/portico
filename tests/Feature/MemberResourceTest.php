@@ -436,7 +436,8 @@ test('a member\'s existing skills survive an unrelated edit by a Manager', funct
 test('the guest follow-up filter lists guests not yet sent it, or already sent it', function () {
     $guestCategory = Category::factory()->create(['name' => 'Guest']);
     $pending = Member::factory()->create(['category_id' => $guestCategory->id]);
-    $sent = Member::factory()->create(['category_id' => $guestCategory->id]);
+    // A welcomed guest has already moved on to Irregular, but still counts as sent.
+    $sent = Member::factory()->create(['category_id' => Category::factory()->create(['name' => 'Irregular'])->id]);
     $sent->forceFill(['guest_followup_sent_at' => now()])->save();
     $regular = Member::factory()->create(['category_id' => $this->category->id]);
 
@@ -460,8 +461,9 @@ test('the registered filter narrows the list to a date range', function () {
         ->assertCanNotSeeTableRecords([$lastWeek]);
 });
 
-test('marking follow-up sent records when and by whom for guests, and skips non-guests', function () {
+test('marking follow-up sent records when and by whom for guests, moves them to Irregular, and skips non-guests', function () {
     $guestCategory = Category::factory()->create(['name' => 'Guest']);
+    $irregular = Category::factory()->create(['name' => 'Irregular']);
     $guest = Member::factory()->create(['category_id' => $guestCategory->id]);
     $regular = Member::factory()->create(['category_id' => $this->category->id]);
 
@@ -473,14 +475,32 @@ test('marking follow-up sent records when and by whom for guests, and skips non-
 
     expect($guest->fresh()->guest_followup_sent_at)->not->toBeNull()
         ->and($guest->fresh()->guest_followup_sent_by)->toBe(auth()->id())
-        ->and($regular->fresh()->guest_followup_sent_at)->toBeNull();
+        ->and($guest->fresh()->category_id)->toBe($irregular->id)
+        ->and($regular->fresh()->guest_followup_sent_at)->toBeNull()
+        ->and($regular->fresh()->category_id)->toBe($this->category->id);
 
     Livewire::test(ListMembers::class)
-        ->callTableBulkAction('clearGuestFollowup', [$guest])
+        ->callTableBulkAction('clearGuestFollowup', [$guest, $regular])
         ->assertHasNoTableBulkActionErrors();
 
     expect($guest->fresh()->guest_followup_sent_at)->toBeNull()
-        ->and($guest->fresh()->guest_followup_sent_by)->toBeNull();
+        ->and($guest->fresh()->guest_followup_sent_by)->toBeNull()
+        ->and($guest->fresh()->category_id)->toBe($guestCategory->id)
+        ->and($regular->fresh()->category_id)->toBe($this->category->id);
+});
+
+test('undoing follow-up leaves a welcomed guest who was recategorized since in their new category', function () {
+    $guestCategory = Category::factory()->create(['name' => 'Guest']);
+    Category::factory()->create(['name' => 'Irregular']);
+    $staff = Category::factory()->create(['name' => 'Staff']);
+    $guest = Member::factory()->create(['category_id' => $guestCategory->id]);
+
+    $guest->markGuestFollowupSent(auth()->user());
+    $guest->update(['category_id' => $staff->id]);
+    $guest->fresh()->clearGuestFollowup();
+
+    expect($guest->fresh()->category_id)->toBe($staff->id)
+        ->and($guest->fresh()->guest_followup_sent_at)->toBeNull();
 });
 
 test('the follow-up mark cannot be set by mass assignment, such as the plain edit form', function () {
