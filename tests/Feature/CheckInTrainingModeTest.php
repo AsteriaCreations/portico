@@ -163,6 +163,8 @@ test('registering a guest in training mode creates no new member', function () {
     $sponsor = trainingClearMember($this->irregular);
     $event = Event::factory()->create(['event_date' => now()->toDateString(), 'entry_fee' => 20]);
     Attendance::factory()->for($sponsor)->for($event)->create(['checked_in_at' => now()]);
+    // An earlier visit, so tonight isn't the sponsor's first entry (probation).
+    Attendance::factory()->for($sponsor)->for(Event::factory()->create(['event_date' => now()->subYear()->toDateString()]))->create(['checked_in_at' => now()->subYear()]);
 
     $before = Member::count();
 

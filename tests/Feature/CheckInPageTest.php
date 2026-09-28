@@ -65,6 +65,20 @@ function clearMember(Category $category, array $overrides = []): Member
     ], $overrides));
 }
 
+/**
+ * A clear member whose first entry was a year ago, so tonight's check-in
+ * doesn't start their probation (Member::probationStart()) — for tests
+ * about a host who's already past it.
+ */
+function returningMember(Category $category, array $overrides = []): Member
+{
+    $member = clearMember($category, $overrides);
+    Attendance::factory()->for($member)->for(Event::factory()->create(['event_date' => now()->subYear()->toDateString()]))
+        ->create(['checked_in_at' => now()->subYear()]);
+
+    return $member;
+}
+
 test('the check-in page renders for an active user', function () {
     Livewire::test(CheckIn::class)->assertSuccessful();
 });
@@ -863,7 +877,7 @@ test('save and promote requires an email by default, and accepts none when the c
 
 test('registering a guest needs no email when the club turns that off', function () {
     MembershipSetting::current()->update(['member_email_required' => false]);
-    $member = clearMember($this->irregular);
+    $member = returningMember($this->irregular);
     $event = Event::factory()->create(['event_date' => now()->toDateString(), 'entry_fee' => 20]);
 
     Livewire::test(CheckIn::class)
@@ -1722,7 +1736,7 @@ test('the register-guest action is hidden for a prepaid host who has not yet arr
 });
 
 test('the register-guest action becomes visible once the host is checked in', function () {
-    $member = clearMember($this->irregular);
+    $member = returningMember($this->irregular);
     $event = Event::factory()->create(['event_date' => now()->toDateString(), 'entry_fee' => 20]);
 
     Livewire::test(CheckIn::class)
@@ -1734,7 +1748,7 @@ test('the register-guest action becomes visible once the host is checked in', fu
 
 test('the register-guest action is hidden when the checked-in host is on probation', function () {
     MembershipSetting::current()->update(['probation_period_days' => 90]);
-    $member = clearMember($this->irregular, ['date_vetted' => now()->subDays(10)]);
+    $member = clearMember($this->irregular); // first entry is tonight's check-in
     $event = Event::factory()->create(['event_date' => now()->toDateString(), 'entry_fee' => 20]);
 
     Livewire::test(CheckIn::class)
@@ -1747,7 +1761,7 @@ test('the register-guest action is hidden when the checked-in host is on probati
 
 test('a host on probation can register a guest when the club allows guests during probation', function () {
     MembershipSetting::current()->update(['probation_period_days' => 90, 'guests_allowed_during_probation' => true]);
-    $member = clearMember($this->irregular, ['date_vetted' => now()->subDays(10)]);
+    $member = clearMember($this->irregular); // first entry is tonight's check-in
     $event = Event::factory()->create(['event_date' => now()->toDateString(), 'entry_fee' => 20]);
 
     Livewire::test(CheckIn::class)
@@ -1775,7 +1789,7 @@ test('with guests switched off, the register-guest action is hidden with no prob
 });
 
 test('registering a guest creates a Guest-category member linked to the sponsor', function () {
-    $member = clearMember($this->irregular);
+    $member = returningMember($this->irregular);
     $event = Event::factory()->create(['event_date' => now()->toDateString(), 'entry_fee' => 20]);
 
     Livewire::test(CheckIn::class)
@@ -1801,7 +1815,7 @@ test('registering a guest creates a Guest-category member linked to the sponsor'
 });
 
 test('registering a guest requires username, preferred name, first/last name, and email', function () {
-    $member = clearMember($this->irregular);
+    $member = returningMember($this->irregular);
     $event = Event::factory()->create(['event_date' => now()->toDateString(), 'entry_fee' => 20]);
 
     Livewire::test(CheckIn::class)
@@ -1819,7 +1833,7 @@ test('registering a guest requires username, preferred name, first/last name, an
 });
 
 test('registering a guest requires dob once "appears to be under 21" is checked', function () {
-    $member = clearMember($this->irregular);
+    $member = returningMember($this->irregular);
     $event = Event::factory()->create(['event_date' => now()->toDateString(), 'entry_fee' => 20]);
 
     Livewire::test(CheckIn::class)
@@ -1840,7 +1854,7 @@ test('registering a guest requires dob once "appears to be under 21" is checked'
 });
 
 test('registering a guest captures dob when "appears to be under 21" is checked and dob provided', function () {
-    $member = clearMember($this->irregular);
+    $member = returningMember($this->irregular);
     $event = Event::factory()->create(['event_date' => now()->toDateString(), 'entry_fee' => 20]);
 
     Livewire::test(CheckIn::class)
@@ -1864,7 +1878,7 @@ test('registering a guest captures dob when "appears to be under 21" is checked 
 
 test('registering a guest with a username already taken by another member is rejected', function () {
     Member::factory()->create(['username' => 'jamieguestly']);
-    $member = clearMember($this->irregular);
+    $member = returningMember($this->irregular);
     $event = Event::factory()->create(['event_date' => now()->toDateString(), 'entry_fee' => 20]);
 
     Livewire::test(CheckIn::class)
@@ -1882,7 +1896,7 @@ test('registering a guest with a username already taken by another member is rej
 });
 
 test('a registered guest is auto-assigned the next member_number, same as any other staff-created member', function () {
-    $member = clearMember($this->irregular, ['member_number' => 41]);
+    $member = returningMember($this->irregular, ['member_number' => 41]);
     $event = Event::factory()->create(['event_date' => now()->toDateString(), 'entry_fee' => 20]);
 
     Livewire::test(CheckIn::class)
@@ -1903,7 +1917,7 @@ test('a registered guest is auto-assigned the next member_number, same as any ot
 });
 
 test('the newly registered guest is auto-selected and can be checked in for the event', function () {
-    $member = clearMember($this->irregular);
+    $member = returningMember($this->irregular);
     $event = Event::factory()->create(['event_date' => now()->toDateString(), 'entry_fee' => 20]);
 
     Livewire::test(CheckIn::class)
@@ -1930,7 +1944,7 @@ test('a door volunteer can register a guest once their host is checked in and no
     $door = User::factory()->create(['active' => true, 'role' => Role::Door]);
     $this->actingAs($door);
 
-    $member = clearMember($this->irregular);
+    $member = returningMember($this->irregular);
     $event = Event::factory()->create(['event_date' => now()->toDateString(), 'entry_fee' => 20]);
 
     Livewire::test(CheckIn::class)
@@ -2306,7 +2320,7 @@ test('the back check-in table requires acknowledgement for a watchlisted row and
 });
 
 test('two guests registered with the same name but different usernames both register fine', function () {
-    $member = clearMember($this->irregular);
+    $member = returningMember($this->irregular);
     $event = Event::factory()->create(['event_date' => now()->toDateString(), 'entry_fee' => 20]);
 
     $livewire = Livewire::test(CheckIn::class)
@@ -2340,7 +2354,7 @@ test('two guests registered with the same name but different usernames both regi
 
 test('once a member reaches the guest limit for the night, the action is replaced by a note', function () {
     MembershipSetting::current()->update(['max_guests_per_night' => 1]);
-    $member = clearMember($this->irregular);
+    $member = returningMember($this->irregular);
     $event = Event::factory()->create(['event_date' => now()->toDateString(), 'entry_fee' => 20]);
 
     $livewire = Livewire::test(CheckIn::class)
@@ -2362,14 +2376,14 @@ test('once a member reaches the guest limit for the night, the action is replace
         ->assertActionHidden('registerGuest')
         ->assertSee('Guest limit reached — 1 per member per night.');
 
-    $attendance = Attendance::where('member_id', $member->id)->firstOrFail();
+    $attendance = Attendance::where('member_id', $member->id)->where('event_id', $event->id)->firstOrFail();
     expect($member->fresh()->hasGuestAllowanceLeft($attendance))->toBeFalse()
         ->and(Member::where('sponsor_id', $member->id)->count())->toBe(1);
 });
 
 test('guests registered on an earlier visit do not count toward tonight\'s guest limit', function () {
     MembershipSetting::current()->update(['max_guests_per_night' => 1]);
-    $member = clearMember($this->irregular);
+    $member = returningMember($this->irregular);
     $guestCategory = Category::firstOrCreate(['name' => 'Guest'], ['is_comped' => false]);
     $returningGuest = Member::factory()->create(['category_id' => $guestCategory->id, 'sponsor_id' => $member->id]);
     $returningGuest->forceFill(['created_at' => now()->subWeek()])->save();

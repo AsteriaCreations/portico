@@ -135,20 +135,26 @@ class MembersTable
                     ->label('Missing paperwork'),
                 TernaryFilter::make('subscription_eligible')
                     ->label('Subscription eligible'),
-                // Mirrors Member::isOnProbation()'s own logic (now() < start +
-                // probation_period_days) as a cutoff comparison, rather than a
-                // DB-specific date-math function, so it stays portable across
-                // the SQLite test suite and MySQL/MariaDB in production.
+                // Mirrors Member::isOnProbation()/probationStart() (now() <
+                // start + probation_period_days) as a cutoff comparison, rather
+                // than a DB-specific date-math function, so it stays portable
+                // across the SQLite test suite and MySQL/MariaDB in production.
+                // With no override, the start is the first arrival's date: on
+                // probation when the member has arrived at least once and never
+                // before the first day still inside the period.
                 Filter::make('on_probation')
                     ->label('On probation')
                     ->toggle()
                     ->query(function (Builder $query): Builder {
                         $cutoff = now()->subDays(MembershipSetting::current()->probation_period_days);
+                        $firstDayInside = $cutoff->clone()->startOfDay()->addDay();
 
                         return $query->where(
                             fn (Builder $q) => $q
                                 ->where(fn (Builder $q) => $q->whereNotNull('probation_override_start')->where('probation_override_start', '>', $cutoff))
-                                ->orWhere(fn (Builder $q) => $q->whereNull('probation_override_start')->whereNotNull('date_vetted')->where('date_vetted', '>', $cutoff))
+                                ->orWhere(fn (Builder $q) => $q->whereNull('probation_override_start')
+                                    ->whereHas('attendance', fn (Builder $a) => $a->whereNotNull('checked_in_at'))
+                                    ->whereDoesntHave('attendance', fn (Builder $a) => $a->where('checked_in_at', '<', $firstDayInside)))
                         );
                     }),
                 // For the guest follow-up round: filter to guests not yet sent

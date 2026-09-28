@@ -93,39 +93,54 @@ test('the manual subscription_eligible flag grants eligibility regardless of att
     expect($member->isSubscriptionEligible())->toBeTrue();
 });
 
-test('isOnProbation is true within the configured period based on date_vetted', function () {
+test('isOnProbation is true within the configured period of the first entry', function () {
     MembershipSetting::current()->update(['probation_period_days' => 90]);
-    $member = Member::factory()->create([
-        'date_vetted' => now()->subDays(30),
-        'probation_override_start' => null,
-    ]);
+    $member = Member::factory()->create(['date_vetted' => now()->subYears(2), 'probation_override_start' => null]);
+    $member->attendance()->create(['event_id' => Event::factory()->create()->id, 'checked_in_at' => now()->subDays(30)]);
+    $member->attendance()->create(['event_id' => Event::factory()->create()->id, 'checked_in_at' => now()->subDays(2)]);
 
-    expect($member->isOnProbation())->toBeTrue();
+    expect($member->isOnProbation())->toBeTrue()
+        ->and($member->probationStart()->toDateString())->toBe(now()->subDays(30)->toDateString());
 });
 
-test('isOnProbation is false once the configured period has elapsed', function () {
+test('isOnProbation is false once the configured period since the first entry has elapsed', function () {
     MembershipSetting::current()->update(['probation_period_days' => 90]);
-    $member = Member::factory()->create([
-        'date_vetted' => now()->subDays(120),
-        'probation_override_start' => null,
-    ]);
+    $member = Member::factory()->create(['date_vetted' => now()->subDays(10), 'probation_override_start' => null]);
+    $member->attendance()->create(['event_id' => Event::factory()->create()->id, 'checked_in_at' => now()->subDays(120)]);
+    $member->attendance()->create(['event_id' => Event::factory()->create()->id, 'checked_in_at' => now()->subDays(2)]);
 
     expect($member->isOnProbation())->toBeFalse();
 });
 
-test('probation_override_start takes precedence over date_vetted', function () {
+test('probation starts on the first entry, not the vetting date or a prepay that never arrived', function () {
     MembershipSetting::current()->update(['probation_period_days' => 90]);
-    $member = Member::factory()->create([
-        'date_vetted' => now()->subDays(120),
-        'probation_override_start' => now()->subDays(10),
-    ]);
+    $member = Member::factory()->create(['date_vetted' => now()->subDays(10), 'probation_override_start' => null]);
+    $member->attendance()->create(['event_id' => Event::factory()->create()->id, 'checked_in_at' => null]);
+
+    expect($member->isOnProbation())->toBeFalse()
+        ->and($member->probationStart())->toBeNull();
+
+    $member->attendance()->create(['event_id' => Event::factory()->create()->id, 'checked_in_at' => now()]);
 
     expect($member->isOnProbation())->toBeTrue();
 });
 
-test('isOnProbation is false when neither date_vetted nor the override is set', function () {
+test('probation_override_start takes precedence over the first entry', function () {
+    MembershipSetting::current()->update(['probation_period_days' => 90]);
+    $member = Member::factory()->create(['probation_override_start' => now()->subDays(10)]);
+    $member->attendance()->create(['event_id' => Event::factory()->create()->id, 'checked_in_at' => now()->subDays(120)]);
+
+    expect($member->isOnProbation())->toBeTrue();
+
+    $member->update(['probation_override_start' => now()->subDays(120)]);
+    $member->attendance()->create(['event_id' => Event::factory()->create()->id, 'checked_in_at' => now()->subDays(5)]);
+
+    expect($member->fresh()->isOnProbation())->toBeFalse();
+});
+
+test('isOnProbation is false for a member who has never been in and has no override', function () {
     $member = Member::factory()->create([
-        'date_vetted' => null,
+        'date_vetted' => now()->subDays(5),
         'probation_override_start' => null,
     ]);
 
