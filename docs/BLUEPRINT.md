@@ -734,7 +734,7 @@ Registering a guest collects first/last name, optional email, and DOB only if th
 
 **Accountability is scoped to the night of the visit, not open-ended.** If a guest gets banned or put on the watchlist while they still have an attendance row checked in *that same day*, `App\Observers\MemberObserver` appends a note to the sponsor's own `notes` — the sponsor is only on the hook for what happened the night they brought the guest in, not anything that surfaces later and is unrelated to that visit.
 
-Everything downstream of registration reuses existing mechanisms with no new code: filtering to "which Guests need the post-event welcome message" is the existing `category_id` filter on the Members table; "moving a welcomed guest to their standard class" is just editing `category_id` on the existing Members edit form.
+Everything downstream of registration reuses existing mechanisms with no new code: filtering to "which Guests need the post-event welcome message" is the existing `category_id` filter on the Members table; "moving a welcomed guest to their standard class" happens when Manager+ marks the follow-up sent (the Members list's **Mark follow-up sent** bulk action, `Member::markGuestFollowupSent()`), which moves the guest to Irregular; **Mark follow-up not sent** moves anyone still in Irregular back to Guest.
 
 ---
 

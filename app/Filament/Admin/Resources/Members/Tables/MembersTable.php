@@ -168,7 +168,8 @@ class MembersTable
                     ])
                     ->query(fn (Builder $query, array $data): Builder => match ($data['value'] ?? null) {
                         'pending' => $query->whereHas('category', fn (Builder $q) => $q->where('name', 'Guest'))->whereNull('guest_followup_sent_at'),
-                        'sent' => $query->whereHas('category', fn (Builder $q) => $q->where('name', 'Guest'))->whereNotNull('guest_followup_sent_at'),
+                        // Not category-scoped: marking it sent moves the guest to Irregular.
+                        'sent' => $query->whereNotNull('guest_followup_sent_at'),
                         default => $query,
                     }),
                 Filter::make('registered')
@@ -244,7 +245,7 @@ class MembersTable
                         ->label('Mark follow-up sent')
                         ->icon('heroicon-o-paper-airplane')
                         ->requiresConfirmation()
-                        ->modalDescription(__('Records that each selected guest has been sent the club\'s follow-up, and that you marked it. Selected members who aren\'t guests are skipped.'))
+                        ->modalDescription(__('Records that each selected guest has been sent the club\'s follow-up, and that you marked it, and moves them to Irregular. Selected members who aren\'t guests are skipped.'))
                         ->authorizeIndividualRecords('update')
                         ->deselectRecordsAfterCompletion()
                         ->action(function (Collection $records): void {
@@ -261,7 +262,7 @@ class MembersTable
                         ->label('Mark follow-up not sent')
                         ->icon('heroicon-o-arrow-uturn-left')
                         ->requiresConfirmation()
-                        ->modalDescription(__('Clears the follow-up mark on each selected member, e.g. after marking the wrong guest.'))
+                        ->modalDescription(__('Clears the follow-up mark on each selected member, e.g. after marking the wrong guest. Anyone still in Irregular goes back to Guest.'))
                         ->authorizeIndividualRecords('update')
                         ->deselectRecordsAfterCompletion()
                         ->action(function (Collection $records): void {
