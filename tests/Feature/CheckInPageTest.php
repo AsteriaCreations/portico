@@ -2433,3 +2433,46 @@ test('member search caps total results and still fills remaining slots from name
     expect($both)->toHaveCount(2)
         ->and($both->first()->username)->toBe('zzzmatch1');
 });
+
+test('an ineligible member with nothing to buy sees why up front, with no empty sell fold', function () {
+    $member = clearMember($this->irregular);
+
+    Livewire::test(CheckIn::class)
+        ->fillForm(['member_id' => $member->id])
+        ->assertSee('Not yet subscription-eligible')
+        ->assertDontSee('Standalone — no event or check-in needed');
+});
+
+test('the sell fold appears once the member can buy a subscription', function () {
+    $member = clearMember($this->irregular, ['subscription_eligible' => true]);
+
+    Livewire::test(CheckIn::class)
+        ->fillForm(['member_id' => $member->id])
+        ->assertSee('Standalone — no event or check-in needed')
+        ->assertDontSee('Not yet subscription-eligible');
+});
+
+test('the sell fold still appears for an ineligible member when a day pass is on sale', function () {
+    $member = clearMember($this->irregular);
+    Event::factory()->create(['event_date' => now()->toDateString(), 'entry_fee' => 20, 'pool_fee' => 15]);
+
+    Livewire::test(CheckIn::class)
+        ->fillForm(['member_id' => $member->id])
+        ->assertSee('Not yet subscription-eligible')
+        ->assertSee('Standalone — no event or check-in needed');
+});
+
+test('buttons that do not apply are left out rather than shown disabled', function () {
+    $door = User::factory()->create(['active' => true, 'role' => Role::Door]);
+    $this->actingAs($door);
+    $member = clearMember($this->irregular);
+    $event = Event::factory()->create(['event_date' => now()->toDateString(), 'entry_fee' => 20, 'pool_fee' => 0]);
+    Attendance::factory()->create(['member_id' => $member->id, 'event_id' => $event->id, 'checked_in_at' => now(), 'amount_paid' => 20]);
+
+    Livewire::test(CheckIn::class)
+        ->fillForm(['event_id' => $event->id, 'member_id' => $member->id])
+        ->assertSee('Checked in at')
+        ->assertDontSee('Record a waiver signature')
+        ->assertDontSee('Convert entry to subscription')
+        ->assertDontSee('Mark as returned');
+});
