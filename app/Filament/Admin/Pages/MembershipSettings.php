@@ -13,6 +13,7 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Notifications\Notification;
+use Filament\Pages\Concerns\HasUnsavedDataChangesAlert;
 use Filament\Pages\Page;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
@@ -28,6 +29,7 @@ use UnitEnum;
  */
 class MembershipSettings extends Page
 {
+    use HasUnsavedDataChangesAlert;
     use TranslatesPageLabels;
 
     protected string $view = 'filament.admin.pages.membership-settings';
@@ -85,6 +87,8 @@ class MembershipSettings extends Page
             'upstream_branch',
             'deploy_task_name',
         ]));
+
+        $this->rememberData();
     }
 
     public function form(Schema $schema): Schema
@@ -309,6 +313,7 @@ class MembershipSettings extends Page
                 }
 
                 MembershipSetting::current()->update($state);
+                $this->rememberData();
 
                 Notification::make()->title(__('Settings saved'))->success()->send();
             });

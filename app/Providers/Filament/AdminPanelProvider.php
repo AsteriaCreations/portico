@@ -80,6 +80,10 @@ class AdminPanelProvider extends PanelProvider
                 'System' => NavigationGroup::make()->label(fn (): string => __('System'))->collapsed(),
             ])
             ->databaseNotifications()
+            // Warns before leaving a create/edit form (or closing an action
+            // modal) with unsaved changes. Custom settings pages opt in with
+            // Filament's HasUnsavedDataChangesAlert trait.
+            ->unsavedChangesAlerts()
             ->renderHook(
                 PanelsRenderHook::FOOTER,
                 fn (): string => view('filament.admin.footer')->render(),

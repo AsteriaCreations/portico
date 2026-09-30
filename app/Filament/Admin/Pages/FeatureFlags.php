@@ -10,6 +10,7 @@ use BackedEnum;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Toggle;
 use Filament\Notifications\Notification;
+use Filament\Pages\Concerns\HasUnsavedDataChangesAlert;
 use Filament\Pages\Page;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
@@ -25,6 +26,7 @@ use UnitEnum;
  */
 class FeatureFlags extends Page
 {
+    use HasUnsavedDataChangesAlert;
     use TranslatesPageLabels;
 
     protected string $view = 'filament.admin.pages.feature-flags';
@@ -69,6 +71,8 @@ class FeatureFlags extends Page
             'upstream_check_enabled',
             'deploy_trigger_enabled',
         ]));
+
+        $this->rememberData();
     }
 
     public function form(Schema $schema): Schema
@@ -172,6 +176,7 @@ class FeatureFlags extends Page
                     ->all();
 
                 $setting->update($state);
+                $this->rememberData();
 
                 $reminders = app(FeatureSetupReminders::class)->sendFor(auth()->user(), $turnedOn);
 

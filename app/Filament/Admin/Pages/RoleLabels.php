@@ -9,6 +9,7 @@ use BackedEnum;
 use Filament\Actions\Action;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
+use Filament\Pages\Concerns\HasUnsavedDataChangesAlert;
 use Filament\Pages\Page;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
@@ -25,6 +26,7 @@ use UnitEnum;
  */
 class RoleLabels extends Page
 {
+    use HasUnsavedDataChangesAlert;
     use TranslatesPageLabels;
 
     protected string $view = 'filament.admin.pages.role-labels';
@@ -54,6 +56,8 @@ class RoleLabels extends Page
         $this->form->fill([
             'role_labels' => MembershipSetting::current()->role_labels ?? [],
         ]);
+
+        $this->rememberData();
     }
 
     public function form(Schema $schema): Schema
@@ -84,6 +88,7 @@ class RoleLabels extends Page
                     ->all();
 
                 MembershipSetting::current()->update(['role_labels' => $labels]);
+                $this->rememberData();
 
                 Notification::make()->title(__('Role labels saved'))->success()->send();
             });
