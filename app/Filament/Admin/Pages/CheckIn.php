@@ -22,6 +22,7 @@ use App\Models\Register;
 use App\Models\RegisterShift;
 use App\Models\Subscription;
 use App\Models\Voucher;
+use App\Notifications\LastCheckInNotification;
 use App\Services\AdmissionDecision;
 use App\Services\AdmissionPolicy;
 use App\Services\CapacityService;
@@ -63,6 +64,7 @@ use Illuminate\Database\QueryException;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Notification as LaravelNotification;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 
 class CheckIn extends Page implements HasTable
@@ -1650,7 +1652,38 @@ class CheckIn extends Page implements HasTable
                 }
 
                 Notification::make()->title($title)->success()->send();
+
+                $this->rememberLastCheckIn($member, $event, $title, $data['payment_method'] ?? null);
             });
+    }
+
+    /**
+     * Keeps the check-in toast in the bell for the staff member who took it,
+     * replacing their previous one, so the desk can double-check what the
+     * last person owed after the toast fades.
+     */
+    private function rememberLastCheckIn(Member $member, Event $event, string $amountDue, ?string $paymentMethodCode): void
+    {
+        $user = auth()->user();
+        $paymentMethod = $paymentMethodCode ? PaymentMethod::where('code', $paymentMethodCode)->value('label') : null;
+
+        $body = collect([$amountDue, $paymentMethod ? __('Paid by :method', ['method' => $paymentMethod]) : null, $event->label()])
+            ->filter()
+            ->implode(' · ');
+
+        $notification = Notification::make()
+            ->title(__('Last check-in: :name', ['name' => $member->displayName()]))
+            ->body($body)
+            ->icon('heroicon-o-banknotes')
+            ->success();
+
+        $user->notifications()->where('type', LastCheckInNotification::class)->delete();
+
+        // sendNow(), not sendToDatabase(): this app runs no queue worker, and
+        // Filament's database notification is queued.
+        LaravelNotification::sendNow($user, new LastCheckInNotification($notification->getDatabaseMessage()));
+
+        $this->dispatch('databaseNotificationsSent');
     }
 
     /**
