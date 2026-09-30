@@ -204,51 +204,64 @@
             @foreach ($this->getGatedAddOnWarnings() as $gatedWarning)
                 <p class="mt-4 text-danger-600">{{ $gatedWarning }}</p>
             @endforeach
-            <div class="mt-2">
-                {{ $this->recordGatedPaperworkAction }}
-            </div>
+            {{-- A hidden action rendered with {{ }} still shows as a disabled
+            button, which reads as broken -- so every conditional action on
+            this page is wrapped in isVisible(). --}}
+            @if ($this->recordGatedPaperworkAction->isVisible())
+                <div class="mt-2">
+                    {{ $this->recordGatedPaperworkAction }}
+                </div>
+            @endif
+
+            @php
+                $subscriptionEligible = $member->isSubscriptionEligible();
+                $canBuyDayPass = $this->purchaseAddOnDayPassAction->isVisible();
+            @endphp
+
+            {{-- Out in the open, not inside the fold below: staff shouldn't
+            have to open it to learn there's no subscription to sell. --}}
+            @unless ($subscriptionEligible)
+                @php
+                    $attendedCount = $member->eligibilityAttendanceCount();
+                    $subscriptionThreshold = \App\Models\MembershipSetting::current()->subscription_eligibility_threshold;
+                    $windowMonths = \App\Models\MembershipSetting::current()->subscription_eligibility_window_months;
+                @endphp
+                <p class="mt-4 text-sm text-gray-500">
+                    @if ($windowMonths)
+                        {{ __('Not yet subscription-eligible (:attended/:threshold events attended in the last :months months)', ['attended' => $attendedCount, 'threshold' => $subscriptionThreshold, 'months' => $windowMonths]) }}
+                    @else
+                        {{ __('Not yet subscription-eligible (:attended/:threshold events attended)', ['attended' => $attendedCount, 'threshold' => $subscriptionThreshold]) }}
+                    @endif
+                </p>
+            @endunless
+
+            {{-- A day pass for a waiver-gated add-on (Pool) isn't offered
+            until the signature is on file -- say so, rather than just showing
+            nothing where the button would be. --}}
+            @foreach ($this->getDayPassPaperworkNotes() as $note)
+                <p class="mt-2 text-sm" style="opacity: .7;">{{ $note }}</p>
+            @endforeach
 
             {{-- Folded: standalone transactions, not part of a normal check-in.
             Buying a subscription or day pass here doesn't require an event to
-            be selected. --}}
-            <x-desk-fold class="mt-4" :title="__('Sell a subscription or day pass')" :summary="__('Standalone — no event or check-in needed')">
-                @if ($member->isSubscriptionEligible())
-                    <div>
-                        {{ $this->purchaseSubscriptionAction }}
-                    </div>
-                @else
-                    @php
-                        $attendedCount = $member->eligibilityAttendanceCount();
-                        $subscriptionThreshold = \App\Models\MembershipSetting::current()->subscription_eligibility_threshold;
-                        $windowMonths = \App\Models\MembershipSetting::current()->subscription_eligibility_window_months;
-                    @endphp
-                    <p class="text-sm text-gray-500">
-                        @if ($windowMonths)
-                            {{ __('Not yet subscription-eligible (:attended/:threshold events attended in the last :months months)', ['attended' => $attendedCount, 'threshold' => $subscriptionThreshold, 'months' => $windowMonths]) }}
-                        @else
-                            {{ __('Not yet subscription-eligible (:attended/:threshold events attended)', ['attended' => $attendedCount, 'threshold' => $subscriptionThreshold]) }}
-                        @endif
-                    </p>
-                @endif
+            be selected. Left out entirely when there's nothing to sell. --}}
+            @if ($subscriptionEligible || $canBuyDayPass)
+                <x-desk-fold class="mt-4" :title="__('Sell a subscription or day pass')" :summary="__('Standalone — no event or check-in needed')">
+                    @if ($subscriptionEligible)
+                        <div>
+                            {{ $this->purchaseSubscriptionAction }}
+                        </div>
+                    @endif
 
-                {{-- Unlike Buy Subscription above, not gated by isSubscriptionEligible() --
-                a one-time add-on day pass is revenue, not a membership perk.
-                Only rendered when actually buyable -- otherwise Filament shows
-                it disabled, which reads as broken; the note below explains why
-                it's absent. --}}
-                @if ($this->purchaseAddOnDayPassAction->isVisible())
-                    <div>
-                        {{ $this->purchaseAddOnDayPassAction }}
-                    </div>
-                @endif
-
-                {{-- A day pass for a waiver-gated add-on (Pool) isn't offered
-                until the signature is on file -- say so, rather than just
-                showing nothing where the button would be. --}}
-                @foreach ($this->getDayPassPaperworkNotes() as $note)
-                    <p class="text-sm" style="opacity: .7;">{{ $note }}</p>
-                @endforeach
-            </x-desk-fold>
+                    {{-- Unlike Buy Subscription above, not gated by isSubscriptionEligible() --
+                    a one-time add-on day pass is revenue, not a membership perk. --}}
+                    @if ($canBuyDayPass)
+                        <div>
+                            {{ $this->purchaseAddOnDayPassAction }}
+                        </div>
+                    @endif
+                </x-desk-fold>
+            @endif
         </x-filament::section>
     @endif
 
@@ -266,9 +279,11 @@
                         {{ __('Marked departed at :time.', ['time' => $attendance->departed_at->translatedFormat('g:i A')]) }}
                     </p>
 
-                    <div class="mt-4">
-                        {{ $this->markAsReturnedAction }}
-                    </div>
+                    @if ($this->markAsReturnedAction->isVisible())
+                        <div class="mt-4">
+                            {{ $this->markAsReturnedAction }}
+                        </div>
+                    @endif
                 @else
                     <p class="font-medium text-success-600">
                         {{ __('Checked in at :time — paid :amount', ['time' => $attendance->checked_in_at->translatedFormat('g:i A'), 'amount' => \App\Models\MembershipSetting::formatMoney($attendance->amount_paid)]) }}
@@ -288,9 +303,11 @@
                 @endif
 
                 {{-- Manager+ only, and only while EntryCorrectionService allows it. --}}
-                <div class="mt-4">
-                    {{ $this->convertEntryToSubscriptionAction }}
-                </div>
+                @if ($this->convertEntryToSubscriptionAction->isVisible())
+                    <div class="mt-4">
+                        {{ $this->convertEntryToSubscriptionAction }}
+                    </div>
+                @endif
             </x-filament::section>
         @elseif ($attendance)
             <x-filament::section>

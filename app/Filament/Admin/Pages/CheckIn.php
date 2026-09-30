@@ -715,7 +715,8 @@ class CheckIn extends Page implements HasTable
     }
 
     /**
-     * Note lines for the "Sell a subscription or day pass" fold: a day pass
+     * Note lines shown just above the "Sell a subscription or day pass" fold
+     * (outside it, so they still show when the fold is left out): a day pass
      * for a priced_per_event add-on (Pool) is only offered once its gating
      * waiver is on file, so purchaseAddOnDayPassAction is simply hidden
      * without it. Rather than leave staff wondering where the button went,
