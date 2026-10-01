@@ -36,6 +36,7 @@
         <p>{!! __('2. Read the <strong>status line</strong> — green means go, amber means do one thing first, red means stop and get a manager. It shows before you pick an event.') !!}</p>
         <p>{!! __("3. Pick tonight's <strong>event</strong> to see what's due.") !!}</p>
         <p>{!! __('4. Take payment for the amount on the <strong>Due</strong> line, then click <strong>Check in</strong>.') !!}</p>
+        <p>{{ __('Missed the amount due after checking someone in? It stays in the bell (top right) until your next check-in.') }}</p>
         <p>{{ __("If a watchlist note asks for a staff-channel message, send it first, then tick the acknowledgement — you can't proceed without it.") }}</p>
         <p>{!! __('Already paid ahead or on the comp list? The screen says <strong>Prepaid — not yet arrived</strong>; click <strong>Mark arrived</strong> instead of Check in.') !!}</p>
         <p>{!! __('Practising? <strong>Enter training mode</strong> at the top of the screen — everything behaves as normal, but nothing is saved.') !!}</p>
