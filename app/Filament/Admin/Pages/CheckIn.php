@@ -125,6 +125,13 @@ class CheckIn extends Page implements HasTable
     // scoped, so it clears on logout) and toggled via getHeaderActions().
     public bool $trainingMode = false;
 
+    // Bumped after a desk username rename. The Member picker keys on it
+    // (see form()): its option label is cached client-side and only
+    // re-fetched when the value changes, so renaming the selected member
+    // kept showing the old username until re-picked. A new key makes
+    // Livewire swap the element, which re-renders the label from the server.
+    public int $memberPickerVersion = 0;
+
     // Every other role floor in this app has been Door-and-up, so nothing
     // else ever needed to gate this page explicitly. Showrunner now ranks
     // below Door and must not reach check-in/payment at all. See
@@ -242,6 +249,7 @@ class CheckIn extends Page implements HasTable
                 // eligibility, and guest-sponsor status. Event only matters for
                 // per-event price and capacity, so it's the second, narrower input.
                 Select::make('member_id')
+                    ->key(fn (): string => "member_id.v{$this->memberPickerVersion}")
                     ->label(__('Member'))
                     ->live()
                     ->searchable()
@@ -1023,6 +1031,7 @@ class CheckIn extends Page implements HasTable
         return $this->makeRenameUsernameAction(
             resolveMember: fn (): ?Member => $this->getSelectedMember(),
             haltBeforeSave: fn (): bool => $this->haltForTraining(__('Practice: username rename simulated.')),
+            afterSave: fn () => $this->memberPickerVersion++,
         );
     }
 

@@ -13,8 +13,8 @@ is fixes only.
 
 - "Door can rename usernames" on Feature Flags (off by default). When on, Door staff get a
   "Rename username" button for the selected member on the Check-In Desk. It uses the same
-  duplicate check and audit log as the Manager rename on the member's page, and saves nothing in
-  training mode. Each Door rename sends every active Manager, Admin and Owner a bell
+  duplicate check and audit log as the Manager rename on the member's page, updates the Member
+  box to the new name straight away, and saves nothing in training mode. Each Door rename sends every active Manager, Admin and Owner a bell
   notification with the old and new username and who made the change.
 - Watchlist review dates. Manager+ can give a watchlist entry an optional review date (blank =
   stays on indefinitely); the Members nav badge counts entries whose date has arrived, with a
