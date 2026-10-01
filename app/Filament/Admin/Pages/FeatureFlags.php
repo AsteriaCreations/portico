@@ -68,6 +68,7 @@ class FeatureFlags extends Page
             'visit_notes_enabled',
             'behavior_notes_enabled',
             'guests_enabled',
+            'door_username_rename_enabled',
             'upstream_check_enabled',
             'deploy_trigger_enabled',
         ]));
@@ -105,6 +106,10 @@ class FeatureFlags extends Page
                         Toggle::make('guests_enabled')
                             ->label('Guests enabled')
                             ->helperText(__('Turns off "Register a guest" on the Check-In Desk. Guests already registered keep their records and can still be checked in. Whether a member on probation may bring one is on Membership Settings. Leave on unless this club doesn\'t allow guests.'))
+                            ->required(),
+                        Toggle::make('door_username_rename_enabled')
+                            ->label('Door can rename usernames')
+                            ->helperText(__('Adds a "Rename username" button for the selected member on the Check-In Desk, so Door staff can fix a username without a Manager. Every rename is still logged (old name, new name, who, when) on the member\'s record. Managers and above can always rename from the member\'s edit page. Off by default.'))
                             ->required(),
                     ]),
                 Section::make(__('Records'))

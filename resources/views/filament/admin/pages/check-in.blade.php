@@ -182,6 +182,13 @@
             <p class="font-medium">{{ $member->displayName() }}</p>
             <p class="text-sm text-gray-500">{{ $member->category->name }}</p>
 
+            {{-- Manager+, or Door once the club turns it on at Feature Flags. --}}
+            @if ($this->renameUsernameAction->isVisible())
+                <div class="mt-2">
+                    {{ $this->renameUsernameAction }}
+                </div>
+            @endif
+
             @if (app(\App\Services\AdmissionPolicy::class)->needsCapture($member))
                 <p class="mt-4 font-medium">{{ __('Prospective — complete sign-up to promote to Irregular.') }}</p>
                 <div class="mt-2">
