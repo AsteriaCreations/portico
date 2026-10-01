@@ -54,7 +54,7 @@ MEMBER MANAGEMENT
 - One-time per-event ban exceptions
 - Computed probation status (derived, not stored)
 - Append-only audit logs: status changes, username changes
-- Username rename (audited, race-safe)
+- Username rename (audited, race-safe) — Manager+ from the member's page; optionally Door from the Check-In Desk (Feature Flags, off by default)
 - Bulk member recategorization
 - Guest follow-up tracking — filter new guests not yet sent the club's follow-up (with a registered-date range), export them, and bulk-mark them sent (who and when recorded), which moves them to Irregular
 - Email opt-in flag + bulk email CSV export

@@ -5,6 +5,7 @@ namespace App\Filament\Admin\Pages;
 use App\Enums\AdmissionOutcome;
 use App\Enums\Role;
 use App\Exceptions\CheckInRefused;
+use App\Filament\Concerns\RenamesMemberUsername;
 use App\Filament\Concerns\TranslatesPageLabels;
 use App\Models\AddOn;
 use App\Models\AddOnDayPass;
@@ -70,6 +71,7 @@ use Symfony\Component\HttpKernel\Exception\HttpException;
 class CheckIn extends Page implements HasTable
 {
     use InteractsWithTable;
+    use RenamesMemberUsername;
     use TranslatesPageLabels;
 
     protected string $view = 'filament.admin.pages.check-in';
@@ -1009,6 +1011,19 @@ class CheckIn extends Page implements HasTable
 
                 Notification::make()->title(__('Member promoted to Irregular'))->success()->send();
             });
+    }
+
+    // Lets the desk fix a username on the spot (a typo at sign-up, a
+    // member who changed theirs) without fetching a Manager. Hidden unless
+    // the rename-member-username gate allows it -- for Door that means the
+    // club turned on door_username_rename_enabled. Member-only, like
+    // saveAndPromoteAction(). Logged by MemberObserver either way.
+    public function renameUsernameAction(): Action
+    {
+        return $this->makeRenameUsernameAction(
+            resolveMember: fn (): ?Member => $this->getSelectedMember(),
+            haltBeforeSave: fn (): bool => $this->haltForTraining(__('Practice: username rename simulated.')),
+        );
     }
 
     /**

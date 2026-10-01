@@ -92,6 +92,14 @@ class AppServiceProvider extends ServiceProvider
         // review action. See Member::resolveWatchlistReview().
         Gate::define('resolve-watchlist', fn (User $user): bool => $user->role->atLeast(Role::Owner));
 
+        // Manager+ always; Door too once the club turns on
+        // door_username_rename_enabled. Either way the rename is logged by
+        // MemberObserver. Re-checked server-side by the shared
+        // RenamesMemberUsername action on both the Member edit page and the
+        // Check-In Desk.
+        Gate::define('rename-member-username', fn (User $user): bool => $user->role->atLeast(Role::Manager)
+            || ($user->role->atLeast(Role::Door) && MembershipSetting::current()->door_username_rename_enabled));
+
         // Orthogonal to role -- a capability grants nothing rank-related on
         // its own. See App\Enums\Capability.
         Gate::define('access-cleaning-checklist', fn (User $user): bool => $user->hasCapability(Capability::CleaningCrew));
