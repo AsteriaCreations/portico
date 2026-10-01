@@ -120,3 +120,72 @@ test('a manager can turn the setting on from the feature flags page', function (
 
     expect(MembershipSetting::current()->door_username_rename_enabled)->toBeTrue();
 });
+
+test('a door rename at the desk notifies every active manager and above, not lower roles', function () {
+    MembershipSetting::current()->update(['door_username_rename_enabled' => true]);
+    $manager = deskRenameUser(Role::Manager);
+    $admin = deskRenameUser(Role::Admin);
+    $owner = deskRenameUser(Role::Owner);
+    $inactiveManager = User::factory()->create(['active' => false, 'role' => Role::Manager]);
+    $otherDoor = deskRenameUser(Role::Door);
+    $door = deskRenameUser(Role::Door);
+    $this->actingAs($door);
+    $member = Member::factory()->create(['username' => 'oldname']);
+
+    Livewire::test(CheckIn::class)
+        ->set('data.member_id', $member->id)
+        ->callAction('renameUsername', data: ['username' => 'newname'])
+        ->assertHasNoActionErrors();
+
+    foreach ([$manager, $admin, $owner] as $recipient) {
+        expect($recipient->notifications()->count())->toBe(1);
+    }
+
+    expect($inactiveManager->notifications()->count())->toBe(0)
+        ->and($otherDoor->notifications()->count())->toBe(0)
+        ->and($door->notifications()->count())->toBe(0)
+        ->and($manager->notifications()->first()->data['title'])->toContain('oldname')->toContain('newname');
+});
+
+test('a manager rename notifies nobody', function () {
+    $otherManager = deskRenameUser(Role::Manager);
+    $owner = deskRenameUser(Role::Owner);
+    $this->actingAs(deskRenameUser(Role::Manager));
+    $member = Member::factory()->create(['username' => 'oldname']);
+
+    Livewire::test(CheckIn::class)
+        ->set('data.member_id', $member->id)
+        ->callAction('renameUsername', data: ['username' => 'newname'])
+        ->assertHasNoActionErrors();
+
+    expect($otherManager->notifications()->count())->toBe(0)
+        ->and($owner->notifications()->count())->toBe(0);
+});
+
+test('a training-mode rename at the desk notifies nobody', function () {
+    MembershipSetting::current()->update(['door_username_rename_enabled' => true]);
+    $manager = deskRenameUser(Role::Manager);
+    $this->actingAs(deskRenameUser(Role::Door));
+    $member = Member::factory()->create(['username' => 'oldname']);
+
+    Livewire::test(CheckIn::class)
+        ->set('trainingMode', true)
+        ->set('data.member_id', $member->id)
+        ->callAction('renameUsername', data: ['username' => 'newname']);
+
+    expect($manager->notifications()->count())->toBe(0);
+});
+
+test('a door "rename" to the same username notifies nobody', function () {
+    MembershipSetting::current()->update(['door_username_rename_enabled' => true]);
+    $manager = deskRenameUser(Role::Manager);
+    $this->actingAs(deskRenameUser(Role::Door));
+    $member = Member::factory()->create(['username' => 'samename']);
+
+    Livewire::test(CheckIn::class)
+        ->set('data.member_id', $member->id)
+        ->callAction('renameUsername', data: ['username' => 'samename'])
+        ->assertHasNoActionErrors();
+
+    expect($manager->notifications()->count())->toBe(0);
+});

@@ -109,7 +109,7 @@ class FeatureFlags extends Page
                             ->required(),
                         Toggle::make('door_username_rename_enabled')
                             ->label('Door can rename usernames')
-                            ->helperText(__('Adds a "Rename username" button for the selected member on the Check-In Desk, so Door staff can fix a username without a Manager. Every rename is still logged (old name, new name, who, when) on the member\'s record. Managers and above can always rename from the member\'s edit page. Off by default.'))
+                            ->helperText(__('Adds a "Rename username" button for the selected member on the Check-In Desk, so Door staff can fix a username without a Manager. Every rename is still logged (old name, new name, who, when) on the member\'s record, and each one sends Managers and above a notification. Managers and above can always rename from the member\'s edit page. Off by default.'))
                             ->required(),
                     ]),
                 Section::make(__('Records'))

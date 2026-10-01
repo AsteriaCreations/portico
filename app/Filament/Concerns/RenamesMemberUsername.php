@@ -3,6 +3,7 @@
 namespace App\Filament\Concerns;
 
 use App\Models\Member;
+use App\Services\UsernameRenameNotifier;
 use Closure;
 use Filament\Actions\Action;
 use Filament\Forms\Components\TextInput;
@@ -17,7 +18,8 @@ use Illuminate\Support\Facades\Gate;
  * the only rename path: the one place a duplicate gets checked, and the
  * change gets logged via MemberObserver -> member_username_changes. Who may
  * use it is the rename-member-username gate, re-checked server-side here
- * (never trust ->visible() alone).
+ * (never trust ->visible() alone). A rename by someone below Manager
+ * notifies every active Manager+ (UsernameRenameNotifier).
  */
 trait RenamesMemberUsername
 {
@@ -49,6 +51,8 @@ trait RenamesMemberUsername
                     return;
                 }
 
+                $oldUsername = $member->username;
+
                 // The unique() rule above already checked at validation
                 // time -- this only catches the narrow race between that
                 // check and this write (same pattern as
@@ -63,6 +67,10 @@ trait RenamesMemberUsername
                     Notification::make()->title(__('That username was just taken — please choose another.'))->danger()->send();
 
                     return;
+                }
+
+                if ($member->username !== $oldUsername) {
+                    app(UsernameRenameNotifier::class)->notifyIfNeeded($member, $oldUsername, auth()->user());
                 }
 
                 if ($afterSave) {
