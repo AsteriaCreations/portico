@@ -84,6 +84,24 @@ test('the desk rename saves nothing in training mode', function () {
         ->and(MemberUsernameChange::where('member_id', $member->id)->exists())->toBeFalse();
 });
 
+test('a desk rename re-keys the Member picker so it shows the new username, and training mode does not', function () {
+    MembershipSetting::current()->update(['door_username_rename_enabled' => true]);
+    $this->actingAs(deskRenameUser(Role::Door));
+    $member = Member::factory()->create(['username' => 'oldname']);
+
+    Livewire::test(CheckIn::class)
+        ->set('data.member_id', $member->id)
+        ->assertSet('memberPickerVersion', 0)
+        ->set('trainingMode', true)
+        ->callAction('renameUsername', data: ['username' => 'practicename'])
+        ->assertSet('memberPickerVersion', 0)
+        ->set('trainingMode', false)
+        ->callAction('renameUsername', data: ['username' => 'newname'])
+        ->assertSet('memberPickerVersion', 1)
+        ->assertSet('data.member_id', $member->id)
+        ->assertSeeHtml('.member_id.v1');
+});
+
 test('the desk rename is hidden until a member is selected', function () {
     MembershipSetting::current()->update(['door_username_rename_enabled' => true]);
     $this->actingAs(deskRenameUser(Role::Door));
