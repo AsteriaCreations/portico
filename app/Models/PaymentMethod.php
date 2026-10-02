@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Collection;
 
-#[Fillable(['label', 'code', 'requires_register_shift', 'one_time_only', 'transaction_fee', 'sort_order', 'active'])]
+#[Fillable(['label', 'code', 'requires_register_shift', 'one_time_only', 'available_at_desk', 'transaction_fee', 'sort_order', 'active'])]
 class PaymentMethod extends Model
 {
     /** @use HasFactory<PaymentMethodFactory> */
@@ -21,6 +21,7 @@ class PaymentMethod extends Model
         return [
             'requires_register_shift' => 'boolean',
             'one_time_only' => 'boolean',
+            'available_at_desk' => 'boolean',
             'transaction_fee' => 'decimal:2',
             'sort_order' => 'integer',
             'active' => 'boolean',
@@ -34,6 +35,24 @@ class PaymentMethod extends Model
     {
         return static::query()
             ->where('active', true)
+            ->orderBy('sort_order')
+            ->pluck('label', 'code')
+            ->all();
+    }
+
+    /**
+     * The subset of options() the Check-In Desk's payment pickers offer
+     * (check-in, subscription sale, day pass): active methods with
+     * available_at_desk on. "Record other payment" and the Manager+ edit
+     * forms keep using options().
+     *
+     * @return array<string, string> code => label, for Select options.
+     */
+    public static function deskOptions(): array
+    {
+        return static::query()
+            ->where('active', true)
+            ->where('available_at_desk', true)
             ->orderBy('sort_order')
             ->pluck('label', 'code')
             ->all();

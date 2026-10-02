@@ -130,7 +130,7 @@ SETTINGS & CONFIGURATION
 - Owner-only organization display name — rebrands the admin panel (header/tab/login) for a club running this software under its own name; falls back to the default app name when unset
 - Feature Flags page (vouchers, add-ons, showrunner comp requests, manager perk, suspensions, pool, prepay, register shifts, showrunner payouts, instructor payouts, visit notes, behavior notes, guests); turning one on sends setup reminders to the notification bell, linking to each screen still needing setup
 - Role Labels page — relabel any of the seven role names for display (e.g. rename "Showrunner"/"DM" to a club's own terminology) without touching the underlying permission hierarchy
-- Payment Methods settings (with register-shift requirement flag)
+- Payment Methods settings (with register-shift requirement flag, and whether each method is offered at the Check-In Desk — "Other" is off by default)
 - Comp Reasons settings (with optional voucher-grant amount)
 - Add-Ons catalog (with overnight-stay flag)
 - Categories settings (with protected-name safeguards)

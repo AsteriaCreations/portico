@@ -24,6 +24,7 @@ class PaymentMethodFactory extends Factory
             'code' => fake()->unique()->lexify('method-????????'),
             'requires_register_shift' => false,
             'one_time_only' => false,
+            'available_at_desk' => true,
             'transaction_fee' => 0,
             'sort_order' => 0,
             'active' => true,

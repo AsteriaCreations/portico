@@ -427,14 +427,14 @@ test('buying a subscription standalone creates a real subscription immediately, 
             'add_on_id' => $this->entry->id,
             'desired_start' => now()->startOfMonth(),
             'duration_months' => '1',
-            'payment_method' => 'other',
+            'payment_method' => 'comp',
         ])
         ->assertHasNoActionErrors();
 
     $subscription = Subscription::where('member_id', $member->id)->where('add_on_id', $this->entry->id)->firstOrFail();
     expect($subscription->amount_paid)->toEqual(60)
         ->and($subscription->recorded_by)->toBe($this->user->id)
-        ->and($subscription->payment_method)->toBe('other');
+        ->and($subscription->payment_method)->toBe('comp');
 });
 
 test('a door volunteer can also buy a subscription standalone', function () {
@@ -449,7 +449,7 @@ test('a door volunteer can also buy a subscription standalone', function () {
             'add_on_id' => $this->entry->id,
             'desired_start' => now()->startOfMonth(),
             'duration_months' => '1',
-            'payment_method' => 'other',
+            'payment_method' => 'comp',
         ])
         ->assertHasNoActionErrors();
 
@@ -472,7 +472,7 @@ test('buying a pool subscription standalone is rejected once pool_enabled is off
             'add_on_id' => $this->pool->id,
             'desired_start' => now()->startOfMonth(),
             'duration_months' => '1',
-            'payment_method' => 'other',
+            'payment_method' => 'comp',
         ]);
 
     expect(Subscription::where('member_id', $member->id)->where('add_on_id', $this->pool->id)->exists())->toBeFalse();
@@ -492,7 +492,7 @@ test('buying a pool day pass is rejected once pool_enabled is off, even via a fo
     Livewire::test(CheckIn::class)
         ->fillForm(['member_id' => $member->id])
         ->mountAction('purchaseAddOnDayPass')
-        ->fillForm(['event_id' => $event->id, 'payment_method' => 'other'])
+        ->fillForm(['event_id' => $event->id, 'payment_method' => 'comp'])
         ->callMountedAction();
 
     expect(AddOnDayPass::where('member_id', $member->id)->exists())->toBeFalse();
@@ -550,7 +550,7 @@ test('buying a subscription standalone, then checking in that night, shows the e
             'add_on_id' => $this->entry->id,
             'desired_start' => now()->startOfMonth(),
             'duration_months' => '1',
-            'payment_method' => 'other',
+            'payment_method' => 'comp',
         ])
         ->assertHasNoActionErrors();
 
@@ -1589,7 +1589,7 @@ test('using one one-time method (venmo) also locks out the others (paypal)', fun
     expect(Attendance::where('member_id', $member->id)->where('event_id', $eventTwo->id)->exists())->toBeFalse();
 });
 
-test('a non-one-time method (cash) never locks anything out', function () {
+test('a non-one-time method never locks anything out', function () {
     $member = clearMember($this->irregular);
     $eventOne = Event::factory()->create(['event_date' => now()->toDateString(), 'entry_fee' => 20, 'pool_fee' => 0]);
     $eventTwo = Event::factory()->create(['event_date' => '2026-07-26', 'entry_fee' => 20, 'pool_fee' => 0, 'door_prepay_enabled' => true]);
@@ -1599,7 +1599,7 @@ test('a non-one-time method (cash) never locks anything out', function () {
             ->fillForm(['event_id' => $event->id, 'member_id' => $member->id])
             ->callAction('checkIn', data: [
                 'checked_in_at' => now(),
-                'payment_method' => 'other',
+                'payment_method' => 'comp',
             ])
             ->assertHasNoActionErrors();
     }

@@ -11,6 +11,10 @@ is fixes only.
 
 ### Added
 
+- "Selectable at the Check-In Desk" on each payment method. The desk's payment pickers (check-in,
+  subscription sale, day pass) offer only methods with it on. It's **off for "Other"** after
+  upgrading, since picking Other at check-in still records the full entry as paid. "Record other
+  payment" and the Manager edit forms still list every active method.
 - "Door can rename usernames" on Feature Flags (off by default). When on, Door staff get a
   "Rename username" button for the selected member on the Check-In Desk. It uses the same
   duplicate check and audit log as the Manager rename on the member's page, updates the Member

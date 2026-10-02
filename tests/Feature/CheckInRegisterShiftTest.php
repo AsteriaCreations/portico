@@ -10,6 +10,7 @@ use App\Models\Event;
 use App\Models\Member;
 use App\Models\MembershipSetting;
 use App\Models\MiscellaneousPayment;
+use App\Models\PaymentMethod;
 use App\Models\Plan;
 use App\Models\Register;
 use App\Models\RegisterDrop;
@@ -136,15 +137,69 @@ test('a check-in with a non-cash payment method is still attributed to the open 
         ->fillForm(['event_id' => $event->id, 'member_id' => $member->id])
         ->callAction('checkIn', data: [
             'checked_in_at' => now(),
-            'payment_method' => 'other',
+            'payment_method' => 'venmo',
         ])
         ->assertHasNoActionErrors();
 
     $attendance = Attendance::where('member_id', $member->id)->where('event_id', $event->id)->firstOrFail();
     $shift = app(RegisterShiftService::class)->currentOpenShift($this->register);
 
-    expect($attendance->payment_method)->toBe('other')
+    expect($attendance->payment_method)->toBe('venmo')
         ->and($attendance->register_shift_id)->toBe($shift->id);
+});
+
+test('"Other" is not offered at check-in, so a forged one is rejected and nothing is recorded', function () {
+    app(RegisterShiftService::class)->openShift($this->register, $this->user, 100);
+
+    $member = cashClearMember($this->irregular);
+    $event = Event::factory()->create(['event_date' => now()->toDateString(), 'entry_fee' => 20, 'pool_fee' => 0]);
+
+    expect(PaymentMethod::where('code', 'other')->value('available_at_desk'))->toBeFalse();
+
+    Livewire::test(CheckIn::class)
+        ->set('registerId', $this->register->id)
+        ->fillForm(['event_id' => $event->id, 'member_id' => $member->id])
+        ->callAction('checkIn', data: [
+            'checked_in_at' => now(),
+            'payment_method' => 'other',
+        ])
+        ->assertHasActionErrors(['payment_method']);
+
+    expect(Attendance::where('member_id', $member->id)->where('event_id', $event->id)->exists())->toBeFalse();
+});
+
+test('a method switched back on for the desk is offered at check-in again', function () {
+    PaymentMethod::where('code', 'other')->update(['available_at_desk' => true]);
+    app(RegisterShiftService::class)->openShift($this->register, $this->user, 100);
+
+    $member = cashClearMember($this->irregular);
+    $event = Event::factory()->create(['event_date' => now()->toDateString(), 'entry_fee' => 20, 'pool_fee' => 0]);
+
+    Livewire::test(CheckIn::class)
+        ->set('registerId', $this->register->id)
+        ->fillForm(['event_id' => $event->id, 'member_id' => $member->id])
+        ->callAction('checkIn', data: [
+            'checked_in_at' => now(),
+            'payment_method' => 'other',
+        ])
+        ->assertHasNoActionErrors();
+
+    expect(Attendance::where('member_id', $member->id)->where('event_id', $event->id)->value('payment_method'))->toBe('other');
+});
+
+test('"Record other payment" still offers a method that is not available at the desk', function () {
+    $shift = app(RegisterShiftService::class)->openShift($this->register, $this->user, 100);
+
+    Livewire::test(CheckIn::class)
+        ->set('registerId', $this->register->id)
+        ->callAction('recordMiscPayment', data: [
+            'payment_method' => 'other',
+            'amount' => 25,
+            'notation' => 'Vendor table fee',
+        ])
+        ->assertHasNoActionErrors();
+
+    expect(MiscellaneousPayment::where('register_shift_id', $shift->id)->value('payment_method'))->toBe('other');
 });
 
 test('a forged cash payment method with no open shift is rejected by the field\'s own option validation', function () {

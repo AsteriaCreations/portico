@@ -832,19 +832,21 @@ class CheckIn extends Page implements HasTable
     // a shift is actually open on this register -- re-evaluated fresh on
     // every render/submit by whichever action calls this, so a forged
     // submission with no shift open never validates (see checkInAction's own
-    // note on this below).
+    // note on this below). Only methods available_at_desk are offered at all
+    // ("Other" is off by default), and Filament's in()-options validation
+    // rejects a forged one the same way.
     /**
      * @return array<string, string>
      */
     private function paymentMethodOptions(?RegisterShift $openShift): array
     {
         if ($openShift) {
-            return PaymentMethod::options();
+            return PaymentMethod::deskOptions();
         }
 
         $cashCodes = PaymentMethod::cashCodes();
 
-        return collect(PaymentMethod::options())
+        return collect(PaymentMethod::deskOptions())
             ->reject(fn (string $label, string $code) => $cashCodes->contains($code))
             ->all();
     }
