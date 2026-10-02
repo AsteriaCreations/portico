@@ -74,7 +74,7 @@ test('a member who is not subscription-eligible can still buy a pool day pass', 
         ->callAction('purchaseAddOnDayPass', data: [
             'add_on_id' => $this->pool->id,
             'event_id' => $event->id,
-            'payment_method' => 'other',
+            'payment_method' => 'comp',
         ])
         ->assertHasNoActionErrors();
 
@@ -93,7 +93,7 @@ test('a door volunteer can also buy a pool day pass standalone', function () {
         ->callAction('purchaseAddOnDayPass', data: [
             'add_on_id' => $this->pool->id,
             'event_id' => $event->id,
-            'payment_method' => 'other',
+            'payment_method' => 'comp',
         ])
         ->assertHasNoActionErrors();
 
@@ -108,10 +108,10 @@ test('buying a second day pass for the same member, event, and add-on is rejecte
 
     $livewire = Livewire::test(CheckIn::class)->fillForm(['member_id' => $member->id]);
 
-    $livewire->callAction('purchaseAddOnDayPass', data: ['add_on_id' => $this->pool->id, 'event_id' => $event->id, 'payment_method' => 'other'])
+    $livewire->callAction('purchaseAddOnDayPass', data: ['add_on_id' => $this->pool->id, 'event_id' => $event->id, 'payment_method' => 'comp'])
         ->assertHasNoActionErrors();
 
-    $livewire->callAction('purchaseAddOnDayPass', data: ['add_on_id' => $this->pool->id, 'event_id' => $event->id, 'payment_method' => 'other'])
+    $livewire->callAction('purchaseAddOnDayPass', data: ['add_on_id' => $this->pool->id, 'event_id' => $event->id, 'payment_method' => 'comp'])
         ->assertHasNoActionErrors();
 
     expect(AddOnDayPass::where('member_id', $member->id)->where('event_id', $event->id)->count())->toBe(1);
@@ -139,7 +139,7 @@ test('the live running total reflects an already-purchased pool day pass before 
 
     $component = Livewire::test(CheckIn::class)
         ->fillForm(['member_id' => $member->id])
-        ->callAction('purchaseAddOnDayPass', data: ['add_on_id' => $this->pool->id, 'event_id' => $event->id, 'payment_method' => 'other'])
+        ->callAction('purchaseAddOnDayPass', data: ['add_on_id' => $this->pool->id, 'event_id' => $event->id, 'payment_method' => 'comp'])
         ->assertHasNoActionErrors();
 
     $component->fillForm(['event_id' => $event->id]);
@@ -158,7 +158,7 @@ test('checking in after buying a pool day pass records covered_by as DayPass, no
 
     $component = Livewire::test(CheckIn::class)
         ->fillForm(['member_id' => $member->id])
-        ->callAction('purchaseAddOnDayPass', data: ['add_on_id' => $this->pool->id, 'event_id' => $event->id, 'payment_method' => 'other'])
+        ->callAction('purchaseAddOnDayPass', data: ['add_on_id' => $this->pool->id, 'event_id' => $event->id, 'payment_method' => 'comp'])
         ->assertHasNoActionErrors();
 
     $component->fillForm(['event_id' => $event->id])

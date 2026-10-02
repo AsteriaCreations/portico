@@ -41,6 +41,11 @@ class PaymentMethodForm
                     ->helperText(__('A member may select this method only once, ever, for entry (check-in) or a day pass — doing so appends a dated note to their hospitality note and disables every one-time method for them afterward. E.g. Venmo, PayPal. A subscription/membership purchase is never restricted by this, regardless of the flag.'))
                     ->required()
                     ->default(false),
+                Toggle::make('available_at_desk')
+                    ->label('Selectable at the Check-In Desk')
+                    ->helperText(__('Offered when taking payment at check-in, for a subscription, or for a day pass. Turn off for a method that is not money taken at the door, e.g. Other. "Record other payment" and the edit forms still list it.'))
+                    ->required()
+                    ->default(true),
                 TextInput::make('transaction_fee')
                     ->label('Transaction fee')
                     ->helperText(__('A flat surcharge added to the total whenever this method is selected, e.g. $2 for Venmo/PayPal to cover the processor cost. Leave at 0 for no fee.'))

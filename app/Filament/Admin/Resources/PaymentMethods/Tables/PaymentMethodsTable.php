@@ -28,6 +28,10 @@ class PaymentMethodsTable
                     ->label('One-time')
                     ->boolean()
                     ->tooltip(fn (bool $state): string => $state ? __('A member may use this method only once, ever, for entry/day passes (never restricted for a subscription purchase)') : __('A member may use this method any number of times')),
+                IconColumn::make('available_at_desk')
+                    ->label('At desk')
+                    ->boolean()
+                    ->tooltip(fn (bool $state): string => $state ? __('Selectable at the Check-In Desk') : __('Not offered at the Check-In Desk')),
                 TextColumn::make('transaction_fee')
                     ->label('Fee')
                     ->money()
