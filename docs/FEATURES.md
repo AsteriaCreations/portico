@@ -145,6 +145,9 @@ DATA IMPORT/EXPORT
 OPERATIONS
 ------------
 - Nightly database backup job
+- Member & event data reset (`php artisan data:reset`, or Owner-only on the Technical page
+  behind a typed confirmation) — backs up first, then deletes every member, event and their
+  history while keeping staff accounts and configuration; nothing is deleted if the backup fails
 - Demo data seeder for local development
 - Windows Task Scheduler-driven commands (no Laravel scheduler)
 - `scripts/deploy.ps1` — one-command update on a Windows box (stop server, pull, install
