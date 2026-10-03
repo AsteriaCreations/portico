@@ -92,6 +92,11 @@ class AppServiceProvider extends ServiceProvider
         // review action. See Member::resolveWatchlistReview().
         Gate::define('resolve-watchlist', fn (User $user): bool => $user->role->atLeast(Role::Owner));
 
+        // Wiping every member and event (OperationalDataReset) is the
+        // Owner's call alone; the Technical page hosts it for Admin+ but
+        // shows and re-checks this gate.
+        Gate::define('reset-operational-data', fn (User $user): bool => $user->role->atLeast(Role::Owner));
+
         // Manager+ always; Door too once the club turns on
         // door_username_rename_enabled. Either way the rename is logged by
         // MemberObserver. Re-checked server-side by the shared

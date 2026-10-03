@@ -2,11 +2,13 @@
 
 namespace App\Filament\Admin\Pages;
 
+use App\Console\Commands\ResetOperationalData;
 use App\Enums\Role;
 use App\Filament\Admin\Widgets\ScheduledJobsWidget;
 use App\Filament\Concerns\TranslatesPageLabels;
 use BackedEnum;
 use Filament\Actions\Action;
+use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 use Filament\Schemas\Components\Grid;
@@ -14,6 +16,7 @@ use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Widgets\FilamentInfoWidget;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Gate;
 use UnitEnum;
 
 /**
@@ -53,7 +56,45 @@ class Technical extends Page
         return [
             $this->runBackupAction(),
             $this->runVoucherGrantAction(),
+            $this->resetOperationalDataAction(),
         ];
+    }
+
+    /**
+     * Owner-only wipe of members, events and their history (keeps user
+     * accounts and configuration) — runs `data:reset`, which takes a backup
+     * first and deletes nothing if that fails. The typed phrase guards
+     * against a stray click; the gate is re-checked inside the closure.
+     */
+    protected function resetOperationalDataAction(): Action
+    {
+        return Action::make('resetOperationalData')
+            ->label('Reset member & event data')
+            ->color('danger')
+            ->icon(Heroicon::OutlinedTrash)
+            ->visible(fn (): bool => Gate::allows('reset-operational-data'))
+            ->requiresConfirmation()
+            ->modalHeading(__('Reset member & event data'))
+            ->modalDescription(__('This permanently deletes every member, event, attendance row, subscription, voucher, register shift and their history. Staff user accounts (sign-in credentials) and all configuration are kept. A database backup is taken first; if it fails, nothing is deleted.'))
+            ->modalSubmitActionLabel(__('Delete everything'))
+            ->schema([
+                TextInput::make('confirmation')
+                    ->label(__('Type :phrase to confirm', ['phrase' => ResetOperationalData::CONFIRMATION_PHRASE]))
+                    ->required()
+                    ->in([ResetOperationalData::CONFIRMATION_PHRASE])
+                    ->validationMessages(['in' => __('Type :phrase exactly to confirm.', ['phrase' => ResetOperationalData::CONFIRMATION_PHRASE])]),
+            ])
+            ->action(function (): void {
+                abort_unless(Gate::allows('reset-operational-data'), 403);
+
+                $exitCode = Artisan::call('data:reset', ['--force' => true]);
+
+                $exitCode === 0
+                    ? Notification::make()->title(__('Member & event data reset'))->success()->send()
+                    : Notification::make()->title(__('Reset failed — nothing was deleted'))->body(Artisan::output())->danger()->send();
+
+                $this->redirect(static::getUrl());
+            });
     }
 
     /**
