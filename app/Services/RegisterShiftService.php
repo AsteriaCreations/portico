@@ -158,6 +158,35 @@ class RegisterShiftService
         ];
     }
 
+    /**
+     * The same category split as revenueBreakdown(), scoped to cash-flagged
+     * payment methods only -- what a desk person is actually holding as
+     * physical cash at close, broken down the same way. Backs the
+     * close-box envelope reminder (CheckIn::closeShiftAction(), behind
+     * cash_envelope_reminder_enabled): the house procedure is to seal any cash collected in an envelope labelled with
+     * this breakdown plus the event/date. In integer cents, so it always
+     * sums to exactly cashReceivedCents($shift) -- same underlying rows,
+     * just split by category.
+     *
+     * @return array{event: int, subscription: int, other: int}
+     */
+    public function cashRevenueBreakdownCents(RegisterShift $shift): array
+    {
+        $cashCodes = PaymentMethod::cashCodes();
+
+        $other = Cents::of(MiscellaneousPayment::where('register_shift_id', $shift->id)->whereIn('payment_method', $cashCodes)->sum('amount'))
+            + Cents::of(AddOnDayPass::where('register_shift_id', $shift->id)->whereIn('payment_method', $cashCodes)->sum('amount_paid'));
+
+        return [
+            // Plus paid visits an Owner removed after close, same as
+            // cashReceivedCents() -- keeps the envelope breakdown summing to it.
+            'event' => Cents::of(Attendance::where('register_shift_id', $shift->id)->whereIn('payment_method', $cashCodes)->sum('amount_paid'))
+                + $this->removedAfterCloseCents($shift, $cashCodes->all()),
+            'subscription' => Cents::of(Subscription::where('register_shift_id', $shift->id)->whereIn('payment_method', $cashCodes)->sum('amount_paid')),
+            'other' => $other,
+        ];
+    }
+
     public function totalDrops(RegisterShift $shift): float
     {
         return Cents::toFloat($this->totalDropsCents($shift));

@@ -63,6 +63,7 @@ class FeatureFlags extends Page
             'pool_enabled',
             'prepay_enabled',
             'register_shifts_enabled',
+            'cash_envelope_reminder_enabled',
             'showrunner_payouts_enabled',
             'instructor_payouts_enabled',
             'visit_notes_enabled',
@@ -94,6 +95,10 @@ class FeatureFlags extends Page
                         Toggle::make('register_shifts_enabled')
                             ->label('Register shift tracking enabled')
                             ->helperText(__('Turns off the cash-drawer Register section on the check-in page (open/close box, drops, misc payments) and the Register Shifts / Registers admin resources. Leave on unless this club never tracks a physical cash box.'))
+                            ->required(),
+                        Toggle::make('cash_envelope_reminder_enabled')
+                            ->label('Cash envelope reminder on closing the box')
+                            ->helperText(__('When a box closes with cash collected, the confirmation stays on screen until it is dismissed and tells staff to seal the cash in an envelope labelled with the Entry / Subscription / Other amounts and the event(s) or date it covers. Only cash payment methods count. It\'s a reminder only: nothing extra is saved. Has no effect while register shift tracking is off. Off by default.'))
                             ->required(),
                         Toggle::make('visit_notes_enabled')
                             ->label('Patron visit notes enabled')

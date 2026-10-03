@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\Role;
 use App\Models\AddOnDayPass;
 use App\Models\Attendance;
 use App\Models\MiscellaneousPayment;
@@ -7,6 +8,7 @@ use App\Models\Register;
 use App\Models\Subscription;
 use App\Models\User;
 use App\Services\RegisterShiftService;
+use App\Services\VisitRemovalService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 
@@ -160,6 +162,42 @@ test('revenueBreakdown splits event, subscription, and other totals across every
         'subscription' => 25.0,
         'other' => 65.0,
     ]);
+});
+
+test('cashRevenueBreakdownCents splits event, subscription, and other cash totals, excluding non-cash rows', function () {
+    $shift = $this->service->openShift($this->register, $this->user, 0);
+
+    Attendance::factory()->create(['register_shift_id' => $shift->id, 'payment_method' => 'cash', 'amount_paid' => 20]);
+    Attendance::factory()->create(['register_shift_id' => $shift->id, 'payment_method' => 'venmo', 'amount_paid' => 999]);
+    Subscription::factory()->create(['register_shift_id' => $shift->id, 'payment_method' => 'cash', 'amount_paid' => 25]);
+    MiscellaneousPayment::factory()->create(['register_shift_id' => $shift->id, 'payment_method' => 'cash', 'amount' => 25, 'notation' => 'Donation']);
+    MiscellaneousPayment::factory()->create(['register_shift_id' => $shift->id, 'payment_method' => 'venmo', 'amount' => 999, 'notation' => 'Rental']);
+    AddOnDayPass::factory()->create(['register_shift_id' => $shift->id, 'payment_method' => 'cash', 'amount_paid' => 15]);
+
+    $breakdown = $this->service->cashRevenueBreakdownCents($shift);
+
+    expect($breakdown)->toBe([
+        'event' => 2000,
+        'subscription' => 2500,
+        'other' => 4000,
+    ])
+        ->and(array_sum($breakdown))->toBe($this->service->cashReceivedCents($shift));
+});
+
+test('the cash envelope breakdown keeps a paid visit an Owner removed after close, and still sums to cashReceived', function () {
+    $shift = $this->service->openShift($this->register, $this->user, 0);
+    Attendance::factory()->create(['register_shift_id' => $shift->id, 'payment_method' => 'cash', 'amount_paid' => 20]);
+    $removed = Attendance::factory()->create(['register_shift_id' => $shift->id, 'payment_method' => 'cash', 'amount_paid' => 40]);
+    $this->service->closeShift($shift, $this->user, 60);
+    $before = $this->service->cashRevenueBreakdownCents($shift->fresh());
+
+    $owner = User::factory()->create(['role' => Role::Owner]);
+    app(VisitRemovalService::class)->remove($removed, $owner, 'Duplicate');
+    $after = $this->service->cashRevenueBreakdownCents($shift->fresh());
+
+    expect($after)->toBe($before)
+        ->and($after['event'])->toBe(6000)
+        ->and(array_sum($after))->toBe($this->service->cashReceivedCents($shift->fresh()));
 });
 
 test('cashReceived folds in a cash-paid pool day pass but not a non-cash one', function () {

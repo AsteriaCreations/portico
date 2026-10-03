@@ -21,6 +21,11 @@ is fixes only.
   box to the new name straight away, and saves nothing in training mode. Each Door rename sends
   every active Manager, Admin and Owner a bell notification with the old and new username and who
   made the change.
+- "Cash envelope reminder on closing the box" on Feature Flags (off by default). When a box closes
+  with cash collected, the confirmation stays on screen and tells staff to seal the cash in an
+  envelope labelled with its Entry / Subscription / Other split and the event(s) it covers (or the
+  close date if there were no visits). Only cash payment methods count, and the split always adds
+  up to the cash received. It's a reminder only; nothing extra is saved.
 - Watchlist review dates. Manager+ can give a watchlist entry an optional review date (blank =
   stays on indefinitely); the Members nav badge counts entries whose date has arrived, with a
   matching table filter. An Owner resolves a review from the member's edit page: remove (optionally
