@@ -24,7 +24,8 @@ return [
     |
     | A member is "on probation" (reporting-only — never affects admission or
     | pricing, see AdmissionPolicy) for this many days after probation_override_start,
-    | or date_vetted if that override isn't set (Member::isOnProbation()).
+    | or their first arrived check-in if that override isn't set
+    | (Member::isOnProbation()).
     |
     */
 

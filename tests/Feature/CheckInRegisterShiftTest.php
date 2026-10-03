@@ -18,6 +18,7 @@ use App\Models\RegisterShift;
 use App\Models\Subscription;
 use App\Models\User;
 use App\Services\RegisterShiftService;
+use Filament\Notifications\Livewire\Notifications;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
 
@@ -417,6 +418,111 @@ test('recordMiscPayment is rejected once register_shifts_enabled is off, even vi
         ]);
 
     expect(MiscellaneousPayment::where('register_shift_id', $shift->id)->exists())->toBeFalse();
+});
+
+function lastNotificationBody(): ?string
+{
+    $component = new Notifications;
+    $component->mount();
+
+    return $component->notifications->last()?->getBody();
+}
+
+test('closing a shift with cash collected includes an envelope reminder with the cash breakdown and event/date', function () {
+    MembershipSetting::current()->update(['cash_envelope_reminder_enabled' => true]);
+    app(RegisterShiftService::class)->openShift($this->register, $this->user, 100);
+
+    $member = cashClearMember($this->irregular, ['subscription_eligible' => true]);
+    // A fixed past date keeps the envelope label assertable; door prepay lets
+    // the desk accept it (since portico#81 the desk requires the event's own
+    // opt-in for anything not happening tonight).
+    $event = Event::factory()->create(['name' => 'Friday Social', 'event_date' => '2026-07-10', 'entry_fee' => 20, 'pool_fee' => 0, 'door_prepay_enabled' => true]);
+
+    Livewire::test(CheckIn::class)
+        ->set('registerId', $this->register->id)
+        ->fillForm(['event_id' => $event->id, 'member_id' => $member->id])
+        ->callAction('checkIn', data: ['checked_in_at' => now(), 'payment_method' => 'cash'])
+        ->assertHasNoActionErrors();
+
+    Livewire::test(CheckIn::class)
+        ->set('registerId', $this->register->id)
+        ->callAction('closeShift', data: ['closing_count' => 120])
+        ->assertHasNoActionErrors();
+
+    $body = lastNotificationBody();
+
+    expect($body)->not->toBeNull()
+        ->and($body)->toContain('Cash collected')
+        ->and($body)->toContain('Entry: $20.00')
+        ->and($body)->toContain('total $20.00')
+        ->and($body)->toContain('Friday Social — Jul 10, 2026')
+        ->and($body)->toContain('Make an envelope');
+});
+
+test('cash_envelope_reminder_enabled is off by default', function () {
+    expect(MembershipSetting::current()->cash_envelope_reminder_enabled)->toBeFalse();
+});
+
+test('with the envelope reminder off, closing a shift with cash collected shows only the variance', function () {
+    app(RegisterShiftService::class)->openShift($this->register, $this->user, 100);
+
+    $member = cashClearMember($this->irregular);
+    $event = Event::factory()->create(['event_date' => today(), 'entry_fee' => 20, 'pool_fee' => 0]);
+
+    Livewire::test(CheckIn::class)
+        ->set('registerId', $this->register->id)
+        ->fillForm(['event_id' => $event->id, 'member_id' => $member->id])
+        ->callAction('checkIn', data: ['checked_in_at' => now(), 'payment_method' => 'cash'])
+        ->assertHasNoActionErrors();
+
+    Livewire::test(CheckIn::class)
+        ->set('registerId', $this->register->id)
+        ->callAction('closeShift', data: ['closing_count' => 120])
+        ->assertHasNoActionErrors();
+
+    expect(Attendance::where('member_id', $member->id)->value('payment_method'))->toBe('cash')
+        ->and(lastNotificationBody())->toBeNull();
+});
+
+test('closing a shift with zero cash collected has no envelope reminder', function () {
+    MembershipSetting::current()->update(['cash_envelope_reminder_enabled' => true]);
+    app(RegisterShiftService::class)->openShift($this->register, $this->user, 100);
+
+    Livewire::test(CheckIn::class)
+        ->set('registerId', $this->register->id)
+        ->callAction('closeShift', data: ['closing_count' => 100])
+        ->assertHasNoActionErrors();
+
+    expect(lastNotificationBody())->toBeNull();
+});
+
+test('a cash-only subscription purchase with no attendance still gets an envelope reminder, labelled by date', function () {
+    MembershipSetting::current()->update(['cash_envelope_reminder_enabled' => true]);
+    app(RegisterShiftService::class)->openShift($this->register, $this->user, 100);
+
+    $member = cashClearMember($this->irregular, ['subscription_eligible' => true]);
+
+    Livewire::test(CheckIn::class)
+        ->set('registerId', $this->register->id)
+        ->fillForm(['member_id' => $member->id])
+        ->callAction('purchaseSubscription', data: [
+            'add_on_id' => $this->entry->id,
+            'desired_start' => now()->startOfMonth(),
+            'duration_months' => '1',
+            'payment_method' => 'cash',
+        ])
+        ->assertHasNoActionErrors();
+
+    Livewire::test(CheckIn::class)
+        ->set('registerId', $this->register->id)
+        ->callAction('closeShift', data: ['closing_count' => 160])
+        ->assertHasNoActionErrors();
+
+    $body = lastNotificationBody();
+
+    expect($body)->not->toBeNull()
+        ->and($body)->toContain('Subscription: $60.00')
+        ->and($body)->toContain(now()->toFormattedDateString());
 });
 
 test('closeShift is rejected once register_shifts_enabled is off, even via a forged direct call', function () {

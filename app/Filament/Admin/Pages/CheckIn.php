@@ -987,8 +987,47 @@ class CheckIn extends Page implements HasTable
                 $variance = $service->varianceCents($closed) ?? 0;
                 $label = $variance === 0 ? __('exact') : ($variance > 0 ? __('over') : __('short'));
 
-                Notification::make()->title(__('Box closed — :amount :label', ['amount' => $this->formatCurrency(Cents::toFloat(abs($variance))), 'label' => $label]))->success()->send();
+                $notification = Notification::make()->title(__('Box closed — :amount :label', ['amount' => $this->formatCurrency(Cents::toFloat(abs($variance))), 'label' => $label]));
+
+                // Opt-in house procedure (Feature Flags): any cash actually
+                // collected gets sealed in an envelope labelled with the
+                // category breakdown plus the event(s) it covers, for whoever
+                // reconciles/deposits it later. Persistent (doesn't
+                // auto-dismiss) since this is an instruction to act on, not
+                // just a status toast.
+                $cashReceivedCents = $service->cashReceivedCents($closed);
+                if ($cashReceivedCents > 0 && MembershipSetting::current()->cash_envelope_reminder_enabled) {
+                    $notification->body($this->envelopeReminderBody($closed, $cashReceivedCents))->persistent();
+                }
+
+                $notification->success()->send();
             });
+    }
+
+    private function envelopeReminderBody(RegisterShift $shift, int $cashReceivedCents): string
+    {
+        $breakdown = app(RegisterShiftService::class)->cashRevenueBreakdownCents($shift);
+
+        $eventLabels = Event::whereIn('id', Attendance::where('register_shift_id', $shift->id)->pluck('event_id'))
+            ->orderBy('event_date')
+            ->get()
+            ->map(fn (Event $event) => "{$event->name} — {$event->event_date->translatedFormat('M j, Y')}")
+            ->implode(', ');
+
+        // No attendance row on this shift at all (e.g. only a standalone
+        // subscription/misc-payment cash transaction) -- nothing to name, so
+        // label the envelope with the date the box closed instead.
+        if ($eventLabels === '') {
+            $eventLabels = $shift->closed_at->translatedFormat('M j, Y');
+        }
+
+        return __('Cash collected — Entry: :entry · Subscription: :subscription · Other: :other (total :total). Make an envelope for :events with these amounts written on it.', [
+            'entry' => $this->formatCurrency(Cents::toFloat($breakdown['event'])),
+            'subscription' => $this->formatCurrency(Cents::toFloat($breakdown['subscription'])),
+            'other' => $this->formatCurrency(Cents::toFloat($breakdown['other'])),
+            'total' => $this->formatCurrency(Cents::toFloat($cashReceivedCents)),
+            'events' => $eventLabels,
+        ]);
     }
 
     public function saveAndPromoteAction(): Action

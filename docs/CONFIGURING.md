@@ -106,9 +106,9 @@ rarely need to touch most of them.
 
 ## Feature Flags
 
-`/admin/feature-flags` (Manager+). Every flag defaults **on** except the two upstream-update
-ones below, which default off since there's no existing behavior to preserve for a fresh
-install with no upstream remote configured. **A flag stops *new* writes
+`/admin/feature-flags` (Manager+). Every flag defaults **on** except the ones marked *(default off)* below: an
+opt-in desk behavior, or the upstream-update pair, which has nothing to do on a fresh install
+with no upstream remote configured. **A flag stops *new* writes
 — it never hides data already collected**, so turning one off after use leaves existing
 records intact and reviewable.
 
@@ -126,11 +126,13 @@ Turning a feature **on** sends whoever saved it a notification (the bell) for ea
 | Pool | No pool fee on events, Pool subscriptions, or pool day passes for anything newly created (existing pool coverage is untouched). |
 | Door-ahead prepay | No per-event "Allow prepay ahead of the door" toggle or Prepay List tab. |
 | Register shift tracking | No cash-drawer section at check-in and no Register Shifts / Registers resources. |
+| Cash envelope reminder | *(default off)* Closing a box shows only the variance. When on and cash was collected, the confirmation stays up and tells staff to envelope the cash with its Entry / Subscription / Other amounts and the event(s) or date. Reminder only, nothing saved. |
 | Showrunner door commission | No Showrunner Payout Tiers resource or commission breakdown on events. |
 | Instructor per-head pay | No Instructor Pay Rates tab on Event Types or instructor payout breakdown. |
 | Patron visit notes | No visit-note column on Active Patrons. |
 | Patron behavior notes | No adding new behavior notes on Active Patrons (existing ones stay reviewable by Manager+). |
 | Guests | No "Register a guest" on the Check-In Desk. Guests already registered keep their records and can still check in. |
+| Door can rename usernames | *(default off)* Only Manager+ can rename a username, from the member's page. When on, Door gets a "Rename username" button on the Check-In Desk, and each Door rename notifies every active Manager+. |
 | Upstream update checking | *(default off)* No Upstream Updates page and no scheduled git fetch. Only useful if this fork tracks an upstream remote. |
 | Web-triggered deploy | *(default off)* No "Run update now" button on Upstream Updates. Also needs a Deploy Scheduled Task name configured and a Scheduled Task registered on the server — see [`docs/DEPLOYMENT.md`](DEPLOYMENT.md) §7 "Web-triggered updates". |
 
