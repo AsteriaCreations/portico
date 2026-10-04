@@ -19,8 +19,8 @@ use PhpOffice\PhpSpreadsheet\IOFactory;
  *
  * Nobody types passwords into a spreadsheet: every new account gets a random
  * TemporaryPassword and must choose its own at first sign-in, the same as
- * the Reset password action. The passwords are returned once for the
- * uploader to pass on, and never stored or logged in plain text.
+ * the Reset password action. The passwords are returned once (ListUsers
+ * streams them to the uploader as a CSV), and never stored or logged in plain text.
  *
  * An email that already has an account is skipped, so re-uploading the same
  * file never creates anyone twice.

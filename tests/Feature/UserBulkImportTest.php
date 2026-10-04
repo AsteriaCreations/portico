@@ -148,6 +148,26 @@ test('with no active Owner, an Admin can create the first one but not a second',
         ->and(User::where('email', 'second@example.com')->exists())->toBeFalse();
 });
 
+test('the temporary passwords download once as a CSV', function () {
+    $this->travelTo(now()->setTime(14, 30, 5));
+
+    $component = callUserBulkUpload([['Jane Smith', 'jane@example.com', 'door', '']])
+        ->assertFileDownloaded('new-user-passwords-'.now()->format('Y-m-d-His').'.csv');
+
+    $rows = array_map('str_getcsv', explode("\n", trim(base64_decode($component->effects['download']['content']))));
+
+    expect($rows[0])->toBe(['name', 'email', 'temporary_password'])
+        ->and($rows[1][0])->toBe('Jane Smith')
+        ->and($rows[1][1])->toBe('jane@example.com')
+        ->and(Hash::check($rows[1][2], User::where('email', 'jane@example.com')->sole()->password))->toBeTrue();
+});
+
+test('nothing downloads when no account was created', function () {
+    callUserBulkUpload([['', 'noname@example.com', 'door', '']])
+        ->assertNoFileDownloaded()
+        ->assertNotified();
+});
+
 test('re-uploading the same file never creates anyone twice', function () {
     $rows = [['Jane Smith', 'jane@example.com', 'door', '']];
 

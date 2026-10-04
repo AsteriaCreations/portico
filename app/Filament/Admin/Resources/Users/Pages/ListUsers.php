@@ -55,10 +55,10 @@ class ListUsers extends ListRecords
     }
 
     /**
-     * Every account it creates gets a random temporary password, listed once
-     * in a persistent notification for the uploader to pass on -- the same
-     * delivery as UsersTable::resetPasswordAction(). If one is lost, Reset
-     * password issues a fresh one.
+     * Every account it creates gets a random temporary password, downloaded
+     * once as a CSV for the uploader to pass on (a batch is too long to read
+     * off a notification, unlike UsersTable::resetPasswordAction()). If one
+     * is lost, Reset password issues a fresh one.
      */
     protected function bulkUploadUsersAction(): Action
     {
@@ -79,22 +79,17 @@ class ListUsers extends ListRecords
                     ->required(),
             ])
             ->visible(fn (): bool => Gate::allows('create', User::class))
-            ->action(function (array $data): void {
+            ->action(function (array $data): ?StreamedResponse {
                 abort_unless(Gate::allows('create', User::class), 403);
 
                 $path = Storage::disk('local')->path($data['file']);
                 $result = app(UserBulkImporter::class)->import($path, Auth::user());
 
-                $lines = array_map(
-                    fn (array $user): string => e($user['name']).' ('.e($user['email']).'): <strong>'.e($user['password']).'</strong>',
-                    $result['created'],
-                );
+                $lines = array_map(fn (string $entry): string => e($entry), $result['log']);
 
-                if ($lines) {
-                    array_unshift($lines, e(__("Pass these on now — they won't be shown again.")));
+                if ($result['created']) {
+                    array_unshift($lines, e(__("Their temporary passwords are in the file that just downloaded — pass them on, then delete it. They won't be shown again.")));
                 }
-
-                $lines = [...$lines, ...array_map(fn (string $entry): string => e($entry), $result['log'])];
 
                 Notification::make()
                     ->title(trans_choice('Created :count account|Created :count accounts', count($result['created'])))
@@ -104,6 +99,29 @@ class ListUsers extends ListRecords
                     ->send();
 
                 $this->pruneUploads('user-uploads');
+
+                return $result['created'] ? $this->temporaryPasswordsDownload($result['created']) : null;
             });
+    }
+
+    /**
+     * The only copy of the new accounts' temporary passwords: streamed
+     * straight to the uploader's browser, never written to the server's
+     * disk or logged.
+     *
+     * @param  list<array{name: string, email: string, password: string}>  $created
+     */
+    private function temporaryPasswordsDownload(array $created): StreamedResponse
+    {
+        return response()->streamDownload(function () use ($created): void {
+            $handle = fopen('php://output', 'w');
+            fputcsv($handle, ['name', 'email', 'temporary_password']);
+
+            foreach ($created as $user) {
+                fputcsv($handle, [$user['name'], $user['email'], $user['password']]);
+            }
+
+            fclose($handle);
+        }, 'new-user-passwords-'.now()->format('Y-m-d-His').'.csv');
     }
 }
