@@ -61,7 +61,8 @@ test('the event-ended email is rendered in the installation language even from a
 
     // The date follows the locale's own order too, not just its month name.
     Mail::assertSent(EventEndedSummary::class, function (EventEndedSummary $mail): bool {
-        return $mail->envelope()->subject === 'xx-Summary Social / 4 de oct. de 2026';
+        return $mail->envelope()->subject === 'xx-Summary Social / 4 de oct. de 2026'
+            && str_contains($mail->render(), '<html lang="es">');
     });
 });
 
@@ -72,7 +73,8 @@ test('the event-ended email stays English when no language is set', function () 
 
     Artisan::call('events:notify-ended');
 
-    Mail::assertSent(EventEndedSummary::class, fn (EventEndedSummary $mail): bool => str_starts_with($mail->envelope()->subject, 'Event summary: Social — '));
+    Mail::assertSent(EventEndedSummary::class, fn (EventEndedSummary $mail): bool => str_starts_with($mail->envelope()->subject, 'Event summary: Social — ')
+        && str_contains($mail->render(), '<html lang="en">'));
 });
 
 test('a user observer guard message is translated', function () {

@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html>
+<html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
 <body style="font-family: sans-serif; font-size: 14px; color: #111;">
     <p><strong>{{ $event->name }}</strong> — {{ $event->event_date->isoFormat('ll') }}</p>
 
