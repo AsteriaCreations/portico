@@ -47,7 +47,7 @@ class MembersTable
                     ->sortable(),
                 TextColumn::make('dob')
                     ->label('DOB')
-                    ->formatStateUsing(fn (?Carbon $state, $livewire): string => $livewire->piiHidden ? self::PII_MASK : ($state?->translatedFormat('M j, Y') ?? '—'))
+                    ->formatStateUsing(fn (?Carbon $state, $livewire): string => $livewire->piiHidden ? self::PII_MASK : ($state?->isoFormat('ll') ?? '—'))
                     ->sortable(),
                 TextColumn::make('email')
                     ->formatStateUsing(fn (?string $state, $livewire): string => $livewire->piiHidden ? self::PII_MASK : ($state ?? '—'))
@@ -183,10 +183,10 @@ class MembersTable
                     ->indicateUsing(function (array $data): array {
                         $indicators = [];
                         if ($data['registered_from'] ?? null) {
-                            $indicators[] = __('Registered from :date', ['date' => Carbon::parse($data['registered_from'])->translatedFormat('M j, Y')]);
+                            $indicators[] = __('Registered from :date', ['date' => Carbon::parse($data['registered_from'])->isoFormat('ll')]);
                         }
                         if ($data['registered_until'] ?? null) {
-                            $indicators[] = __('Registered until :date', ['date' => Carbon::parse($data['registered_until'])->translatedFormat('M j, Y')]);
+                            $indicators[] = __('Registered until :date', ['date' => Carbon::parse($data['registered_until'])->isoFormat('ll')]);
                         }
 
                         return $indicators;

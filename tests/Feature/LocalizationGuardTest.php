@@ -109,3 +109,16 @@ test('no user-facing prose string is left as an untranslated literal', function 
 
     expect($offenders)->toBe([]);
 });
+
+test('dates and times use Carbon locale presets, not a hardcoded US pattern', function () {
+    // isoFormat('ll') / ('LT') / ('lll') follow the installation's locale
+    // ("4 oct. 2026", "14:57"); translatedFormat('M j, Y') / ('g:i A') only
+    // translate the month name and keep US order and a 12-hour clock.
+    $offenders = collect([...File::allFiles(app_path()), ...File::allFiles(resource_path('views'))])
+        ->filter(fn (SplFileInfo $file): bool => (bool) preg_match("/translatedFormat\('(M j, Y|g:i A)/", File::get($file->getPathname())))
+        ->map(fn (SplFileInfo $file): string => $file->getFilename())
+        ->values()
+        ->all();
+
+    expect($offenders)->toBe([]);
+});

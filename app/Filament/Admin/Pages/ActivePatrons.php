@@ -176,7 +176,7 @@ class ActivePatrons extends Page implements HasTable
                         ->color('warning')
                         ->icon(Heroicon::OutlinedEye)
                         ->getStateUsing(fn (Attendance $record): ?string => $record->member?->isOnWatchlistProbation()
-                            ? __('Recently off watchlist — probation until :date', ['date' => $record->member->watchlistProbationEndsOn()->translatedFormat('M j, Y')])
+                            ? __('Recently off watchlist — probation until :date', ['date' => $record->member->watchlistProbationEndsOn()->isoFormat('ll')])
                             : null),
                     TextColumn::make('visit_note')
                         ->label('Visit note')

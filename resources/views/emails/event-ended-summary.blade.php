@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <body style="font-family: sans-serif; font-size: 14px; color: #111;">
-    <p><strong>{{ $event->name }}</strong> — {{ $event->event_date->translatedFormat('M j, Y') }}</p>
+    <p><strong>{{ $event->name }}</strong> — {{ $event->event_date->isoFormat('ll') }}</p>
 
     <table cellpadding="4" cellspacing="0">
         <tr>

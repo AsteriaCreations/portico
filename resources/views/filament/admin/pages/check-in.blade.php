@@ -299,8 +299,8 @@
             <x-filament::section>
                 @if ($attendance->departed_at)
                     <p class="font-medium desk-text-check">
-                        {{ __('Checked in at :time — paid :amount.', ['time' => $attendance->checked_in_at->translatedFormat('g:i A'), 'amount' => \App\Models\MembershipSetting::formatMoney($attendance->amount_paid)]) }}
-                        {{ __('Marked departed at :time.', ['time' => $attendance->departed_at->translatedFormat('g:i A')]) }}
+                        {{ __('Checked in at :time — paid :amount.', ['time' => $attendance->checked_in_at->isoFormat('LT'), 'amount' => \App\Models\MembershipSetting::formatMoney($attendance->amount_paid)]) }}
+                        {{ __('Marked departed at :time.', ['time' => $attendance->departed_at->isoFormat('LT')]) }}
                     </p>
 
                     @if ($this->markAsReturnedAction->isVisible())
@@ -310,7 +310,7 @@
                     @endif
                 @else
                     <p class="font-medium desk-text-go">
-                        {{ __('Checked in at :time — paid :amount', ['time' => $attendance->checked_in_at->translatedFormat('g:i A'), 'amount' => \App\Models\MembershipSetting::formatMoney($attendance->amount_paid)]) }}
+                        {{ __('Checked in at :time — paid :amount', ['time' => $attendance->checked_in_at->isoFormat('LT'), 'amount' => \App\Models\MembershipSetting::formatMoney($attendance->amount_paid)]) }}
                     </p>
 
                     {{-- Nothing at all when guests are switched off (Feature Flags);

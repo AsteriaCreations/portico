@@ -105,7 +105,7 @@ class MemberForm
                             ->visible(fn (Get $get): bool => (bool) $get('on_watchlist')),
                         Placeholder::make('watchlist_probation')
                             ->label('Watchlist probation')
-                            ->content(fn (?Member $record): string => __('Until :date', ['date' => $record->watchlistProbationEndsOn()->translatedFormat('M j, Y')]))
+                            ->content(fn (?Member $record): string => __('Until :date', ['date' => $record->watchlistProbationEndsOn()->isoFormat('ll')]))
                             ->visible(fn (?Member $record): bool => (bool) $record?->isOnWatchlistProbation()),
                         Toggle::make('is_banned')
                             ->live()

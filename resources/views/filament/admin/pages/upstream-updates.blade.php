@@ -25,18 +25,18 @@
                 @else
                     <p class="text-sm text-gray-500 dark:text-gray-400">
                         @if ($deployTrigger->last_failure_at?->gt($deployTrigger->last_success_at ?? now()->subCentury()))
-                            {{ __('Failed to trigger :when: :message', ['when' => $deployTrigger->last_failure_at->translatedFormat('M j, Y g:i A'), 'message' => $deployTrigger->last_failure_message]) }}
+                            {{ __('Failed to trigger :when: :message', ['when' => $deployTrigger->last_failure_at->isoFormat('lll'), 'message' => $deployTrigger->last_failure_message]) }}
                         @else
-                            {{ __('Triggered :when.', ['when' => $deployTrigger->last_success_at->translatedFormat('M j, Y g:i A')]) }}
+                            {{ __('Triggered :when.', ['when' => $deployTrigger->last_success_at->isoFormat('lll')]) }}
                         @endif
                     </p>
 
                     @if ($deployResult)
                         <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
                             @if ($deployResult->last_failure_at?->gt($deployResult->last_success_at ?? now()->subCentury()))
-                                {{ __('Deploy failed :when: :message', ['when' => $deployResult->last_failure_at->translatedFormat('M j, Y g:i A'), 'message' => $deployResult->last_failure_message]) }}
+                                {{ __('Deploy failed :when: :message', ['when' => $deployResult->last_failure_at->isoFormat('lll'), 'message' => $deployResult->last_failure_message]) }}
                             @else
-                                {{ __('Deploy succeeded :when.', ['when' => $deployResult->last_success_at->translatedFormat('M j, Y g:i A')]) }}
+                                {{ __('Deploy succeeded :when.', ['when' => $deployResult->last_success_at->isoFormat('lll')]) }}
                             @endif
                         </p>
                     @endif
@@ -87,7 +87,7 @@
                                     <td class="px-3 py-2 text-sm font-mono">{{ $commit['short_hash'] }}</td>
                                     <td class="px-3 py-2 text-sm">{{ $commit['subject'] }}</td>
                                     <td class="px-3 py-2 text-sm">{{ $commit['author'] }}</td>
-                                    <td class="px-3 py-2 text-sm">{{ $commit['date']->translatedFormat('M j, Y') }}</td>
+                                    <td class="px-3 py-2 text-sm">{{ $commit['date']->isoFormat('ll') }}</td>
                                 </tr>
                             @endforeach
                         </tbody>

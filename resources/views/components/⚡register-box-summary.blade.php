@@ -48,7 +48,7 @@ re-find these lines after every refresh. --}}
     @if ($this->shift)
         <p role="status" class="text-sm text-gray-500">
             {{ __('Open since :time by :name — opened :opening, expected now :expected', [
-                'time' => $this->shift->created_at->translatedFormat('g:i A'),
+                'time' => $this->shift->created_at->isoFormat('LT'),
                 'name' => $this->shift->openedBy->name,
                 'opening' => \App\Models\MembershipSetting::formatMoney($this->shift->opening_count),
                 'expected' => \App\Models\MembershipSetting::formatMoney($this->expected),

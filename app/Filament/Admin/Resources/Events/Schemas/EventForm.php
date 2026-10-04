@@ -52,7 +52,7 @@ class EventForm
                 // someone expects it to.
                 ...($includeSummary ? [
                     Callout::make(fn (?Event $record): string => __('Archived on :date by :name.', [
-                        'date' => $record?->archived_at?->translatedFormat('M j, Y') ?? '',
+                        'date' => $record?->archived_at?->isoFormat('ll') ?? '',
                         'name' => $record?->archivedBy?->name ?? __('an unknown user'),
                     ]))
                         ->description(__('This event is read-only and hidden from the check-in desk. Unarchive it to make changes.'))

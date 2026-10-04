@@ -211,7 +211,7 @@ class ShowrunnerCompRequests extends Page implements HasTable
 
         $notification = Notification::make()
             ->title(__('New comp request awaiting approval'))
-            ->body($request->member->username.' — '.$event->event_date->translatedFormat('M j, Y'))
+            ->body($request->member->username.' — '.$event->event_date->isoFormat('ll'))
             ->actions([
                 Action::make('view')
                     ->label('Review')
@@ -261,6 +261,6 @@ class ShowrunnerCompRequests extends Page implements HasTable
 
     protected static function eventLabel(Event $event): string
     {
-        return $event->event_date->translatedFormat('M j, Y').' — '.($event->name ?? __('Untitled event'));
+        return $event->event_date->isoFormat('ll').' — '.($event->name ?? __('Untitled event'));
     }
 }

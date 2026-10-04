@@ -66,10 +66,10 @@ class PaymentCorrectionsTable
                     ->indicateUsing(function (array $data): array {
                         $indicators = [];
                         if ($data['from'] ?? null) {
-                            $indicators[] = __('From :date', ['date' => Carbon::parse($data['from'])->translatedFormat('M j, Y')]);
+                            $indicators[] = __('From :date', ['date' => Carbon::parse($data['from'])->isoFormat('ll')]);
                         }
                         if ($data['until'] ?? null) {
-                            $indicators[] = __('Until :date', ['date' => Carbon::parse($data['until'])->translatedFormat('M j, Y')]);
+                            $indicators[] = __('Until :date', ['date' => Carbon::parse($data['until'])->isoFormat('ll')]);
                         }
 
                         return $indicators;
