@@ -157,3 +157,19 @@ test('the trigger-deploy gate denies a manager regardless of configuration', fun
 
     expect(Gate::forUser($manager)->allows('trigger-deploy'))->toBeFalse();
 });
+
+test('the last-deploy lines sit in a live region with absolute times, so a poll does not re-announce a ticking "minutes ago"', function () {
+    MembershipSetting::current()->update(['upstream_check_enabled' => true]);
+    $admin = User::factory()->create(['active' => true, 'role' => Role::Admin]);
+    $this->travelTo('2026-10-04 15:00:00');
+    CommandRun::create(['command' => 'deploy:trigger', 'last_success_at' => now()->subMinutes(3)]);
+    CommandRun::create(['command' => 'deploy', 'last_success_at' => now()->subMinute()]);
+
+    $html = Livewire::actingAs($admin)->test(UpstreamUpdates::class)->html();
+
+    expect($html)->toContain('<div role="status">')
+        ->toContain('Triggered Oct 4, 2026 2:57 PM.')
+        ->toContain('Deploy succeeded Oct 4, 2026 2:59 PM.')
+        ->not->toContain('minutes ago')
+        ->not->toContain('<div wire:poll.15s role="status">');
+});
