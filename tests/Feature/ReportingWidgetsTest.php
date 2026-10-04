@@ -234,6 +234,10 @@ test('the scheduled jobs widget reports "Never run" for a command with no Comman
 });
 
 test('the scheduled jobs widget shows a recent success in green', function () {
+    // Frozen so the widget's diffForHumans() and the expected one below are
+    // taken at the same instant; otherwise a second boundary between them
+    // flakes as "0 seconds ago" vs "1 second ago".
+    $this->freezeTime();
     $this->actingAs(User::factory()->create(['active' => true, 'role' => Role::Admin]));
     CommandRun::recordSuccess('backup:database');
 
