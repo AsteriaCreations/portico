@@ -73,14 +73,14 @@ new class extends Component
 
             {{-- sm and up: the full columnar table, unchanged. --}}
             <div class="checked-in-roster-table fi-ta-content overflow-x-auto">
-                <table class="fi-ta-table w-full text-start">
+                <table class="fi-ta-table w-full text-start tabular-nums">
                     <thead>
                         <tr>
                             <th scope="col" class="px-3 py-2 text-start text-xs font-medium text-gray-500 dark:text-gray-400">{{ __('Member') }}</th>
                             <th scope="col" class="px-3 py-2 text-start text-xs font-medium text-gray-500 dark:text-gray-400">{{ __('Event') }}</th>
                             <th scope="col" class="px-3 py-2 text-start text-xs font-medium text-gray-500 dark:text-gray-400">{{ __('Date') }}</th>
                             <th scope="col" class="px-3 py-2 text-start text-xs font-medium text-gray-500 dark:text-gray-400">{{ __('Checked in') }}</th>
-                            <th scope="col" class="px-3 py-2 text-start text-xs font-medium text-gray-500 dark:text-gray-400">{{ __('Paid') }}</th>
+                            <th scope="col" class="px-3 py-2 text-end text-xs font-medium text-gray-500 dark:text-gray-400">{{ __('Paid') }}</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -90,7 +90,7 @@ new class extends Component
                                 <td class="px-3 py-2 text-sm">{{ $this->event->name }}</td>
                                 <td class="px-3 py-2 text-sm">{{ $this->event->event_date->translatedFormat('M j, Y') }}</td>
                                 <td class="px-3 py-2 text-sm">{{ $checkedInAttendance->checked_in_at->translatedFormat('g:i A') }}</td>
-                                <td class="px-3 py-2 text-sm">{{ \App\Models\MembershipSetting::formatMoney($checkedInAttendance->amount_paid) }}</td>
+                                <td class="px-3 py-2 text-end text-sm">{{ \App\Models\MembershipSetting::formatMoney($checkedInAttendance->amount_paid) }}</td>
                             </tr>
                         @endforeach
                     </tbody>
