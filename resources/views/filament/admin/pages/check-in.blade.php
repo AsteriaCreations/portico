@@ -11,6 +11,20 @@
     rare render where the table's own copy also shows up. --}}
     <x-filament-actions::modals />
 
+    {{-- Text colour for the green/amber/red lines below. The -600 shades used
+    for borders and tints read at only ~3:1 as text on a light background
+    (WCAG AA needs 4.5:1), so text goes a shade darker in light mode and
+    lighter in dark mode. A scoped <style>, not dark: utilities, so it holds
+    even on an install that never ran `npm run build`. --}}
+    <style>
+        .desk-text-go { color: var(--success-800, #166534); }
+        .desk-text-check { color: var(--warning-800, #92400e); }
+        .desk-text-stop { color: var(--danger-700, #b91c1c); }
+        .dark .desk-text-go { color: var(--success-400, #4ade80); }
+        .dark .desk-text-check { color: var(--warning-400, #fbbf24); }
+        .dark .desk-text-stop { color: var(--danger-400, #f87171); }
+    </style>
+
     {{-- Training mode: every write action on this page short-circuits while
     it's on (CheckIn::haltForTraining()), so a new volunteer can rehearse the
     whole flow with nothing persisted. Inline CSS variables, not Tailwind
@@ -22,7 +36,7 @@
             class="rounded-xl px-5 py-4"
             style="border-left: 5px solid var(--warning-600, #d97706); background-color: color-mix(in srgb, var(--warning-600, #d97706) 12%, transparent);"
         >
-            <p class="text-base font-semibold" style="color: var(--warning-600, #d97706);">
+            <p class="desk-text-check text-base font-semibold">
                 {{ __('Training mode — practice freely. Nothing you do here is saved.') }}
             </p>
             <p class="mt-1 text-sm" style="opacity: .75;">
@@ -142,6 +156,8 @@
             // Filament's semantic palette CSS vars (with hex fallbacks) --
             // the Tailwind colour utilities (text-danger-600, bg-*-50, ...)
             // aren't in this build's compiled CSS, so colour is set inline.
+            // This -600 shade is for the border and tint only; the headline
+            // text uses the .desk-text-* classes above.
             $toneColor = [
                 'go' => 'var(--success-600, #16a34a)',
                 'check' => 'var(--warning-600, #d97706)',
@@ -158,7 +174,7 @@
             class="rounded-xl px-5 py-4"
             style="border-left: 5px solid {{ $toneColor }}; background-color: color-mix(in srgb, {{ $toneColor }} 10%, transparent);"
         >
-            <p class="text-base" style="color: {{ $toneColor }}; font-weight: 600;">{{ $strip['headline'] }}</p>
+            <p class="desk-text-{{ $strip['tone'] }} text-base" style="font-weight: 600;">{{ $strip['headline'] }}</p>
             @if ($strip['detail'])
                 <p class="mt-1 text-sm" style="opacity: .75;">{{ $strip['detail'] }}</p>
             @endif
@@ -210,7 +226,7 @@
             and that the member must not be admitted to it. If they sign it
             now, staff record it here and the add-on returns to pricing. --}}
             @foreach ($this->getGatedAddOnWarnings() as $gatedWarning)
-                <p class="mt-4 text-danger-600">{{ $gatedWarning }}</p>
+                <p class="mt-4 desk-text-stop">{{ $gatedWarning }}</p>
             @endforeach
             {{-- A hidden action rendered with {{ }} still shows as a disabled
             button, which reads as broken -- so every conditional action on
@@ -282,7 +298,7 @@
         @if ($attendance && $attendance->checked_in_at)
             <x-filament::section>
                 @if ($attendance->departed_at)
-                    <p class="font-medium text-warning-600">
+                    <p class="font-medium desk-text-check">
                         {{ __('Checked in at :time — paid :amount.', ['time' => $attendance->checked_in_at->translatedFormat('g:i A'), 'amount' => \App\Models\MembershipSetting::formatMoney($attendance->amount_paid)]) }}
                         {{ __('Marked departed at :time.', ['time' => $attendance->departed_at->translatedFormat('g:i A')]) }}
                     </p>
@@ -293,7 +309,7 @@
                         </div>
                     @endif
                 @else
-                    <p class="font-medium text-success-600">
+                    <p class="font-medium desk-text-go">
                         {{ __('Checked in at :time — paid :amount', ['time' => $attendance->checked_in_at->translatedFormat('g:i A'), 'amount' => \App\Models\MembershipSetting::formatMoney($attendance->amount_paid)]) }}
                     </p>
 
@@ -355,7 +371,7 @@
                         {{ $this->checkInAction }}
                     </div>
                 @else
-                    <p class="mt-2 text-danger-600">
+                    <p class="mt-2 desk-text-stop">
                         {{ __('At capacity (:occupancy/:capacity) — no new walk-in check-ins until someone leaves.', ['occupancy' => $this->getOccupancy(), 'capacity' => $this->getCapacity()]) }}
                     </p>
                 @endif

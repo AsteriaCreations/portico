@@ -394,6 +394,19 @@ test('the status line refreshes when the selected member changes, without any ot
     expect($component->html())->toContain('status-strip-'.$banned->id.'-');
 });
 
+test('the status line headline uses the contrast-safe text colour for its tone, not the -600 border shade', function () {
+    $clear = clearMember($this->irregular);
+    $banned = clearMember($this->irregular, ['username' => 'banned-one', 'is_banned' => true, 'ban_reason' => 'x']);
+
+    $component = Livewire::test(CheckIn::class)->set('data.member_id', $clear->id);
+    expect($component->html())->toContain('class="desk-text-go text-base"')
+        ->not->toContain('color: var(--success-600');
+
+    $component->set('data.member_id', $banned->id);
+    expect($component->html())->toContain('class="desk-text-stop text-base"')
+        ->not->toContain('color: var(--danger-600');
+});
+
 test('the save and promote action is visible for an incomplete Prospective member, with no event picked', function () {
     $member = clearMember($this->prospective, ['first_name' => null, 'last_name' => null, 'email' => null]);
 
