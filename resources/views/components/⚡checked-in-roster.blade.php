@@ -65,8 +65,8 @@ new class extends Component
                 @foreach ($this->attendances as $checkedInAttendance)
                     <div class="border-t border-gray-200 py-2 text-sm dark:border-white/10">
                         <p class="font-medium">{{ $checkedInAttendance->member->displayName() }}</p>
-                        <p class="text-gray-500 dark:text-gray-400">{{ $this->event->name }} &middot; {{ $this->event->event_date->translatedFormat('M j, Y') }}</p>
-                        <p class="text-gray-500 dark:text-gray-400">{{ $checkedInAttendance->checked_in_at->translatedFormat('g:i A') }} &middot; {{ \App\Models\MembershipSetting::formatMoney($checkedInAttendance->amount_paid) }}</p>
+                        <p class="text-gray-500 dark:text-gray-400">{{ $this->event->name }} &middot; {{ $this->event->event_date->isoFormat('ll') }}</p>
+                        <p class="text-gray-500 dark:text-gray-400">{{ $checkedInAttendance->checked_in_at->isoFormat('LT') }} &middot; {{ \App\Models\MembershipSetting::formatMoney($checkedInAttendance->amount_paid) }}</p>
                     </div>
                 @endforeach
             </div>
@@ -88,8 +88,8 @@ new class extends Component
                             <tr class="border-t border-gray-200 dark:border-white/10">
                                 <td class="px-3 py-2 text-sm">{{ $checkedInAttendance->member->displayName() }}</td>
                                 <td class="px-3 py-2 text-sm">{{ $this->event->name }}</td>
-                                <td class="px-3 py-2 text-sm">{{ $this->event->event_date->translatedFormat('M j, Y') }}</td>
-                                <td class="px-3 py-2 text-sm">{{ $checkedInAttendance->checked_in_at->translatedFormat('g:i A') }}</td>
+                                <td class="px-3 py-2 text-sm">{{ $this->event->event_date->isoFormat('ll') }}</td>
+                                <td class="px-3 py-2 text-sm">{{ $checkedInAttendance->checked_in_at->isoFormat('LT') }}</td>
                                 <td class="px-3 py-2 text-end text-sm">{{ \App\Models\MembershipSetting::formatMoney($checkedInAttendance->amount_paid) }}</td>
                             </tr>
                         @endforeach

@@ -45,7 +45,7 @@ class Event extends Model
      */
     public function label(): string
     {
-        return $this->event_date->translatedFormat('M j, Y').' — '.($this->name ?? $this->eventType?->name ?? __('Untitled event'));
+        return $this->event_date->isoFormat('ll').' — '.($this->name ?? $this->eventType?->name ?? __('Untitled event'));
     }
 
     public function createdBy(): BelongsTo

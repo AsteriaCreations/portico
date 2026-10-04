@@ -24,7 +24,7 @@
             @if ($this->getActiveEvents()->isNotEmpty())
                 <p class="text-sm text-gray-500">
                     {{ __('Active tonight:') }}
-                    {{ $this->getActiveEvents()->map(fn ($event) => ($event->name ?? __('Untitled event')).' ('.$event->event_date->translatedFormat('M j, Y').')')->implode(', ') }}
+                    {{ $this->getActiveEvents()->map(fn ($event) => ($event->name ?? __('Untitled event')).' ('.$event->event_date->isoFormat('ll').')')->implode(', ') }}
                 </p>
             @else
                 <p class="text-sm text-gray-500">{{ __('No active events right now.') }}</p>

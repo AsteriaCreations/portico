@@ -32,7 +32,7 @@ class EventEndedSummary extends Mailable
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: __('Event summary: :name — :date', ['name' => $this->event->name, 'date' => $this->event->event_date->translatedFormat('M j, Y')]),
+            subject: __('Event summary: :name — :date', ['name' => $this->event->name, 'date' => $this->event->event_date->isoFormat('ll')]),
         );
     }
 

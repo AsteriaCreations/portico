@@ -627,7 +627,7 @@ class CheckIn extends Page implements HasTable
         }
         // Informational only -- never changes the admission decision.
         if ($member->isOnWatchlistProbation()) {
-            $flags[] = __('Recently off watchlist — probation until :date', ['date' => $member->watchlistProbationEndsOn()->translatedFormat('M j, Y')]);
+            $flags[] = __('Recently off watchlist — probation until :date', ['date' => $member->watchlistProbationEndsOn()->isoFormat('ll')]);
         }
         if ($policy->needsCapture($member)) {
             $flags[] = __('Prospective — sign-up incomplete');
@@ -1011,14 +1011,14 @@ class CheckIn extends Page implements HasTable
         $eventLabels = Event::whereIn('id', Attendance::where('register_shift_id', $shift->id)->pluck('event_id'))
             ->orderBy('event_date')
             ->get()
-            ->map(fn (Event $event) => "{$event->name} — {$event->event_date->translatedFormat('M j, Y')}")
+            ->map(fn (Event $event) => "{$event->name} — {$event->event_date->isoFormat('ll')}")
             ->implode(', ');
 
         // No attendance row on this shift at all (e.g. only a standalone
         // subscription/misc-payment cash transaction) -- nothing to name, so
         // label the envelope with the date the box closed instead.
         if ($eventLabels === '') {
-            $eventLabels = $shift->closed_at->translatedFormat('M j, Y');
+            $eventLabels = $shift->closed_at->isoFormat('ll');
         }
 
         return __('Cash collected — Entry: :entry · Subscription: :subscription · Other: :other (total :total). Make an envelope for :events with these amounts written on it.', [
@@ -1323,7 +1323,7 @@ class CheckIn extends Page implements HasTable
                         return static::addOnDayPassEventOptionsQuery($addOn)
                             ->orderBy('event_date')
                             ->get()
-                            ->mapWithKeys(fn (Event $event) => [$event->id => "{$event->name} — {$event->event_date->translatedFormat('M j, Y')} ({$this->formatCurrency((float) $addOn->priceFor($event))})"]);
+                            ->mapWithKeys(fn (Event $event) => [$event->id => "{$event->name} — {$event->event_date->isoFormat('ll')} ({$this->formatCurrency((float) $addOn->priceFor($event))})"]);
                     })
                     ->required()
                     ->searchable(),

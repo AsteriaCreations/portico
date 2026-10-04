@@ -52,14 +52,16 @@ test('applyConfiguredLocale applies an installed locale and ignores a missing on
 
 test('the event-ended email is rendered in the installation language even from a console command', function () {
     Mail::fake();
+    $this->travelTo('2026-10-04 23:00:00');
     MembershipSetting::current()->update(['locale' => 'es']);
     User::factory()->create(['active' => true, 'role' => Role::Owner, 'email' => 'owner@example.com']);
-    $event = Event::factory()->create(['name' => 'Social', 'event_date' => today(), 'ends_at' => now()->subHour()]);
+    Event::factory()->create(['name' => 'Social', 'event_date' => today(), 'ends_at' => now()->subHour()]);
 
     Artisan::call('events:notify-ended');
 
-    Mail::assertSent(EventEndedSummary::class, function (EventEndedSummary $mail) use ($event): bool {
-        return $mail->envelope()->subject === 'xx-Summary Social / '.$event->event_date->translatedFormat('M j, Y');
+    // The date follows the locale's own order too, not just its month name.
+    Mail::assertSent(EventEndedSummary::class, function (EventEndedSummary $mail): bool {
+        return $mail->envelope()->subject === 'xx-Summary Social / 4 de oct. de 2026';
     });
 });
 
