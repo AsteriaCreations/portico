@@ -65,3 +65,22 @@ test('every instruction panel and page view renders in English', function () {
             ->and($html)->not->toContain('{{');
     }
 });
+
+test('the panel footer is translated, keeping the app name and both links', function () {
+    $english = view('filament.admin.footer')->render();
+    expect($english)->toContain(e(config('app.name')).' is free software, licensed under the <a href="https://www.gnu.org/licenses/agpl-3.0.html"')
+        ->toContain('>GNU Affero General Public License v3.0 or later</a>. <a href="https://github.com/AsteriaCreations/portico"')
+        ->toContain('>Source code</a>.');
+
+    app('translator')->setLoaded(['*' => ['*' => ['es' => [
+        ':app is free software, licensed under the :license. :source.' => 'xx-:app libre, :license. :source.',
+        'GNU Affero General Public License v3.0 or later' => 'xx-AGPL',
+        'Source code' => 'xx-Source',
+    ]]]]);
+    app()->setLocale('es');
+
+    expect(view('filament.admin.footer')->render())
+        ->toContain('xx-'.e(config('app.name')).' libre, <a href="https://www.gnu.org/licenses/agpl-3.0.html"')
+        ->toContain('>xx-AGPL</a>. <a href="https://github.com/AsteriaCreations/portico"')
+        ->toContain('>xx-Source</a>.');
+});
