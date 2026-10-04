@@ -12,32 +12,36 @@
 
     {{-- role="status" so the eventual result gets announced once it lands, not
     just silently redrawn -- the same idiom as the checked-in roster's own
-    isolated polling heading. --}}
-    <div wire:poll.15s role="status">
+    isolated polling heading. Only the result lines are in the live region, and
+    they carry absolute times: a relative "3 minutes ago" changes on its own
+    every minute, so every 15s poll would re-announce the whole block. --}}
+    <div wire:poll.15s>
         <x-filament::section>
             <x-slot name="heading">{{ __('Last deploy') }}</x-slot>
 
-            @if (! $deployTrigger)
-                <p class="text-sm text-gray-500 dark:text-gray-400">{{ __('Never triggered from this page.') }}</p>
-            @else
-                <p class="text-sm text-gray-500 dark:text-gray-400">
-                    @if ($deployTrigger->last_failure_at?->gt($deployTrigger->last_success_at ?? now()->subCentury()))
-                        {{ __('Failed to trigger :when: :message', ['when' => $deployTrigger->last_failure_at->diffForHumans(), 'message' => $deployTrigger->last_failure_message]) }}
-                    @else
-                        {{ __('Triggered :when.', ['when' => $deployTrigger->last_success_at->diffForHumans()]) }}
-                    @endif
-                </p>
-
-                @if ($deployResult)
-                    <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                        @if ($deployResult->last_failure_at?->gt($deployResult->last_success_at ?? now()->subCentury()))
-                            {{ __('Deploy failed :when: :message', ['when' => $deployResult->last_failure_at->diffForHumans(), 'message' => $deployResult->last_failure_message]) }}
+            <div role="status">
+                @if (! $deployTrigger)
+                    <p class="text-sm text-gray-500 dark:text-gray-400">{{ __('Never triggered from this page.') }}</p>
+                @else
+                    <p class="text-sm text-gray-500 dark:text-gray-400">
+                        @if ($deployTrigger->last_failure_at?->gt($deployTrigger->last_success_at ?? now()->subCentury()))
+                            {{ __('Failed to trigger :when: :message', ['when' => $deployTrigger->last_failure_at->translatedFormat('M j, Y g:i A'), 'message' => $deployTrigger->last_failure_message]) }}
                         @else
-                            {{ __('Deploy succeeded :when.', ['when' => $deployResult->last_success_at->diffForHumans()]) }}
+                            {{ __('Triggered :when.', ['when' => $deployTrigger->last_success_at->translatedFormat('M j, Y g:i A')]) }}
                         @endif
                     </p>
+
+                    @if ($deployResult)
+                        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                            @if ($deployResult->last_failure_at?->gt($deployResult->last_success_at ?? now()->subCentury()))
+                                {{ __('Deploy failed :when: :message', ['when' => $deployResult->last_failure_at->translatedFormat('M j, Y g:i A'), 'message' => $deployResult->last_failure_message]) }}
+                            @else
+                                {{ __('Deploy succeeded :when.', ['when' => $deployResult->last_success_at->translatedFormat('M j, Y g:i A')]) }}
+                            @endif
+                        </p>
+                    @endif
                 @endif
-            @endif
+            </div>
         </x-filament::section>
     </div>
 

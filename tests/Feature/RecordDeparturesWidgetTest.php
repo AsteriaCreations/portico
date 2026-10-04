@@ -72,3 +72,17 @@ test('a Volunteer can record a departure, restoring a capacity-blocked check-in'
         ->and($adjustment->for_date->toDateString())->toBe(today()->toDateString())
         ->and($adjustment->recorded_by)->toBe($volunteer->id);
 });
+
+test('the occupancy count is a live region, so recording a departure announces the new count', function () {
+    MembershipSetting::current()->update(['venue_capacity' => 5]);
+    $this->actingAs(User::factory()->create(['active' => true, 'role' => Role::Volunteer]));
+
+    $event = Event::factory()->create(['event_date' => today()->toDateString(), 'entry_fee' => 20]);
+    Attendance::factory()->for(clearMemberForDepartures($this->irregular))->for($event)->create(['checked_in_at' => now()]);
+
+    Livewire::test(RecordDeparturesWidget::class)
+        ->assertSeeHtml('<p role="status" class="text-sm text-gray-500">')
+        ->assertSee('1/5 in the building')
+        ->callAction('recordDepartures', data: ['count' => 1])
+        ->assertSee('0/5 in the building');
+});
