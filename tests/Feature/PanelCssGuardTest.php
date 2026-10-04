@@ -62,3 +62,14 @@ test('the theme is only loaded once a build has produced it, so an unbuilt insta
         File::deleteDirectory($scratch);
     }
 });
+
+test('panel views align with text-start/text-end, never text-left/text-right, so tables flip for right-to-left locales', function () {
+    $offenders = collect(themeSourceRoots())
+        ->flatMap(fn (string $root): array => File::allFiles(base_path($root)))
+        ->filter(fn (SplFileInfo $file): bool => (bool) preg_match('/\btext-(left|right)\b/', File::get($file->getPathname())))
+        ->map(fn (SplFileInfo $file): string => $file->getFilename())
+        ->values()
+        ->all();
+
+    expect($offenders)->toBe([]);
+});

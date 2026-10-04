@@ -81,7 +81,10 @@ test('the instructor payout widget shows the per-head breakdown once rates are c
     $this->get("/admin/events/{$event->id}/edit")
         ->assertSuccessful()
         ->assertSee('Instructor payout')
-        ->assertSee('$30.00'); // 3 * $10
+        ->assertSee('$30.00') // 3 * $10
+        // Numbers line up: tabular digits, money columns aligned to the end edge.
+        ->assertSee('class="w-full text-sm tabular-nums"', false)
+        ->assertSee('<td class="px-3 py-2 text-end">$30.00</td>', false);
 });
 
 test('the event comp cost widget is absent when nothing on the comp list has arrived', function () {
@@ -138,7 +141,9 @@ test('the event comp cost widget shows the foregone-revenue breakdown once a com
         ->assertSee('Comp list cost')
         ->assertSee('Presenter')
         ->assertSee('House Sub')
-        ->assertSee('$35.00'); // total: $20 + $15, excluding the host and the other event
+        ->assertSee('$35.00') // total: $20 + $15, excluding the host and the other event
+        ->assertSee('class="w-full text-sm tabular-nums"', false)
+        ->assertSee('<td class="px-3 py-2 text-end">$35.00</td>', false);
 });
 
 test('event comp cost widget is restricted to manager and up', function () {

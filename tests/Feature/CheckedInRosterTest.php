@@ -57,3 +57,18 @@ test('the roster renders a phone card layout alongside the wide table', function
         ->toContain('@media (min-width: 640px)')
         ->not->toContain('sm:hidden');
 });
+
+test('the roster table uses tabular digits and end-aligns the Paid column', function () {
+    $event = Event::factory()->create(['event_date' => '2026-07-19']);
+    Attendance::factory()->create([
+        'member_id' => Member::factory()->create()->id,
+        'event_id' => $event->id,
+        'checked_in_at' => now(),
+        'amount_paid' => 20,
+    ]);
+
+    expect(Livewire::test('checked-in-roster', ['eventId' => $event->id])->html())
+        ->toContain('class="fi-ta-table w-full text-start tabular-nums"')
+        ->toContain('class="px-3 py-2 text-end text-xs font-medium text-gray-500 dark:text-gray-400">Paid</th>')
+        ->toContain('<td class="px-3 py-2 text-end text-sm">$20.00</td>');
+});
