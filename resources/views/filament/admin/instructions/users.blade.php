@@ -1,5 +1,6 @@
 <x-screen-instructions :title="__('How to use Users')">
     <p>{!! __('Staff accounts — Admin+ only. Set a user\'s <strong>role</strong> here, which determines everything they can do across the whole panel.') !!}</p>
+    <p>{!! __('To add many accounts at once, use <strong>Download user template</strong>, fill it in, then <strong>Bulk upload users</strong>. Each new account gets a temporary password, listed once in the notification after the upload — pass them on before closing it. Everyone chooses their own password at first sign-in.') !!}</p>
     <p>{!! __('Someone locked out? Use <strong>Reset password</strong>. You\'ll see a temporary password once — read it out or pass it on privately. They\'re signed out everywhere and choose their own password when they next sign in.') !!}</p>
     <p>{{ __('You can only manage accounts at or below your own role, and only give roles up to your own — only an Owner can manage Owners.') }}</p>
     <p>{{ __('No active Owner yet (e.g. a new install)? Until there is one, an Admin can give the Owner role — to someone else or to their own account.') }}</p>

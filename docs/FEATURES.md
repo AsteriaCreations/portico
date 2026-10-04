@@ -139,6 +139,7 @@ SETTINGS & CONFIGURATION
 DATA IMPORT/EXPORT
 ---------------------
 - Prepay List bulk upload
+- Staff account bulk upload (Admin+, with a template) — each new account gets a random temporary password, shown once, and must choose its own at first sign-in; existing emails are skipped
 - Member status CSV export
 - Bulk-email list CSV export
 
