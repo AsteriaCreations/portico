@@ -11,6 +11,12 @@ is fixes only.
 
 ### Added
 
+- "Bulk upload users" and "Download user template" on Users (Admin+). Each row gives a name, email,
+  role and optional linked member; rows follow the Users form's rules (unique email, only roles you
+  may grant, a member not already linked) and bad rows are skipped and logged. Every new account
+  gets a random temporary password, downloaded once as a CSV straight after the upload (never
+  saved on the server), and must choose its own at first sign-in. An email that already has an account is skipped, so
+  re-uploading a file never creates anyone twice.
 - "Selectable at the Check-In Desk" on each payment method. The desk's payment pickers (check-in,
   subscription sale, day pass) offer only methods with it on. It's **off for "Other"** after
   upgrading, since picking Other at check-in still records the full entry as paid. "Record other

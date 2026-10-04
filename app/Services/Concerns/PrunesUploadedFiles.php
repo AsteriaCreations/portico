@@ -6,7 +6,7 @@ use Illuminate\Support\Facades\Storage;
 
 /**
  * Every bulk-upload action (Events/Members/Categories/CompReasons/Vouchers/
- * PrepayList) writes the uploaded spreadsheet to local disk via Filament's
+ * PrepayList/Users) writes the uploaded spreadsheet to local disk via Filament's
  * FileUpload component before this app ever reads it — that file is never
  * cleaned up on its own, so the upload directory grows without bound over
  * time (every test run alone leaves one behind, since the physical file
