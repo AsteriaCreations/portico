@@ -12,6 +12,7 @@
     },
     "require": {
         "php": "^8.4",
+        "endroid/qr-code": "^6.1",
         "filament/filament": "^5.7.6",
         "laravel/framework": "^13.8",
         "laravel/tinker": "^3.0",

@@ -205,6 +205,13 @@
                 </div>
             @endif
 
+            {{-- Door+, once the club turns on kiosk check-in at Feature Flags. --}}
+            @if ($this->kioskQrCodeAction->isVisible())
+                <div class="mt-2">
+                    {{ $this->kioskQrCodeAction }}
+                </div>
+            @endif
+
             @if (app(\App\Services\AdmissionPolicy::class)->needsCapture($member))
                 <p class="mt-4 font-medium">{{ __('Prospective — complete sign-up to promote to Irregular.') }}</p>
                 <div class="mt-2">
