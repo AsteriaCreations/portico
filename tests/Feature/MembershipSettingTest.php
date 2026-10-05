@@ -2,6 +2,7 @@
 
 use App\Models\MembershipSetting;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 
 uses(RefreshDatabase::class);
 
@@ -33,6 +34,53 @@ test('current reflects updates rather than re-reading config', function () {
     MembershipSetting::current()->update(['subscription_eligibility_threshold' => 42]);
 
     expect(MembershipSetting::current()->subscription_eligibility_threshold)->toBe(42);
+});
+
+/**
+ * @return int how many queries hit membership_settings while $callback ran
+ */
+function settingsQueriesDuring(callable $callback): int
+{
+    $count = 0;
+    DB::listen(function ($query) use (&$count): void {
+        if (str_contains($query->sql, 'membership_settings')) {
+            $count++;
+        }
+    });
+    $callback();
+
+    return $count;
+}
+
+test('current reads the row once per request, however often it is called', function () {
+    MembershipSetting::forgetCurrent();
+
+    $queries = settingsQueriesDuring(function (): void {
+        foreach (range(1, 10) as $call) {
+            MembershipSetting::current();
+        }
+    });
+
+    expect($queries)->toBe(1);
+});
+
+test('saving the row through any instance drops the cached copy', function () {
+    MembershipSetting::current();
+
+    MembershipSetting::query()->first()->update(['max_guests_per_night' => 7]);
+
+    expect(MembershipSetting::current()->max_guests_per_night)->toBe(7);
+});
+
+test('a raw table change needs forgetCurrent to be seen', function () {
+    MembershipSetting::current();
+    DB::table('membership_settings')->update(['max_guests_per_night' => 9]);
+
+    expect(MembershipSetting::current()->max_guests_per_night)->not->toBe(9);
+
+    MembershipSetting::forgetCurrent();
+
+    expect(MembershipSetting::current()->max_guests_per_night)->toBe(9);
 });
 
 test('formatMoney defaults to USD', function () {

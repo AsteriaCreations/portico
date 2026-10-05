@@ -265,6 +265,8 @@ test('an upgraded install that set its own length keeps it as custom', function 
     $migration = require database_path('migrations/2026_09_26_224017_add_watchlist_probation_mode_to_membership_settings_table.php');
     $migration->down();
     $migration->up();
+    // The migration writes through DB::table, so the request's copy is stale.
+    MembershipSetting::forgetCurrent();
 
     expect(MembershipSetting::current()->watchlist_probation_mode)->toBe('custom')
         ->and(MembershipSetting::watchlistProbationDays())->toBe(45);
