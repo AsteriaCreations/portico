@@ -5,6 +5,7 @@ use App\Enums\Role;
 use App\Filament\Admin\Resources\Members\Pages\CreateMember;
 use App\Filament\Admin\Resources\Members\Pages\EditMember;
 use App\Filament\Admin\Resources\Members\Pages\ListMembers;
+use App\Models\Attendance;
 use App\Models\Category;
 use App\Models\Event;
 use App\Models\Member;
@@ -14,6 +15,7 @@ use App\Models\Skill;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 use Livewire\Livewire;
 
 uses(RefreshDatabase::class);
@@ -321,6 +323,41 @@ test('the member status export includes full sensitive detail, not just the bool
     expect($content)->toContain('Fought at the bar')
         ->toContain('Prior incident')
         ->toContain('1990-05-15');
+});
+
+test('the probation column and export use the page query\'s first entry, with the same answers as before', function () {
+    $memberWithVisit = function (string $username, ?Carbon $checkedInAt, array $overrides = []): Member {
+        $member = Member::factory()->create(['category_id' => $this->category->id, 'username' => $username, ...$overrides]);
+        $event = Event::factory()->create(['event_date' => ($checkedInAt ?? now()->addWeek())->toDateString()]);
+        Attendance::factory()->for($member)->for($event)->create(['checked_in_at' => $checkedInAt]);
+
+        return $member;
+    };
+    $recent = $memberWithVisit('recentmember', now()->subDays(10));
+    $veteran = $memberWithVisit('veteranmember', now()->subYear());
+    $prepaidOnly = $memberWithVisit('prepaidmember', null); // an unarrived prepay doesn't start the clock
+    $overridden = $memberWithVisit('overriddenmember', now()->subYear(), ['probation_override_start' => now()->subDays(10)->toDateString()]);
+
+    $firstEntryQueries = 0;
+    DB::listen(function ($query) use (&$firstEntryQueries): void {
+        if (str_starts_with($query->sql, 'select min("checked_in_at")')) {
+            $firstEntryQueries++;
+        }
+    });
+
+    $livewire = Livewire::test(ListMembers::class)
+        ->assertTableColumnStateSet('probation', true, $recent)
+        ->assertTableColumnStateSet('probation', false, $veteran)
+        ->assertTableColumnStateSet('probation', false, $prepaidOnly)
+        ->assertTableColumnStateSet('probation', true, $overridden)
+        ->callAction('exportMemberStatus');
+
+    $rows = array_map('str_getcsv', explode("\n", trim(base64_decode(data_get($livewire->effects, 'download.content')))));
+    $column = array_search('On Probation', $rows[0], true);
+    $probationByUsername = collect(array_slice($rows, 1))->mapWithKeys(fn (array $row): array => [$row[1] => $row[$column]])->sortKeys()->all();
+
+    expect($probationByUsername)->toBe(['overriddenmember' => 'Yes', 'prepaidmember' => 'No', 'recentmember' => 'Yes', 'veteranmember' => 'No'])
+        ->and($firstEntryQueries)->toBe(0); // was one per member, on the page and in the export
 });
 
 test('a watchlist toggle without a reason is rejected on the member form', function () {

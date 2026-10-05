@@ -29,6 +29,13 @@ class MembersTable
     public static function configure(Table $table): Table
     {
         return $table
+            // Loaded with the page instead of once per row: the probation
+            // column's first-entry date (see Member::probationStart()) and
+            // the follow-up tooltip's user. The member CSV export reads this
+            // same query, so it gets both too.
+            ->modifyQueryUsing(fn (Builder $query): Builder => $query
+                ->withMin('attendance', 'checked_in_at')
+                ->with('guestFollowupSentBy'))
             ->columns([
                 TextColumn::make('member_number')
                     ->numeric()
