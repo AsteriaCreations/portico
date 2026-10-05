@@ -65,11 +65,40 @@ class MembershipSetting extends Model
         ];
     }
 
-    // No caching layer here on purpose: a static in-memory cache would leak
-    // a stale instance across Pest tests within the same process (Refresh
-    // Database resets the database, not PHP statics) -- a plain query every
-    // call is cheap enough (one row, indexed) that it isn't worth the risk.
+    /** Container key holding this request's copy of the row. */
+    private const CURRENT_INSTANCE = 'membership-settings.current';
+
+    protected static function booted(): void
+    {
+        static::saved(fn () => static::forgetCurrent());
+        static::deleted(fn () => static::forgetCurrent());
+    }
+
+    /**
+     * The settings row, read once per request. The desk alone used to run
+     * ~46 identical queries for it per interaction, and the checked-in
+     * roster one per money cell on every 10s poll. Held in the service
+     * container, not a PHP static: the container is rebuilt for every HTTP
+     * request and every Pest test, so nothing leaks between them (a static
+     * would survive RefreshDatabase). Saving or deleting the row drops the
+     * copy; code that changes the table without the model (a raw DB::table
+     * update) must call forgetCurrent() itself.
+     */
     public static function current(): self
+    {
+        if (! app()->bound(self::CURRENT_INSTANCE)) {
+            app()->instance(self::CURRENT_INSTANCE, static::loadCurrent());
+        }
+
+        return app(self::CURRENT_INSTANCE);
+    }
+
+    public static function forgetCurrent(): void
+    {
+        app()->forgetInstance(self::CURRENT_INSTANCE);
+    }
+
+    private static function loadCurrent(): self
     {
         return static::query()->first() ?? static::create([
             'subscription_eligibility_threshold' => (int) config('membership.subscription_eligibility_threshold'),
