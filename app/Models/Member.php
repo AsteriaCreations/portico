@@ -378,6 +378,10 @@ class Member extends Model
      * manager set when the clock actually started for an edge case — it
      * replaces the first entry as the basis, it isn't an on/off flag like
      * subscription_eligible's manual override. Null = never been in.
+     *
+     * A list can preload the first entry with withMin('attendance',
+     * 'checked_in_at') (MIN skips the null checked_in_at of an unarrived
+     * prepay, so it's the same value) to avoid a query per member.
      */
     public function probationStart(): ?CarbonInterface
     {
@@ -385,7 +389,9 @@ class Member extends Model
             return $this->probation_override_start;
         }
 
-        $firstEntry = $this->attendance()->whereNotNull('checked_in_at')->min('checked_in_at');
+        $firstEntry = array_key_exists('attendance_min_checked_in_at', $this->attributes)
+            ? $this->attributes['attendance_min_checked_in_at']
+            : $this->attendance()->whereNotNull('checked_in_at')->min('checked_in_at');
 
         return $firstEntry === null ? null : Carbon::parse($firstEntry)->startOfDay();
     }
