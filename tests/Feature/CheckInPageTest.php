@@ -21,6 +21,7 @@ use App\Models\Register;
 use App\Models\Subscription;
 use App\Models\User;
 use App\Models\Voucher;
+use App\Services\PricingService;
 use App\Services\RegisterShiftService;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -469,6 +470,37 @@ test('buying a subscription standalone creates a real subscription immediately, 
     expect($subscription->amount_paid)->toEqual(60)
         ->and($subscription->recorded_by)->toBe($this->user->id)
         ->and($subscription->payment_method)->toBe('comp');
+});
+
+test('the Due line reflects a standalone subscription sold in the same request', function () {
+    // The live price is cached per render; this guards the reset that keeps
+    // an action which changes what's owed (without touching the payment
+    // options) from leaving a stale Due line behind.
+    $member = clearMember($this->irregular, ['subscription_eligible' => true]);
+    $event = Event::factory()->create(['event_date' => today()->toDateString(), 'entry_fee' => 40]);
+
+    Livewire::test(CheckIn::class)
+        ->fillForm(['member_id' => $member->id, 'event_id' => $event->id])
+        ->assertSee('Due: $40.00')
+        ->callAction('purchaseSubscription', data: [
+            'add_on_id' => $this->entry->id,
+            'desired_start' => now()->startOfMonth(),
+            'duration_months' => '1',
+            'payment_method' => 'comp',
+        ])
+        ->assertHasNoActionErrors()
+        ->assertSee('Due: $15.00');
+});
+
+test('a render prices the selection once, not once per field that shows it', function () {
+    $member = clearMember($this->irregular);
+    $event = Event::factory()->create(['event_date' => today()->toDateString(), 'entry_fee' => 20]);
+    $component = Livewire::test(CheckIn::class)->set('data.event_id', $event->id);
+
+    // Was 3 per render: the Due line, the voucher toggle, the voucher amount.
+    $this->partialMock(PricingService::class, fn ($mock) => $mock->shouldReceive('previewWithSelections')->once()->passthru());
+
+    $component->set('data.member_id', $member->id)->assertSee('Due: $20.00');
 });
 
 test('a door volunteer can also buy a subscription standalone', function () {
