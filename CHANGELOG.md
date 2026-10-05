@@ -11,6 +11,17 @@ is fixes only.
 
 ### Added
 
+- Kiosk check-in, part 2: the endpoint the kiosk tablet scans codes into (`POST /kiosk/scan`), so
+  nothing changes until part 3's kiosk screen exists. A scan checks the member in only when
+  everything is clear: exactly one event running, not already checked in, an admission decision
+  with no warning or flag, room in the building, an active subscription for this month, and
+  nothing to pay. The visit is recorded at $0 by the system user with a new **Kiosk** payment
+  method, which is inactive so no picker offers it. Anyone else is told to see the front desk.
+  When staff need to act (watchlist, ban, missing sign-up or paperwork, under the alcohol-flag
+  age, building full), every active Door and up gets a bell notification naming the member; it
+  never includes a watchlist or ban reason. The endpoint answers only with kiosk check-in on and
+  the tablet's device secret, and is rate limited. **Upgrading:** run `php artisan migrate`
+  (1 new migration).
 - "Kiosk check-in" on Feature Flags (off by default), the first part of self check-in at a kiosk
   for subscribers. When on, the Check-In Desk (Door and up) and each member's page show a "Kiosk
   QR code" button. It opens the member's code with a link to a printable card, and a photo of

@@ -14,7 +14,10 @@ use Filament\Forms\Components\Field;
 use Filament\Tables\Columns\Column;
 use Filament\Tables\Filters\BaseFilter;
 use Filament\Tables\Table;
+use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Validation\Rules\Password;
 
@@ -39,6 +42,11 @@ class AppServiceProvider extends ServiceProvider
         // with no guaranteed outbound internet, where that rule fails open
         // silently -- worse than not claiming the check at all.
         Password::defaults(fn (): Password => Password::min(12)->mixedCase()->numbers()->symbols());
+
+        // The kiosk's scan endpoint (routes/kiosk.php): generous for a door
+        // queue scanning one code every couple of seconds, low enough to stop
+        // anyone guessing codes.
+        RateLimiter::for('kiosk', fn (Request $request): Limit => Limit::perMinute(30)->by($request->ip()));
 
         Gate::define('view-sensitive-member-fields', fn (User $user): bool => $user->role->atLeast(Role::Manager));
 
