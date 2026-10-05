@@ -394,6 +394,27 @@ test('the status line refreshes when the selected member changes, without any ot
     expect($component->html())->toContain('status-strip-'.$banned->id.'-');
 });
 
+test('picking a member looks up the selected member and event once per request, not once per call', function () {
+    $member = clearMember($this->irregular);
+    $event = Event::factory()->create(['event_date' => today()->toDateString(), 'entry_fee' => 20]);
+    $component = Livewire::test(CheckIn::class)->set('data.event_id', $event->id);
+
+    $lookups = ['members' => 0, 'events' => 0];
+    DB::listen(function ($query) use (&$lookups): void {
+        foreach (array_keys($lookups) as $table) {
+            if (str_starts_with($query->sql, "select * from \"{$table}\" where \"{$table}\".\"id\" = ?")) {
+                $lookups[$table]++;
+            }
+        }
+    });
+
+    $component->set('data.member_id', $member->id)->assertSee($member->displayName());
+
+    // Was ~25 member and ~23 event lookups per pick before the per-request cache.
+    expect($lookups['members'])->toBeLessThanOrEqual(2)
+        ->and($lookups['events'])->toBeLessThanOrEqual(2);
+});
+
 test('the status line headline uses the contrast-safe text colour for its tone, not the -600 border shade', function () {
     $clear = clearMember($this->irregular);
     $banned = clearMember($this->irregular, ['username' => 'banned-one', 'is_banned' => true, 'ban_reason' => 'x']);
