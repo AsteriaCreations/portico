@@ -173,3 +173,15 @@ test('the last-deploy lines sit in a live region with absolute times, so a poll 
         ->not->toContain('minutes ago')
         ->not->toContain('<div wire:poll.15s role="status">');
 });
+
+test('a failed request on the page explains a deploy restart instead of the generic page error', function () {
+    MembershipSetting::current()->update(['upstream_check_enabled' => true]);
+    $this->actingAs(User::factory()->create(['active' => true, 'role' => Role::Admin]));
+
+    // The '' key is Filament's fallback, used for every status without its own
+    // entry and for a request that got no response (the web server stopped).
+    $fallback = Livewire::test(UpstreamUpdates::class)->instance()->getErrorNotifications()[''];
+
+    expect($fallback['title'])->toBe("Can't reach the server right now")
+        ->and($fallback['body'])->toContain('Last deploy');
+});

@@ -93,6 +93,13 @@ is fixes only.
   Bunny Fonts and the "optimized font fallbacks require fontaine" warning. The panel is
   unaffected: Filament ships its own font.
 
+### Fixed
+
+- "Run update now" on Upstream Updates no longer shows "Error while loading page" while the update
+  runs. The update stops the web server, so the page's automatic refresh fails until the server is
+  back. The page now says the server is restarting and that it will reconnect on its own. The
+  update itself was never affected.
+
 ## [0.3.0] — 2026-09-26
 
 **Upgrading from 0.2.0:** run `php artisan migrate` (12 new migrations; every new setting defaults
