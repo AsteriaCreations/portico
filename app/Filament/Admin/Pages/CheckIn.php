@@ -280,18 +280,40 @@ class CheckIn extends Page implements HasTable
             ]);
     }
 
+    /**
+     * One lookup per request for each selection, keyed by id so picking a
+     * different member/event reloads. A render calls these ~25 times; each
+     * used to be its own query. Private, so Livewire never persists it past
+     * the request. Every desk write to the member goes through
+     * getSelectedMember(), so it updates this same instance.
+     *
+     * @var array{mixed, ?Event}|null
+     */
+    private ?array $selectedEventCache = null;
+
+    /** @var array{mixed, ?Member}|null */
+    private ?array $selectedMemberCache = null;
+
     public function getSelectedEvent(): ?Event
     {
         $id = $this->data['event_id'] ?? null;
 
-        return $id ? Event::find($id) : null;
+        if ($this->selectedEventCache === null || $this->selectedEventCache[0] !== $id) {
+            $this->selectedEventCache = [$id, $id ? Event::find($id) : null];
+        }
+
+        return $this->selectedEventCache[1];
     }
 
     public function getSelectedMember(): ?Member
     {
         $id = $this->data['member_id'] ?? null;
 
-        return $id ? Member::find($id) : null;
+        if ($this->selectedMemberCache === null || $this->selectedMemberCache[0] !== $id) {
+            $this->selectedMemberCache = [$id, $id ? Member::find($id) : null];
+        }
+
+        return $this->selectedMemberCache[1];
     }
 
     public function getExistingAttendance(): ?Attendance
