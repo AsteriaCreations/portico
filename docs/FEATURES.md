@@ -55,6 +55,7 @@ MEMBER MANAGEMENT
 - Computed probation status (derived, not stored)
 - Append-only audit logs: status changes, username changes
 - Username rename (audited, race-safe) — Manager+ from the member's page; optionally Door from the Check-In Desk (Feature Flags, off by default)
+- Kiosk QR codes (Feature Flags, off by default) — show or print a member's code from the Check-In Desk or their page; Manager+ can replace a lost one. The kiosk itself is still being built.
 - Bulk member recategorization
 - Guest follow-up tracking — filter new guests not yet sent the club's follow-up (with a registered-date range), export them, and bulk-mark them sent (who and when recorded), which moves them to Irregular
 - Email opt-in flag + bulk email CSV export

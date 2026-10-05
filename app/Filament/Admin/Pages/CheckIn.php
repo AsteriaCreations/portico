@@ -6,6 +6,7 @@ use App\Enums\AdmissionOutcome;
 use App\Enums\Role;
 use App\Exceptions\CheckInRefused;
 use App\Filament\Concerns\RenamesMemberUsername;
+use App\Filament\Concerns\ShowsKioskQrCode;
 use App\Filament\Concerns\TranslatesPageLabels;
 use App\Models\AddOn;
 use App\Models\AddOnDayPass;
@@ -72,6 +73,7 @@ class CheckIn extends Page implements HasTable
 {
     use InteractsWithTable;
     use RenamesMemberUsername;
+    use ShowsKioskQrCode;
     use TranslatesPageLabels;
 
     protected string $view = 'filament.admin.pages.check-in';
@@ -1122,6 +1124,18 @@ class CheckIn extends Page implements HasTable
             resolveMember: fn (): ?Member => $this->getSelectedMember(),
             haltBeforeSave: fn (): bool => $this->haltForTraining(__('Practice: username rename simulated.')),
             afterSave: fn () => $this->memberPickerVersion++,
+        );
+    }
+
+    // The member's kiosk QR, to print or photograph -- typically right after
+    // they buy a subscription here. Hidden unless the club turned on
+    // kiosk_checkin_enabled. In training mode an existing code still shows,
+    // but a missing one isn't created.
+    public function kioskQrCodeAction(): Action
+    {
+        return $this->makeKioskQrCodeAction(
+            resolveMember: fn (): ?Member => $this->getSelectedMember(),
+            isPractice: fn (): bool => $this->trainingMode,
         );
     }
 

@@ -5,6 +5,7 @@ namespace App\Filament\Admin\Resources\Members\Pages;
 use App\Enums\WatchlistReviewDecision;
 use App\Filament\Admin\Resources\Members\MemberResource;
 use App\Filament\Concerns\RenamesMemberUsername;
+use App\Filament\Concerns\ShowsKioskQrCode;
 use App\Models\Member;
 use App\Models\MembershipSetting;
 use Carbon\Carbon;
@@ -22,6 +23,7 @@ use Illuminate\Support\Facades\Gate;
 class EditMember extends EditRecord
 {
     use RenamesMemberUsername;
+    use ShowsKioskQrCode;
 
     protected static string $resource = MemberResource::class;
 
@@ -30,6 +32,8 @@ class EditMember extends EditRecord
         return [
             $this->reviewWatchlistAction(),
             $this->renameUsernameAction(),
+            $this->makeKioskQrCodeAction(resolveMember: fn (): Member => $this->getRecord()),
+            $this->replaceKioskCodeAction(),
             DeleteAction::make(),
         ];
     }
@@ -109,5 +113,28 @@ class EditMember extends EditRecord
             // page would keep showing the old value until a full reload.
             afterSave: fn () => $this->refreshFormData(['username']),
         );
+    }
+
+    /**
+     * For a lost card: issues a new kiosk code, so the old card stops
+     * working. Manager+ (replace-kiosk-token), from this page only -- the
+     * desk can show a code but never replace one.
+     */
+    protected function replaceKioskCodeAction(): Action
+    {
+        return Action::make('replaceKioskCode')
+            ->label('Replace kiosk code')
+            ->icon('heroicon-o-arrow-path')
+            ->color('gray')
+            ->visible(fn (): bool => $this->getRecord()->kiosk_token !== null && Gate::allows('replace-kiosk-token'))
+            ->requiresConfirmation()
+            ->modalDescription(__('Their current kiosk card or photo stops working straight away. Show or print the new code afterwards with "Kiosk QR code".'))
+            ->action(function (): void {
+                abort_unless(Gate::allows('replace-kiosk-token'), 403);
+
+                $this->getRecord()->regenerateKioskToken();
+
+                Notification::make()->title(__('Kiosk code replaced'))->success()->send();
+            });
     }
 }

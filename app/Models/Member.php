@@ -16,6 +16,7 @@ use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 #[Fillable([
     'member_number', 'username', 'preferred_name', 'first_name', 'last_name', 'email', 'email_opt_in',
@@ -27,6 +28,14 @@ class Member extends Model
 {
     /** @use HasFactory<MemberFactory> */
     use HasFactory;
+
+    /**
+     * The kiosk code admits whoever presents it, so it never goes out in a
+     * serialized member (exports, JSON).
+     *
+     * @var list<string>
+     */
+    protected $hidden = ['kiosk_token'];
 
     protected function casts(): array
     {
@@ -45,6 +54,7 @@ class Member extends Model
             'missing_paperwork' => 'boolean',
             'is_deceased' => 'boolean',
             'guest_followup_sent_at' => 'datetime',
+            'kiosk_token_generated_at' => 'datetime',
         ];
     }
 
@@ -209,6 +219,32 @@ class Member extends Model
             $revertToGuest ? ['category_id' => Category::where('name', 'Guest')->firstOrFail()->id] : [],
         ))->save();
         $this->unsetRelation('category');
+    }
+
+    /**
+     * The code this member's kiosk QR carries, created on first use. Showing
+     * or emailing the code again reuses it, so a printed card keeps working;
+     * only regenerateKioskToken() replaces it. Not fillable: these two are
+     * the only write paths.
+     */
+    public function ensureKioskToken(): string
+    {
+        return $this->kiosk_token ?? $this->regenerateKioskToken();
+    }
+
+    /**
+     * Issues a new kiosk code; the old one stops working at once (a lost
+     * card). The code only identifies the member -- the kiosk re-checks
+     * admission, subscription and capacity on every scan.
+     */
+    public function regenerateKioskToken(): string
+    {
+        $this->forceFill([
+            'kiosk_token' => Str::random(48),
+            'kiosk_token_generated_at' => now(),
+        ])->save();
+
+        return $this->kiosk_token;
     }
 
     public function hasActiveSubscriptionFor(AddOn $addOn, CarbonInterface $coveredMonth): bool

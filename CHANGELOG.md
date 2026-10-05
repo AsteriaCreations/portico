@@ -11,6 +11,16 @@ is fixes only.
 
 ### Added
 
+- "Kiosk check-in" on Feature Flags (off by default), the first part of self check-in at a kiosk
+  for subscribers. When on, the Check-In Desk (Door and up) and each member's page show a "Kiosk
+  QR code" button. It opens the member's code with a link to a printable card, and a photo of
+  the screen works too. The code is created the first time it's opened and reused after that, so
+  a printed card keeps working. Managers and up can "Replace kiosk code" on the member's page
+  when a card is lost, and the old one stops working straight away. The code only identifies
+  the member: the kiosk itself (coming next) will re-check admission, subscription and capacity
+  on every scan. Training mode shows an existing code but never creates one. **Upgrading:** run
+  `composer install` (one new package, `endroid/qr-code`, which draws the codes using the
+  already-required `gd` extension) and `php artisan migrate` (1 new migration).
 - "Bulk upload users" and "Download user template" on Users (Admin+). Each row gives a name, email,
   role and optional linked member; rows follow the Users form's rules (unique email, only roles you
   may grant, a member not already linked) and bad rows are skipped and logged. Every new account

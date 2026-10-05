@@ -105,6 +105,18 @@ class AppServiceProvider extends ServiceProvider
         Gate::define('rename-member-username', fn (User $user): bool => $user->role->atLeast(Role::Manager)
             || ($user->role->atLeast(Role::Door) && MembershipSetting::current()->door_username_rename_enabled));
 
+        // Door+ once the club turns on kiosk_checkin_enabled: show or print a
+        // member's kiosk QR code. Same "role + flag baked into the gate"
+        // shape as manage-visit-notes; re-checked server-side by
+        // ShowsKioskQrCode and the printable card route.
+        Gate::define('manage-kiosk-token', fn (User $user): bool => $user->role->atLeast(Role::Door)
+            && MembershipSetting::current()->kiosk_checkin_enabled);
+
+        // Replacing a code makes the member's old card stop working (a lost
+        // card), so it's Manager+, from the member's page only.
+        Gate::define('replace-kiosk-token', fn (User $user): bool => $user->role->atLeast(Role::Manager)
+            && MembershipSetting::current()->kiosk_checkin_enabled);
+
         // Orthogonal to role -- a capability grants nothing rank-related on
         // its own. See App\Enums\Capability.
         Gate::define('access-cleaning-checklist', fn (User $user): bool => $user->hasCapability(Capability::CleaningCrew));

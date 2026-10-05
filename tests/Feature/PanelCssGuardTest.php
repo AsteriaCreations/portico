@@ -26,11 +26,14 @@ test('the panel theme scans every folder of panel views', function () {
 
     expect($roots)->toContain('app/Filament/', 'resources/views/filament/', 'resources/views/components/');
 
-    // Emails render in a mail client, not the panel.
+    // Emails render in a mail client, not the panel; kiosk pages (the
+    // printable QR card, the kiosk itself) are standalone and carry their
+    // own CSS.
     $unscanned = collect(File::allFiles(resource_path('views')))
         ->map(fn (SplFileInfo $file): string => substr(str_replace('\\', '/', $file->getPathname()), strlen($basePath)))
         ->filter(fn (string $path): bool => str_ends_with($path, '.blade.php'))
         ->reject(fn (string $path): bool => str_starts_with($path, 'resources/views/emails/'))
+        ->reject(fn (string $path): bool => str_starts_with($path, 'resources/views/kiosk/'))
         ->reject(fn (string $path): bool => collect($roots)->contains(fn (string $root): bool => str_starts_with($path, $root)))
         ->values()
         ->all();
