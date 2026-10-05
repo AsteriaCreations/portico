@@ -45,6 +45,22 @@ class UpstreamUpdates extends Page
             && MembershipSetting::current()->upstream_check_enabled;
     }
 
+    /**
+     * scripts/deploy.ps1 stops the web server for the length of an update,
+     * so the "Last deploy" section's own wire:poll fails until it's back.
+     * Filament's generic "Error while loading page" toast for that reads as
+     * the update itself failing; this page's default says what's happening
+     * instead. Registered with no status code -- the fallback Filament also
+     * uses for a request that got no response at all, as here.
+     */
+    protected function setUpErrorNotifications(): void
+    {
+        $this->registerErrorNotification(
+            title: __('Can\'t reach the server right now'),
+            body: __('If an update is running, the server restarts as part of it. This page reconnects on its own, and the result appears under "Last deploy" when it\'s done.'),
+        );
+    }
+
     public function getPendingCommits(): ?array
     {
         $settings = MembershipSetting::current();
