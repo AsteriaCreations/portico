@@ -294,6 +294,9 @@ class CheckIn extends Page implements HasTable
     /** @var array{mixed, ?Member}|null */
     private ?array $selectedMemberCache = null;
 
+    /** @var array{string|false, ?PriceBreakdown}|null See getLivePriceBreakdownBeforeVoucher(). */
+    private ?array $livePriceBeforeVoucherCache = null;
+
     public function getSelectedEvent(): ?Event
     {
         $id = $this->data['event_id'] ?? null;
@@ -360,7 +363,31 @@ class CheckIn extends Page implements HasTable
     // getLivePriceBreakdown() below purely so apply_voucher's own visibility
     // and voucher_amount's default can both be capped at "what's due after
     // comp" without computing voucher twice.
+    //
+    // Computed once per render and reused: a render asks for it three times
+    // (the Due line, apply_voucher's visibility, voucher_amount's default),
+    // each a full PricingService preview (~7 queries). Keyed on the
+    // selections, and dropped at the start of every render (rendering()), so
+    // an action that changed what's owed without touching pricingData
+    // (selling a standalone subscription, recording a waiver) is always
+    // reflected. PriceBreakdown is readonly, so sharing it is safe.
     protected function getLivePriceBreakdownBeforeVoucher(): ?PriceBreakdown
+    {
+        $key = json_encode([$this->data['member_id'] ?? null, $this->data['event_id'] ?? null, $this->pricingData]);
+
+        if ($this->livePriceBeforeVoucherCache === null || $this->livePriceBeforeVoucherCache[0] !== $key) {
+            $this->livePriceBeforeVoucherCache = [$key, $this->computeLivePriceBreakdownBeforeVoucher()];
+        }
+
+        return $this->livePriceBeforeVoucherCache[1];
+    }
+
+    public function rendering(): void
+    {
+        $this->livePriceBeforeVoucherCache = null;
+    }
+
+    private function computeLivePriceBreakdownBeforeVoucher(): ?PriceBreakdown
     {
         $member = $this->getSelectedMember();
         $event = $this->getSelectedEvent();
