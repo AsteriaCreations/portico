@@ -5,6 +5,7 @@ namespace App\Filament\Admin\Resources\Events;
 use App\Filament\Admin\Resources\Events\Pages\CreateEvent;
 use App\Filament\Admin\Resources\Events\Pages\EditEvent;
 use App\Filament\Admin\Resources\Events\Pages\ListEvents;
+use App\Filament\Admin\Resources\Events\Pages\ViewEvent;
 use App\Filament\Admin\Resources\Events\RelationManagers\AddOnDayPassesRelationManager;
 use App\Filament\Admin\Resources\Events\RelationManagers\AttendanceRelationManager;
 use App\Filament\Admin\Resources\Events\RelationManagers\CompListRelationManager;
@@ -72,6 +73,7 @@ class EventResource extends Resource
         return [
             'index' => ListEvents::route('/'),
             'create' => CreateEvent::route('/create'),
+            'view' => ViewEvent::route('/{record}'),
             'edit' => EditEvent::route('/{record}/edit'),
         ];
     }

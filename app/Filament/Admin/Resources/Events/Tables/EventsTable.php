@@ -10,6 +10,7 @@ use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
+use Filament\Actions\ViewAction;
 use Filament\Notifications\Notification;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
@@ -124,6 +125,10 @@ class EventsTable
                     ->default(false),
             ])
             ->recordActions([
+                // A Manager can't edit an event but runs its Prepay and Comp
+                // lists, so they get View (ViewEvent) where an Admin gets Edit.
+                ViewAction::make()
+                    ->hidden(fn (Event $record): bool => Gate::allows('update', $record)),
                 EditAction::make(),
                 static::duplicateAction(),
                 static::archiveAction(),
