@@ -1109,6 +1109,13 @@ class CheckIn extends Page implements HasTable
                     'category_id' => $irregular->id,
                 ]);
 
+                // This is the request's cached member (getSelectedMember()),
+                // and its category relation was loaded before the update.
+                // Eloquent doesn't drop a loaded relation when its foreign key
+                // changes, so without this the card would say Prospective
+                // until the next request.
+                $member->unsetRelation('category');
+
                 Notification::make()->title(__('Member promoted to Irregular'))->success()->send();
             });
     }

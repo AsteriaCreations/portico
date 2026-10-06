@@ -18,6 +18,8 @@ is fixes only.
   tabs as before. Archived events stay read-only there too. Admins still get **Edit**.
 - An event's View page no longer shows the edit page's warning that "changing the fees won't
   change what they paid": nothing can be changed there.
+- After **Save & promote to Irregular** at the Check-In Desk, the member card now shows
+  **Irregular** straight away. It kept saying Prospective until the page was reloaded.
 
 ### Added
 
