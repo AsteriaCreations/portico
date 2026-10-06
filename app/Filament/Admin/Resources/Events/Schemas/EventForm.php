@@ -66,6 +66,9 @@ class EventForm
                         ->description(__("Changing the fees won't change what they paid, and moving the date won't move which month's subscription covered them."))
                         ->warning()
                         ->columnSpanFull()
+                        // A warning about editing: ViewEvent (Managers) can't
+                        // change the date or fees, so it doesn't apply there.
+                        ->hiddenOn('view')
                         ->visible(fn (?Event $record): bool => ! ($record?->isArchived() ?? false) && static::recordedCount($record) > 0),
                 ] : []),
                 DatePicker::make('event_date')

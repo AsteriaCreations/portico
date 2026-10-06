@@ -35,6 +35,15 @@ test('a manager can open an event\'s view page, with the prepay and comp list ta
     $this->get("/admin/events/{$event->id}/edit")->assertForbidden();
 });
 
+test('the view page leaves out the edit form\'s "already recorded" warning', function () {
+    $event = Event::factory()->create();
+    Attendance::factory()->for($event)->count(2)->create();
+
+    Livewire::test(ViewEvent::class, ['record' => $event->getRouteKey()])
+        ->assertSuccessful()
+        ->assertDontSee('already recorded for this event');
+});
+
 test('door staff cannot open an event\'s view page', function () {
     $event = Event::factory()->create();
 
