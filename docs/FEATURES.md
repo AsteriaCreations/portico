@@ -56,7 +56,7 @@ MEMBER MANAGEMENT
 - Append-only audit logs: status changes, username changes
 - Username rename (audited, race-safe) — Manager+ from the member's page; optionally Door from the Check-In Desk (Feature Flags, off by default)
 - Kiosk QR codes (Feature Flags, off by default) — show or print a member's code from the Check-In Desk or their page; Manager+ can replace a lost one
-- Kiosk check-in endpoint — admits a $0-due subscriber with an Ok admission decision, recorded as the system user with the `kiosk` payment method; everyone else is sent to the desk, with a Door+ alert when staff must act. The kiosk's own screen is still being built.
+- Kiosk check-in — a tablet by the door (`/kiosk`) reads a member's QR code with its camera and admits a $0-due subscriber with an Ok admission decision, recorded as the system user with the `kiosk` payment method; everyone else is sent to the desk, with a Door+ alert when staff must act. An Admin links the tablet once from Feature Flags ("Set up a kiosk tablet").
 - Bulk member recategorization
 - Guest follow-up tracking — filter new guests not yet sent the club's follow-up (with a registered-date range), export them, and bulk-mark them sent (who and when recorded), which moves them to Irregular
 - Email opt-in flag + bulk email CSV export

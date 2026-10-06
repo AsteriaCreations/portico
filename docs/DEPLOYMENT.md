@@ -446,6 +446,40 @@ want TLS anyway:
    header comment for the one-time fix. On an Active Directory domain, push the CA root
    with Group Policy instead of running the script per device.
 
+### A kiosk tablet (optional)
+
+Kiosk check-in (Feature Flags, off by default) runs on a tablet by the door. Subscribers
+scan their kiosk QR code there and are checked in with no one at the desk. Browsers allow
+a page to use the camera **only over HTTPS**, so set up TLS (above) first.
+
+1. **Network:** put the tablet on a network that can reach the app, the same as a staff PC.
+   The tablet is the only device that ever talks to the server; members' phones never do.
+2. **Trust the CA on the tablet.** `install-local-ca.ps1` is for Windows only. On a tablet,
+   send yourself the CA's `rootCA.pem` (renaming it to `rootCA.crt` helps Android), then:
+   - **Android:** Settings → Security → *Install a certificate* → *CA certificate*. The
+     menu path varies by maker; search Settings for "certificate".
+   - **iPad:** open the file to download it as a profile, install it under Settings →
+     *Profile Downloaded*, then turn on full trust under Settings → General → About →
+     *Certificate Trust Settings*.
+
+   Check that `https://checkin.<club>.lan/admin/login` opens on the tablet with no warning.
+3. **Build the front end.** The kiosk screen has its own script, so the server needs
+   `npm run build` (§1 Node.js). `deploy.ps1` does this unless you pass `-SkipNpm`. If it's
+   missing, the kiosk page says so instead of failing.
+4. **Turn it on and link the tablet.** Turn on *Kiosk check-in* at Feature Flags. Then an
+   Admin clicks *Set up a kiosk tablet* at the top of that page and scans the QR code it
+   shows with the tablet's camera app (or types in the link). The tablet stores the key and
+   removes it from the address bar. Allow camera access, then add the page to the home
+   screen. Doing *Set up a kiosk tablet* again makes a new key, and the old tablet stops
+   working until it opens the new link.
+5. **Lock the tablet to the kiosk:** use Guided Access on iPad, or screen pinning on
+   Android, and turn off auto-lock. The page also asks the browser to keep the screen on.
+6. **Hand out codes:** staff open *Kiosk QR code* for a member at the Check-In Desk to
+   print the card, or let the member photograph it. The kiosk lets a member in only when
+   nothing needs a person: an active subscription, nothing to pay, and no watchlist, ban,
+   paperwork or age flag. Everyone else is sent to the desk, and staff get a bell
+   notification when they need to act.
+
 ---
 
 ## 7. Updating

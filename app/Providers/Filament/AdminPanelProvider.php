@@ -27,6 +27,7 @@ use App\Filament\Admin\Widgets\RecordDeparturesWidget;
 use App\Http\Middleware\RequirePasswordChange;
 use App\Http\Middleware\SetLocale;
 use App\Models\MembershipSetting;
+use App\Support\ViteBuild;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
@@ -169,13 +170,6 @@ class AdminPanelProvider extends PanelProvider
 
     private static function themeIsBuilt(): bool
     {
-        if (is_file(public_path('hot'))) {
-            return true;
-        }
-
-        $manifest = public_path('build/manifest.json');
-
-        return is_file($manifest)
-            && array_key_exists(self::THEME, json_decode((string) file_get_contents($manifest), true) ?: []);
+        return ViteBuild::has(self::THEME);
     }
 }

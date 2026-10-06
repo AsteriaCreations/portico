@@ -11,6 +11,17 @@ is fixes only.
 
 ### Added
 
+- Kiosk check-in, part 3: the kiosk screen at `/kiosk`, for a tablet by the door. It uses the
+  tablet's camera to read a member's kiosk QR code, then shows "Welcome", "Already checked in"
+  or "Please see the front desk" for a few seconds before scanning again. With no event running
+  it says so, asks for no camera, and checks again every minute. An Admin links the tablet with
+  the new **Set up a kiosk tablet** button on Feature Flags: it shows a link, also as a QR
+  code, that is opened once on the tablet. The tablet keeps the key and removes it from the
+  address bar. Setting up again issues a new key, and the old tablet stops working. Turning
+  kiosk check-in on adds a bell reminder to do this. The page needs HTTPS (browsers allow the
+  camera only there) and a front-end build; see "A kiosk tablet" in `docs/DEPLOYMENT.md`. New
+  front-end package: `jsqr`. **Upgrading:** run `npm install && npm run build`, which
+  `deploy.ps1` does unless `-SkipNpm` is passed.
 - Kiosk check-in, part 2: the endpoint the kiosk tablet scans codes into (`POST /kiosk/scan`), so
   nothing changes until part 3's kiosk screen exists. A scan checks the member in only when
   everything is clear: exactly one event running, not already checked in, an admission decision

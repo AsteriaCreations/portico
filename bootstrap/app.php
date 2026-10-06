@@ -1,7 +1,6 @@
 <?php
 
 use App\Http\Middleware\EnforceHsts;
-use App\Http\Middleware\VerifyKioskDevice;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -14,9 +13,10 @@ return Application::configure(basePath: dirname(__DIR__))
         commands: __DIR__.'/../routes/console.php',
         health: '/up',
         // The kiosk tablet's routes: no session or CSRF (it's a device, not
-        // a signed-in browser), so they sit outside 'web'. See routes/kiosk.php.
+        // a signed-in browser), so they sit outside 'web'. The scan itself
+        // also needs VerifyKioskDevice -- see routes/kiosk.php.
         then: function (): void {
-            Route::middleware(['throttle:kiosk', VerifyKioskDevice::class])
+            Route::middleware('throttle:kiosk')
                 ->group(base_path('routes/kiosk.php'));
         },
     )
