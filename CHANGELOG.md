@@ -16,6 +16,8 @@ is fixes only.
   them. Events now have a **View** page: Managers open it from the Events list (row click or
   **View**), see the event's fields read-only, and use the Attendance, Prepay list and Comp list
   tabs as before. Archived events stay read-only there too. Admins still get **Edit**.
+- An event's View page no longer shows the edit page's warning that "changing the fees won't
+  change what they paid": nothing can be changed there.
 
 ### Added
 
