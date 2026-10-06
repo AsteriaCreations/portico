@@ -9,6 +9,14 @@ is fixes only.
 
 ## [Unreleased]
 
+### Fixed
+
+- Managers can now manage an event's Prepay list and Comp list. Editing an event is Admin-only,
+  and the edit page was the only way to reach those tabs, so in practice only Admins could fill
+  them. Events now have a **View** page: Managers open it from the Events list (row click or
+  **View**), see the event's fields read-only, and use the Attendance, Prepay list and Comp list
+  tabs as before. Archived events stay read-only there too. Admins still get **Edit**.
+
 ### Added
 
 - Kiosk check-in, part 4: email members their kiosk QR code, so they don't have to come to the
