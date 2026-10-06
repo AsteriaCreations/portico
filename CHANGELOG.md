@@ -139,6 +139,14 @@ is fixes only.
 
 ### Fixed
 
+- "Run backup now" and "Reset member & event data" on Technical no longer show a bare "error"
+  page when the backup folder can't be created or written. They now say "Backup failed" or
+  "Reset failed — nothing was deleted", naming the folder and the Windows account that couldn't
+  write to it, and the reason also shows on the Scheduled Jobs panel. This usually happens
+  because those buttons run as the web server's account (often `LocalSystem`), not the nightly
+  task's account; see "Backups" in `docs/DEPLOYMENT.md`. The reset was never at risk: it
+  deletes nothing unless the backup succeeds.
+
 - "Run update now" on Upstream Updates no longer shows "Error while loading page" while the update
   runs. The update stops the web server, so the page's automatic refresh fails until the server is
   back. The page now says the server is restarting and that it will reconnect on its own. The

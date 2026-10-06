@@ -380,6 +380,20 @@ allow Windows Hello sign-in for Microsoft accounts" must be **off** for stored-p
 auto-login to work) or sync to a network share instead. Confirm the sync icon goes green
 after the first unattended run.
 
+**The Technical page's buttons run as the web server's account.** "Run backup now" and
+"Reset member & event data" (which backs up first) run inside Apache, and that's often
+`LocalSystem`, not the account the nightly Scheduled Task uses. So the backup folder must
+be writable by **both** accounts. A per-user OneDrive folder often refuses writes from
+another account, especially while its owner isn't signed in. If the button reports
+"Can't create/write the backup folder … as account MACHINE$" while the nightly run works,
+do one of these:
+- grant the web server's account Modify on that folder,
+- run the Apache service as the same account as the Scheduled Task (§2, "Service account"),
+- or point `BACKUP_DESTINATION` at a folder both accounts can write to (for example a
+  local folder that a separate job copies off the machine).
+
+Then run `php artisan optimize`.
+
 ---
 
 ## 5. Mail (optional)

@@ -1,9 +1,15 @@
 <?php
 
+use App\Console\Commands\ResetOperationalData;
+use App\Enums\Role;
+use App\Filament\Admin\Pages\Technical;
 use App\Models\CommandRun;
+use App\Models\Member;
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Process;
+use Livewire\Livewire;
 
 uses(RefreshDatabase::class);
 
@@ -102,4 +108,48 @@ test('it fails cleanly and writes nothing if mysqldump fails', function () {
     expect($run)->not->toBeNull()
         ->and($run->last_failure_at)->not->toBeNull()
         ->and($run->last_failure_message)->toContain('access denied');
+});
+
+test('a backup folder that cannot be created fails with the folder and account named, instead of crashing', function () {
+    // A file where the folder should be: mkdir() fails, as it does when the
+    // web server's account can't write into another account's OneDrive.
+    File::put($this->backupDir, 'not a folder');
+    Process::fake(['*' => Process::result(output: '-- fake sql dump contents')]);
+
+    $this->artisan('backup:database')
+        ->expectsOutputToContain("Can't create the backup folder")
+        ->assertFailed();
+
+    $run = CommandRun::firstWhere('command', 'backup:database');
+    expect($run->last_failure_message)->toContain("Can't create the backup folder")
+        ->and($run->last_failure_message)->toContain('daily');
+
+    File::delete($this->backupDir);
+});
+
+test('the technical page reports an unwritable backup folder as a failed backup, not a page error', function () {
+    File::put($this->backupDir, 'not a folder');
+    Process::fake(['*' => Process::result(output: '-- fake sql dump contents')]);
+    $this->actingAs(User::factory()->create(['active' => true, 'role' => Role::Owner]));
+
+    Livewire::test(Technical::class)
+        ->callAction('runBackupDatabase')
+        ->assertNotified('Backup failed');
+
+    File::delete($this->backupDir);
+});
+
+test('the reset button stops cleanly when the backup folder cannot be created, deleting nothing', function () {
+    File::put($this->backupDir, 'not a folder');
+    Process::fake(['*' => Process::result(output: '-- fake sql dump contents')]);
+    $this->actingAs(User::factory()->create(['active' => true, 'role' => Role::Owner]));
+    $member = Member::factory()->create();
+
+    Livewire::test(Technical::class)
+        ->callAction('resetOperationalData', data: ['confirmation' => ResetOperationalData::CONFIRMATION_PHRASE])
+        ->assertNotified('Reset failed — nothing was deleted');
+
+    expect(Member::whereKey($member->id)->exists())->toBeTrue();
+
+    File::delete($this->backupDir);
 });
