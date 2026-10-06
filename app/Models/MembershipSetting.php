@@ -22,6 +22,13 @@ use Illuminate\Support\Str;
 #[Fillable(['subscription_eligibility_threshold', 'subscription_eligibility_window_months', 'probation_period_days', 'guests_allowed_during_probation', 'max_guests_per_night', 'venue_capacity', 'default_opening_float', 'event_window_buffer_minutes', 'week_starts_on', 'age_of_majority', 'alcohol_flag_age', 'watchlist_notify_label', 'watchlist_probation_mode', 'watchlist_probation_days', 'watchlist_probation_blocks_guests', 'currency', 'locale', 'org_name', 'role_labels', 'member_search_fields', 'checkin_display_name_field', 'member_email_required', 'hide_member_pii_by_default', 'active_patrons_show_staff_roles', 'vouchers_enabled', 'add_ons_enabled', 'showrunner_comp_requests_enabled', 'manager_perk_enabled', 'suspensions_enabled', 'pool_enabled', 'prepay_enabled', 'register_shifts_enabled', 'cash_envelope_reminder_enabled', 'showrunner_payouts_enabled', 'instructor_payouts_enabled', 'showrunner_door_includes_pool', 'showrunner_door_includes_addons', 'visit_notes_enabled', 'behavior_notes_enabled', 'guests_enabled', 'door_username_rename_enabled', 'kiosk_checkin_enabled', 'upstream_check_enabled', 'upstream_remote', 'upstream_branch', 'deploy_trigger_enabled', 'deploy_task_name'])]
 class MembershipSetting extends Model
 {
+    /**
+     * Never fillable either: only regenerateKioskDeviceSecret() writes it.
+     *
+     * @var list<string>
+     */
+    protected $hidden = ['kiosk_device_secret_hash'];
+
     protected function casts(): array
     {
         return [
@@ -97,6 +104,27 @@ class MembershipSetting extends Model
     public static function forgetCurrent(): void
     {
         app()->forgetInstance(self::CURRENT_INSTANCE);
+    }
+
+    /**
+     * Issues the shared secret a kiosk tablet sends with every scan and
+     * returns it -- the only time it's available, since only its SHA-256 is
+     * stored. Any tablet set up with the old one stops working.
+     */
+    public function regenerateKioskDeviceSecret(): string
+    {
+        $secret = Str::random(40);
+
+        $this->forceFill(['kiosk_device_secret_hash' => hash('sha256', $secret)])->save();
+
+        return $secret;
+    }
+
+    public function kioskDeviceSecretMatches(?string $secret): bool
+    {
+        return filled($secret)
+            && $this->kiosk_device_secret_hash !== null
+            && hash_equals($this->kiosk_device_secret_hash, hash('sha256', $secret));
     }
 
     private static function loadCurrent(): self

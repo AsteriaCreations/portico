@@ -14,6 +14,12 @@ class PaymentMethod extends Model
     /** @use HasFactory<PaymentMethodFactory> */
     use HasFactory;
 
+    /**
+     * What a kiosk check-in records (App\Services\KioskCheckInService).
+     * The row is seeded inactive and off the desk, so nobody picks it.
+     */
+    public const KIOSK = 'kiosk';
+
     public $timestamps = false;
 
     protected function casts(): array
