@@ -3,12 +3,14 @@
 namespace App\Filament\Concerns;
 
 use App\Models\Member;
+use App\Services\KioskCodeMailer;
 use App\Services\KioskQrCode;
 use Closure;
 use Filament\Actions\Action;
 use Filament\Notifications\Notification;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Support\Facades\Gate;
+use Throwable;
 
 /**
  * The "Kiosk QR code" action, shared by the Check-In Desk (Door+) and the
@@ -61,5 +63,64 @@ trait ShowsKioskQrCode
             })
             ->modalSubmitAction(false)
             ->modalCancelActionLabel(__('Close'));
+    }
+
+    /**
+     * Emails the member their kiosk code (KioskCodeMailer), creating it if
+     * they have none. Sending is an outside effect, so the desk's training
+     * mode sends nothing. Until the server has a real mail transport the
+     * email only reaches the log, and the confirmation says so.
+     *
+     * @param  Closure(): ?Member  $resolveMember  the member to email
+     * @param  Closure(): bool|null  $isPractice  true to send nothing (the desk's training mode)
+     */
+    protected function makeEmailKioskQrCodeAction(Closure $resolveMember, ?Closure $isPractice = null): Action
+    {
+        return Action::make('emailKioskQrCode')
+            ->label('Email kiosk QR code')
+            ->icon(Heroicon::OutlinedEnvelope)
+            ->color('gray')
+            ->visible(fn (): bool => filled($resolveMember()?->email) && Gate::allows('manage-kiosk-token'))
+            ->requiresConfirmation()
+            ->modalHeading(__('Email the kiosk QR code?'))
+            ->modalDescription(fn (): string => KioskCodeMailer::isConfigured()
+                ? __('Sends the member\'s kiosk code to the email address on file.')
+                : __('Email isn\'t set up on this server yet, so this only writes the email to the server\'s log. Show or print the code instead.'))
+            ->modalSubmitActionLabel(__('Send'))
+            ->action(function () use ($resolveMember, $isPractice): void {
+                abort_unless(Gate::allows('manage-kiosk-token'), 403);
+
+                $member = $resolveMember();
+                abort_unless($member && filled($member->email), 404);
+
+                if ($isPractice && $isPractice()) {
+                    Notification::make()
+                        ->title(__('Practice only — nothing saved'))
+                        ->body(__('Practice: no email was sent.'))
+                        ->warning()
+                        ->send();
+
+                    return;
+                }
+
+                try {
+                    app(KioskCodeMailer::class)->send($member);
+                } catch (Throwable $exception) {
+                    report($exception);
+
+                    Notification::make()
+                        ->title(__('The email couldn\'t be sent'))
+                        ->body(__('The mail server refused it. Show or print the code instead.'))
+                        ->danger()
+                        ->send();
+
+                    return;
+                }
+
+                Notification::make()
+                    ->title(KioskCodeMailer::isConfigured() ? __('Kiosk code emailed') : __('Email isn\'t set up — written to the log only'))
+                    ->success()
+                    ->send();
+            });
     }
 }

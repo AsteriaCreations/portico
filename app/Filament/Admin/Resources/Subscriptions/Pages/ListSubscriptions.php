@@ -9,6 +9,7 @@ use App\Models\MembershipSetting;
 use App\Models\PaymentMethod;
 use App\Models\Plan;
 use App\Models\Subscription;
+use App\Services\KioskCodeMailer;
 use App\Services\ManagerPerkService;
 use App\Services\SubscriptionBundleService;
 use Carbon\Carbon;
@@ -33,7 +34,66 @@ class ListSubscriptions extends ListRecords
             CreateAction::make(),
             $this->grantManagerPerkAction(),
             $this->bulkPurchaseAction(),
+            $this->emailKioskCodesAction(),
         ];
+    }
+
+    /**
+     * Emails the next batch of this month's subscribers their kiosk code
+     * (KioskCodeMailer::sendBatch()). Resumable: each member is emailed once
+     * per code, so clicking again carries on where the last batch stopped.
+     */
+    protected function emailKioskCodesAction(): Action
+    {
+        return Action::make('emailKioskCodes')
+            ->label('Email kiosk codes to subscribers')
+            ->icon('heroicon-o-envelope')
+            ->color('gray')
+            ->visible(fn (): bool => Gate::allows('email-kiosk-codes'))
+            ->requiresConfirmation()
+            ->modalHeading(__('Email kiosk codes to subscribers?'))
+            ->modalDescription(function (): string {
+                $pending = app(KioskCodeMailer::class)->pendingSubscribers()->count();
+
+                $description = trans_choice(
+                    ':count subscriber this month has an email, is opted in to club email, and hasn\'t been sent their code yet.|:count subscribers this month have an email, are opted in to club email, and haven\'t been sent their code yet.',
+                    $pending,
+                ).' '.__('This sends up to :batch now; click again for the next batch.', ['batch' => KioskCodeMailer::BATCH_SIZE]);
+
+                if (! KioskCodeMailer::isConfigured()) {
+                    $description .= ' '.__('Email isn\'t set up on this server yet, so nothing can be sent until it is (see Mail in docs/DEPLOYMENT.md).');
+                }
+
+                return $description;
+            })
+            ->modalSubmitActionLabel(__('Send'))
+            ->action(function (): void {
+                abort_unless(Gate::allows('email-kiosk-codes'), 403);
+
+                if (! KioskCodeMailer::isConfigured()) {
+                    Notification::make()
+                        ->title(__('Email isn\'t set up on this server yet'))
+                        ->body(__('Nothing was sent. Until it is, show or print each member\'s code at the desk.'))
+                        ->warning()
+                        ->send();
+
+                    return;
+                }
+
+                $result = app(KioskCodeMailer::class)->sendBatch();
+
+                $body = collect([
+                    $result['failed'] ? __('Couldn\'t send to: :usernames', ['usernames' => implode(', ', $result['failed'])]) : null,
+                    $result['remaining'] > 0 ? trans_choice(':count still to send — click again.|:count still to send — click again.', $result['remaining']) : null,
+                ])->filter()->implode(' ');
+
+                Notification::make()
+                    ->title(trans_choice('Emailed :count kiosk code|Emailed :count kiosk codes', $result['sent']))
+                    ->body($body ?: null)
+                    ->{$result['failed'] ? 'warning' : 'success'}()
+                    ->persistent()
+                    ->send();
+            });
     }
 
     /**

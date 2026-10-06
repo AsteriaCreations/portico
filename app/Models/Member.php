@@ -55,6 +55,7 @@ class Member extends Model
             'is_deceased' => 'boolean',
             'guest_followup_sent_at' => 'datetime',
             'kiosk_token_generated_at' => 'datetime',
+            'kiosk_token_emailed_at' => 'datetime',
         ];
     }
 
@@ -242,6 +243,8 @@ class Member extends Model
         $this->forceFill([
             'kiosk_token' => Str::random(48),
             'kiosk_token_generated_at' => now(),
+            // The emailed code no longer works, so a bulk send includes them again.
+            'kiosk_token_emailed_at' => null,
         ])->save();
 
         return $this->kiosk_token;

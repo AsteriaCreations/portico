@@ -33,6 +33,7 @@ class EditMember extends EditRecord
             $this->reviewWatchlistAction(),
             $this->renameUsernameAction(),
             $this->makeKioskQrCodeAction(resolveMember: fn (): Member => $this->getRecord()),
+            $this->makeEmailKioskQrCodeAction(resolveMember: fn (): Member => $this->getRecord()),
             $this->replaceKioskCodeAction(),
             DeleteAction::make(),
         ];

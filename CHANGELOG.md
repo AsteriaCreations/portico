@@ -11,6 +11,17 @@ is fixes only.
 
 ### Added
 
+- Kiosk check-in, part 4: email members their kiosk QR code, so they don't have to come to the
+  desk for it. "Email kiosk QR code" sits next to "Kiosk QR code" at the Check-In Desk (Door and
+  up) and on the member's page; training mode sends nothing. "Email kiosk codes to subscribers"
+  on Subscriptions (Managers and up) emails this month's subscribers who have an email address,
+  are opted in to club email and haven't been sent their code yet. It sends 50 per click; click
+  again for the next batch, and nobody gets it twice. Replacing a member's code makes them due
+  again. The code is an image inside the email, not a link, so it works offline at the door.
+  Until the server has real email (`MAIL_MAILER=log`), a single send only reaches the log and
+  isn't counted, and the bulk send refuses to run. `docs/DEPLOYMENT.md` §5 now covers sending
+  through a club Gmail account with an App Password. **Upgrading:** run `php artisan migrate`
+  (1 new migration).
 - Kiosk check-in, part 3: the kiosk screen at `/kiosk`, for a tablet by the door. It uses the
   tablet's camera to read a member's kiosk QR code, then shows "Welcome", "Already checked in"
   or "Please see the front desk" for a few seconds before scanning again. With no event running
