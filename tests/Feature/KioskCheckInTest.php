@@ -2,6 +2,7 @@
 
 use App\Enums\AddOnKind;
 use App\Enums\Role;
+use App\Http\Middleware\VerifyKioskDevice;
 use App\Models\AddOn;
 use App\Models\Attendance;
 use App\Models\Category;
@@ -17,7 +18,7 @@ use Illuminate\Support\Facades\DB;
 
 /*
  * The kiosk's scan endpoint, hit as the tablet does: a plain JSON POST with
- * the device secret in a header, no session, nobody signed in.
+ * the device cookie, no session, nobody signed in.
  */
 uses(RefreshDatabase::class);
 
@@ -59,7 +60,7 @@ function kioskSubscriber(Category $category, AddOn $entry, array $overrides = []
 
 function scanAtKiosk(object $test, string $token, ?string $secret = null)
 {
-    return $test->withHeaders(['X-Kiosk-Secret' => $secret ?? $test->secret])
+    return $test->withCredentials()->withUnencryptedCookie(VerifyKioskDevice::COOKIE, $secret ?? $test->secret)
         ->postJson('/kiosk/scan', ['token' => $token]);
 }
 
@@ -74,7 +75,7 @@ test('the endpoint does not exist while kiosk check-in is off', function () {
     scanAtKiosk($this, $this->member->kiosk_token)->assertNotFound();
 });
 
-test('a missing or wrong device secret is refused', function () {
+test('a missing or wrong device cookie is refused', function () {
     $this->postJson('/kiosk/scan', ['token' => $this->member->kiosk_token])->assertForbidden();
     scanAtKiosk($this, $this->member->kiosk_token, 'not-the-secret')->assertForbidden();
 
@@ -94,7 +95,7 @@ test('the device secret is stored only as a hash and never serialized', function
 });
 
 test('a token is required', function () {
-    $this->withHeaders(['X-Kiosk-Secret' => $this->secret])->postJson('/kiosk/scan', [])->assertUnprocessable();
+    $this->withCredentials()->withUnencryptedCookie(VerifyKioskDevice::COOKIE, $this->secret)->postJson('/kiosk/scan', [])->assertUnprocessable();
 });
 
 test('a subscriber who owes nothing is checked in by the system user with the kiosk payment method', function () {

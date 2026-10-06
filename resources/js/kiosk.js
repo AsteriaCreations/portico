@@ -1,54 +1,22 @@
 // The kiosk tablet's scanner (resources/views/kiosk/scanner.blade.php).
 // Reads QR codes from the camera with jsQR and posts each one to the scan
-// endpoint with the device secret, which arrives once as ?key= on the setup
-// link and is kept in this tablet's storage from then on.
+// endpoint. The tablet is identified by an HttpOnly cookie the server set
+// when the setup link was opened, so this script never sees a secret.
 import jsQR from 'jsqr';
 
 const root = document.getElementById('kiosk');
-const STORAGE_KEY = 'portico-kiosk-device-secret';
 const SCAN_EVERY_MS = 200;
 const SAME_CODE_COOLDOWN_MS = 8000;
 const SHOW_RESULT_MS = { admitted: 4000, already_checked_in: 4000 };
 const SHOW_OTHER_RESULT_MS = 7000;
 const CLOSED_RELOAD_MS = 60000;
 
-function readStoredSecret() {
-    try {
-        return window.localStorage.getItem(STORAGE_KEY);
-    } catch {
-        return null;
-    }
-}
-
-function storeSecret(secret) {
-    try {
-        window.localStorage.setItem(STORAGE_KEY, secret);
-    } catch {
-        // Private mode or blocked storage: the secret still works for as long as this page stays open.
-    }
-}
-
-// Takes the secret off the address bar straight away, so it isn't left in
-// history or a bookmark.
-function takeSecretFromUrl() {
-    const url = new URL(window.location.href);
-    const secret = url.searchParams.get('key');
-    if (secret) {
-        storeSecret(secret);
-        url.searchParams.delete('key');
-        window.history.replaceState(null, '', url);
-    }
-
-    return secret;
-}
-
 function start() {
     if (!root) {
         return;
     }
 
-    const fromUrl = takeSecretFromUrl();
-
+    // Not set up, or no event running: nothing to scan. Check again later.
     if (root.dataset.open !== '1') {
         window.setTimeout(() => window.location.reload(), CLOSED_RELOAD_MS);
 
@@ -58,7 +26,7 @@ function start() {
     const strings = JSON.parse(root.dataset.strings);
     const scanUrl = root.dataset.scanUrl;
     const screens = {
-        setup: root.querySelector('[data-screen="setup"]'),
+        message: root.querySelector('[data-screen="message"]'),
         scan: root.querySelector('[data-screen="scan"]'),
     };
     const result = root.querySelector('[data-result]');
@@ -66,20 +34,21 @@ function start() {
     const canvas = document.createElement('canvas');
     const context = canvas.getContext('2d', { willReadFrequently: true });
 
-    let secret = fromUrl ?? readStoredSecret();
     let busy = false;
     let lastCode = null;
     let lastCodeAt = 0;
     let resultTimer = null;
 
     function show(name) {
-        screens.setup.hidden = name !== 'setup';
+        screens.message.hidden = name !== 'message';
         screens.scan.hidden = name !== 'scan';
     }
 
-    function showSetup(message) {
-        screens.setup.querySelector('[data-setup-message]').textContent = message;
-        show('setup');
+    // A lasting problem only staff can fix: stop scanning and say so.
+    function showMessage(message) {
+        busy = true;
+        screens.message.querySelector('[data-message]').textContent = message;
+        show('message');
     }
 
     function showResult(status, message, durationMs, then) {
@@ -109,11 +78,8 @@ function start() {
         try {
             response = await fetch(scanUrl, {
                 method: 'POST',
-                headers: {
-                    Accept: 'application/json',
-                    'Content-Type': 'application/json',
-                    'X-Kiosk-Secret': secret,
-                },
+                credentials: 'same-origin',
+                headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
                 body: JSON.stringify({ token }),
             });
         } catch {
@@ -123,7 +89,7 @@ function start() {
         }
 
         if (response.status === 403) {
-            showSetup(strings.badKey);
+            showMessage(strings.badKey);
 
             return;
         }
@@ -184,12 +150,11 @@ function start() {
             video.srcObject = stream;
             await video.play();
         } catch {
-            showSetup(strings.noCamera);
+            showMessage(strings.noCamera);
 
             return;
         }
 
-        show('scan');
         window.setInterval(scanFrame, SCAN_EVERY_MS);
     }
 
@@ -200,12 +165,6 @@ function start() {
         } catch {
             // Not supported or refused: the tablet's own sleep setting applies.
         }
-    }
-
-    if (!secret) {
-        showSetup(strings.setup);
-
-        return;
     }
 
     keepScreenOn();

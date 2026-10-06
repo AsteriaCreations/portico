@@ -16,8 +16,9 @@ is fixes only.
   or "Please see the front desk" for a few seconds before scanning again. With no event running
   it says so, asks for no camera, and checks again every minute. An Admin links the tablet with
   the new **Set up a kiosk tablet** button on Feature Flags: it shows a link, also as a QR
-  code, that is opened once on the tablet. The tablet keeps the key and removes it from the
-  address bar. Setting up again issues a new key, and the old tablet stops working. Turning
+  code, that is opened once on the tablet. The server checks the key and keeps it on the tablet
+  as a cookie that page scripts can't read, and the key leaves the address bar. Setting up
+  again issues a new key, and the old tablet stops working. Turning
   kiosk check-in on adds a bell reminder to do this. The page needs HTTPS (browsers allow the
   camera only there) and a front-end build; see "A kiosk tablet" in `docs/DEPLOYMENT.md`. New
   front-end package: `jsqr`. **Upgrading:** run `npm install && npm run build`, which
@@ -31,8 +32,8 @@ is fixes only.
   When staff need to act (watchlist, ban, missing sign-up or paperwork, under the alcohol-flag
   age, building full), every active Door and up gets a bell notification naming the member; it
   never includes a watchlist or ban reason. The endpoint answers only with kiosk check-in on and
-  the tablet's device secret, and is rate limited. **Upgrading:** run `php artisan migrate`
-  (1 new migration).
+  the tablet's device secret (a cookie set when part 3 links the tablet), and is rate limited.
+  **Upgrading:** run `php artisan migrate` (1 new migration).
 - "Kiosk check-in" on Feature Flags (off by default), the first part of self check-in at a kiosk
   for subscribers. When on, the Check-In Desk (Door and up) and each member's page show a "Kiosk
   QR code" button. It opens the member's code with a link to a printable card, and a photo of

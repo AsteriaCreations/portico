@@ -2,6 +2,7 @@
 
 use App\Enums\Role;
 use App\Filament\Admin\Pages\FeatureFlags;
+use App\Http\Middleware\VerifyKioskDevice;
 use App\Models\Event;
 use App\Models\MembershipSetting;
 use App\Models\User;
@@ -35,32 +36,83 @@ function withKioskBuild(bool $built, Closure $test): void
     }
 }
 
+/** The kiosk page as a linked tablet loads it. */
+function openKiosk(object $test, ?string $secret = null)
+{
+    return $test->withUnencryptedCookie(VerifyKioskDevice::COOKIE, $secret ?? $test->secret)->get('/kiosk');
+}
+
 beforeEach(function () {
     MembershipSetting::current()->update(['kiosk_checkin_enabled' => true]);
+    $this->secret = MembershipSetting::current()->regenerateKioskDeviceSecret();
 });
 
 test('the kiosk page does not exist while kiosk check-in is off', function () {
     MembershipSetting::current()->update(['kiosk_checkin_enabled' => false]);
 
-    $this->get('/kiosk')->assertNotFound();
+    openKiosk($this)->assertNotFound();
+    $this->get('/kiosk?key='.$this->secret)->assertNotFound();
 });
 
 test('the kiosk page needs no sign-in and starts no session', function () {
     withKioskBuild(true, function () {
         Event::factory()->create(['event_date' => today()->toDateString()]);
 
-        $response = $this->get('/kiosk')->assertOk();
+        $response = openKiosk($this)->assertOk();
 
         expect(collect($response->headers->getCookies())->map->getName()->all())
             ->not->toContain(config('session.cookie'), 'XSRF-TOKEN');
     });
 });
 
-test('with an event running the kiosk page shows the scanner', function () {
+test('opening the setup link links the tablet with an http-only same-site cookie and drops the key from the address', function () {
+    $response = $this->get('/kiosk?key='.$this->secret)->assertRedirect(route('kiosk'));
+
+    $cookie = collect($response->headers->getCookies())->first(fn ($cookie): bool => $cookie->getName() === VerifyKioskDevice::COOKIE);
+
+    expect($cookie)->not->toBeNull()
+        ->and($cookie->getValue())->toBe($this->secret)
+        ->and($cookie->isHttpOnly())->toBeTrue()
+        ->and($cookie->getSameSite())->toBe('strict')
+        ->and($cookie->getPath())->toBe('/kiosk')
+        ->and($cookie->getExpiresTime())->toBeGreaterThan(now()->addYears(4)->timestamp);
+});
+
+test('a setup link with a wrong or old key links nothing', function () {
+    withKioskBuild(true, function () {
+        $response = $this->get('/kiosk?key=not-the-secret')
+            ->assertOk()
+            ->assertSee('This setup link is no longer valid.', false)
+            ->assertSee('data-open="0"', false);
+
+        expect(collect($response->headers->getCookies())->map->getName()->all())->not->toContain(VerifyKioskDevice::COOKIE);
+    });
+});
+
+test('a tablet never linked, or linked with a replaced secret, is asked to set up and shows no scanner', function () {
     withKioskBuild(true, function () {
         Event::factory()->create(['event_date' => today()->toDateString()]);
 
         $this->get('/kiosk')
+            ->assertOk()
+            ->assertSee('set up yet', false)
+            ->assertSee('data-open="0"', false)
+            ->assertDontSee('data-video', false);
+
+        $old = $this->secret;
+        MembershipSetting::current()->regenerateKioskDeviceSecret();
+
+        openKiosk($this, $old)
+            ->assertSee('set up yet', false)
+            ->assertDontSee('data-video', false);
+    });
+});
+
+test('with an event running a linked tablet shows the scanner', function () {
+    withKioskBuild(true, function () {
+        Event::factory()->create(['event_date' => today()->toDateString()]);
+
+        openKiosk($this)
             ->assertOk()
             ->assertSee('data-open="1"', false)
             ->assertSee('data-video', false)
@@ -70,10 +122,10 @@ test('with an event running the kiosk page shows the scanner', function () {
 
 test('with no event running the kiosk page is closed and asks for no camera', function () {
     withKioskBuild(true, function () {
-        $this->get('/kiosk')
+        openKiosk($this)
             ->assertOk()
             ->assertSee('data-open="0"', false)
-            ->assertSee('There\'s no event running right now.')
+            ->assertSee('no event running right now', false)
             ->assertDontSee('data-video', false);
     });
 });
@@ -82,9 +134,9 @@ test('an unbuilt kiosk script shows how to build it instead of failing', functio
     withKioskBuild(false, function () {
         Event::factory()->create(['event_date' => today()->toDateString()]);
 
-        $this->get('/kiosk')
+        openKiosk($this)
             ->assertOk()
-            ->assertSee('The kiosk screen isn\'t built on this server yet.')
+            ->assertSee('built on this server yet', false)
             ->assertDontSee('data-video', false);
     });
 });
@@ -105,7 +157,7 @@ test('an admin can set up a kiosk tablet, and the link it shows carries the new 
 
 test('setting up a kiosk tablet again locks out the old link', function () {
     $this->actingAs(User::factory()->create(['active' => true, 'role' => Role::Admin]));
-    $old = MembershipSetting::current()->regenerateKioskDeviceSecret();
+    $old = $this->secret;
 
     Livewire::test(FeatureFlags::class)->callAction('setUpKioskDevice');
 
@@ -124,7 +176,7 @@ test('a manager cannot set up a kiosk tablet, and nobody can with the flag off',
 });
 
 test('turning kiosk check-in on reminds an admin to set up the tablet', function () {
-    MembershipSetting::current()->update(['kiosk_checkin_enabled' => false]);
+    MembershipSetting::current()->forceFill(['kiosk_checkin_enabled' => false, 'kiosk_device_secret_hash' => null])->save();
     $admin = User::factory()->create(['active' => true, 'role' => Role::Admin]);
     $this->actingAs($admin);
 
