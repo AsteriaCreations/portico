@@ -207,8 +207,12 @@
 
             {{-- Door+, once the club turns on kiosk check-in at Feature Flags. --}}
             @if ($this->kioskQrCodeAction->isVisible())
-                <div class="mt-2">
+                <div class="mt-2 flex flex-wrap gap-2">
                     {{ $this->kioskQrCodeAction }}
+
+                    @if ($this->emailKioskQrCodeAction->isVisible())
+                        {{ $this->emailKioskQrCodeAction }}
+                    @endif
                 </div>
             @endif
 

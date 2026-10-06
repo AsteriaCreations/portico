@@ -1139,6 +1139,16 @@ class CheckIn extends Page implements HasTable
         );
     }
 
+    // Same gate as kioskQrCodeAction(); shown only when the member has an
+    // email on file. Training mode sends nothing.
+    public function emailKioskQrCodeAction(): Action
+    {
+        return $this->makeEmailKioskQrCodeAction(
+            resolveMember: fn (): ?Member => $this->getSelectedMember(),
+            isPractice: fn (): bool => $this->trainingMode,
+        );
+    }
+
     /**
      * The identity fields Door may write at the desk: shared by the
      * Prospective sign-up and the missing-paperwork re-capture, so the two

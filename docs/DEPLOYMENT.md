@@ -211,7 +211,7 @@ ADMIN_PASSWORD=<a real password>
 SESSION_LIFETIME=45
 SESSION_EXPIRE_ON_CLOSE=true
 
-MAIL_MAILER=log        # until you wire a transactional provider (see §5)
+MAIL_MAILER=log        # until you set up a mail transport (see §5)
 ```
 
 Leave `SESSION_SECURE_COOKIE` **unset** until the site is actually being served over HTTPS
@@ -382,17 +382,42 @@ after the first unattended run.
 
 ---
 
-## 5. Mail (optional, deferred)
+## 5. Mail (optional)
 
-`events:notify-ended` and any future mail need a transport. `MAIL_MAILER=log` just writes
-to `storage/logs/`. When you want real delivery, pick a transactional provider
-(Resend / Brevo / SMTP2GO / your own SMTP) and set the `MAIL_*` vars, then `config:clear`
-and re-test a send.
+Two features send email: `events:notify-ended` (the owner's event summary) and emailing
+members their kiosk QR code (desk, member page, or "Email kiosk codes to subscribers" on
+Subscriptions). They need a transport. With `MAIL_MAILER=log`, mail is only written to
+`storage/logs/`. A kiosk code "sent" that way isn't marked as emailed, and the bulk send
+refuses to run, so nobody is skipped once real mail is set up. The server only connects
+*out* to the mail provider, so it stays closed to the internet.
 
-Don't plan on a consumer mailbox (Outlook.com, Gmail) as the sender: providers have
-disabled SMTP Basic Auth for personal accounts (e.g. `535 5.7.139 …
-SmtpClientAuthentication is disabled for the Mailbox`), and Laravel's `smtp` mailer speaks
-only Basic Auth.
+- **A club Gmail account** works through an **App Password**. Turn on 2-Step Verification
+  for the account, then create an App Password in its Google Account security settings.
+  Google changes these screens and limits, so check its current help. Expect roughly 500
+  messages a day from a personal account, and mail may land in spam the first time. Then
+  set:
+
+  ```
+  MAIL_MAILER=smtp
+  MAIL_SCHEME=smtp
+  MAIL_HOST=smtp.gmail.com
+  MAIL_PORT=587
+  MAIL_USERNAME=<club>@gmail.com
+  MAIL_PASSWORD=<the 16-character app password, no spaces>
+  MAIL_FROM_ADDRESS=<club>@gmail.com
+  MAIL_FROM_NAME="<club name>"
+  ```
+
+- **A transactional provider** (Resend / Brevo / SMTP2GO / your own SMTP) is better when
+  the club owns a domain: you add its DNS records once, and mail comes from your own
+  address.
+- **Not Outlook.com / Hotmail:** Microsoft has turned off password sign-in for SMTP on
+  personal accounts (`535 5.7.139 … SmtpClientAuthentication is disabled for the
+  Mailbox`), and Laravel's `smtp` mailer has no OAuth.
+
+After changing `.env`, run `php artisan optimize`, then test a send: either
+`php artisan events:notify-ended` against a past event, or "Email kiosk QR code" for a
+member with your own address.
 
 ---
 

@@ -131,6 +131,11 @@ class AppServiceProvider extends ServiceProvider
         Gate::define('set-up-kiosk-device', fn (User $user): bool => $user->role->atLeast(Role::Admin)
             && MembershipSetting::current()->kiosk_checkin_enabled);
 
+        // Emailing every subscriber at once is a mass mailing in the club's
+        // name, so Manager+ (Door can still email one member from the desk).
+        Gate::define('email-kiosk-codes', fn (User $user): bool => $user->role->atLeast(Role::Manager)
+            && MembershipSetting::current()->kiosk_checkin_enabled);
+
         // Orthogonal to role -- a capability grants nothing rank-related on
         // its own. See App\Enums\Capability.
         Gate::define('access-cleaning-checklist', fn (User $user): bool => $user->hasCapability(Capability::CleaningCrew));
