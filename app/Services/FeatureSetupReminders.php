@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Filament\Admin\Pages\FeatureFlags;
 use App\Filament\Admin\Pages\MembershipSettings;
 use App\Filament\Admin\Resources\AddOns\AddOnResource;
 use App\Filament\Admin\Resources\CompReasons\CompReasonResource;
@@ -27,6 +28,7 @@ use Closure;
 use Filament\Actions\Action;
 use Filament\Notifications\Notification;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Notification as LaravelNotification;
 
 /**
@@ -213,6 +215,15 @@ class FeatureSetupReminders
                     'url' => $settingsPage,
                     'canOpen' => $canOpenSettings,
                     'needed' => fn (): bool => blank($settings->deploy_task_name),
+                ],
+            ],
+            'kiosk_checkin_enabled' => [
+                [
+                    'title' => __('Kiosk check-in: set up the kiosk tablet'),
+                    'body' => __('An Admin uses "Set up a kiosk tablet" at the top of Feature Flags, then opens the link it shows on the tablet.'),
+                    'url' => fn (): string => FeatureFlags::getUrl(),
+                    'canOpen' => fn (): bool => Gate::allows('set-up-kiosk-device'),
+                    'needed' => fn (): bool => $settings->kiosk_device_secret_hash === null,
                 ],
             ],
         ];

@@ -6,6 +6,7 @@ use App\Enums\Role;
 use App\Filament\Concerns\TranslatesPageLabels;
 use App\Models\MembershipSetting;
 use App\Services\FeatureSetupReminders;
+use App\Services\KioskQrCode;
 use BackedEnum;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Toggle;
@@ -15,6 +16,7 @@ use Filament\Pages\Page;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
+use Illuminate\Support\Facades\Gate;
 use UnitEnum;
 
 /**
@@ -43,6 +45,14 @@ class FeatureFlags extends Page
      * @var array<string, mixed>
      */
     public ?array $data = [];
+
+    /**
+     * The kiosk setup link just issued by setUpKioskDeviceAction(), shown
+     * once by showKioskSetupLinkAction(). Never stored: only the secret's
+     * hash is saved, so leaving the page loses it and the next setup issues
+     * a new one.
+     */
+    public ?string $kioskSetupUrl = null;
 
     // Same floor as MembershipSettings (RoleGatedPolicy's default
     // minimumRole) — these are policy-adjacent settings, not a
@@ -175,6 +185,51 @@ class FeatureFlags extends Page
                             ->required(),
                     ]),
             ]);
+    }
+
+    protected function getHeaderActions(): array
+    {
+        return [$this->setUpKioskDeviceAction()];
+    }
+
+    /**
+     * Issues a new kiosk device secret and shows the tablet's setup link
+     * (with the secret in it) once. Any tablet set up with the old one stops
+     * working until it opens the new link.
+     */
+    public function setUpKioskDeviceAction(): Action
+    {
+        return Action::make('setUpKioskDevice')
+            ->label('Set up a kiosk tablet')
+            ->icon(Heroicon::OutlinedDeviceTablet)
+            ->color('gray')
+            ->visible(fn (): bool => Gate::allows('set-up-kiosk-device'))
+            ->requiresConfirmation()
+            ->modalDescription(__('This makes a new setup link for the kiosk tablet. A tablet already set up stops working until the new link is opened on it.'))
+            ->modalSubmitActionLabel(__('Make a new link'))
+            ->action(function (): void {
+                abort_unless(Gate::allows('set-up-kiosk-device'), 403);
+
+                $secret = MembershipSetting::current()->regenerateKioskDeviceSecret();
+                $this->kioskSetupUrl = route('kiosk', ['key' => $secret]);
+
+                $this->replaceMountedAction('showKioskSetupLink');
+            });
+    }
+
+    // Never a button of its own: opened only by setUpKioskDeviceAction().
+    public function showKioskSetupLinkAction(): Action
+    {
+        return Action::make('showKioskSetupLink')
+            ->label('Kiosk setup link')
+            ->visible(fn (): bool => $this->kioskSetupUrl !== null && Gate::allows('set-up-kiosk-device'))
+            ->modalHeading(__('Open this on the kiosk tablet'))
+            ->modalContent(fn () => view('filament.admin.kiosk-setup-link', [
+                'url' => $this->kioskSetupUrl,
+                'qrDataUri' => $this->kioskSetupUrl ? app(KioskQrCode::class)->pngDataUri($this->kioskSetupUrl) : null,
+            ]))
+            ->modalSubmitAction(false)
+            ->modalCancelActionLabel(__('Done'));
     }
 
     public function saveAction(): Action

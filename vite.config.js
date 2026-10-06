@@ -5,9 +5,10 @@ import tailwindcss from '@tailwindcss/vite';
 export default defineConfig({
     plugins: [
         laravel({
-            // Only the admin panel's theme: every screen is in the panel, and
-            // Filament ships its own font, so there's no separate site CSS/JS.
-            input: ['resources/css/filament/admin/theme.css'],
+            // The admin panel's theme, plus the kiosk tablet's scanner (the one
+            // screen outside the panel). Filament ships its own font, so there's
+            // no separate site CSS.
+            input: ['resources/css/filament/admin/theme.css', 'resources/js/kiosk.js'],
             refresh: true,
         }),
         tailwindcss(),
