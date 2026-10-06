@@ -920,6 +920,23 @@ test('save and promote does not require dob when "appears to be under 21" is lef
         ->assertHasNoActionErrors();
 });
 
+test('after save and promote the member card shows Irregular straight away, without a reload', function () {
+    $member = clearMember($this->prospective, ['first_name' => null, 'last_name' => null, 'email' => null]);
+
+    Livewire::test(CheckIn::class)
+        ->fillForm(['member_id' => $member->id])
+        ->assertSeeHtml('<p class="text-sm text-gray-500">Prospective</p>')
+        ->callAction('saveAndPromote', data: [
+            'preferred_name' => 'Newb',
+            'first_name' => 'New',
+            'last_name' => 'Member',
+            'email' => 'new@example.com',
+        ])
+        ->assertHasNoActionErrors()
+        ->assertSeeHtml('<p class="text-sm text-gray-500">Irregular</p>')
+        ->assertDontSeeHtml('<p class="text-sm text-gray-500">Prospective</p>');
+});
+
 test('save and promote requires an email by default, and accepts none when the club turns that off', function () {
     $member = clearMember($this->prospective, ['first_name' => null, 'last_name' => null, 'email' => null]);
     $data = ['preferred_name' => 'Newb', 'first_name' => 'New', 'last_name' => 'Member'];
