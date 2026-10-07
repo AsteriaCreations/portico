@@ -7,6 +7,7 @@ use Filament\Actions\Action;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
+use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
 
 /**
@@ -58,7 +59,21 @@ class MyAccount extends Page
                     ->label('Preferred email for communication')
                     ->email()
                     ->maxLength(255)
+                    ->live(onBlur: true)
                     ->helperText(__('Where the club sends you email, such as event summaries. Leave blank to use your sign-in email.')),
+                // Asked only when the address actually changes, so a hijacked
+                // session can't quietly redirect this account's mail. The
+                // required() closure runs again on the server at save time,
+                // so hiding the field in the browser doesn't skip it.
+                TextInput::make('current_password')
+                    ->label('Current password')
+                    ->password()
+                    ->revealable()
+                    ->currentPassword()
+                    ->required(fn (Get $get): bool => self::contactEmailChanged($get('contact_email')))
+                    ->visible(fn (Get $get): bool => self::contactEmailChanged($get('contact_email')))
+                    ->dehydrated(false)
+                    ->helperText(__('Needed to change your preferred email.')),
             ]);
     }
 
@@ -70,11 +85,23 @@ class MyAccount extends Page
                 $data = $this->form->getState();
 
                 auth()->user()->update([
-                    'contact_email' => filled($data['contact_email'] ?? null) ? $data['contact_email'] : null,
+                    'contact_email' => self::normalize($data['contact_email'] ?? null),
                 ]);
+
+                $this->data['current_password'] = null;
 
                 Notification::make()->title(__('Account updated'))->success()->send();
             });
+    }
+
+    private static function contactEmailChanged(?string $contactEmail): bool
+    {
+        return self::normalize($contactEmail) !== auth()->user()->contact_email;
+    }
+
+    private static function normalize(?string $contactEmail): ?string
+    {
+        return filled($contactEmail) ? trim($contactEmail) : null;
     }
 
     public function changePasswordAction(): Action

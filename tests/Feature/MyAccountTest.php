@@ -33,7 +33,7 @@ test('a user can set and clear their own preferred email', function () {
 
     Livewire::test(MyAccount::class)
         ->assertSet('data.sign_in_email', 'door1@club.local')
-        ->fillForm(['contact_email' => 'real.person@example.com'])
+        ->fillForm(['contact_email' => 'real.person@example.com', 'current_password' => 'password'])
         ->callAction('save')
         ->assertHasNoFormErrors();
 
@@ -41,8 +41,9 @@ test('a user can set and clear their own preferred email', function () {
         ->and($user->email)->toBe('door1@club.local');
 
     Livewire::test(MyAccount::class)
-        ->fillForm(['contact_email' => ''])
-        ->callAction('save');
+        ->fillForm(['contact_email' => '', 'current_password' => 'password'])
+        ->callAction('save')
+        ->assertHasNoFormErrors();
 
     expect($user->refresh()->contact_email)->toBeNull();
 });
@@ -53,7 +54,7 @@ test('the preferred email must be a valid address', function () {
     $this->actingAs($user);
 
     Livewire::test(MyAccount::class)
-        ->fillForm(['contact_email' => 'not-an-email'])
+        ->fillForm(['contact_email' => 'not-an-email', 'current_password' => 'password'])
         ->callAction('save')
         ->assertHasFormErrors(['contact_email' => 'email']);
 
@@ -67,9 +68,54 @@ test('My account cannot change the sign-in email', function () {
 
     Livewire::test(MyAccount::class)
         ->set('data.sign_in_email', 'hijack@example.com')
-        ->callAction('save');
+        ->callAction('save')
+        ->assertHasNoFormErrors();
 
     expect($user->refresh()->email)->toBe('door1@club.local');
+});
+
+test('changing the preferred email needs the current password', function () {
+    $user = User::factory()->create(['role' => Role::Door, 'active' => true]);
+
+    $this->actingAs($user);
+
+    Livewire::test(MyAccount::class)
+        ->fillForm(['contact_email' => 'attacker@example.com'])
+        ->callAction('save')
+        ->assertHasFormErrors(['current_password' => 'required']);
+
+    Livewire::test(MyAccount::class)
+        ->fillForm(['contact_email' => 'attacker@example.com', 'current_password' => 'wrong-password'])
+        ->callAction('save')
+        ->assertHasFormErrors(['current_password']);
+
+    expect($user->refresh()->contact_email)->toBeNull();
+});
+
+test('clearing the preferred email needs the current password too', function () {
+    $user = User::factory()->create(['role' => Role::Door, 'active' => true, 'contact_email' => 'real.person@example.com']);
+
+    $this->actingAs($user);
+
+    Livewire::test(MyAccount::class)
+        ->fillForm(['contact_email' => ''])
+        ->callAction('save')
+        ->assertHasFormErrors(['current_password' => 'required']);
+
+    expect($user->refresh()->contact_email)->toBe('real.person@example.com');
+});
+
+test('saving without changing the preferred email does not ask for the password', function () {
+    $user = User::factory()->create(['role' => Role::Door, 'active' => true, 'contact_email' => 'real.person@example.com']);
+
+    $this->actingAs($user);
+
+    Livewire::test(MyAccount::class)
+        ->assertFormFieldIsHidden('current_password')
+        ->callAction('save')
+        ->assertHasNoFormErrors();
+
+    expect($user->refresh()->contact_email)->toBe('real.person@example.com');
 });
 
 test('mail goes to the preferred email when set, else the sign-in email', function () {
