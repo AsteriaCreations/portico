@@ -19,7 +19,7 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Facades\DB;
 
-#[Fillable(['name', 'email', 'password', 'role', 'active', 'member_id', 'default_register_id', 'must_change_password'])]
+#[Fillable(['name', 'email', 'contact_email', 'password', 'role', 'active', 'member_id', 'default_register_id', 'must_change_password'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable implements FilamentUser
 {
@@ -125,6 +125,26 @@ class User extends Authenticatable implements FilamentUser
             ->where('user_id', $this->getKey())
             ->when($exceptSessionId, fn ($query) => $query->where('id', '!=', $exceptSessionId))
             ->delete();
+    }
+
+    /**
+     * Where mail for this account goes. `email` is the sign-in name, and a
+     * club may hand out made-up ones (e.g. door1@club.local) that no one
+     * reads, so the account's own contact_email (set on My account) wins
+     * when there is one.
+     */
+    public function preferredEmail(): ?string
+    {
+        return $this->contact_email ?: $this->email;
+    }
+
+    /**
+     * Laravel's mail channel asks this for the address, so any mail
+     * notification follows preferredEmail() too, not just EventEndedSummary.
+     */
+    public function routeNotificationForMail(): ?string
+    {
+        return $this->preferredEmail();
     }
 
     public function hasCapability(Capability $capability): bool

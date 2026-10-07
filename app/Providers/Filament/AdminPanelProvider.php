@@ -3,6 +3,8 @@
 namespace App\Providers\Filament;
 
 use App\Filament\Admin\Pages\Analytics;
+use App\Filament\Admin\Pages\ChangePassword;
+use App\Filament\Admin\Pages\MyAccount;
 use App\Filament\Admin\Pages\Technical;
 use App\Filament\Admin\Resources\AddOns\AddOnResource;
 use App\Filament\Admin\Resources\Categories\CategoryResource;
@@ -28,6 +30,7 @@ use App\Http\Middleware\RequirePasswordChange;
 use App\Http\Middleware\SetLocale;
 use App\Models\MembershipSetting;
 use App\Support\ViteBuild;
+use Filament\Actions\Action;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
@@ -79,6 +82,18 @@ class AdminPanelProvider extends PanelProvider
                 'Desk & Money' => NavigationGroup::make()->label(fn (): string => __('Desk & Money'))->collapsed(),
                 'Members & Events' => NavigationGroup::make()->label(fn (): string => __('Members & Events'))->collapsed(),
                 'System' => NavigationGroup::make()->label(fn (): string => __('System'))->collapsed(),
+            ])
+            // Every role's way to its own account settings. Neither page is
+            // in the nav rail (both shouldRegisterNavigation() false).
+            ->userMenuItems([
+                Action::make('myAccount')
+                    ->label('My account')
+                    ->icon('heroicon-o-user-circle')
+                    ->url(fn (): string => MyAccount::getUrl()),
+                Action::make('changePassword')
+                    ->label('Change password')
+                    ->icon('heroicon-o-key')
+                    ->url(fn (): string => ChangePassword::getUrl()),
             ])
             ->databaseNotifications()
             // Warns before leaving a create/edit form (or closing an action

@@ -25,6 +25,13 @@ is fixes only.
 
 ### Added
 
+- **My account**, in the user menu (top right) for every role. Sign-in emails are often made-up
+  names nobody reads, so you can now enter a **preferred email for communication**. The
+  event-ended summary (today the only email staff get) goes there instead, and so will any staff
+  email added later. Leave it blank to keep using the sign-in email. Admins can set it on a user's form too. The sign-in email itself still changes
+  only on the Users screen. **Change password** is now in the user menu too, so anyone can
+  change their password whenever they like, not just when an Admin flags them.
+  **Upgrading:** run `php artisan migrate` (1 new migration).
 - Kiosk check-in, part 4: email members their kiosk QR code, so they don't have to come to the
   desk for it. "Email kiosk QR code" sits next to "Kiosk QR code" at the Check-In Desk (Door and
   up) and on the member's page; training mode sends nothing. "Email kiosk codes to subscribers"

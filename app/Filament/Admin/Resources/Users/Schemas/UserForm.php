@@ -24,7 +24,13 @@ class UserForm
                     ->label('Email address')
                     ->email()
                     ->required()
-                    ->unique(ignoreRecord: true),
+                    ->unique(ignoreRecord: true)
+                    ->helperText(__('What this person types to sign in. It does not have to be a real inbox.')),
+                TextInput::make('contact_email')
+                    ->label('Preferred email for communication')
+                    ->email()
+                    ->maxLength(255)
+                    ->helperText(__('Optional — where club email goes instead of the sign-in email. The user can also set this on My account.')),
                 TextInput::make('password')
                     ->password()
                     ->revealable()
