@@ -20,6 +20,8 @@ is fixes only.
   change what they paid": nothing can be changed there.
 - After **Save & promote to Irregular** at the Check-In Desk, the member card now shows
   **Irregular** straight away. It kept saying Prospective until the page was reloaded.
+- Several behavior notes on one visit now show one per line on Active Patrons, newest first.
+  They used to run together into a single line, with nothing showing where one note ended.
 
 ### Added
 
