@@ -190,8 +190,11 @@ class ActivePatrons extends Page implements HasTable
                         ->icon(Heroicon::OutlinedFlag)
                         ->placeholder(__('— add behavior note —'))
                         ->wrap()
+                        // One line per note: joined with "\n" they'd collapse
+                        // into a single run-on line in the cell.
+                        ->listWithLineBreaks()
                         ->visible(fn (): bool => Gate::allows('manage-behavior-notes'))
-                        ->getStateUsing(fn (Attendance $record): ?string => $this->behaviorNotesSummary($record))
+                        ->getStateUsing(fn (Attendance $record): ?array => $this->behaviorNotesSummary($record))
                         ->action($this->addBehaviorNoteAction()),
                 ])->space(2),
             ])
@@ -291,8 +294,12 @@ class ActivePatrons extends Page implements HasTable
      * wrote it. Everyone else (Showrunner, Volunteer) sees only their own
      * notes' full text plus a bare count of what other staff wrote -- the
      * club's call on how these should be shared among volunteers.
+     *
+     * Newest first, one entry per line of the cell.
+     *
+     * @return list<string>|null
      */
-    public function behaviorNotesSummary(Attendance $record): ?string
+    public function behaviorNotesSummary(Attendance $record): ?array
     {
         $notes = $record->behaviorNotes;
 
@@ -305,22 +312,27 @@ class ActivePatrons extends Page implements HasTable
         if (Gate::allows('view-sensitive-member-fields')) {
             return $notes
                 ->map(fn (AttendanceBehaviorNote $note): string => "{$note->note} — {$note->createdBy->name}")
-                ->implode("\n");
+                ->values()
+                ->all();
         }
 
         if (Auth::user()->role->atLeast(Role::DM)) {
-            return $notes->pluck('note')->implode("\n");
+            return $notes->pluck('note')->values()->all();
         }
 
         $own = $notes->where('created_by', Auth::id());
         $othersCount = $notes->count() - $own->count();
 
         if ($own->isEmpty()) {
-            return trans_choice(':count behavior note|:count behavior notes', $notes->count());
+            return [trans_choice(':count behavior note|:count behavior notes', $notes->count())];
         }
 
-        $summary = $own->pluck('note')->implode("\n");
+        $lines = $own->pluck('note')->values()->all();
 
-        return $othersCount > 0 ? $summary."\n".__('(+:count more)', ['count' => $othersCount]) : $summary;
+        if ($othersCount > 0) {
+            $lines[] = __('(+:count more)', ['count' => $othersCount]);
+        }
+
+        return $lines;
     }
 }

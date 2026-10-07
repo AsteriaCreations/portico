@@ -318,20 +318,20 @@ test('behavior notes: the author sees their own note in full, another volunteer 
 
     // The author sees their own note in full.
     Livewire::test(ActivePatrons::class)
-        ->assertTableColumnStateSet('behaviorNotesSummary', 'Aggressive toward staff at the door.', $attendance);
+        ->assertTableColumnStateSet('behaviorNotesSummary', ['Aggressive toward staff at the door.'], $attendance);
 
     // A different Volunteer sees only a count, never the text.
     $this->actingAs(User::factory()->create(['active' => true, 'role' => Role::Volunteer]));
 
     Livewire::test(ActivePatrons::class)
-        ->assertTableColumnStateSet('behaviorNotesSummary', '1 behavior note', $attendance);
+        ->assertTableColumnStateSet('behaviorNotesSummary', ['1 behavior note'], $attendance);
 
     // DM and Door see every note's full text, but not who wrote it.
     foreach ([Role::DM, Role::Door] as $role) {
         $this->actingAs(User::factory()->create(['active' => true, 'role' => $role]));
 
         Livewire::test(ActivePatrons::class)
-            ->assertTableColumnStateSet('behaviorNotesSummary', 'Aggressive toward staff at the door.', $attendance);
+            ->assertTableColumnStateSet('behaviorNotesSummary', ['Aggressive toward staff at the door.'], $attendance);
     }
 
     // Manager+ sees full text and who wrote it, regardless of authorship.
@@ -339,8 +339,31 @@ test('behavior notes: the author sees their own note in full, another volunteer 
         $this->actingAs(User::factory()->create(['active' => true, 'role' => $role]));
 
         Livewire::test(ActivePatrons::class)
-            ->assertTableColumnStateSet('behaviorNotesSummary', "Aggressive toward staff at the door. — {$author->name}", $attendance);
+            ->assertTableColumnStateSet('behaviorNotesSummary', ["Aggressive toward staff at the door. — {$author->name}"], $attendance);
     }
+});
+
+test('several behavior notes on one visit each get their own line, newest first', function () {
+    $event = Event::factory()->create(['event_date' => today()->toDateString()]);
+    $member = clearMemberForActivePatrons($this->irregular, ['username' => 'two-notes']);
+    $attendance = Attendance::factory()->for($member)->for($event)->create(['checked_in_at' => now()]);
+
+    $writer = User::factory()->create(['active' => true, 'role' => Role::Volunteer, 'name' => 'Writer One']);
+    $other = User::factory()->create(['active' => true, 'role' => Role::Volunteer, 'name' => 'Writer Two']);
+    AttendanceBehaviorNote::factory()->for($attendance)->create(['note' => 'First note.', 'created_by' => $writer->id, 'created_at' => now()->subMinutes(10)]);
+    AttendanceBehaviorNote::factory()->for($attendance)->create(['note' => 'Second note.', 'created_by' => $writer->id, 'created_at' => now()->subMinutes(5)]);
+    AttendanceBehaviorNote::factory()->for($attendance)->create(['note' => 'Someone else.', 'created_by' => $other->id, 'created_at' => now()]);
+
+    $this->actingAs(User::factory()->create(['active' => true, 'role' => Role::DM]));
+    Livewire::test(ActivePatrons::class)
+        ->assertTableColumnStateSet('behaviorNotesSummary', ['Someone else.', 'Second note.', 'First note.'], $attendance)
+        ->assertSeeHtml('Second note.')
+        ->assertDontSeeHtml("Second note.\nFirst note.");
+
+    // The writer sees only their own two, plus a count of the rest.
+    $this->actingAs($writer);
+    Livewire::test(ActivePatrons::class)
+        ->assertTableColumnStateSet('behaviorNotesSummary', ['Second note.', 'First note.', '(+1 more)'], $attendance);
 });
 
 test('a behavior note is still reachable by Manager+ on the member profile after the patron departs', function () {
