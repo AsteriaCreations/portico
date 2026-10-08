@@ -31,6 +31,18 @@ is fixes only.
 
 ### Added
 
+- **Pay the instructor from the Check-In Desk.** For tonight's events whose type has Instructor
+  Pay Rates, the desk now shows Door and up the running payout ("Sunrise Yoga instructor payout
+  so far: $40.00 (5 people)") with its per-coverage breakdown. It updates as people check in.
+  **Pay instructor** in the Cash box records the cash handed over. The amount starts at the
+  calculated total but can be changed (e.g. rounding), and the calculated figure is kept beside
+  it. Each event's instructor can be paid once; after that the desk shows who paid what and when.
+  The payout comes off the box's expected cash, so the drawer still balances at close. The box
+  summary and close-box envelope note show the amount paid out. A Manager can fix a wrong payout
+  with **Correct instructor payout**: a further amount (negative if the instructor handed money
+  back) with a required reason. The event page's Instructor payout box now shows what was paid at
+  the desk. Paying needs an open box, and is off along with `instructor_payouts_enabled`.
+  **Upgrading:** run `php artisan migrate` (1 new migration) and `npm run build`.
 - **Check voucher file** on Vouchers (Admins and up): runs a voucher spreadsheet through the bulk
   upload's own rules without issuing anything, then downloads a results file. Every row is
   listed with the member it matched and either "OK" or the problem that would make the upload

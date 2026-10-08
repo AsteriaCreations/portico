@@ -41,6 +41,7 @@ class OperationalDataReset
         'attendance',
         'subscriptions',
         'miscellaneous_payments',
+        'instructor_payouts',
         'register_drops',
         'register_shifts',
         'add_on_event',

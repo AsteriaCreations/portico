@@ -38,6 +38,14 @@ new class extends Component
     {
         return $this->shift ? app(RegisterShiftService::class)->revenueBreakdown($this->shift) : null;
     }
+
+    // Cash handed to instructors out of this box -- already taken off
+    // expected(), shown so the lower figure explains itself.
+    #[Computed]
+    public function paidOutCents(): int
+    {
+        return $this->shift ? app(RegisterShiftService::class)->totalInstructorPayoutsCents($this->shift) : 0;
+    }
 };
 ?>
 
@@ -61,5 +69,10 @@ re-find these lines after every refresh. --}}
                 'other' => \App\Models\MembershipSetting::formatMoney($this->breakdown['other']),
             ]) }}
         </p>
+        @if ($this->paidOutCents !== 0)
+            <p role="status" class="text-sm text-gray-500">
+                {{ __('Paid out to instructors :amount', ['amount' => \App\Models\MembershipSetting::formatMoney(\App\Support\Cents::toFloat($this->paidOutCents))]) }}
+            </p>
+        @endif
     @endif
 </div>

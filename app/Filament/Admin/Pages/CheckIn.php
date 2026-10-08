@@ -31,6 +31,8 @@ use App\Services\CapacityService;
 use App\Services\CheckInRequest;
 use App\Services\CheckInService;
 use App\Services\EntryCorrectionService;
+use App\Services\InstructorPayoutResult;
+use App\Services\InstructorPayoutService;
 use App\Services\PriceBreakdown;
 use App\Services\PricingService;
 use App\Services\RegisterShiftService;
@@ -38,6 +40,7 @@ use App\Services\SubscriptionBundleService;
 use App\Support\Cents;
 use BackedEnum;
 use Carbon\Carbon;
+use Closure;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Checkbox;
 use Filament\Forms\Components\CheckboxList;
@@ -1008,6 +1011,175 @@ class CheckIn extends Page implements HasTable
             });
     }
 
+    /**
+     * Instructor-paid events on the desk right now, keyed id => name, either
+     * still unpaid (Pay instructor) or already paid (Manager+ correction).
+     *
+     * @return array<int, string>
+     */
+    private function instructorPayoutEventOptions(bool $paid): array
+    {
+        if (! MembershipSetting::current()->instructor_payouts_enabled) {
+            return [];
+        }
+
+        return app(InstructorPayoutService::class)->currentEventsQuery()
+            ->when($paid, fn (Builder $query) => $query->whereHas('instructorPayouts'), fn (Builder $query) => $query->whereDoesntHave('instructorPayouts'))
+            ->pluck('name', 'id')
+            ->all();
+    }
+
+    private function calculatedInstructorPayout(mixed $eventId): ?InstructorPayoutResult
+    {
+        $event = $eventId ? Event::find($eventId) : null;
+
+        return $event ? app(InstructorPayoutService::class)->calculate($event) : null;
+    }
+
+    private function instructorPayoutHelperText(mixed $eventId): ?string
+    {
+        $result = $this->calculatedInstructorPayout($eventId);
+
+        if (! $result) {
+            return null;
+        }
+
+        $lines = collect($result->lineItems)
+            ->map(fn (array $line) => __(':source :count × :rate', [
+                'source' => $line['source']->getLabel(),
+                'count' => $line['count'],
+                'rate' => MembershipSetting::formatMoney(Cents::toFloat($line['rateCents'])),
+            ]))
+            ->implode(' · ');
+
+        return __('Calculated: :total', ['total' => MembershipSetting::formatMoney(Cents::toFloat($result->totalCents))])
+            .($lines !== '' ? " ({$lines})" : '');
+    }
+
+    // Cash handed to tonight's instructor out of this box, so the close-out
+    // still balances (RegisterShiftService subtracts it from expected cash).
+    // The amount starts at InstructorPayoutService's total but stays editable
+    // (rounding, an agreed different amount); the calculated figure is
+    // snapshotted alongside it. Once per event: the event drops out of the
+    // options after it's paid, and the service re-checks under a lock.
+    public function payInstructorAction(): Action
+    {
+        return Action::make('payInstructor')
+            ->label(__('Pay instructor'))
+            ->icon(Heroicon::OutlinedBanknotes)
+            ->modalDescription(__('Records cash handed to the instructor out of this box. Each event\'s instructor can be paid once here; a Manager can correct it afterwards.'))
+            ->fillForm(function (): array {
+                $options = $this->instructorPayoutEventOptions(paid: false);
+                $deskEventId = (int) ($this->data['event_id'] ?? 0);
+                $eventId = array_key_exists($deskEventId, $options) ? $deskEventId : array_key_first($options);
+
+                return [
+                    'event_id' => $eventId,
+                    'amount' => Cents::toFloat($this->calculatedInstructorPayout($eventId)?->totalCents ?? 0),
+                ];
+            })
+            ->schema([
+                Select::make('event_id')
+                    ->label(__('Event'))
+                    ->options(fn (): array => $this->instructorPayoutEventOptions(paid: false))
+                    ->required()
+                    ->live()
+                    ->afterStateUpdated(fn ($state, callable $set) => $set('amount', Cents::toFloat($this->calculatedInstructorPayout($state)?->totalCents ?? 0))),
+                TextInput::make('amount')
+                    ->label(__('Amount paid'))
+                    ->numeric()
+                    ->minValue(0.01)
+                    ->step(0.01)
+                    ->required()
+                    ->helperText(fn (Get $get): ?string => $this->instructorPayoutHelperText($get('event_id'))),
+                Textarea::make('notes')
+                    ->maxLength(255),
+            ])
+            ->visible(fn (): bool => $this->getOpenShift() && $this->instructorPayoutEventOptions(paid: false) !== [])
+            ->action(function (array $data): void {
+                if ($this->haltForTraining(__('Practice: cash-box action simulated.'))) {
+                    return;
+                }
+
+                abort_unless(MembershipSetting::current()->register_shifts_enabled, 403);
+                abort_unless(array_key_exists((int) $data['event_id'], $this->instructorPayoutEventOptions(paid: false)), 403);
+
+                $shift = $this->getOpenShift();
+                abort_unless($shift, 404);
+
+                app(RegisterShiftService::class)->recordInstructorPayout(
+                    $shift,
+                    Event::findOrFail($data['event_id']),
+                    auth()->user(),
+                    (float) $data['amount'],
+                    filled($data['notes'] ?? null) ? $data['notes'] : null,
+                );
+
+                Notification::make()->title(__('Instructor payout recorded'))->success()->send();
+            });
+    }
+
+    // The Manager+ fix for a wrong instructor payout: a further signed row
+    // with a required note (negative = the instructor handed money back),
+    // never an edit. Still needs this box open, so a closed shift's expected
+    // cash never moves.
+    public function correctInstructorPayoutAction(): Action
+    {
+        return Action::make('correctInstructorPayout')
+            ->label(__('Correct instructor payout'))
+            ->color('gray')
+            ->modalDescription(__('Adds a correction to an instructor payout already recorded tonight. Enter a negative amount for money the instructor gave back.'))
+            ->fillForm(fn (): array => ['event_id' => array_key_first($this->instructorPayoutEventOptions(paid: true))])
+            ->schema([
+                Select::make('event_id')
+                    ->label(__('Event'))
+                    ->options(fn (): array => $this->instructorPayoutEventOptions(paid: true))
+                    ->required(),
+                TextInput::make('amount')
+                    ->label(__('Correction amount'))
+                    ->numeric()
+                    ->step(0.01)
+                    ->rule(fn (): Closure => function (string $attribute, mixed $value, Closure $fail): void {
+                        if (Cents::of($value) === 0) {
+                            $fail(__('Enter a non-zero amount.'));
+                        }
+                    })
+                    ->required()
+                    ->helperText(__('Positive pays the instructor more; negative is money they handed back.')),
+                Textarea::make('notes')
+                    ->label(__('Reason'))
+                    ->required()
+                    ->maxLength(255),
+            ])
+            ->visible(fn (): bool => $this->getOpenShift()
+                && auth()->user()->role->atLeast(Role::Manager)
+                && $this->instructorPayoutEventOptions(paid: true) !== [])
+            ->action(function (array $data): void {
+                if ($this->haltForTraining(__('Practice: cash-box action simulated.'))) {
+                    return;
+                }
+
+                abort_unless(auth()->user()->role->atLeast(Role::Manager), 403);
+                abort_unless(MembershipSetting::current()->register_shifts_enabled, 403);
+                abort_unless(array_key_exists((int) $data['event_id'], $this->instructorPayoutEventOptions(paid: true)), 403);
+                abort_if(Cents::of($data['amount']) === 0, 422);
+
+                $shift = $this->getOpenShift();
+                abort_unless($shift, 404);
+
+                app(RegisterShiftService::class)->recordInstructorPayout(
+                    $shift,
+                    Event::findOrFail($data['event_id']),
+                    auth()->user(),
+                    (float) $data['amount'],
+                    $data['notes'],
+                    correction: true,
+                );
+
+                Notification::make()->title(__('Correction recorded'))->success()->send();
+            });
+    }
+
     public function closeShiftAction(): Action
     {
         return Action::make('closeShift')
@@ -1072,13 +1244,23 @@ class CheckIn extends Page implements HasTable
             $eventLabels = $shift->closed_at->isoFormat('ll');
         }
 
-        return __('Cash collected — Entry: :entry · Subscription: :subscription · Other: :other (total :total). Make an envelope for :events with these amounts written on it.', [
+        $body = __('Cash collected — Entry: :entry · Subscription: :subscription · Other: :other (total :total). Make an envelope for :events with these amounts written on it.', [
             'entry' => $this->formatCurrency(Cents::toFloat($breakdown['event'])),
             'subscription' => $this->formatCurrency(Cents::toFloat($breakdown['subscription'])),
             'other' => $this->formatCurrency(Cents::toFloat($breakdown['other'])),
             'total' => $this->formatCurrency(Cents::toFloat($cashReceivedCents)),
             'events' => $eventLabels,
         ]);
+
+        // Instructor cash already left the box, so the envelope holds less
+        // than "total" -- say so, or the envelope looks short.
+        $paidOutCents = app(RegisterShiftService::class)->totalInstructorPayoutsCents($shift);
+
+        if ($paidOutCents !== 0) {
+            $body .= ' '.__('Also write: paid out to instructor :amount.', ['amount' => $this->formatCurrency(Cents::toFloat($paidOutCents))]);
+        }
+
+        return $body;
     }
 
     public function saveAndPromoteAction(): Action

@@ -4,6 +4,8 @@ namespace App\Services;
 
 use App\Models\AddOnDayPass;
 use App\Models\Attendance;
+use App\Models\Event;
+use App\Models\InstructorPayout;
 use App\Models\MiscellaneousPayment;
 use App\Models\PaymentMethod;
 use App\Models\Register;
@@ -23,7 +25,7 @@ use Illuminate\Support\Facades\DB;
  * miscellaneous_payments, and add_on_day_passes -- the latter two for cash
  * taken outside the normal event/subscription flow, e.g. a vendor payment,
  * donation, or a one-time add-on day pass) minus the append-only
- * register_drops ledger, the same "derived, never
+ * register_drops and instructor_payouts ledgers, the same "derived, never
  * stored" shape as CapacityService::occupancy(). One open shift per register
  * at a time is enforced here, not by a DB constraint — two concurrent
  * "open"/"close"/"drop" submissions for the same register or shift are
@@ -85,6 +87,37 @@ class RegisterShiftService
                 'recorded_by' => $user->id,
             ]);
         });
+    }
+
+    /**
+     * Cash handed to an event's instructor out of this box. The desk allows
+     * one per event; $correction (Manager+, enforced by the caller) adds a
+     * further signed row instead, e.g. money the instructor handed back.
+     * The event row is locked too, so two terminals paying the same
+     * instructor at once can't both get through the once-per-event check.
+     */
+    public function recordInstructorPayout(RegisterShift $shift, Event $event, User $user, float $amount, ?string $notes = null, bool $correction = false): InstructorPayout
+    {
+        return DB::transaction(function () use ($shift, $event, $user, $amount, $notes, $correction) {
+            $locked = $this->lockShift($shift);
+            Event::where('id', $event->id)->lockForUpdate()->first();
+
+            abort_if(! $correction && $event->instructorPayouts()->exists(), 409, 'This instructor has already been paid.');
+
+            return InstructorPayout::create([
+                'event_id' => $event->id,
+                'register_shift_id' => $locked->id,
+                'amount' => Cents::toDecimal(Cents::of($amount)),
+                'calculated_amount' => Cents::toDecimal(app(InstructorPayoutService::class)->calculate($event)->totalCents),
+                'notes' => $notes,
+                'recorded_by' => $user->id,
+            ]);
+        });
+    }
+
+    public function totalInstructorPayoutsCents(RegisterShift $shift): int
+    {
+        return Cents::of(InstructorPayout::where('register_shift_id', $shift->id)->sum('amount'));
     }
 
     public function cashReceived(RegisterShift $shift): float
@@ -204,7 +237,8 @@ class RegisterShiftService
 
     public function expectedClosingCountCents(RegisterShift $shift): int
     {
-        return Cents::of($shift->opening_count) + $this->cashReceivedCents($shift) - $this->totalDropsCents($shift);
+        return Cents::of($shift->opening_count) + $this->cashReceivedCents($shift) - $this->totalDropsCents($shift)
+            - $this->totalInstructorPayoutsCents($shift);
     }
 
     public function closeShift(RegisterShift $shift, User $user, float $closingCount, ?string $notes = null): RegisterShift

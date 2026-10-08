@@ -132,10 +132,25 @@
                     <div class="flex flex-wrap gap-2">
                         {{ $this->recordDropAction }}
                         {{ $this->recordMiscPaymentAction }}
+                        @if ($this->payInstructorAction->isVisible())
+                            {{ $this->payInstructorAction }}
+                        @endif
+                        @if ($this->correctInstructorPayoutAction->isVisible())
+                            {{ $this->correctInstructorPayoutAction }}
+                        @endif
                         {{ $this->closeShiftAction }}
                     </div>
                 </x-desk-fold>
             @endif
+        </x-filament::section>
+    @endif
+
+    {{-- Tonight's instructor payout, for whoever pays the instructor (paying is "Pay
+    instructor" in the Cash box above). Its own polling component, like the box summary. --}}
+    @if (\App\Models\MembershipSetting::current()->instructor_payouts_enabled
+        && app(\App\Services\InstructorPayoutService::class)->currentEventsQuery()->exists())
+        <x-filament::section>
+            <livewire:instructor-payout-summary key="instructor-payout-summary" />
         </x-filament::section>
     @endif
 
