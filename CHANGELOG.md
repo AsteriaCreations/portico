@@ -31,6 +31,11 @@ is fixes only.
 
 ### Added
 
+- Staff can turn club email off: **Email me club communications** on My account (Admins can
+  set it on a user's form too). It's on by default, so nothing changes until someone turns it
+  off. Off means no event-ended summary email, or any later staff email; the in-app notification
+  (the bell) still arrives. Members' own "OK to email" setting is separate and unchanged.
+  **Upgrading:** run `php artisan migrate` (1 new migration).
 - **My account**, in the user menu (top right) for every role. Sign-in emails are often made-up
   names nobody reads, so you can now enter a **preferred email for communication**. The
   event-ended summary (today the only email staff get) goes there instead, and so will any staff

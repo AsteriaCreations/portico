@@ -61,8 +61,8 @@ class NotifyEventEnded extends Command
                 $summary = $summaryService->forEvent($event);
 
                 foreach ($recipients as $recipient) {
-                    if ($recipient->preferredEmail()) {
-                        Mail::to($recipient->preferredEmail())->send(new EventEndedSummary($event, $summary));
+                    if ($recipient->mailAddress()) {
+                        Mail::to($recipient->mailAddress())->send(new EventEndedSummary($event, $summary));
                     }
                 }
 

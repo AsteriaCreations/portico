@@ -31,6 +31,10 @@ class UserForm
                     ->email()
                     ->maxLength(255)
                     ->helperText(__('Optional — where club email goes instead of the sign-in email. The user can also set this on My account.')),
+                Toggle::make('email_opt_in')
+                    ->label('Email club communications')
+                    ->default(true)
+                    ->helperText(__('Off: no club email, such as event summaries; in-app notifications still arrive. The user can also change this on My account.')),
                 TextInput::make('password')
                     ->password()
                     ->revealable()
