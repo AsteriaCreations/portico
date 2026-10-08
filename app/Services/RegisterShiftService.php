@@ -91,10 +91,11 @@ class RegisterShiftService
 
     /**
      * Cash handed to an event's instructor out of this box. The desk allows
-     * one per event; $correction (Manager+, enforced by the caller) adds a
-     * further signed row instead, e.g. money the instructor handed back.
-     * The event row is locked too, so two terminals paying the same
-     * instructor at once can't both get through the once-per-event check.
+     * one payment while one stands (net paid isn't zero -- a fully reversed
+     * payout can be paid again); $correction (Manager+, enforced by the
+     * caller) adds a further signed row instead, e.g. money the instructor
+     * handed back. The event row is locked too, so two terminals paying the
+     * same instructor at once can't both get through the check.
      */
     public function recordInstructorPayout(RegisterShift $shift, Event $event, User $user, float $amount, ?string $notes = null, bool $correction = false): InstructorPayout
     {
@@ -102,7 +103,7 @@ class RegisterShiftService
             $locked = $this->lockShift($shift);
             Event::where('id', $event->id)->lockForUpdate()->first();
 
-            abort_if(! $correction && $event->instructorPayouts()->exists(), 409, 'This instructor has already been paid.');
+            abort_if(! $correction && app(InstructorPayoutService::class)->netPaidCents($event) !== 0, 409, 'This instructor has already been paid.');
 
             return InstructorPayout::create([
                 'event_id' => $event->id,

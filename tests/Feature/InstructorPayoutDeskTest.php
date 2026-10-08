@@ -15,6 +15,7 @@ use App\Models\Plan;
 use App\Models\Register;
 use App\Models\RegisterShift;
 use App\Models\User;
+use App\Services\InstructorPayoutService;
 use App\Services\RegisterShiftService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Gate;
@@ -188,6 +189,40 @@ test('a Manager can correct a payout with a reason; Door cannot', function () {
 
     expect(InstructorPayout::count())->toBe(2)
         ->and(app(RegisterShiftService::class)->totalInstructorPayoutsCents($shift))->toBe(3500);
+});
+
+test('a payout corrected back to $0 shows as reversed and can be paid again', function () {
+    $shift = openDeskBox($this->door);
+    $service = app(RegisterShiftService::class);
+    $service->recordInstructorPayout($shift, $this->yoga, $this->door, 40);
+    $service->recordInstructorPayout($shift, $this->yoga, $this->manager, -40, 'Goofy', correction: true);
+
+    $this->actingAs($this->door);
+
+    $this->get('/admin/check-in')
+        ->assertSee('Net paid: $0.00 (reversed — not paid)')
+        ->assertSee('Sunrise Yoga instructor payout so far: $40.00');
+
+    Livewire::test(CheckIn::class)
+        ->set('registerId', $this->register->id)
+        ->assertActionVisible('payInstructor')
+        ->callAction('payInstructor', data: ['event_id' => $this->yoga->id, 'amount' => 40])
+        ->assertHasNoActionErrors();
+
+    expect(InstructorPayout::count())->toBe(3)
+        ->and($service->totalInstructorPayoutsCents($shift))->toBe(4000);
+
+    $this->get('/admin/check-in')
+        ->assertSee('Net paid: $40.00')
+        ->assertDontSee('instructor payout so far');
+
+    Livewire::test(CheckIn::class)
+        ->set('registerId', $this->register->id)
+        ->assertActionHidden('payInstructor');
+
+    // The fresh payout after the reversal is labelled a payment, not a correction.
+    expect(collect(app(InstructorPayoutService::class)->history($this->yoga))->pluck('kind')->all())
+        ->toBe(['payment', 'correction', 'payment']);
 });
 
 test('instructor payouts are append-only for everyone', function () {

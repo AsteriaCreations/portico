@@ -9,7 +9,6 @@ use App\Models\MembershipSetting;
 use App\Services\InstructorPayoutResult;
 use App\Services\InstructorPayoutService;
 use Filament\Widgets\Widget;
-use Illuminate\Database\Eloquent\Collection;
 
 /**
  * Read-only per-head instructor payout breakdown for this event, computed
@@ -43,13 +42,13 @@ class InstructorPayoutWidget extends Widget
     }
 
     /**
-     * What was actually handed over at the desk, oldest first (the payout,
-     * then any Manager corrections).
+     * What was actually handed over at the desk, oldest first, each row
+     * labelled payment or correction -- see InstructorPayoutService::history().
      *
-     * @return Collection<int, InstructorPayout>
+     * @return list<array{payout: InstructorPayout, kind: 'payment'|'correction'}>
      */
-    public function getPayouts(): Collection
+    public function getHistory(): array
     {
-        return $this->record?->instructorPayouts()->with('recordedBy')->orderBy('id')->get() ?? new Collection;
+        return $this->record ? app(InstructorPayoutService::class)->history($this->record) : [];
     }
 }
