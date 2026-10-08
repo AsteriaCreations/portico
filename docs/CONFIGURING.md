@@ -132,6 +132,7 @@ Turning a feature **on** sends whoever saved it a notification (the bell) for ea
 | Patron visit notes | No visit-note column on Active Patrons. |
 | Patron behavior notes | No adding new behavior notes on Active Patrons (existing ones stay reviewable by Manager+). |
 | Guests | No "Register a guest" on the Check-In Desk. Guests already registered keep their records and can still check in. |
+| Day passes for later events | *(default off)* The Check-In Desk sells a day pass (e.g. Pool) only for tonight's events. When on, it also offers any upcoming event; that money goes into tonight's box, not held for the event. |
 | Door can rename usernames | *(default off)* Only Manager+ can rename a username, from the member's page. When on, Door gets a "Rename username" button on the Check-In Desk, and each Door rename notifies every active Manager+. |
 | Upstream update checking | *(default off)* No Upstream Updates page and no scheduled git fetch. Only useful if this fork tracks an upstream remote. |
 | Web-triggered deploy | *(default off)* No "Run update now" button on Upstream Updates. Also needs a Deploy Scheduled Task name configured and a Scheduled Task registered on the server — see [`docs/DEPLOYMENT.md`](DEPLOYMENT.md) §7 "Web-triggered updates". |

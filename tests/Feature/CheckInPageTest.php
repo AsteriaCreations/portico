@@ -1770,7 +1770,7 @@ test('a standalone venmo subscription purchase adds the transaction fee to the r
 test('a venmo day pass is still one-time-restricted (entry-tier) and includes the transaction fee', function () {
     $member = clearMember($this->irregular);
     $eventOne = Event::factory()->create(['event_date' => now()->toDateString(), 'pool_fee' => 15]);
-    $eventTwo = Event::factory()->create(['event_date' => '2026-07-26', 'pool_fee' => 15]);
+    $eventTwo = Event::factory()->create(['event_date' => now()->toDateString(), 'pool_fee' => 15]);
 
     Livewire::test(CheckIn::class)
         ->fillForm(['member_id' => $member->id])

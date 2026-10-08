@@ -71,6 +71,7 @@ class FeatureFlags extends Page
             'manager_perk_enabled',
             'suspensions_enabled',
             'pool_enabled',
+            'day_pass_future_events_enabled',
             'prepay_enabled',
             'register_shifts_enabled',
             'cash_envelope_reminder_enabled',
@@ -160,6 +161,10 @@ class FeatureFlags extends Page
                         Toggle::make('pool_enabled')
                             ->label('Pool enabled')
                             ->helperText(__('Turns off the pool fee field on events, Pool subscriptions, and pool day passes everywhere they can be newly created. Never affects existing pool-priced events or already-purchased pool coverage. Leave on unless this club has no pool.'))
+                            ->required(),
+                        Toggle::make('day_pass_future_events_enabled')
+                            ->label('Day passes for later events')
+                            ->helperText(__('Lets the Check-In Desk sell a day pass (e.g. Pool) for an event that isn\'t running tonight. That money goes into tonight\'s box with nothing tying it to the later event, so it\'s off by default: the desk only offers tonight\'s events.'))
                             ->required(),
                     ]),
                 Section::make(__('Members & Events'))

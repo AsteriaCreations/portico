@@ -16,6 +16,7 @@ use App\Models\MembershipSetting;
 use App\Models\Plan;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Collection;
 use Livewire\Livewire;
 
 uses(RefreshDatabase::class);
@@ -43,10 +44,10 @@ function clearMemberForPoolDayPass(Category $category, array $overrides = []): M
 
 test('the buy day pass action is visible once a member is selected, with no event picked and regardless of subscription eligibility', function () {
     $member = clearMemberForPoolDayPass($this->irregular, ['subscription_eligible' => false]);
-    // A qualifying event exists somewhere in the system, but nothing is
-    // selected on the page itself -- the button works independent of
-    // whatever event is currently picked.
-    Event::factory()->create(['event_date' => now()->addWeek()->toDateString(), 'pool_fee' => 15]);
+    // A qualifying event is running tonight, but nothing is selected on
+    // the page itself -- the button works independent of whatever event is
+    // currently picked.
+    Event::factory()->create(['event_date' => now()->toDateString(), 'pool_fee' => 15]);
 
     Livewire::test(CheckIn::class)
         ->fillForm(['member_id' => $member->id])
@@ -117,20 +118,73 @@ test('buying a second day pass for the same member, event, and add-on is rejecte
     expect(AddOnDayPass::where('member_id', $member->id)->where('event_id', $event->id)->count())->toBe(1);
 });
 
-test('the event options only include current/future events with a price for the add-on', function () {
+function dayPassEventOptionIds(AddOn $addOn): Collection
+{
+    $method = (new ReflectionClass(CheckIn::class))->getMethod('addOnDayPassEventOptionsQuery');
+    $method->setAccessible(true);
+
+    return $method->invoke(null, $addOn)->pluck('id');
+}
+
+test('day_pass_future_events_enabled is off by default', function () {
+    expect(MembershipSetting::current()->day_pass_future_events_enabled)->toBeFalse();
+});
+
+test('by default the event options only include tonight\'s events with a price for the add-on', function () {
     $today = Event::factory()->create(['event_date' => today()->toDateString(), 'pool_fee' => 15]);
     $future = Event::factory()->create(['event_date' => today()->addWeek()->toDateString(), 'pool_fee' => 15]);
     $past = Event::factory()->create(['event_date' => today()->subWeek()->toDateString(), 'pool_fee' => 15]);
     $noPool = Event::factory()->create(['event_date' => today()->toDateString(), 'pool_fee' => 0]);
 
-    $method = (new ReflectionClass(CheckIn::class))->getMethod('addOnDayPassEventOptionsQuery');
-    $method->setAccessible(true);
-    $ids = $method->invoke(null, $this->pool)->pluck('id');
-
-    expect($ids)->toContain($today->id)
-        ->toContain($future->id)
+    expect(dayPassEventOptionIds($this->pool))->toContain($today->id)
+        ->not->toContain($future->id)
         ->not->toContain($past->id)
         ->not->toContain($noPool->id);
+});
+
+test('with day passes for later events on, the event options include current and future events', function () {
+    MembershipSetting::current()->update(['day_pass_future_events_enabled' => true]);
+    $today = Event::factory()->create(['event_date' => today()->toDateString(), 'pool_fee' => 15]);
+    $future = Event::factory()->create(['event_date' => today()->addWeek()->toDateString(), 'pool_fee' => 15]);
+    $past = Event::factory()->create(['event_date' => today()->subWeek()->toDateString(), 'pool_fee' => 15]);
+
+    expect(dayPassEventOptionIds($this->pool))->toContain($today->id)
+        ->toContain($future->id)
+        ->not->toContain($past->id);
+});
+
+test('the buy day pass action is hidden when the only pool event is a later one', function () {
+    $member = clearMemberForPoolDayPass($this->irregular);
+    Event::factory()->create(['event_date' => now()->addWeek()->toDateString(), 'pool_fee' => 15]);
+
+    Livewire::test(CheckIn::class)
+        ->fillForm(['member_id' => $member->id])
+        ->assertActionHidden('purchaseAddOnDayPass');
+});
+
+test('a submitted day pass for a later event is refused while the flag is off', function () {
+    $member = clearMemberForPoolDayPass($this->irregular);
+    Event::factory()->create(['event_date' => now()->toDateString(), 'pool_fee' => 15]);
+    $future = Event::factory()->create(['event_date' => now()->addWeek()->toDateString(), 'pool_fee' => 15]);
+
+    Livewire::test(CheckIn::class)
+        ->fillForm(['member_id' => $member->id])
+        ->callAction('purchaseAddOnDayPass', data: ['add_on_id' => $this->pool->id, 'event_id' => $future->id, 'payment_method' => 'comp']);
+
+    expect(AddOnDayPass::where('event_id', $future->id)->exists())->toBeFalse();
+});
+
+test('with the flag on, the desk can sell a day pass for a later event', function () {
+    MembershipSetting::current()->update(['day_pass_future_events_enabled' => true]);
+    $member = clearMemberForPoolDayPass($this->irregular);
+    $future = Event::factory()->create(['event_date' => now()->addWeek()->toDateString(), 'pool_fee' => 15]);
+
+    Livewire::test(CheckIn::class)
+        ->fillForm(['member_id' => $member->id])
+        ->callAction('purchaseAddOnDayPass', data: ['add_on_id' => $this->pool->id, 'event_id' => $future->id, 'payment_method' => 'comp'])
+        ->assertHasNoActionErrors();
+
+    expect(AddOnDayPass::where('member_id', $member->id)->where('event_id', $future->id)->exists())->toBeTrue();
 });
 
 test('the live running total reflects an already-purchased pool day pass before formal check-in', function () {
