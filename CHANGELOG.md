@@ -9,6 +9,12 @@ is fixes only.
 
 ## [Unreleased]
 
+### Security
+
+- Filament updated to 5.8.3. Before 5.8.2, managing app-based multi-factor authentication didn't
+  ask for the password again (medium-severity advisory). Portico doesn't turn on Filament's MFA,
+  so nothing was exposed, but the update clears the Dependabot alert.
+
 ### Fixed
 
 - Managers can now manage an event's Prepay list and Comp list. Editing an event is Admin-only,
