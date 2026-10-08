@@ -162,6 +162,9 @@ is fixes only.
 
 ### Changed
 
+- The Check-In desk reference card now explains the close-out envelopes (tonight's, subscriptions,
+  and each future event's prepaid cash) and that day passes are for tonight's events only.
+
 - The Check-In Desk's **Buy Day Pass** now only offers tonight's events. A pass sold for a later
   event went into tonight's box with nothing tying it to that event. A club that does sell them
   ahead can turn on **Day passes for later events** on Feature Flags (off by default). New
