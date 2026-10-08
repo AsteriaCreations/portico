@@ -4,10 +4,12 @@ namespace App\Filament\Admin\Widgets;
 
 use App\Enums\Role;
 use App\Models\Event;
+use App\Models\InstructorPayout;
 use App\Models\MembershipSetting;
 use App\Services\InstructorPayoutResult;
 use App\Services\InstructorPayoutService;
 use Filament\Widgets\Widget;
+use Illuminate\Database\Eloquent\Collection;
 
 /**
  * Read-only per-head instructor payout breakdown for this event, computed
@@ -38,5 +40,16 @@ class InstructorPayoutWidget extends Widget
         $result = app(InstructorPayoutService::class)->calculate($this->record);
 
         return $result->lineItems === [] ? null : $result;
+    }
+
+    /**
+     * What was actually handed over at the desk, oldest first (the payout,
+     * then any Manager corrections).
+     *
+     * @return Collection<int, InstructorPayout>
+     */
+    public function getPayouts(): Collection
+    {
+        return $this->record?->instructorPayouts()->with('recordedBy')->orderBy('id')->get() ?? new Collection;
     }
 }

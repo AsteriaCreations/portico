@@ -170,7 +170,7 @@ class FeatureFlags extends Page
                             ->required(),
                         Toggle::make('instructor_payouts_enabled')
                             ->label('Instructor per-head pay enabled')
-                            ->helperText(__('Turns off the Instructor Pay Rates tab on Event Types and the instructor payout breakdown shown on an event\'s edit page. Leave on unless this club doesn\'t pay instructors per attendee.'))
+                            ->helperText(__('Turns off the Instructor Pay Rates tab on Event Types, the instructor payout breakdown shown on an event\'s edit page, and paying the instructor from the Check-In Desk. Leave on unless this club doesn\'t pay instructors per attendee.'))
                             ->required(),
                     ]),
                 Section::make(__('System'))

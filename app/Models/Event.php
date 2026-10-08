@@ -91,6 +91,15 @@ class Event extends Model
         return $this->hasMany(VisitRemoval::class);
     }
 
+    /**
+     * Cash paid to this event's instructor at the desk -- see
+     * RegisterShiftService::recordInstructorPayout().
+     */
+    public function instructorPayouts(): HasMany
+    {
+        return $this->hasMany(InstructorPayout::class);
+    }
+
     public function archivedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'archived_by');

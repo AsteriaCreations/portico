@@ -29,6 +29,25 @@
                     </tr>
                 </tfoot>
             </table>
+
+            @php($payouts = $this->getPayouts())
+            <div class="mt-3 px-3 text-sm">
+                @forelse ($payouts as $payout)
+                    <p>
+                        {{ $loop->first
+                            ? __('Paid at the desk: :amount by :name, :time', ['amount' => \App\Models\MembershipSetting::formatMoney($payout->amount), 'name' => $payout->recordedBy->name, 'time' => $payout->created_at->isoFormat('lll')])
+                            : __('Correction: :amount by :name, :time', ['amount' => \App\Models\MembershipSetting::formatMoney($payout->amount), 'name' => $payout->recordedBy->name, 'time' => $payout->created_at->isoFormat('lll')]) }}
+                        @if ($loop->first && \App\Support\Cents::of($payout->amount) !== \App\Support\Cents::of($payout->calculated_amount))
+                            <span class="text-gray-500">{{ __('(calculated then: :amount)', ['amount' => \App\Models\MembershipSetting::formatMoney($payout->calculated_amount)]) }}</span>
+                        @endif
+                        @if ($payout->notes)
+                            <span class="text-gray-500">— {{ $payout->notes }}</span>
+                        @endif
+                    </p>
+                @empty
+                    <p class="text-gray-500">{{ __('Not paid at the desk yet.') }}</p>
+                @endforelse
+            </div>
         </x-filament::section>
     @endif
 </x-filament-widgets::widget>

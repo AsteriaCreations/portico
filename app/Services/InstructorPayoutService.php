@@ -6,6 +6,7 @@ use App\Models\Attendance;
 use App\Models\Event;
 use App\Models\InstructorPayRate;
 use App\Support\Cents;
+use Illuminate\Database\Eloquent\Builder;
 
 /**
  * Computes what an event's instructor is owed, per attendee, broken out by
@@ -17,6 +18,18 @@ use App\Support\Cents;
  */
 class InstructorPayoutService
 {
+    /**
+     * Events on the Check-In Desk right now (Event::currentQuery()) whose
+     * type pays an instructor per head. Callers check
+     * instructor_payouts_enabled themselves.
+     *
+     * @return Builder<Event>
+     */
+    public function currentEventsQuery(): Builder
+    {
+        return Event::currentQuery()->whereHas('eventType.instructorPayRates')->orderBy('starts_at')->orderBy('name');
+    }
+
     public function calculate(Event $event): InstructorPayoutResult
     {
         $rates = InstructorPayRate::where('event_type_id', $event->event_type_id)->get();
