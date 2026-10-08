@@ -19,12 +19,22 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Facades\DB;
 
-#[Fillable(['name', 'email', 'contact_email', 'password', 'role', 'active', 'member_id', 'default_register_id', 'must_change_password'])]
+#[Fillable(['name', 'email', 'contact_email', 'email_opt_in', 'password', 'role', 'active', 'member_id', 'default_register_id', 'must_change_password'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable implements FilamentUser
 {
     /** @use HasFactory<UserFactory> */
     use HasFactory, Notifiable;
+
+    /**
+     * Mirrors the column default, so a just-created user (not re-read from
+     * the database) still counts as opted in to club email.
+     *
+     * @var array<string, mixed>
+     */
+    protected $attributes = [
+        'email_opt_in' => true,
+    ];
 
     public function canAccessPanel(Panel $panel): bool
     {
@@ -44,6 +54,7 @@ class User extends Authenticatable implements FilamentUser
             'role' => Role::class,
             'active' => 'boolean',
             'must_change_password' => 'boolean',
+            'email_opt_in' => 'boolean',
         ];
     }
 
@@ -139,12 +150,22 @@ class User extends Authenticatable implements FilamentUser
     }
 
     /**
+     * Where to actually send club email: preferredEmail(), or null when the
+     * user has turned email off on My account. In-app notifications (the
+     * bell) are unaffected.
+     */
+    public function mailAddress(): ?string
+    {
+        return $this->email_opt_in ? $this->preferredEmail() : null;
+    }
+
+    /**
      * Laravel's mail channel asks this for the address, so any mail
-     * notification follows preferredEmail() too, not just EventEndedSummary.
+     * notification follows mailAddress() too, not just EventEndedSummary.
      */
     public function routeNotificationForMail(): ?string
     {
-        return $this->preferredEmail();
+        return $this->mailAddress();
     }
 
     public function hasCapability(Capability $capability): bool

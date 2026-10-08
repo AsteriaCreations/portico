@@ -5,6 +5,7 @@ namespace App\Filament\Admin\Pages;
 use App\Filament\Concerns\TranslatesPageLabels;
 use Filament\Actions\Action;
 use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Toggle;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 use Filament\Schemas\Components\Utilities\Get;
@@ -42,6 +43,7 @@ class MyAccount extends Page
         $this->form->fill([
             'sign_in_email' => auth()->user()->email,
             'contact_email' => auth()->user()->contact_email,
+            'email_opt_in' => auth()->user()->email_opt_in,
         ]);
     }
 
@@ -74,6 +76,9 @@ class MyAccount extends Page
                     ->visible(fn (Get $get): bool => self::contactEmailChanged($get('contact_email')))
                     ->dehydrated(false)
                     ->helperText(__('Needed to change your preferred email.')),
+                Toggle::make('email_opt_in')
+                    ->label('Email me club communications')
+                    ->helperText(__('Turn off to stop club email, such as event summaries. You still get notifications in the app (the bell).')),
             ]);
     }
 
@@ -86,6 +91,7 @@ class MyAccount extends Page
 
                 auth()->user()->update([
                     'contact_email' => self::normalize($data['contact_email'] ?? null),
+                    'email_opt_in' => (bool) ($data['email_opt_in'] ?? true),
                 ]);
 
                 $this->data['current_password'] = null;
