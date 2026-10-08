@@ -162,6 +162,9 @@ is fixes only.
 
 ### Changed
 
+- The close-box envelope reminder now gives subscription cash its own envelope, labelled
+  "Subscriptions" with the close date. The night's envelope holds entry and other cash only.
+
 - The Prepay List's **Payment method** is now a pick from the club's payment methods instead of
   free text, so a cash prepay can be recognised as cash.
 

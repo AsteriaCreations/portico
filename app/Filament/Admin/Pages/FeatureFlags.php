@@ -109,7 +109,7 @@ class FeatureFlags extends Page
                             ->required(),
                         Toggle::make('cash_envelope_reminder_enabled')
                             ->label('Cash envelope reminder on closing the box')
-                            ->helperText(__('When a box closes with cash collected, the confirmation stays on screen until it is dismissed and tells staff to seal the cash in an envelope labelled with the Entry / Subscription / Other amounts and the event(s) or date it covers. Only cash payment methods count. It\'s a reminder only: nothing extra is saved. Has no effect while register shift tracking is off. Off by default.'))
+                            ->helperText(__('When a box closes with cash collected, the confirmation stays on screen until it is dismissed and tells staff to seal the cash in an envelope labelled with the Entry / Other amounts and the event(s) or date it covers, with subscription cash and each event\'s prepaid cash in envelopes of their own. Only cash payment methods count. It\'s a reminder only: nothing extra is saved. Has no effect while register shift tracking is off. Off by default.'))
                             ->required(),
                         Toggle::make('visit_notes_enabled')
                             ->label('Patron visit notes enabled')
