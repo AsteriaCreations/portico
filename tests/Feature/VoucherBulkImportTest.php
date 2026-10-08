@@ -5,6 +5,7 @@ use App\Filament\Admin\Resources\Vouchers\Pages\ListVouchers;
 use App\Models\Member;
 use App\Models\User;
 use App\Models\Voucher;
+use App\Services\VoucherBulkImporter;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Livewire\Livewire;
@@ -114,4 +115,63 @@ test('the template downloads with the columns the importer reads', function () {
         ->assertActionVisible('downloadVoucherTemplate')
         ->callAction('downloadVoucherTemplate')
         ->assertFileDownloaded('voucher-upload-template-'.now()->toDateString().'.csv');
+});
+
+function callVoucherFileCheck(array $rows)
+{
+    $path = buildVoucherUploadFixture($rows);
+
+    try {
+        return Livewire::test(ListVouchers::class)
+            ->callAction('checkVoucherFile', data: ['file' => UploadedFile::fake()->createWithContent(basename($path), file_get_contents($path))]);
+    } finally {
+        @unlink($path);
+    }
+}
+
+test('checking a file issues nothing and downloads a results file', function () {
+    Member::factory()->create(['username' => 'jsmith']);
+
+    callVoucherFileCheck([['jsmith', '25', 'Volunteer thank-you']])
+        ->assertHasNoErrors()
+        ->assertNotified()
+        ->assertFileDownloaded('voucher-upload-check-'.now()->toDateString().'.csv');
+
+    expect(Voucher::count())->toBe(0);
+});
+
+test('the check reports each row with its matched member and the same problems the upload would skip', function () {
+    $member = Member::factory()->create(['username' => 'jsmith']);
+    Voucher::factory()->create(['member_id' => $member->id, 'amount' => 5, 'reason' => 'Already issued']);
+
+    $path = buildVoucherUploadFixture([
+        ['jsmith', '25', 'Volunteer thank-you'],
+        [(string) $member->member_number, '25', 'Volunteer thank-you'],
+        ['nobody', '25', 'Unknown member'],
+        ['jsmith', '1.234', 'Too many decimals'],
+        ['jsmith', '25', ''],
+        ['jsmith', '5', 'Already issued'],
+        ['', '', ''],
+    ]);
+
+    try {
+        $rows = app(VoucherBulkImporter::class)->check($path);
+    } finally {
+        @unlink($path);
+    }
+
+    expect(collect($rows)->map(fn (array $row) => [$row['row'], $row['member'], $row['problem']])->all())->toBe([
+        [2, 'jsmith', null],
+        [3, 'jsmith', 'same member, amount and reason as row 2'],
+        [4, null, "no member found for identifier 'nobody'"],
+        [5, 'jsmith', "amount '1.234' must be a non-zero number with at most 2 decimals"],
+        [6, 'jsmith', 'blank reason'],
+        [7, 'jsmith', "jsmith already has a 5.00 voucher for 'Already issued'"],
+    ])->and(Voucher::count())->toBe(1);
+});
+
+test('checking a file is Admin+ only, like the upload', function () {
+    $this->actingAs(User::factory()->create(['active' => true, 'role' => Role::Manager]));
+
+    Livewire::test(ListVouchers::class)->assertActionHidden('checkVoucherFile');
 });
