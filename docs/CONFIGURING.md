@@ -126,7 +126,7 @@ Turning a feature **on** sends whoever saved it a notification (the bell) for ea
 | Pool | No pool fee on events, Pool subscriptions, or pool day passes for anything newly created (existing pool coverage is untouched). |
 | Door-ahead prepay | No per-event "Allow prepay ahead of the door" toggle or Prepay List tab. |
 | Register shift tracking | No cash-drawer section at check-in and no Register Shifts / Registers resources. |
-| Cash envelope reminder | *(default off)* Closing a box shows only the variance. When on and cash was collected, the confirmation stays up and tells staff to envelope the cash with its Entry / Subscription / Other amounts and the event(s) or date. Reminder only, nothing saved. |
+| Cash envelope reminder | *(default off)* Closing a box shows only the variance. When on and cash was collected, the confirmation stays up and tells staff to envelope the night's cash with its Entry / Other amounts and the event(s) or date, with subscription cash and each event's prepaid cash in envelopes of their own. Reminder only, nothing saved. |
 | Showrunner door commission | No Showrunner Payout Tiers resource or commission breakdown on events. |
 | Instructor per-head pay | No Instructor Pay Rates tab on Event Types or instructor payout breakdown. |
 | Patron visit notes | No visit-note column on Active Patrons. |

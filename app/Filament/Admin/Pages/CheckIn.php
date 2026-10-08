@@ -1252,12 +1252,13 @@ class CheckIn extends Page implements HasTable
         }
 
         $lines = [];
-        $tonightCents = $cashReceivedCents - $breakdown['prepay'];
+        // Subscription cash is its own envelope (below), like prepays, so
+        // the night's envelope is entry plus other only.
+        $tonightCents = $breakdown['event'] + $breakdown['other'];
 
         if ($tonightCents !== 0) {
-            $lines[] = __('Cash collected — Entry: :entry · Subscription: :subscription · Other: :other (total :total). Make an envelope for :events with these amounts written on it.', [
+            $lines[] = __('Cash collected — Entry: :entry · Other: :other (total :total). Make an envelope for :events with these amounts written on it.', [
                 'entry' => $this->formatCurrency(Cents::toFloat($breakdown['event'])),
-                'subscription' => $this->formatCurrency(Cents::toFloat($breakdown['subscription'])),
                 'other' => $this->formatCurrency(Cents::toFloat($breakdown['other'])),
                 'total' => $this->formatCurrency(Cents::toFloat($tonightCents)),
                 'events' => $eventLabels,
@@ -1270,6 +1271,13 @@ class CheckIn extends Page implements HasTable
 
         if ($paidOutCents !== 0) {
             $lines[] = __('Also write: paid out to instructor :amount.', ['amount' => $this->formatCurrency(Cents::toFloat($paidOutCents))]);
+        }
+
+        if ($breakdown['subscription'] !== 0) {
+            $lines[] = __('Subscription cash goes in its own envelope, labelled "Subscriptions — :date": :amount.', [
+                'date' => $shift->closed_at->isoFormat('ll'),
+                'amount' => $this->formatCurrency(Cents::toFloat($breakdown['subscription'])),
+            ]);
         }
 
         $heldByEvent = $service->heldPrepayCashByEventCents($shift);

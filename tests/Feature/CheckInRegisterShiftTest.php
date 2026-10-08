@@ -459,6 +459,25 @@ test('closing a shift with cash collected includes an envelope reminder with the
         ->and($body)->toContain('Make an envelope');
 });
 
+test('subscription cash is left out of the night\'s envelope and named as its own', function () {
+    MembershipSetting::current()->update(['cash_envelope_reminder_enabled' => true]);
+    $shift = app(RegisterShiftService::class)->openShift($this->register, $this->user, 100);
+    $event = Event::factory()->create(['name' => 'Friday Social', 'event_date' => today()]);
+    Attendance::factory()->create(['event_id' => $event->id, 'register_shift_id' => $shift->id, 'payment_method' => 'cash', 'amount_paid' => 20]);
+    Subscription::factory()->create(['register_shift_id' => $shift->id, 'payment_method' => 'cash', 'amount_paid' => 60]);
+
+    Livewire::test(CheckIn::class)
+        ->set('registerId', $this->register->id)
+        ->callAction('closeShift', data: ['closing_count' => 180])
+        ->assertHasNoActionErrors();
+
+    $body = lastNotificationBody();
+
+    expect($body)->toContain('Entry: $20.00 · Other: $0.00 (total $20.00)')
+        ->and($body)->toContain('Subscriptions — '.now()->isoFormat('ll').'": $60.00')
+        ->and($body)->not->toContain('Subscription: ');
+});
+
 test('cash_envelope_reminder_enabled is off by default', function () {
     expect(MembershipSetting::current()->cash_envelope_reminder_enabled)->toBeFalse();
 });
@@ -496,7 +515,7 @@ test('closing a shift with zero cash collected has no envelope reminder', functi
     expect(lastNotificationBody())->toBeNull();
 });
 
-test('a cash-only subscription purchase with no attendance still gets an envelope reminder, labelled by date', function () {
+test('a cash-only subscription purchase gets only its own subscription envelope, labelled by date', function () {
     MembershipSetting::current()->update(['cash_envelope_reminder_enabled' => true]);
     app(RegisterShiftService::class)->openShift($this->register, $this->user, 100);
 
@@ -521,8 +540,9 @@ test('a cash-only subscription purchase with no attendance still gets an envelop
     $body = lastNotificationBody();
 
     expect($body)->not->toBeNull()
-        ->and($body)->toContain('Subscription: $60.00')
-        ->and($body)->toContain(now()->toFormattedDateString());
+        ->and($body)->toContain('Subscription cash goes in its own envelope')
+        ->and($body)->toContain('Subscriptions — '.now()->isoFormat('ll').'": $60.00')
+        ->and($body)->not->toContain('Cash collected');
 });
 
 test('closeShift is rejected once register_shifts_enabled is off, even via a forged direct call', function () {
