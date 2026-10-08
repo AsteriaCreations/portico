@@ -1,7 +1,7 @@
 <x-filament-panels::page>
     <x-screen-instructions :title="__('How to use Change password')">
-        <p>{{ __('Your account has been flagged to require a new password before you can do anything else in the panel. Enter your current password once, then your new one twice.') }}</p>
-        <p>{{ __('Once saved, you\'ll be sent to the Dashboard and won\'t see this screen again unless it\'s flagged again.') }}</p>
+        <p>{{ __('Enter your current password once, then your new one twice. If your account was flagged to require a new password, you can\'t use the rest of the panel until you do this.') }}</p>
+        <p>{{ __('Once saved, you\'ll be sent to the Dashboard. Anywhere else you\'re signed in is signed out.') }}</p>
     </x-screen-instructions>
 
     <x-filament::section>
