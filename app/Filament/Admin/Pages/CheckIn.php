@@ -1655,6 +1655,9 @@ class CheckIn extends Page implements HasTable
                 // The picker only offers unarchived events; a forged id
                 // for an archived one stops here.
                 abort_if($event->isArchived(), 403);
+                // Nor one the picker wouldn't offer -- a later event while
+                // day_pass_future_events_enabled is off, or an ended one.
+                abort_unless(static::addOnDayPassEventOptionsQuery($addOn)->whereKey($event->id)->exists(), 403);
 
                 $price = $addOn->priceFor($event);
                 abort_unless($price !== null, 422);
@@ -2351,11 +2354,17 @@ class CheckIn extends Page implements HasTable
      * No point selling a day pass for an event that's already ended, or one
      * with no price for this add-on at all. Reads event.pool_fee directly,
      * same limitation as AddOn::priceFor() — Pool is the only
-     * priced_per_event add-on today.
+     * priced_per_event add-on today. Only tonight's events unless
+     * day_pass_future_events_enabled: a pass sold for a later event would sit
+     * in tonight's box with nothing tying it to that event.
      */
     protected static function addOnDayPassEventOptionsQuery(AddOn $addOn): Builder
     {
-        return Event::currentOrFutureQuery()->where('pool_fee', '>', 0);
+        $events = MembershipSetting::current()->day_pass_future_events_enabled
+            ? Event::currentOrFutureQuery()
+            : Event::currentQuery();
+
+        return $events->where('pool_fee', '>', 0);
     }
 
     protected static function eventLabel(Event $event): string

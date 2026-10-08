@@ -162,6 +162,11 @@ is fixes only.
 
 ### Changed
 
+- The Check-In Desk's **Buy Day Pass** now only offers tonight's events. A pass sold for a later
+  event went into tonight's box with nothing tying it to that event. A club that does sell them
+  ahead can turn on **Day passes for later events** on Feature Flags (off by default). New
+  `membership_settings.day_pass_future_events_enabled` column.
+
 - The close-box envelope reminder now gives subscription cash its own envelope, labelled
   "Subscriptions" with the close date. The night's envelope holds entry and other cash only.
 
