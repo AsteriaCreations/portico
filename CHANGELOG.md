@@ -31,6 +31,11 @@ is fixes only.
 
 ### Added
 
+- **Check voucher file** on Vouchers (Admins and up): runs a voucher spreadsheet through the bulk
+  upload's own rules without issuing anything, then downloads a results file. Every row is
+  listed with the member it matched and either "OK" or the problem that would make the upload
+  skip it: no such member, a bad amount, a blank reason, a voucher already on file, or a repeat of
+  an earlier row in the same file. Fix the file, check again, then upload.
 - Staff can turn club email off: **Email me club communications** on My account (Admins can
   set it on a user's form too). It's on by default, so nothing changes until someone turns it
   off. Off means no event-ended summary email, or any later staff email; the in-app notification

@@ -27,6 +27,7 @@ class ListVouchers extends ListRecords
     {
         return [
             $this->downloadVoucherTemplateAction(),
+            $this->checkVoucherFileAction(),
             $this->bulkUploadVouchersAction(),
             CreateAction::make(),
         ];
@@ -53,24 +54,65 @@ class ListVouchers extends ListRecords
             });
     }
 
+    /**
+     * Runs the upload's own rules over a file without issuing anything, and
+     * downloads every row with the member it matched and what's wrong with
+     * it, so a file can be fixed before the real upload.
+     */
+    protected function checkVoucherFileAction(): Action
+    {
+        return Action::make('checkVoucherFile')
+            ->label('Check voucher file')
+            ->icon(Heroicon::OutlinedClipboardDocumentCheck)
+            ->color('gray')
+            ->modalDescription(__('Nothing is issued. You get a results file listing every row, the member it matched, and any problem that would make the upload skip it.'))
+            ->modalSubmitActionLabel(__('Check and download results'))
+            ->schema([$this->voucherFileUpload()])
+            ->visible(fn (): bool => Gate::allows('create', Voucher::class))
+            ->action(function (array $data): StreamedResponse {
+                abort_unless(Gate::allows('create', Voucher::class), 403);
+
+                $rows = app(VoucherBulkImporter::class)->check(Storage::disk('local')->path($data['file']));
+                $this->pruneUploads('voucher-uploads');
+
+                $problems = collect($rows)->whereNotNull('problem')->count();
+
+                Notification::make()
+                    ->title(__(':ok of :total rows would be issued; :problems with problems', [
+                        'ok' => count($rows) - $problems,
+                        'total' => count($rows),
+                        'problems' => $problems,
+                    ]))
+                    ->color($problems ? 'warning' : 'success')
+                    ->send();
+
+                return response()->streamDownload(function () use ($rows): void {
+                    $handle = fopen('php://output', 'w');
+                    fputcsv($handle, ['row', 'member_number_or_username', 'amount', 'reason', 'matched_member', 'result']);
+
+                    foreach ($rows as $row) {
+                        fputcsv($handle, [
+                            $row['row'],
+                            $row['identifier'],
+                            $row['amount'],
+                            $row['reason'],
+                            $row['member'] ?? '',
+                            $row['problem'] ?? 'OK',
+                        ]);
+                    }
+
+                    fclose($handle);
+                }, 'voucher-upload-check-'.now()->toDateString().'.csv');
+            });
+    }
+
     protected function bulkUploadVouchersAction(): Action
     {
         return Action::make('bulkUploadVouchers')
             ->label('Bulk upload vouchers')
             ->icon(Heroicon::OutlinedArrowUpTray)
             ->modalDescription(__('One voucher per row. A row exactly matching a voucher already on file (same member, amount and reason) is skipped, so re-uploading a file never credits anyone twice.'))
-            ->schema([
-                FileUpload::make('file')
-                    ->label('Vouchers file')
-                    ->disk('local')
-                    ->directory('voucher-uploads')
-                    ->acceptedFileTypes([
-                        'text/csv',
-                        'application/vnd.ms-excel',
-                        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-                    ])
-                    ->required(),
-            ])
+            ->schema([$this->voucherFileUpload()])
             ->visible(fn (): bool => Gate::allows('create', Voucher::class))
             ->action(function (array $data): void {
                 abort_unless(Gate::allows('create', Voucher::class), 403);
@@ -86,5 +128,19 @@ class ListVouchers extends ListRecords
 
                 $this->pruneUploads('voucher-uploads');
             });
+    }
+
+    private function voucherFileUpload(): FileUpload
+    {
+        return FileUpload::make('file')
+            ->label('Vouchers file')
+            ->disk('local')
+            ->directory('voucher-uploads')
+            ->acceptedFileTypes([
+                'text/csv',
+                'application/vnd.ms-excel',
+                'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            ])
+            ->required();
     }
 }

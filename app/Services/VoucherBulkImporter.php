@@ -20,6 +20,9 @@ use PhpOffice\PhpSpreadsheet\IOFactory;
  * matching an existing voucher (same member, amount and reason) is skipped:
  * re-uploading the same file never credits anyone twice. A deliberate
  * repeat grant just needs a different reason (e.g. the month in it).
+ *
+ * check() runs the same rules without writing anything, so a file can be
+ * validated before it's uploaded for real.
  */
 class VoucherBulkImporter
 {
@@ -28,10 +31,33 @@ class VoucherBulkImporter
      */
     public function import(string $filePath, User $recordedBy): array
     {
+        $result = $this->process($filePath, $recordedBy);
+
+        return ['created' => $result['created'], 'log' => $result['log']];
+    }
+
+    /**
+     * Every non-blank row with what an upload would do with it: the member
+     * it matched (if any) and its problem, or null when it would be issued.
+     *
+     * @return list<array{row: int, identifier: string, amount: string, reason: string, member: ?string, problem: ?string}>
+     */
+    public function check(string $filePath): array
+    {
+        return $this->process($filePath, null)['rows'];
+    }
+
+    /**
+     * @return array{created: int, log: string[], rows: list<array{row: int, identifier: string, amount: string, reason: string, member: ?string, problem: ?string}>}
+     */
+    private function process(string $filePath, ?User $recordedBy): array
+    {
         $sheet = IOFactory::load($filePath)->getActiveSheet();
 
         $created = 0;
         $log = [];
+        $rows = [];
+        $seen = [];
 
         for ($row = 2; $row <= $sheet->getHighestRow(); $row++) {
             $identifier = trim((string) $sheet->getCell("A{$row}")->getValue());
@@ -42,58 +68,66 @@ class VoucherBulkImporter
                 continue;
             }
 
-            if ($identifier === '') {
-                $log[] = "row {$row}: blank member identifier, skipped";
-
-                continue;
-            }
-
-            $member = ctype_digit($identifier)
+            $member = $identifier === '' ? null : (ctype_digit($identifier)
                 ? Member::where('member_number', (int) $identifier)->first()
-                : Member::where('username', $identifier)->first();
+                : Member::where('username', $identifier)->first());
 
-            if (! $member) {
-                $log[] = "row {$row}: no member found for identifier '{$identifier}', skipped";
+            $problem = $this->problemWith($identifier, $member, $amountRaw, $reason);
+            $amount = $problem === null ? Cents::toDecimal(Cents::of($amountRaw)) : null;
 
-                continue;
+            if ($problem === null) {
+                // A repeat inside the same file would be caught by the
+                // ledger check on a real upload, but check() writes nothing.
+                $key = "{$member->id}|{$amount}|{$reason}";
+
+                if (isset($seen[$key])) {
+                    $problem = "same member, amount and reason as row {$seen[$key]}";
+                } elseif (Voucher::where('member_id', $member->id)->where('amount', $amount)->where('reason', $reason)->exists()) {
+                    $problem = "{$member->username} already has a {$amount} voucher for '{$reason}'";
+                }
+
+                $seen[$key] ??= $row;
             }
 
-            if (! preg_match('/^-?\d+(\.\d{1,2})?$/', $amountRaw) || Cents::of($amountRaw) === 0) {
-                $log[] = "row {$row}: amount '{$amountRaw}' must be a non-zero number with at most 2 decimals, skipped";
-
-                continue;
-            }
-
-            if ($reason === '') {
-                $log[] = "row {$row}: blank reason, skipped";
-
-                continue;
-            }
-
-            if (mb_strlen($reason) > 255) {
-                $log[] = "row {$row}: reason longer than 255 characters, skipped";
-
-                continue;
-            }
-
-            $amount = Cents::toDecimal(Cents::of($amountRaw));
-
-            if (Voucher::where('member_id', $member->id)->where('amount', $amount)->where('reason', $reason)->exists()) {
-                $log[] = "row {$row}: {$member->username} already has a {$amount} voucher for '{$reason}', skipped";
-
-                continue;
-            }
-
-            Voucher::create([
-                'member_id' => $member->id,
-                'amount' => $amount,
+            $rows[] = [
+                'row' => $row,
+                'identifier' => $identifier,
+                'amount' => $amountRaw,
                 'reason' => $reason,
-                'recorded_by' => $recordedBy->id,
-            ]);
+                'member' => $member?->username,
+                'problem' => $problem,
+            ];
 
-            $created++;
+            if ($problem !== null) {
+                $log[] = "row {$row}: {$problem}, skipped";
+
+                continue;
+            }
+
+            if ($recordedBy) {
+                Voucher::create([
+                    'member_id' => $member->id,
+                    'amount' => $amount,
+                    'reason' => $reason,
+                    'recorded_by' => $recordedBy->id,
+                ]);
+
+                $created++;
+            }
         }
 
-        return ['created' => $created, 'log' => $log];
+        return ['created' => $created, 'log' => $log, 'rows' => $rows];
+    }
+
+    private function problemWith(string $identifier, ?Member $member, string $amountRaw, string $reason): ?string
+    {
+        return match (true) {
+            $identifier === '' => 'blank member identifier',
+            $member === null => "no member found for identifier '{$identifier}'",
+            ! preg_match('/^-?\d+(\.\d{1,2})?$/', $amountRaw) || Cents::of($amountRaw) === 0 => "amount '{$amountRaw}' must be a non-zero number with at most 2 decimals",
+            $reason === '' => 'blank reason',
+            mb_strlen($reason) > 255 => 'reason longer than 255 characters',
+            default => null,
+        };
     }
 }
