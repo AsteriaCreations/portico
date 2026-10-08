@@ -30,14 +30,16 @@
                 </tfoot>
             </table>
 
-            @php($payouts = $this->getPayouts())
+            @php($history = $this->getHistory())
+            @php($netPaidCents = collect($history)->sum(fn (array $row): int => \App\Support\Cents::of($row['payout']->amount)))
             <div class="mt-3 px-3 text-sm">
-                @forelse ($payouts as $payout)
+                @forelse ($history as $entry)
+                    @php($payout = $entry['payout'])
                     <p>
-                        {{ $loop->first
+                        {{ $entry['kind'] === 'payment'
                             ? __('Paid at the desk: :amount by :name, :time', ['amount' => \App\Models\MembershipSetting::formatMoney($payout->amount), 'name' => $payout->recordedBy->name, 'time' => $payout->created_at->isoFormat('lll')])
                             : __('Correction: :amount by :name, :time', ['amount' => \App\Models\MembershipSetting::formatMoney($payout->amount), 'name' => $payout->recordedBy->name, 'time' => $payout->created_at->isoFormat('lll')]) }}
-                        @if ($loop->first && \App\Support\Cents::of($payout->amount) !== \App\Support\Cents::of($payout->calculated_amount))
+                        @if ($entry['kind'] === 'payment' && \App\Support\Cents::of($payout->amount) !== \App\Support\Cents::of($payout->calculated_amount))
                             <span class="text-gray-500">{{ __('(calculated then: :amount)', ['amount' => \App\Models\MembershipSetting::formatMoney($payout->calculated_amount)]) }}</span>
                         @endif
                         @if ($payout->notes)
@@ -47,6 +49,14 @@
                 @empty
                     <p class="text-gray-500">{{ __('Not paid at the desk yet.') }}</p>
                 @endforelse
+
+                @if (count($history) > 1)
+                    <p class="font-semibold">
+                        {{ $netPaidCents === 0
+                            ? __('Net paid: :amount (reversed — not paid)', ['amount' => \App\Models\MembershipSetting::formatMoney(0)])
+                            : __('Net paid: :amount', ['amount' => \App\Models\MembershipSetting::formatMoney(\App\Support\Cents::toFloat($netPaidCents))]) }}
+                    </p>
+                @endif
             </div>
         </x-filament::section>
     @endif

@@ -1013,7 +1013,9 @@ class CheckIn extends Page implements HasTable
 
     /**
      * Instructor-paid events on the desk right now, keyed id => name, either
-     * still unpaid (Pay instructor) or already paid (Manager+ correction).
+     * unpaid (Pay instructor) or with a payout standing (Manager+
+     * correction). "Paid" is net of corrections, so a payout reversed to $0
+     * counts as unpaid again.
      *
      * @return array<int, string>
      */
@@ -1024,7 +1026,9 @@ class CheckIn extends Page implements HasTable
         }
 
         return app(InstructorPayoutService::class)->currentEventsQuery()
-            ->when($paid, fn (Builder $query) => $query->whereHas('instructorPayouts'), fn (Builder $query) => $query->whereDoesntHave('instructorPayouts'))
+            ->withSum('instructorPayouts', 'amount')
+            ->get()
+            ->filter(fn (Event $event): bool => (Cents::of($event->instructor_payouts_sum_amount) !== 0) === $paid)
             ->pluck('name', 'id')
             ->all();
     }

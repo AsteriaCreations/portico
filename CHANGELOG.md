@@ -40,8 +40,10 @@ is fixes only.
   The payout comes off the box's expected cash, so the drawer still balances at close. The box
   summary and close-box envelope note show the amount paid out. A Manager can fix a wrong payout
   with **Correct instructor payout**: a further amount (negative if the instructor handed money
-  back) with a required reason. The event page's Instructor payout box now shows what was paid at
-  the desk. Paying needs an open box, and is off along with `instructor_payouts_enabled`.
+  back) with a required reason. With a correction on file, the desk and the event page also show
+  the **net paid**. A payout corrected back to $0 shows as "reversed — not paid", the running
+  payout reappears, and **Pay instructor** opens up again. The event page's Instructor payout box
+  now shows what was paid at the desk. Paying needs an open box, and is off along with `instructor_payouts_enabled`.
   **Upgrading:** run `php artisan migrate` (1 new migration) and `npm run build`.
 - **Check voucher file** on Vouchers (Admins and up): runs a voucher spreadsheet through the bulk
   upload's own rules without issuing anything, then downloads a results file. Every row is

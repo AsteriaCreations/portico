@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Attendance;
 use App\Models\Event;
+use App\Models\InstructorPayout;
 use App\Models\InstructorPayRate;
 use App\Support\Cents;
 use Illuminate\Database\Eloquent\Builder;
@@ -28,6 +29,37 @@ class InstructorPayoutService
     public function currentEventsQuery(): Builder
     {
         return Event::currentQuery()->whereHas('eventType.instructorPayRates')->orderBy('starts_at')->orderBy('name');
+    }
+
+    /**
+     * What the instructor has actually been handed for this event, net of
+     * Manager corrections. Zero means unpaid -- including a payout that was
+     * fully reversed, which lets the desk pay it again.
+     */
+    public function netPaidCents(Event $event): int
+    {
+        return Cents::of($event->instructorPayouts()->sum('amount'));
+    }
+
+    /**
+     * Every desk payout row for the event, oldest first, each labelled
+     * "payment" when it was recorded while nothing stood paid (the first
+     * payout, or a fresh one after a full reversal) and "correction"
+     * otherwise.
+     *
+     * @return list<array{payout: InstructorPayout, kind: 'payment'|'correction'}>
+     */
+    public function history(Event $event): array
+    {
+        $runningCents = 0;
+        $rows = [];
+
+        foreach ($event->instructorPayouts()->with('recordedBy')->orderBy('id')->get() as $payout) {
+            $rows[] = ['payout' => $payout, 'kind' => $runningCents === 0 ? 'payment' : 'correction'];
+            $runningCents += Cents::of($payout->amount);
+        }
+
+        return $rows;
     }
 
     public function calculate(Event $event): InstructorPayoutResult
