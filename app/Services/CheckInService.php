@@ -232,6 +232,12 @@ class CheckInService
                 'checked_in_at' => $event->isCurrentlyActive() ? ($request->checkedInAt ?? now()) : null,
                 'payment_method' => $paymentMethod,
                 'register_shift_id' => $openShift?->id,
+                // Paid ahead of the event's night: its cash comes out of
+                // this box at close and is held for the event instead (see
+                // RegisterShiftService::heldPrepayCashCents()). A past
+                // event still flagged for door prepay isn't "ahead" -- that
+                // money stays in the box, as it always did.
+                'prepaid_ahead' => ! $event->isCurrentlyActive() && $event->event_date->isAfter(today()),
                 'on_behalf_note' => $request->onBehalfNote,
                 'notes' => $request->notes,
                 'comp_reason_id' => $compReasonId,

@@ -12,8 +12,10 @@ use App\Models\MembershipSetting;
 use App\Models\PaymentMethod;
 use App\Services\CapacityService;
 use App\Services\Concerns\PrunesUploadedFiles;
+use App\Services\PrepayCashService;
 use App\Services\PrepayListImporter;
 use App\Services\PricingService;
+use App\Support\Cents;
 use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\CreateAction;
@@ -89,6 +91,9 @@ class PrepayListRelationManager extends RelationManager
     {
         return $table
             ->modifyQueryUsing(fn ($query) => $query->whereNull('checked_in_at')->whereNull('comp_reason_id'))
+            ->description(fn (): string => __('Prepaid cash held for this event: :amount (desk and Prepay List, arrived or not).', [
+                'amount' => MembershipSetting::formatMoney(Cents::toFloat(app(PrepayCashService::class)->heldCashForEventCents($this->getOwnerRecord()))),
+            ]))
             ->defaultSort('created_at', 'desc')
             ->columns([
                 TextColumn::make('member.username')
@@ -132,8 +137,12 @@ class PrepayListRelationManager extends RelationManager
                             ->label('Amount actually paid (optional override)')
                             ->numeric()
                             ->helperText(__('Leave blank to use the computed price. Set this for a partial deposit or an early-bird rate.')),
-                        TextInput::make('payment_method')
-                            ->maxLength(30),
+                        // A real method, not free text: a cash one is held
+                        // for this event in its prepay envelope (see
+                        // PrepayCashService), which only a known code can say.
+                        Select::make('payment_method')
+                            ->options(PaymentMethod::options())
+                            ->helperText(__('Cash taken here never goes through a register box. Put it straight in this event\'s prepay envelope.')),
                         Textarea::make('notes')
                             ->maxLength(255)
                             ->columnSpanFull(),
@@ -151,6 +160,7 @@ class PrepayListRelationManager extends RelationManager
                             ...$data,
                             'checked_in_by' => auth()->id(),
                             'checked_in_at' => null,
+                            'prepaid_ahead' => true,
                             ...$attrs,
                         ];
                     })

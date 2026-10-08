@@ -23,6 +23,7 @@ CHECK-IN DESK
 - Appears-under-21 enforcement on guest registration and Prospective promotion (DOB required only when checked)
 - Overnight guest tracking (room rental / sleepover add-ons) — sponsor stays accountable, guest stays visible on Active Patrons until checked out, regardless of calendar days
 - Prepay events (pay ahead of the event date)
+- Prepaid cash held for the event, outside the register: it comes off the box's expected close, gets its own envelope per event at close-out, and the event's Prepay List tab and the desk on the night show how much is held
 - Back check-in / "mark arrived" roster for prepaid and comped attendees
 - Auto-derived arrival time based on event's live/prepay status
 - Register/cash box shift tracking (open/close, drops, misc. payments)

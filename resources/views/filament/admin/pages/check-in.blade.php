@@ -55,6 +55,7 @@
         <p>{!! __('Already paid ahead or on the comp list? The screen says <strong>Prepaid — not yet arrived</strong>; click <strong>Mark arrived</strong> instead of Check in.') !!}</p>
         <p>{!! __('Practising? <strong>Enter training mode</strong> at the top of the screen — everything behaves as normal, but nothing is saved.') !!}</p>
         <p>{{ __('Everything folded away — selling a subscription or day pass, add-ons / vouchers / comps, the cash box — is still here, one click open, and never needed for a normal check-in.') }}</p>
+        <p>{{ __('Cash taken for a future event (a prepay) doesn\'t stay in the box: put it in that event\'s prepay envelope. The box\'s expected count leaves it out.') }}</p>
         <p>{!! __('Two different things say "subscription": <strong>Payment options</strong> below uses one to cover tonight\'s entry fee, as part of this same check-in. <strong>Sell a subscription or day pass</strong> is a separate, standalone sale that doesn\'t check anyone in.') !!}</p>
         <p>{!! __('Print the <a href=":url" target="_blank" rel="noopener" class="underline">desk reference card</a> for this screen.', ['url' => route('desk-reference-cards').'#check-in']) !!}</p>
     </x-screen-instructions>

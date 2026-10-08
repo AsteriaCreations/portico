@@ -31,6 +31,17 @@ is fixes only.
 
 ### Added
 
+- Prepaid cash is now kept apart from the night it was taken until the event itself. Cash taken
+  at the Check-In Desk for a future door-prepay event still counts as received on that shift,
+  but comes off the box's expected close: the desk is told to put it in the event's prepay
+  envelope, and the close-out envelope reminder lists one envelope per event, apart from the
+  night's own. The box summary and the Register shifts list show it as **Prepaid**, separate
+  from **Event**. Cash taken on an event's Prepay List counts toward the same held total. The
+  Prepay List tab shows how much prepaid cash is held for the event, and on the night the
+  desk's box summary shows what's held for tonight. Refunding a held prepay points at that
+  cash, not a drawer. New `attendance.prepaid_ahead` and `visit_removals.prepaid_ahead`
+  columns. Prepays recorded before this update stay in the box they were taken on.
+
 - **Pay the instructor from the Check-In Desk.** For tonight's events whose type has Instructor
   Pay Rates, the desk now shows Door and up the running payout ("Sunrise Yoga instructor payout
   so far: $40.00 (5 people)") with its per-coverage breakdown. It updates as people check in.
@@ -150,6 +161,9 @@ is fixes only.
   closed shift's expected cash and variance don't change.
 
 ### Changed
+
+- The Prepay List's **Payment method** is now a pick from the club's payment methods instead of
+  free text, so a cash prepay can be recognised as cash.
 
 - **Mark follow-up sent** on the Members list now also moves each guest to Irregular: once the
   club has welcomed them, they're a standard member. **Mark follow-up not sent** moves anyone still in

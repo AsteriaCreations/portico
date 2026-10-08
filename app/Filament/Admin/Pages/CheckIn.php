@@ -1233,9 +1233,12 @@ class CheckIn extends Page implements HasTable
 
     private function envelopeReminderBody(RegisterShift $shift, int $cashReceivedCents): string
     {
-        $breakdown = app(RegisterShiftService::class)->cashRevenueBreakdownCents($shift);
+        $service = app(RegisterShiftService::class);
+        $breakdown = $service->cashRevenueBreakdownCents($shift);
 
-        $eventLabels = Event::whereIn('id', Attendance::where('register_shift_id', $shift->id)->pluck('event_id'))
+        // Prepays for a later event go in that event's own envelope, so they
+        // don't name this one.
+        $eventLabels = Event::whereIn('id', Attendance::where('register_shift_id', $shift->id)->where('prepaid_ahead', false)->pluck('event_id'))
             ->orderBy('event_date')
             ->get()
             ->map(fn (Event $event) => "{$event->name} — {$event->event_date->isoFormat('ll')}")
@@ -1248,23 +1251,42 @@ class CheckIn extends Page implements HasTable
             $eventLabels = $shift->closed_at->isoFormat('ll');
         }
 
-        $body = __('Cash collected — Entry: :entry · Subscription: :subscription · Other: :other (total :total). Make an envelope for :events with these amounts written on it.', [
-            'entry' => $this->formatCurrency(Cents::toFloat($breakdown['event'])),
-            'subscription' => $this->formatCurrency(Cents::toFloat($breakdown['subscription'])),
-            'other' => $this->formatCurrency(Cents::toFloat($breakdown['other'])),
-            'total' => $this->formatCurrency(Cents::toFloat($cashReceivedCents)),
-            'events' => $eventLabels,
-        ]);
+        $lines = [];
+        $tonightCents = $cashReceivedCents - $breakdown['prepay'];
+
+        if ($tonightCents !== 0) {
+            $lines[] = __('Cash collected — Entry: :entry · Subscription: :subscription · Other: :other (total :total). Make an envelope for :events with these amounts written on it.', [
+                'entry' => $this->formatCurrency(Cents::toFloat($breakdown['event'])),
+                'subscription' => $this->formatCurrency(Cents::toFloat($breakdown['subscription'])),
+                'other' => $this->formatCurrency(Cents::toFloat($breakdown['other'])),
+                'total' => $this->formatCurrency(Cents::toFloat($tonightCents)),
+                'events' => $eventLabels,
+            ]);
+        }
 
         // Instructor cash already left the box, so the envelope holds less
         // than "total" -- say so, or the envelope looks short.
-        $paidOutCents = app(RegisterShiftService::class)->totalInstructorPayoutsCents($shift);
+        $paidOutCents = $service->totalInstructorPayoutsCents($shift);
 
         if ($paidOutCents !== 0) {
-            $body .= ' '.__('Also write: paid out to instructor :amount.', ['amount' => $this->formatCurrency(Cents::toFloat($paidOutCents))]);
+            $lines[] = __('Also write: paid out to instructor :amount.', ['amount' => $this->formatCurrency(Cents::toFloat($paidOutCents))]);
         }
 
-        return $body;
+        $heldByEvent = $service->heldPrepayCashByEventCents($shift);
+
+        if ($heldByEvent !== []) {
+            $events = Event::whereIn('id', array_keys($heldByEvent))->get()->keyBy('id');
+            $envelopes = collect($heldByEvent)
+                ->map(fn (int $cents, int $eventId) => __(':event: :amount', [
+                    'event' => $events[$eventId]->label(),
+                    'amount' => $this->formatCurrency(Cents::toFloat($cents)),
+                ]))
+                ->implode('; ');
+
+            $lines[] = __('Prepaid cash for later events goes in a separate envelope for each event, not in the box — :envelopes.', ['envelopes' => $envelopes]);
+        }
+
+        return implode(' ', $lines);
     }
 
     public function saveAndPromoteAction(): Action
@@ -1982,7 +2004,21 @@ class CheckIn extends Page implements HasTable
                     $title .= ' − '.__(':amount voucher', ['amount' => $this->formatCurrency(Cents::toFloat($result->voucherAppliedCents))]);
                 }
 
-                Notification::make()->title($title)->success()->send();
+                $notification = Notification::make()->title($title)->success();
+
+                // Cash for a later event is held for it, not kept in this box
+                // (RegisterShiftService::heldPrepayCashCents()) -- set aside
+                // now, so the box's "expected" figure matches what's in it.
+                $attendance = $result->attendance;
+                $prepaidCashCents = Cents::of($attendance->amount_paid);
+                if ($attendance->prepaid_ahead && $prepaidCashCents > 0 && PaymentMethod::cashCodes()->contains($attendance->payment_method)) {
+                    $notification->body(__('Prepaid for :event — put :amount in that event\'s prepay envelope, not the box.', [
+                        'event' => $event->label(),
+                        'amount' => $this->formatCurrency(Cents::toFloat($prepaidCashCents)),
+                    ]))->persistent();
+                }
+
+                $notification->send();
 
                 $this->rememberLastCheckIn($member, $event, $title, $data['payment_method'] ?? null);
             });

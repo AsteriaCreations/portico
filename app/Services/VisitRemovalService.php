@@ -7,6 +7,7 @@ use App\Filament\Admin\Resources\VisitRemovals\VisitRemovalResource;
 use App\Models\Attendance;
 use App\Models\CompRequest;
 use App\Models\MembershipSetting;
+use App\Models\PaymentMethod;
 use App\Models\User;
 use App\Models\VisitRemoval;
 use App\Support\Cents;
@@ -77,6 +78,7 @@ class VisitRemovalService
                     'amount_paid' => $locked->amount_paid,
                     'checked_in_at' => $locked->checked_in_at,
                     'after_shift_closed' => (bool) $locked->registerShift?->closed_at,
+                    'prepaid_ahead' => $locked->prepaid_ahead,
                     'reason' => $reason,
                     'removed_by' => $by->id,
                 ]);
@@ -106,6 +108,17 @@ class VisitRemovalService
 
         $amount = MembershipSetting::formatMoney(Cents::toFloat(Cents::of($attendance->amount_paid)));
         $register = $attendance->registerShift?->register?->name;
+
+        // Prepaid cash goes into the event's prepay envelope as soon as it's
+        // taken (or never touched a box, from the Prepay List), and the
+        // shift's expected cash already leaves it out -- so a refund comes
+        // from the envelope, open shift or not.
+        $heldOutsideBox = $attendance->prepaid_ahead
+            && PaymentMethod::cashCodes()->contains($attendance->payment_method);
+
+        if ($heldOutsideBox) {
+            return __('Refund :amount from the prepay cash held for this event. No register drawer is changed.', ['amount' => $amount]);
+        }
 
         if ($attendance->registerShift?->closed_at) {
             return __('Paid :amount. Its register shift has already closed, so the drawer isn\'t changed; any refund happens outside it.', ['amount' => $amount]);

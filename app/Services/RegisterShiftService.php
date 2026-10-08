@@ -26,7 +26,10 @@ use Illuminate\Support\Facades\DB;
  * taken outside the normal event/subscription flow, e.g. a vendor payment,
  * donation, or a one-time add-on day pass) minus the append-only
  * register_drops and instructor_payouts ledgers, the same "derived, never
- * stored" shape as CapacityService::occupancy(). One open shift per register
+ * stored" shape as CapacityService::occupancy(). Cash for a visit paid ahead
+ * of its event's night (attendance.prepaid_ahead) is received here but comes
+ * back out at close -- it's held for that event, not kept in the box -- see
+ * heldPrepayCashCents(). One open shift per register
  * at a time is enforced here, not by a DB constraint — two concurrent
  * "open"/"close"/"drop" submissions for the same register or shift are
  * serialized with lockForUpdate() rather than trusting a check-then-act read,
@@ -164,21 +167,74 @@ class RegisterShiftService
      * VisitRemovalService.
      *
      * @param  string[]|null  $paymentMethods  null for every method
+     * @param  bool|null  $prepaidAhead  null for both prepays and same-night visits
      */
-    private function removedAfterCloseCents(RegisterShift $shift, ?array $paymentMethods = null): int
+    private function removedAfterCloseCents(RegisterShift $shift, ?array $paymentMethods = null, ?bool $prepaidAhead = null): int
     {
         return Cents::of(VisitRemoval::where('register_shift_id', $shift->id)
             ->where('after_shift_closed', true)
             ->when($paymentMethods !== null, fn ($query) => $query->whereIn('payment_method', $paymentMethods))
+            ->when($prepaidAhead !== null, fn ($query) => $query->where('prepaid_ahead', $prepaidAhead))
             ->sum('amount_paid'));
+    }
+
+    /**
+     * Cash taken on this shift for visits paid ahead of their event's night.
+     * It's counted in cashReceivedCents() -- it did come in here -- and taken
+     * straight back off the expected close: at close it goes into that
+     * event's prepay envelope, not back into the box, so the box balances
+     * without it. Includes prepays an Owner removed after close, for the
+     * same reason removedAfterCloseCents() does.
+     */
+    public function heldPrepayCashCents(RegisterShift $shift): int
+    {
+        $cashCodes = PaymentMethod::cashCodes()->all();
+
+        return Cents::of(Attendance::where('register_shift_id', $shift->id)
+            ->where('prepaid_ahead', true)
+            ->whereIn('payment_method', $cashCodes)
+            ->sum('amount_paid'))
+            + $this->removedAfterCloseCents($shift, $cashCodes, prepaidAhead: true);
+    }
+
+    /**
+     * heldPrepayCashCents(), per event -- one envelope each.
+     *
+     * @return array<int, int> event id => cents, earliest event first
+     */
+    public function heldPrepayCashByEventCents(RegisterShift $shift): array
+    {
+        $cashCodes = PaymentMethod::cashCodes()->all();
+        $totals = [];
+
+        $rows = Attendance::where('register_shift_id', $shift->id)
+            ->where('prepaid_ahead', true)
+            ->whereIn('payment_method', $cashCodes)
+            ->get(['event_id', 'amount_paid'])
+            ->concat(VisitRemoval::where('register_shift_id', $shift->id)
+                ->where('after_shift_closed', true)
+                ->where('prepaid_ahead', true)
+                ->whereIn('payment_method', $cashCodes)
+                ->get(['event_id', 'amount_paid']));
+
+        foreach ($rows as $row) {
+            $totals[$row->event_id] = ($totals[$row->event_id] ?? 0) + Cents::of($row->amount_paid);
+        }
+
+        $order = Event::whereIn('id', array_keys($totals))->orderBy('event_date')->orderBy('id')->pluck('id');
+
+        return $order->mapWithKeys(fn (int $id) => [$id => $totals[$id]])
+            ->filter(fn (int $cents) => $cents !== 0)
+            ->all();
     }
 
     /**
      * Revenue split by category for this shift, across every payment method
      * (not just cash — this is a desk-facing "what came in tonight" picture,
-     * not the box-reconciliation figure cashReceived() computes).
+     * not the box-reconciliation figure cashReceived() computes). Prepays for
+     * a later event are their own bucket, kept out of "event".
      *
-     * @return array{event: float, subscription: float, other: float}
+     * @return array{event: float, prepay: float, subscription: float, other: float}
      */
     public function revenueBreakdown(RegisterShift $shift): array
     {
@@ -186,10 +242,26 @@ class RegisterShiftService
             + Cents::of(AddOnDayPass::where('register_shift_id', $shift->id)->sum('amount_paid'));
 
         return [
-            'event' => Cents::toFloat(Cents::of(Attendance::where('register_shift_id', $shift->id)->sum('amount_paid')) + $this->removedAfterCloseCents($shift)),
+            'event' => Cents::toFloat($this->attendanceCents($shift, prepaidAhead: false)),
+            'prepay' => Cents::toFloat($this->attendanceCents($shift, prepaidAhead: true)),
             'subscription' => Cents::toFloat(Cents::of(Subscription::where('register_shift_id', $shift->id)->sum('amount_paid'))),
             'other' => Cents::toFloat($other),
         ];
+    }
+
+    /**
+     * Attendance on this shift plus paid visits removed after it closed, for
+     * either prepays or same-night visits.
+     *
+     * @param  string[]|null  $paymentMethods  null for every method
+     */
+    private function attendanceCents(RegisterShift $shift, bool $prepaidAhead, ?array $paymentMethods = null): int
+    {
+        return Cents::of(Attendance::where('register_shift_id', $shift->id)
+            ->where('prepaid_ahead', $prepaidAhead)
+            ->when($paymentMethods !== null, fn ($query) => $query->whereIn('payment_method', $paymentMethods))
+            ->sum('amount_paid'))
+            + $this->removedAfterCloseCents($shift, $paymentMethods, $prepaidAhead);
     }
 
     /**
@@ -202,7 +274,10 @@ class RegisterShiftService
      * sums to exactly cashReceivedCents($shift) -- same underlying rows,
      * just split by category.
      *
-     * @return array{event: int, subscription: int, other: int}
+     * "prepay" is heldPrepayCashCents($shift), which goes in its own
+     * envelope per event rather than this one.
+     *
+     * @return array{event: int, prepay: int, subscription: int, other: int}
      */
     public function cashRevenueBreakdownCents(RegisterShift $shift): array
     {
@@ -214,8 +289,8 @@ class RegisterShiftService
         return [
             // Plus paid visits an Owner removed after close, same as
             // cashReceivedCents() -- keeps the envelope breakdown summing to it.
-            'event' => Cents::of(Attendance::where('register_shift_id', $shift->id)->whereIn('payment_method', $cashCodes)->sum('amount_paid'))
-                + $this->removedAfterCloseCents($shift, $cashCodes->all()),
+            'event' => $this->attendanceCents($shift, prepaidAhead: false, paymentMethods: $cashCodes->all()),
+            'prepay' => $this->heldPrepayCashCents($shift),
             'subscription' => Cents::of(Subscription::where('register_shift_id', $shift->id)->whereIn('payment_method', $cashCodes)->sum('amount_paid')),
             'other' => $other,
         ];
@@ -239,7 +314,7 @@ class RegisterShiftService
     public function expectedClosingCountCents(RegisterShift $shift): int
     {
         return Cents::of($shift->opening_count) + $this->cashReceivedCents($shift) - $this->totalDropsCents($shift)
-            - $this->totalInstructorPayoutsCents($shift);
+            - $this->totalInstructorPayoutsCents($shift) - $this->heldPrepayCashCents($shift);
     }
 
     public function closeShift(RegisterShift $shift, User $user, float $closingCount, ?string $notes = null): RegisterShift

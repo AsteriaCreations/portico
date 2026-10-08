@@ -14,7 +14,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     'member_id', 'event_id', 'checked_in_by', 'checked_in_at', 'departed_at',
     'entry_fee', 'entry_coverage', 'entry_covered_by', 'comp_reason_id',
     'voucher_coverage',
-    'amount_paid', 'payment_method', 'register_shift_id', 'on_behalf_note', 'notes', 'visit_note',
+    'amount_paid', 'payment_method', 'register_shift_id', 'prepaid_ahead', 'on_behalf_note', 'notes', 'visit_note',
 ])]
 class Attendance extends Model
 {
@@ -33,6 +33,7 @@ class Attendance extends Model
             'entry_covered_by' => EntryCoverageSource::class,
             'voucher_coverage' => 'decimal:2',
             'amount_paid' => 'decimal:2',
+            'prepaid_ahead' => 'boolean',
         ];
     }
 
