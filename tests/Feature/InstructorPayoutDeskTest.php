@@ -28,7 +28,7 @@ beforeEach(function () {
     $entry = AddOn::create(['name' => AddOn::ENTRY_NAME, 'kind' => AddOnKind::Entry, 'subscribable' => true]);
     Plan::create(['add_on_id' => $entry->id, 'price' => 60, 'credit' => 25, 'effective_from' => '2026-01-01']);
 
-    $this->door = User::factory()->create(['active' => true, 'role' => Role::Door]);
+    $this->door = User::factory()->create(['active' => true, 'role' => Role::Door, 'name' => "Stephen O'Connell"]);
     $this->manager = User::factory()->create(['active' => true, 'role' => Role::Manager]);
     $this->register = Register::factory()->create();
 
@@ -243,7 +243,7 @@ test('the event page shows what was paid at the desk', function () {
     app(RegisterShiftService::class)->recordInstructorPayout($shift, $this->yoga, $this->door, 40);
 
     $this->get("/admin/events/{$this->yoga->id}/edit")
-        ->assertSee('Paid at the desk: $40.00 by '.$this->door->name, false);
+        ->assertSee('Paid at the desk: $40.00 by '.$this->door->name);
 });
 
 test('closing the box after paying the instructor balances when the drawer is counted', function () {
