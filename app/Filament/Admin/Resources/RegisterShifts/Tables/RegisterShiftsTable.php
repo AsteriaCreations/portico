@@ -51,6 +51,13 @@ class RegisterShiftsTable
                     ->state(fn (RegisterShift $record) => app(RegisterShiftService::class)->revenueBreakdown($record)['event'])
                     ->money()
                     ->toggleable(isToggledHiddenByDefault: true),
+                // Every method, like the other revenue columns. Its cash part
+                // went into each event's prepay envelope, not this box.
+                TextColumn::make('prepay_revenue')
+                    ->label('Prepaid (later events)')
+                    ->state(fn (RegisterShift $record) => app(RegisterShiftService::class)->revenueBreakdown($record)['prepay'])
+                    ->money()
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('subscription_revenue')
                     ->label('Subscription')
                     ->state(fn (RegisterShift $record) => app(RegisterShiftService::class)->revenueBreakdown($record)['subscription'])

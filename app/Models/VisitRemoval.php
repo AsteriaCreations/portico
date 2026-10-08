@@ -14,7 +14,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  */
 #[Fillable([
     'member_id', 'event_id', 'register_shift_id', 'payment_method', 'amount_paid',
-    'checked_in_at', 'after_shift_closed', 'reason', 'removed_by',
+    'checked_in_at', 'after_shift_closed', 'prepaid_ahead', 'reason', 'removed_by',
 ])]
 class VisitRemoval extends Model
 {
@@ -30,6 +30,7 @@ class VisitRemoval extends Model
             'amount_paid' => 'decimal:2',
             'checked_in_at' => 'datetime',
             'after_shift_closed' => 'boolean',
+            'prepaid_ahead' => 'boolean',
         ];
     }
 

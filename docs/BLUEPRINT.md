@@ -314,6 +314,7 @@ CREATE TABLE attendance (
   voucher_coverage  DECIMAL(8,2) NOT NULL DEFAULT 0, -- account-credit applied after subscription coverage (see Vouchers)
   amount_paid       DECIMAL(8,2) NOT NULL DEFAULT 0, -- (entry_fee-entry_coverage) + every add-on line's (fee-coverage) - voucher_coverage
   payment_method    VARCHAR(30),
+  prepaid_ahead     BOOLEAN NOT NULL DEFAULT FALSE,  -- paid before the event's night (desk prepay or Prepay List); its cash is held for the event, outside the box (see "Prepaid cash")
   on_behalf_note    VARCHAR(120),                    -- guest / paid-for-by breadcrumb
   notes             VARCHAR(255),
   created_at TIMESTAMP NULL, updated_at TIMESTAMP NULL,
@@ -541,10 +542,28 @@ Every active Owner gets a notification. Manager+ reviews them under Records → 
 
 Each paid removal writes an append-only `visit_removals` snapshot. The attendance row itself is gone, so the snapshot stands in for it:
 - `member_id`, `event_id`, `register_shift_id`, `payment_method`, `amount_paid`
-- `checked_in_at`, `after_shift_closed`
+- `checked_in_at`, `after_shift_closed`, `prepaid_ahead`
 - `reason`, `removed_by`, `created_at`
 
 Every active Owner gets a notification. Manager+ reviews removals under Records → Visit removals. A removal counts as recorded activity, so the event can then only be archived, not deleted.
+
+A paid prepay whose cash is held for its event (see "Prepaid cash" below) is refunded from that held cash, not a drawer: the desk set it aside when it was taken, and the shift's expected cash already leaves it out.
+
+---
+
+## Prepaid cash (held for the event, outside the box)
+
+Money paid ahead of an event is kept apart from the night it was taken until the event itself. A visit is `attendance.prepaid_ahead` when it's written:
+- at the desk for an event that isn't currently active and whose `event_date` is after today (a `door_prepay_enabled` event). A past event still flagged for door prepay is not "ahead": its money stays in the box, as it always did;
+- from the event's Prepay List, single add or bulk upload, always.
+
+The flag is a snapshot (arrival later sets `checked_in_at`, so it can't be read back from that). Rows written before the column existed are all `false`, so no closed shift's numbers moved.
+
+**Box side (`RegisterShiftService`).** Prepaid cash taken on a shift is in `cashReceived` (it did come in there) and comes straight back off `expectedClosingCount` as `heldPrepayCashCents()`: it goes into that event's own envelope, so the box balances without it. `revenueBreakdown()`/`cashRevenueBreakdownCents()` give it its own `prepay` bucket, out of `event`; the cash breakdown still sums to `cashReceived`. A prepay removed after its shift closed is added back to the held figure as well (`visit_removals.prepaid_ahead`), so the closed shift's numbers never move. The close-box envelope reminder names one envelope per event (`heldPrepayCashByEventCents()`), apart from the night's own envelope.
+
+**Event side (`PrepayCashService`).** The held cash for an event is the `SUM(amount_paid)` of its cash-method (`requires_register_shift`) `prepaid_ahead` visits, from the desk or the Prepay List, arrived or not. Derived, never stored: a refunded prepay drops out on its own. The Prepay List tab shows it, and the desk's box summary shows it for the event(s) running tonight. Non-cash prepays are tracked the same way but there is no cash to hold. A subscription sold alongside a prepay is subscription money and stays in the box.
+
+Revenue reporting is unchanged: the Monthly Revenue chart already counts a visit in the month the member arrives (`checked_in_at`), i.e. the event's month.
 
 ---
 
@@ -788,6 +807,8 @@ Each case asserts the stored `entry_coverage` / the pool add-on line's `coverage
 **Guests**: "Register a guest" is hidden until the selected member is actually checked in tonight (hidden for a not-yet-selected member and for a prepaid/not-yet-arrived attendance) · hidden (and server-side rejected even via a forged call) when the checked-in host is on probation · registering requires `username`, `preferred_name`, `first_name`, `last_name`, and `email` (`username` validated unique, with a race-safe fallback for two registers claiming the same one at once — no more auto-generated username) and creates a Guest-category member with `sponsor_id` set and a "Guest of {sponsor}" note · the new guest is auto-selected and can be checked in immediately · any role including Door can register one, once their host qualifies · two guests with the same name get distinct usernames · banning/watchlisting a guest who's checked in tonight appends a note to the sponsor, but the same guest banned on an unrelated later date leaves the sponsor untouched, and lifting a ban never writes a note.
 
 **Prepay events**: the check-in event picker only lists today's events plus any `door_prepay_enabled` event, regardless of date · a prepay for a future-month event prices and covers the subscription for *that* event's month, not today's · `checkInAction` is hidden once the building is at capacity, and a recorded departure restores it · `markArrivedAction` (and its per-row table equivalent) is never blocked by capacity, since that attendance row already counted the moment it was created · the back check-in table lists unarrived attendance for the selected event and requires acknowledgement inline for a watchlisted row, blocking outright (no state change) for a hard-blocked one · adding to the admin-managed Prepay List is rejected once at capacity, same as the check-in desk · bulk upload creates one row per valid identifiable member, skips and logs an unmatched identifier, a member already on the list, and rows past the capacity limit, and is idempotent on re-run · a Manager is forbidden from editing or creating an event; an Admin is not · `starts_at`/`ends_at` are required to create an event, and `ends_at` must be after `starts_at`.
+
+**Prepaid cash**: a desk check-in for a future door-prepay event is `prepaid_ahead`; tonight's, and a past door-prepay event's, are not · a Prepay List entry is always `prepaid_ahead` and takes a club payment method, not free text · prepaid cash is in a shift's `cashReceived` but off its expected close, so a box holding only prepaid cash balances at its opening count · the shift breakdowns put prepays in their own bucket and the cash one still sums to `cashReceived` · held cash is split per event for the close-box envelopes, and the night's own envelope total leaves it out · a prepay removed after close leaves the closed shift's expected, held, breakdowns and variance unchanged and drops out of the event's held cash; removed while open, it leaves the expected close unchanged · an event's held cash counts desk and Prepay List cash, arrived or not, and no card prepay or same-night visit · the refund prompt for held prepay cash points at the event's prepay cash, not a drawer.
 
 **Comp list & comp-reward vouchers**: adding a member to the Comp List waives entry via `applyEventComp` regardless of prior coverage, leaves pool priced independently, and is rejected once at capacity, same as the Prepay List · the Comp List and Prepay List stay disjoint (a row appears in exactly one) · a comp-listed member shows up in the check-in page's back-check-in table like any other unarrived attendance · `vouchers:grant-comp-rewards` grants a voucher for a comped, arrived attendee once the event's `ends_at` has passed, but not before it ends, not when the comp reason has no configured amount, and not for a comp-listed member who never actually arrived · re-running the command is idempotent · the granted voucher's `recorded_by` is the dedicated system user.
 

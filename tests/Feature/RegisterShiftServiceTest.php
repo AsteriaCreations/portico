@@ -159,6 +159,7 @@ test('revenueBreakdown splits event, subscription, and other totals across every
 
     expect($this->service->revenueBreakdown($shift))->toEqual([
         'event' => 35.0,
+        'prepay' => 0.0,
         'subscription' => 25.0,
         'other' => 65.0,
     ]);
@@ -178,6 +179,7 @@ test('cashRevenueBreakdownCents splits event, subscription, and other cash total
 
     expect($breakdown)->toBe([
         'event' => 2000,
+        'prepay' => 0,
         'subscription' => 2500,
         'other' => 4000,
     ])
@@ -216,6 +218,7 @@ test('revenueBreakdown folds a pool day pass into the other bucket', function ()
 
     expect($this->service->revenueBreakdown($shift))->toEqual([
         'event' => 0.0,
+        'prepay' => 0.0,
         'subscription' => 0.0,
         'other' => 15.0,
     ]);

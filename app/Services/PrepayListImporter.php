@@ -87,6 +87,7 @@ class PrepayListImporter
                 'member_id' => $member->id,
                 'checked_in_by' => $recordedBy->id,
                 'checked_in_at' => null,
+                'prepaid_ahead' => true,
                 ...$attrs,
             ]);
 

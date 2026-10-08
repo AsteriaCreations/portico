@@ -1,7 +1,9 @@
 <?php
 
+use App\Models\Event;
 use App\Models\Register;
 use App\Models\RegisterShift;
+use App\Services\PrepayCashService;
 use App\Services\RegisterShiftService;
 use Livewire\Attributes\Computed;
 use Livewire\Component;
@@ -46,6 +48,22 @@ new class extends Component
     {
         return $this->shift ? app(RegisterShiftService::class)->totalInstructorPayoutsCents($this->shift) : 0;
     }
+
+    // Prepaid cash for later events taken on this shift -- also off
+    // expected(), since it goes in each event's own envelope.
+    #[Computed]
+    public function prepaidAheadCents(): int
+    {
+        return $this->shift ? app(RegisterShiftService::class)->heldPrepayCashCents($this->shift) : 0;
+    }
+
+    // Tonight's side of the same thing: what was prepaid in cash for the
+    // event(s) running now, held outside every box until tonight.
+    #[Computed]
+    public function heldForTonightCents(): int
+    {
+        return app(PrepayCashService::class)->heldCashCents(Event::currentQuery()->pluck('id')->all());
+    }
 };
 ?>
 
@@ -63,16 +81,27 @@ re-find these lines after every refresh. --}}
             ]) }}
         </p>
         <p role="status" class="text-sm text-gray-500">
-            {{ __('Event :event · Subscription :subscription · Other :other', [
+            {{ __('Event :event · Prepaid :prepay · Subscription :subscription · Other :other', [
                 'event' => \App\Models\MembershipSetting::formatMoney($this->breakdown['event']),
+                'prepay' => \App\Models\MembershipSetting::formatMoney($this->breakdown['prepay']),
                 'subscription' => \App\Models\MembershipSetting::formatMoney($this->breakdown['subscription']),
                 'other' => \App\Models\MembershipSetting::formatMoney($this->breakdown['other']),
             ]) }}
         </p>
+        @if ($this->prepaidAheadCents !== 0)
+            <p role="status" class="text-sm text-gray-500">
+                {{ __('Prepaid cash for later events :amount — in each event\'s prepay envelope, not this box', ['amount' => \App\Models\MembershipSetting::formatMoney(\App\Support\Cents::toFloat($this->prepaidAheadCents))]) }}
+            </p>
+        @endif
         @if ($this->paidOutCents !== 0)
             <p role="status" class="text-sm text-gray-500">
                 {{ __('Paid out to instructors :amount', ['amount' => \App\Models\MembershipSetting::formatMoney(\App\Support\Cents::toFloat($this->paidOutCents))]) }}
             </p>
         @endif
+    @endif
+    @if ($this->heldForTonightCents !== 0)
+        <p role="status" class="text-sm text-gray-500">
+            {{ __('Prepaid cash held for tonight :amount — in the prepay envelope, not this box', ['amount' => \App\Models\MembershipSetting::formatMoney(\App\Support\Cents::toFloat($this->heldForTonightCents))]) }}
+        </p>
     @endif
 </div>
