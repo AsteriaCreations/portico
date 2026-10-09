@@ -209,6 +209,14 @@ class CheckInService
                 }
             }
 
+            // Voucher credit covered the whole visit, so nothing changed
+            // hands: recorded as Voucher whatever the desk picked, or a
+            // stray Cash pick reads as cash taken. A partial draw keeps the
+            // desk's method, which is how the rest was paid.
+            if ($voucherApplied > 0 && ($breakdown->amountPaidCents + $addOnTotal + $subscriptionTotal) <= 0) {
+                $paymentMethod = PaymentMethod::VOUCHER;
+            }
+
             // Folded onto the attendance row rather than tracked
             // separately, same as add-ons above -- one flat fee
             // for the whole transaction (entry plus whatever
