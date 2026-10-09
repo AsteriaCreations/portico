@@ -20,6 +20,12 @@ class PaymentMethod extends Model
      */
     public const KIOSK = 'kiosk';
 
+    /**
+     * What a check-in records when voucher credit covers the whole visit
+     * (App\Services\CheckInService). Seeded inactive and off the desk too.
+     */
+    public const VOUCHER = 'voucher';
+
     public $timestamps = false;
 
     protected function casts(): array

@@ -2031,7 +2031,7 @@ class CheckIn extends Page implements HasTable
 
                 $notification->send();
 
-                $this->rememberLastCheckIn($member, $event, $title, $data['payment_method'] ?? null);
+                $this->rememberLastCheckIn($member, $event, $title, $attendance->payment_method);
             });
     }
 

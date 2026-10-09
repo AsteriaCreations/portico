@@ -132,6 +132,50 @@ test("draws a voucher from another member's balance, capped at the fee", functio
         ->and($draw->recorded_by)->toBe($this->manager->id);
 });
 
+test("records Voucher, not the desk's pick, when another member's voucher covers the whole visit", function () {
+    $payer = serviceMember($this->category, 'payer');
+    Voucher::factory()->create(['member_id' => $payer->id, 'amount' => 100]);
+
+    $result = recordCheckIn($this->member, $this->event, $this->manager, new CheckInRequest(
+        paymentMethod: 'cash',
+        applyVoucher: true,
+        voucherPayerId: $payer->id,
+        voucherAmountCents: 4000,
+        voucherReason: 'gift',
+    ));
+
+    expect($result->attendance->payment_method)->toBe(PaymentMethod::VOUCHER);
+});
+
+test("records Voucher when the member's own voucher covers the whole visit", function () {
+    Voucher::factory()->create(['member_id' => $this->member->id, 'amount' => 40]);
+
+    $result = recordCheckIn($this->member, $this->event, $this->manager, new CheckInRequest(
+        paymentMethod: 'cash',
+        applyVoucher: true,
+        voucherAmountCents: 4000,
+        voucherReason: 'reward',
+    ));
+
+    expect($result->attendance->payment_method)->toBe(PaymentMethod::VOUCHER);
+});
+
+test("keeps the desk's method when a voucher covers only part of the visit", function () {
+    $payer = serviceMember($this->category, 'payer');
+    Voucher::factory()->create(['member_id' => $payer->id, 'amount' => 15]);
+
+    $result = recordCheckIn($this->member, $this->event, $this->manager, new CheckInRequest(
+        paymentMethod: 'cash',
+        applyVoucher: true,
+        voucherPayerId: $payer->id,
+        voucherAmountCents: 1500,
+        voucherReason: 'gift',
+    ));
+
+    expect($result->attendance->payment_method)->toBe('cash')
+        ->and($result->attendance->amount_paid)->toEqual(25);
+});
+
 test('refuses once the building is full, writing nothing', function () {
     MembershipSetting::current()->update(['venue_capacity' => 1]);
     Attendance::factory()->for(serviceMember($this->category, 'already-in'))->for($this->event)->create(['checked_in_at' => now()]);
