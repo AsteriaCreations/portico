@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-#[Fillable(['member_id', 'add_on_id', 'covered_month', 'amount_paid', 'paid_on', 'recorded_by', 'comp_source', 'notes', 'payment_method', 'register_shift_id'])]
+#[Fillable(['member_id', 'add_on_id', 'covered_month', 'amount_paid', 'voucher_coverage', 'paid_on', 'recorded_by', 'comp_source', 'notes', 'payment_method', 'register_shift_id'])]
 class Subscription extends Model
 {
     /** @use HasFactory<SubscriptionFactory> */
@@ -19,6 +19,7 @@ class Subscription extends Model
         return [
             'covered_month' => 'date',
             'amount_paid' => 'decimal:2',
+            'voucher_coverage' => 'decimal:2',
             'paid_on' => 'date',
         ];
     }

@@ -3,11 +3,14 @@
 namespace App\Services;
 
 use App\Models\AddOn;
+use App\Models\Attendance;
 use App\Models\Member;
+use App\Models\PaymentMethod;
 use App\Models\Plan;
 use App\Models\RegisterShift;
 use App\Models\Subscription;
 use App\Models\User;
+use App\Models\Voucher;
 use App\Support\Cents;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Collection;
@@ -111,6 +114,52 @@ class SubscriptionBundleService
                 'notes' => ($index + 1)." of {$months} — {$addOn->name} subscription bundle covering {$rangeLabel}",
             ])
         );
+    }
+
+    /**
+     * Spends up to $cents of $payer's voucher credit on subscription rows
+     * just bought, month by month in order. Each covered row keeps its full
+     * price split as amount_paid (money taken) + voucher_coverage (credit),
+     * so RegisterShiftService's plain SUM(amount_paid) stays the money in
+     * the box; a row the voucher covers entirely is recorded as the Voucher
+     * method. One ledger row per covered month, linked to it (and to the
+     * check-in it was bought with, if any). The caller caps $cents at the
+     * payer's balance and holds the payer's row locked.
+     *
+     * @param  Collection<int, Subscription>  $rows
+     * @return int cents actually applied
+     */
+    public function applyVoucher(Collection $rows, Member $payer, int $cents, string $reason, User $staff, ?Attendance $attendance = null): int
+    {
+        $remaining = max(0, $cents);
+
+        foreach ($rows as $row) {
+            $paidCents = Cents::of($row->amount_paid);
+            $take = min($remaining, $paidCents);
+
+            if ($take <= 0) {
+                continue;
+            }
+
+            $row->update([
+                'amount_paid' => Cents::toDecimal($paidCents - $take),
+                'voucher_coverage' => Cents::toDecimal(Cents::of($row->voucher_coverage) + $take),
+                'payment_method' => $paidCents === $take ? PaymentMethod::VOUCHER : $row->payment_method,
+            ]);
+
+            Voucher::create([
+                'member_id' => $payer->id,
+                'amount' => Cents::toDecimal(-$take),
+                'reason' => $reason,
+                'attendance_id' => $attendance?->id,
+                'subscription_id' => $row->id,
+                'recorded_by' => $staff->id,
+            ]);
+
+            $remaining -= $take;
+        }
+
+        return max(0, $cents) - $remaining;
     }
 
     /**
