@@ -35,6 +35,9 @@ is fixes only.
   does (the club's member search fields, such as username), so it matches what staff searched
   by. Hover over a name to see the desk display name (preferred name by default); on a phone it
   shows as a second line instead.
+- The "Checked in tonight" list marks anyone who paid for a subscription with that visit (bought
+  with the check-in, or by a later **Convert entry to subscription**) with a ticket icon labelled
+  "Bought a subscription". A $0 subscription, such as the Manager perk, isn't marked.
 - Prepaid cash is now kept apart from the night it was taken until the event itself. Cash taken
   at the Check-In Desk for a future door-prepay event still counts as received on that shift,
   but comes off the box's expected close: the desk is told to put it in the event's prepay

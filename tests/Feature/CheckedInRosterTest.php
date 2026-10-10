@@ -1,9 +1,12 @@
 <?php
 
+use App\Enums\AddOnKind;
+use App\Models\AddOn;
 use App\Models\Attendance;
 use App\Models\Event;
 use App\Models\Member;
 use App\Models\MembershipSetting;
+use App\Models\Subscription;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Livewire\Livewire;
@@ -108,4 +111,30 @@ test('the roster lists each person by their search label, with the desk name on 
     expect(Livewire::test('checked-in-roster', ['eventId' => $event->id])->html())
         ->toContain('<span title="Sam">shadowfox</span>')
         ->toContain('<p class="text-gray-500 dark:text-gray-400">Sam</p>');
+});
+
+test('the roster marks a person who paid for a subscription with this visit', function () {
+    AddOn::create(['name' => AddOn::ENTRY_NAME, 'kind' => AddOnKind::Entry, 'subscribable' => true]);
+    $event = Event::factory()->create();
+    $buyer = Member::factory()->create(['username' => 'buyer']);
+    $alreadySubscribed = Member::factory()->create(['username' => 'oldsub']);
+    $perk = Member::factory()->create(['username' => 'perk']);
+
+    // Bought last week, before this visit: no icon.
+    $this->travel(-7)->days();
+    Subscription::factory()->create(['member_id' => $alreadySubscribed->id, 'add_on_id' => AddOn::entry()->id]);
+    $this->travelBack();
+
+    foreach ([$buyer, $alreadySubscribed, $perk] as $member) {
+        Attendance::factory()->create(['member_id' => $member->id, 'event_id' => $event->id, 'checked_in_at' => now()]);
+    }
+    Subscription::factory()->create(['member_id' => $buyer->id, 'add_on_id' => AddOn::entry()->id, 'amount_paid' => 25]);
+    // A $0 subscription (e.g. the Manager perk) wasn't paid for.
+    Subscription::factory()->create(['member_id' => $perk->id, 'add_on_id' => AddOn::entry()->id, 'amount_paid' => 0]);
+
+    $component = Livewire::test('checked-in-roster', ['eventId' => $event->id]);
+
+    expect(array_keys($component->instance()->boughtSubscription))
+        ->toBe([Attendance::where('member_id', $buyer->id)->value('id')]);
+    expect($component->html())->toContain('aria-label="Bought a subscription"');
 });
