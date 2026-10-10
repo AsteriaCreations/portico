@@ -185,8 +185,12 @@ test('add_on_ids is always seeded as a real array, never an absent key', functio
     // reproduce the browser-side mechanism itself, but this at least locks
     // in the one thing that prevents it: the property must never start (or
     // reset to) a bare [].
+    //
+    // apply_voucher likewise: while it's absent, the browser sends the first
+    // tick as an update to the whole pricingData, which skips the checkbox's
+    // afterStateUpdated() and left the suggested voucher amount empty.
     $freshComponent = Livewire::test(CheckIn::class);
-    expect($freshComponent->instance()->pricingData)->toBe(['add_on_ids' => []]);
+    expect($freshComponent->instance()->pricingData)->toBe(['add_on_ids' => [], 'apply_voucher' => false]);
 
     $member = clearMember($this->irregular);
     $event = Event::factory()->create(['event_date' => now()->toDateString(), 'entry_fee' => 20, 'pool_fee' => 0]);
@@ -194,7 +198,7 @@ test('add_on_ids is always seeded as a real array, never an absent key', functio
     $component = Livewire::test(CheckIn::class)
         ->fillForm(['event_id' => $event->id, 'member_id' => $member->id]);
 
-    expect($component->instance()->pricingData)->toBe(['add_on_ids' => []]);
+    expect($component->instance()->pricingData)->toBe(['add_on_ids' => [], 'apply_voucher' => false]);
 });
 
 test('pricingData resets when the member changes', function () {
@@ -214,7 +218,7 @@ test('pricingData resets when the member changes', function () {
     // an absent key, or the very next add-on click corrupts it to a scalar
     // via Alpine/Livewire's checkbox-group binding (see the property's own
     // comment in CheckIn.php).
-    expect($component->instance()->pricingData)->toBe(['add_on_ids' => []]);
+    expect($component->instance()->pricingData)->toBe(['add_on_ids' => [], 'apply_voucher' => false]);
 });
 
 test('pricingData resets when the event changes', function () {
@@ -234,7 +238,7 @@ test('pricingData resets when the event changes', function () {
     // an absent key, or the very next add-on click corrupts it to a scalar
     // via Alpine/Livewire's checkbox-group binding (see the property's own
     // comment in CheckIn.php).
-    expect($component->instance()->pricingData)->toBe(['add_on_ids' => []]);
+    expect($component->instance()->pricingData)->toBe(['add_on_ids' => [], 'apply_voucher' => false]);
 });
 
 test('pricingData resets after a successful check-in', function () {
@@ -252,7 +256,7 @@ test('pricingData resets after a successful check-in', function () {
     // an absent key, or the very next add-on click corrupts it to a scalar
     // via Alpine/Livewire's checkbox-group binding (see the property's own
     // comment in CheckIn.php).
-    expect($component->instance()->pricingData)->toBe(['add_on_ids' => []]);
+    expect($component->instance()->pricingData)->toBe(['add_on_ids' => [], 'apply_voucher' => false]);
 });
 
 test('the action-modals placeholder renders even with no event selected, so action clicks actually show a modal', function () {
@@ -2608,9 +2612,13 @@ test('voucher credit stays available, and pays toward it, when a subscription co
     Voucher::factory()->for($member)->create(['amount' => 100, 'recorded_by' => $this->user->id]);
 
     $page = Livewire::test(CheckIn::class)
-        ->fillForm(['event_id' => $event->id, 'member_id' => $member->id])
-        ->fillForm(['subscription_regular_duration' => '1'], 'pricingForm')
-        ->fillForm(['apply_voucher' => true], 'pricingForm')
+        ->set('data.event_id', $event->id)
+        ->set('data.member_id', $member->id)
+        // set(), not fillForm(): fillForm() fills the whole form, which
+        // applied the field's default and hid that ticking the box in the
+        // browser left the amount empty.
+        ->set('pricingData.subscription_regular_duration', '1')
+        ->set('pricingData.apply_voucher', true)
         ->assertSet('pricingData.voucher_amount', 60)
         ->fillForm(['voucher_reason' => 'reward'], 'pricingForm');
 

@@ -17,6 +17,9 @@ is fixes only.
 
 ### Fixed
 
+- Ticking **Apply voucher credit** on the Check-In Desk fills in the suggested amount the first
+  time. Right after picking a member or event, the first tick left **Voucher amount to apply**
+  empty; only unticking and ticking again filled it.
 - The Check-In Desk's **Prepaid, awaiting arrival** list now follows the event picker. It lagged
   one pick behind: switching from a future prepay event to tonight's showed the future event's
   prepays under tonight, and switching back showed tonight's (usually no one).
