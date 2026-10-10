@@ -6,12 +6,15 @@ use App\Filament\Admin\Pages\CheckIn;
 use App\Filament\Admin\Resources\Events\Pages\EditEvent;
 use App\Filament\Admin\Resources\Events\RelationManagers\PrepayListRelationManager;
 use App\Models\AddOn;
+use App\Models\AddOnDayPass;
 use App\Models\Attendance;
 use App\Models\Category;
 use App\Models\Event;
 use App\Models\Member;
 use App\Models\MembershipSetting;
+use App\Models\MiscellaneousPayment;
 use App\Models\Register;
+use App\Models\Subscription;
 use App\Models\User;
 use App\Models\VisitRemoval;
 use App\Services\PrepayCashService;
@@ -87,6 +90,26 @@ test('prepaid cash counts as received on the shift but is held out of the expect
     expect($this->service->cashReceivedCents($shift))->toBe(5000)
         ->and($this->service->heldPrepayCashCents($shift))->toBe(3000)
         ->and($this->service->expectedClosingCountCents($shift))->toBe(12000);
+});
+
+test('electronic payments on every ledger and prepay cash leave the variance at zero when the box holds only same-night cash', function () {
+    $shift = $this->service->openShift($this->register, $this->manager, 100);
+    // Same-night cash: stays in the box.
+    Attendance::factory()->create(['register_shift_id' => $shift->id, 'payment_method' => 'cash', 'amount_paid' => 20]);
+    // Electronic on every ledger: never in the box.
+    Attendance::factory()->create(['register_shift_id' => $shift->id, 'payment_method' => 'venmo', 'amount_paid' => 25]);
+    Subscription::factory()->create(['register_shift_id' => $shift->id, 'payment_method' => 'paypal', 'amount_paid' => 60]);
+    MiscellaneousPayment::factory()->create(['register_shift_id' => $shift->id, 'payment_method' => 'venmo', 'amount' => 10, 'notation' => 'Rental']);
+    AddOnDayPass::factory()->create(['register_shift_id' => $shift->id, 'payment_method' => 'paypal', 'amount_paid' => 15]);
+    // Prepays for a future event: cash goes in its envelope, electronic never touches the box.
+    heldVisit($this->future, ['register_shift_id' => $shift->id]);
+    heldVisit($this->future, ['register_shift_id' => $shift->id, 'payment_method' => 'venmo']);
+
+    $closed = $this->service->closeShift($shift, $this->manager, 120);
+
+    expect($this->service->expectedClosingCountCents($closed))->toBe(12000)
+        ->and($this->service->heldPrepayCashCents($closed))->toBe(3000)
+        ->and($this->service->varianceCents($closed))->toBe(0);
 });
 
 test('a box with only prepaid cash balances at its opening count', function () {
