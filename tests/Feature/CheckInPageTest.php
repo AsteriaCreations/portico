@@ -2651,3 +2651,24 @@ test('a standalone subscription purchase can be paid partly with voucher credit'
         ->attendance_id->toBeNull()
         ->and($member->voucherBalance())->toEqual(0.0);
 });
+
+test('the prepaid list follows the event picker when switching between events', function () {
+    // The table used to read the selected event when it was built, before a
+    // new pick was applied, so it showed the previously selected event's
+    // prepays: tonight listed the future event's, and the future one none.
+    $member = clearMember($this->irregular);
+    $tonight = Event::factory()->create(['name' => 'Tonight', 'event_date' => today()->toDateString(), 'entry_fee' => 20]);
+    $future = Event::factory()->create(['name' => 'Later', 'event_date' => today()->addWeek()->toDateString(), 'entry_fee' => 20, 'door_prepay_enabled' => true]);
+    $prepay = Attendance::factory()->create(['event_id' => $future->id, 'checked_in_at' => null]);
+
+    Livewire::test(CheckIn::class)
+        ->fillForm(['member_id' => $member->id, 'event_id' => $future->id])
+        ->assertCanSeeTableRecords([$prepay])
+        // set(), not fillForm(): fillForm() ends with an extra refresh that
+        // rebuilds the table and hides the bug. A live picker change in the
+        // browser is a single update, like set().
+        ->set('data.event_id', $tonight->id)
+        ->assertCanNotSeeTableRecords([$prepay])
+        ->set('data.event_id', $future->id)
+        ->assertCanSeeTableRecords([$prepay]);
+});

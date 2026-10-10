@@ -2375,10 +2375,11 @@ class CheckIn extends Page implements HasTable
      */
     public function table(Table $table): Table
     {
-        $event = $this->getSelectedEvent();
-
         return $table
-            ->query(Attendance::query()->whereNull('checked_in_at')->where('event_id', $event?->id ?? 0))
+            // A closure, read when the records load: Filament builds the
+            // table at boot, before a new event pick is applied, so reading
+            // the event here showed the previously selected event's prepays.
+            ->query(fn () => Attendance::query()->whereNull('checked_in_at')->where('event_id', $this->getSelectedEvent()?->id ?? 0))
             ->heading(__('Prepaid, awaiting arrival'))
             // Split/Stack layout, not a flat column list -- each prepay row
             // renders as one stacked card on a phone and a single row at sm+,

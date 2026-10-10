@@ -17,6 +17,9 @@ is fixes only.
 
 ### Fixed
 
+- The Check-In Desk's **Prepaid, awaiting arrival** list now follows the event picker. It lagged
+  one pick behind: switching from a future prepay event to tonight's showed the future event's
+  prepays under tonight, and switching back showed tonight's (usually no one).
 - Managers can now manage an event's Prepay list and Comp list. Editing an event is Admin-only,
   and the edit page was the only way to reach those tabs, so in practice only Admins could fill
   them. Events now have a **View** page: Managers open it from the Events list (row click or
