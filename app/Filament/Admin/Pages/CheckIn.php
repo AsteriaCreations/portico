@@ -1257,9 +1257,26 @@ class CheckIn extends Page implements HasTable
                 // reconciles/deposits it later. Persistent (doesn't
                 // auto-dismiss) since this is an instruction to act on, not
                 // just a status toast.
+                $body = [];
                 $cashReceivedCents = $service->cashReceivedCents($closed);
                 if ($cashReceivedCents > 0 && MembershipSetting::current()->cash_envelope_reminder_enabled) {
-                    $notification->body($this->envelopeReminderBody($closed, $cashReceivedCents))->persistent();
+                    $body[] = $this->envelopeReminderBody($closed, $cashReceivedCents);
+                }
+
+                // Never in the box, so never in an envelope -- listed so the
+                // night's total can be checked against each app's own record.
+                $electronic = $service->electronicByMethodCents($closed);
+                if ($electronic !== []) {
+                    $body[] = __('Taken electronically (not in the box or any envelope): :methods (total :total).', [
+                        'methods' => collect($electronic)
+                            ->map(fn (int $cents, string $label) => $label.' '.$this->formatCurrency(Cents::toFloat($cents)))
+                            ->implode(' · '),
+                        'total' => $this->formatCurrency(Cents::toFloat(array_sum($electronic))),
+                    ]);
+                }
+
+                if ($body !== []) {
+                    $notification->body(implode(' ', $body))->persistent();
                 }
 
                 $notification->success()->send();

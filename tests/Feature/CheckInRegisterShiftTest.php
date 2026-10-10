@@ -555,3 +555,26 @@ test('closeShift is rejected once register_shifts_enabled is off, even via a for
 
     expect(app(RegisterShiftService::class)->currentOpenShift($this->register))->not->toBeNull();
 });
+
+test('the box summary and the close message list electronic payments apart from the cash', function () {
+    $livewire = Livewire::test(CheckIn::class)
+        ->set('registerId', $this->register->id)
+        ->callAction('openShift', data: ['opening_count' => 0])
+        ->assertHasNoActionErrors();
+
+    $shift = app(RegisterShiftService::class)->currentOpenShift($this->register);
+    app(RegisterShiftService::class)->recordMiscPayment($shift, auth()->user(), 40, 'venmo', 'rental');
+
+    Livewire::test('register-box-summary', ['registerId' => $this->register->id])
+        ->assertSee('Electronic, included above but not in the box: Venmo $40.00');
+
+    $livewire->callAction('closeShift', data: ['closing_count' => 0])->assertHasNoActionErrors();
+
+    // Read the way Notification::assertNotified() does; it only matches on
+    // the title or the whole notification.
+    $sent = new Notifications;
+    $sent->mount();
+
+    expect($sent->notifications->map(fn ($notification) => $notification->getBody())->implode(' '))
+        ->toContain('Taken electronically (not in the box or any envelope): Venmo $40.00 (total $40.00).');
+});

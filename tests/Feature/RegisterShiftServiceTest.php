@@ -263,3 +263,16 @@ test('the cents methods agree with their float counterparts', function () {
         ->and($this->service->variance($closed))->toBe(-0.05)
         ->and($this->service->expectedClosingCount($closed))->toBe(61.65);
 });
+
+test('electronicByMethodCents totals every non-cash method that took money, per method', function () {
+    $shift = $this->service->openShift($this->register, $this->user, 0);
+
+    Attendance::factory()->create(['register_shift_id' => $shift->id, 'payment_method' => 'cash', 'amount_paid' => 20]);
+    Attendance::factory()->create(['register_shift_id' => $shift->id, 'payment_method' => 'venmo', 'amount_paid' => 15]);
+    Attendance::factory()->create(['register_shift_id' => $shift->id, 'payment_method' => 'voucher', 'amount_paid' => 0]);
+    Subscription::factory()->create(['register_shift_id' => $shift->id, 'payment_method' => 'paypal', 'amount_paid' => 60]);
+    MiscellaneousPayment::factory()->create(['register_shift_id' => $shift->id, 'payment_method' => 'venmo', 'amount' => 10, 'notation' => 'Rental']);
+    AddOnDayPass::factory()->create(['register_shift_id' => $shift->id, 'payment_method' => 'cash', 'amount_paid' => 15]);
+
+    expect($this->service->electronicByMethodCents($shift))->toBe(['Venmo' => 2500, 'PayPal' => 6000]);
+});
