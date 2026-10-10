@@ -276,3 +276,27 @@ test('electronicByMethodCents totals every non-cash method that took money, per 
 
     expect($this->service->electronicByMethodCents($shift))->toBe(['Venmo' => 2500, 'PayPal' => 6000]);
 });
+
+test('varianceMathCents lays out the expected close line by line and sets prepaid and electronic money beside it', function () {
+    $shift = $this->service->openShift($this->register, $this->user, 100);
+    Attendance::factory()->create(['register_shift_id' => $shift->id, 'payment_method' => 'cash', 'amount_paid' => 20]);
+    Attendance::factory()->create(['register_shift_id' => $shift->id, 'payment_method' => 'cash', 'amount_paid' => 30, 'prepaid_ahead' => true]);
+    Attendance::factory()->create(['register_shift_id' => $shift->id, 'payment_method' => 'venmo', 'amount_paid' => 15]);
+    Subscription::factory()->create(['register_shift_id' => $shift->id, 'payment_method' => 'cash', 'amount_paid' => 60]);
+    MiscellaneousPayment::factory()->create(['register_shift_id' => $shift->id, 'payment_method' => 'cash', 'amount' => 5, 'notation' => 'Rental']);
+    $this->service->recordDrop($shift, $this->user, 50);
+
+    expect($this->service->varianceMathCents($shift))->toMatchArray([
+        'opening' => 10000, 'event' => 2000, 'subscription' => 6000, 'other' => 500,
+        'drops' => 5000, 'payouts' => 0, 'expected' => 13500,
+        'counted' => null, 'variance' => null,
+        'prepay' => 3000, 'electronic' => ['Venmo' => 1500],
+    ]);
+
+    $closed = $this->service->closeShift($shift, $this->user, 133);
+    $math = $this->service->varianceMathCents($closed);
+
+    expect($math['counted'])->toBe(13300)
+        ->and($math['variance'])->toBe(-200)
+        ->and($math['opening'] + $math['event'] + $math['subscription'] + $math['other'] - $math['drops'] - $math['payouts'])->toBe($math['expected']);
+});

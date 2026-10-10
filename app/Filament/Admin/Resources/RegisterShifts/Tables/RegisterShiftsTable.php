@@ -4,6 +4,7 @@ namespace App\Filament\Admin\Resources\RegisterShifts\Tables;
 
 use App\Models\RegisterShift;
 use App\Services\RegisterShiftService;
+use Filament\Actions\Action;
 use Filament\Actions\ViewAction;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
@@ -68,8 +69,20 @@ class RegisterShiftsTable
                     ->state(fn (RegisterShift $record) => app(RegisterShiftService::class)->revenueBreakdown($record)['other'])
                     ->money()
                     ->toggleable(isToggledHiddenByDefault: true),
+                // Clicking the figure peeks at the math behind it.
                 TextColumn::make('variance')
                     ->state(fn (RegisterShift $record) => app(RegisterShiftService::class)->variance($record))
+                    ->tooltip(__('Show the math'))
+                    ->action(
+                        Action::make('varianceMath')
+                            ->modalHeading(__('How this variance was worked out'))
+                            ->modalContent(fn (RegisterShift $record) => view('filament.admin.register-variance-math', [
+                                'math' => app(RegisterShiftService::class)->varianceMathCents($record),
+                            ]))
+                            ->modalWidth('md')
+                            ->modalSubmitAction(false)
+                            ->modalCancelActionLabel(__('Close'))
+                    )
                     ->money()
                     ->placeholder(__('— open'))
                     ->color(fn (?float $state) => match (true) {

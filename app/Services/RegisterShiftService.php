@@ -356,6 +356,34 @@ class RegisterShiftService
             - $this->totalInstructorPayoutsCents($shift) - $this->heldPrepayCashCents($shift);
     }
 
+    /**
+     * expectedClosingCountCents() and varianceCents() laid out line by line,
+     * for showing how a variance was reached. Prepaid cash for later events
+     * is received and held back out in the same breath, so it nets to zero
+     * and is listed beside the math, as is electronic money, which never
+     * enters the box. counted and variance are null while the shift is open.
+     *
+     * @return array{opening: int, event: int, subscription: int, other: int, drops: int, payouts: int, expected: int, counted: ?int, variance: ?int, prepay: int, electronic: array<string, int>}
+     */
+    public function varianceMathCents(RegisterShift $shift): array
+    {
+        $cash = $this->cashRevenueBreakdownCents($shift);
+
+        return [
+            'opening' => Cents::of($shift->opening_count),
+            'event' => $cash['event'],
+            'subscription' => $cash['subscription'],
+            'other' => $cash['other'],
+            'drops' => $this->totalDropsCents($shift),
+            'payouts' => $this->totalInstructorPayoutsCents($shift),
+            'expected' => $this->expectedClosingCountCents($shift),
+            'counted' => is_null($shift->closing_count) ? null : Cents::of($shift->closing_count),
+            'variance' => $this->varianceCents($shift),
+            'prepay' => $cash['prepay'],
+            'electronic' => $this->electronicByMethodCents($shift),
+        ];
+    }
+
     public function closeShift(RegisterShift $shift, User $user, float $closingCount, ?string $notes = null): RegisterShift
     {
         return DB::transaction(function () use ($shift, $user, $closingCount, $notes) {
