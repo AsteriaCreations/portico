@@ -91,3 +91,21 @@ test('the roster reads the settings row once per render, not once per money cell
 
     expect($settingsQueries)->toBe(1);
 });
+
+test('the roster lists each person by their search label, with the desk name on hover', function () {
+    MembershipSetting::current()->update([
+        'member_search_fields' => ['username'],
+        'checkin_display_name_field' => 'preferred_name',
+    ]);
+    $event = Event::factory()->create();
+    $member = Member::factory()->create(['username' => 'shadowfox', 'preferred_name' => 'Sam']);
+    Attendance::factory()->create([
+        'member_id' => $member->id,
+        'event_id' => $event->id,
+        'checked_in_at' => now(),
+    ]);
+
+    expect(Livewire::test('checked-in-roster', ['eventId' => $event->id])->html())
+        ->toContain('<span title="Sam">shadowfox</span>')
+        ->toContain('<p class="text-gray-500 dark:text-gray-400">Sam</p>');
+});
