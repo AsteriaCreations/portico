@@ -1,7 +1,9 @@
 <?php
 
+use App\Enums\AddOnKind;
 use App\Models\Attendance;
 use App\Models\Event;
+use App\Models\Subscription;
 use Illuminate\Support\Collection;
 use Livewire\Attributes\Computed;
 use Livewire\Component;
@@ -29,6 +31,31 @@ new class extends Component
             ->whereNotNull('checked_in_at')
             ->orderByDesc('checked_in_at')
             ->get();
+    }
+
+    /**
+     * Attendance ids whose member paid for an entry subscription at or after
+     * that visit's check-in -- bought with the check-in itself, or by a later
+     * "Convert entry to subscription". Derived from timestamps: nothing links
+     * a subscriptions row to the attendance it was sold with.
+     *
+     * @return array<int, true>
+     */
+    #[Computed]
+    public function boughtSubscription(): array
+    {
+        $subscriptions = Subscription::query()
+            ->whereRelation('addOn', 'kind', AddOnKind::Entry)
+            ->where('amount_paid', '>', 0)
+            ->whereIn('member_id', $this->attendances->pluck('member_id'))
+            ->get(['member_id', 'created_at'])
+            ->groupBy('member_id');
+
+        return $this->attendances
+            ->filter(fn (Attendance $attendance): bool => ($subscriptions[$attendance->member_id] ?? collect())
+                ->contains(fn (Subscription $subscription): bool => $subscription->created_at->gte($attendance->created_at->clone()->subMinute())))
+            ->mapWithKeys(fn (Attendance $attendance): array => [$attendance->id => true])
+            ->all();
     }
 };
 ?>
@@ -68,7 +95,12 @@ new class extends Component
             <div class="checked-in-roster-cards">
                 @foreach ($this->attendances as $checkedInAttendance)
                     <div class="border-t border-gray-200 py-2 text-sm dark:border-white/10">
-                        <p class="font-medium">{{ \App\Models\Member::pickerLabel($checkedInAttendance->member) }}</p>
+                        <p class="flex items-center gap-1 font-medium">
+                            {{ \App\Models\Member::pickerLabel($checkedInAttendance->member) }}
+                            @if (isset($this->boughtSubscription[$checkedInAttendance->id]))
+                                <span role="img" aria-label="{{ __('Bought a subscription') }}" title="{{ __('Bought a subscription') }}" class="text-success-600 dark:text-success-400"><x-filament::icon icon="heroicon-m-ticket" /></span>
+                            @endif
+                        </p>
                         @if ($checkedInAttendance->member->displayName() !== \App\Models\Member::pickerLabel($checkedInAttendance->member))
                             <p class="text-gray-500 dark:text-gray-400">{{ $checkedInAttendance->member->displayName() }}</p>
                         @endif
@@ -93,7 +125,14 @@ new class extends Component
                     <tbody>
                         @foreach ($this->attendances as $checkedInAttendance)
                             <tr class="border-t border-gray-200 dark:border-white/10">
-                                <td class="px-3 py-2 text-sm"><span title="{{ $checkedInAttendance->member->displayName() }}">{{ \App\Models\Member::pickerLabel($checkedInAttendance->member) }}</span></td>
+                                <td class="px-3 py-2 text-sm">
+                                    <span class="flex items-center gap-1">
+                                        <span title="{{ $checkedInAttendance->member->displayName() }}">{{ \App\Models\Member::pickerLabel($checkedInAttendance->member) }}</span>
+                                        @if (isset($this->boughtSubscription[$checkedInAttendance->id]))
+                                            <span role="img" aria-label="{{ __('Bought a subscription') }}" title="{{ __('Bought a subscription') }}" class="text-success-600 dark:text-success-400"><x-filament::icon icon="heroicon-m-ticket" /></span>
+                                        @endif
+                                    </span>
+                                </td>
                                 <td class="px-3 py-2 text-sm">{{ $this->event->name }}</td>
                                 <td class="px-3 py-2 text-sm">{{ $this->event->event_date->isoFormat('ll') }}</td>
                                 <td class="px-3 py-2 text-sm">{{ $checkedInAttendance->checked_in_at->isoFormat('LT') }}</td>
