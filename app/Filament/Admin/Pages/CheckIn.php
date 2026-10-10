@@ -120,7 +120,14 @@ class CheckIn extends Page implements HasTable
     // to render checked too (`el.checked = !!value` once value isn't an
     // array). Observed live: checking "Private room rental" also checked
     // "Sleepover", and the underlying state became literally `true`.
-    public ?array $pricingData = ['add_on_ids' => []];
+    //
+    // apply_voucher is seeded too: while a key is absent, Livewire sends its
+    // first change as an update to the whole pricingData, not to
+    // pricingData.apply_voucher, so Filament never ran the checkbox's
+    // afterStateUpdated() and the first tick left the voucher amount empty.
+    public ?array $pricingData = self::EMPTY_PRICING_DATA;
+
+    private const EMPTY_PRICING_DATA = ['add_on_ids' => [], 'apply_voucher' => false];
 
     // Training mode: a new volunteer can rehearse the whole desk flow —
     // search, status line, Due total, Check in, the folded subscription /
@@ -187,7 +194,7 @@ class CheckIn extends Page implements HasTable
                     // Drop any half-entered transaction so real work never
                     // bleeds into practice or vice versa — same reset the
                     // updated* hooks below do when member/event changes.
-                    $this->pricingData = ['add_on_ids' => []];
+                    $this->pricingData = self::EMPTY_PRICING_DATA;
                     $this->form->fill(['event_id' => static::defaultEventId()]);
 
                     $notification = Notification::make();
@@ -239,12 +246,12 @@ class CheckIn extends Page implements HasTable
 
     public function updatedDataMemberId(): void
     {
-        $this->pricingData = ['add_on_ids' => []];
+        $this->pricingData = self::EMPTY_PRICING_DATA;
     }
 
     public function updatedDataEventId(): void
     {
-        $this->pricingData = ['add_on_ids' => []];
+        $this->pricingData = self::EMPTY_PRICING_DATA;
     }
 
     public function form(Schema $schema): Schema
@@ -2129,7 +2136,7 @@ class CheckIn extends Page implements HasTable
                 // Cleared so the next transaction (same member, or the next
                 // one after registerGuestAction re-selects a new guest) never
                 // inherits this one's comp/voucher/subscription choices.
-                $this->pricingData = ['add_on_ids' => []];
+                $this->pricingData = self::EMPTY_PRICING_DATA;
 
                 $title = __('Checked in — :amount due', ['amount' => $this->formatCurrency(Cents::toFloat($result->breakdown->amountPaidCents + $result->addOnTotalCents))]);
                 if ($result->subscriptionTotalCents > 0) {
