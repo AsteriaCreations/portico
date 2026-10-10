@@ -38,6 +38,10 @@ is fixes only.
 - The "Checked in tonight" list marks anyone who paid for a subscription with that visit (bought
   with the check-in, or by a later **Convert entry to subscription**) with a ticket icon labelled
   "Bought a subscription". A $0 subscription, such as the Manager perk, isn't marked.
+- **Save & promote to Irregular**, **Record new paperwork** and **Register a guest** on the
+  Check-In Desk now have the **OK to email (bulk list)** toggle next to the email, so consent is
+  captured at sign-up instead of needing a Manager to edit the member afterwards. Record new
+  paperwork shows the member's current setting.
 - Prepaid cash is now kept apart from the night it was taken until the event itself. Cash taken
   at the Check-In Desk for a future door-prepay event still counts as received on that shift,
   but comes off the box's expected close: the desk is told to put it in the event's prepay

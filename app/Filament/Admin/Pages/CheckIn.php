@@ -49,6 +49,7 @@ use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Toggle;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 use Filament\Schemas\Components\Component;
@@ -1321,6 +1322,7 @@ class CheckIn extends Page implements HasTable
                     'first_name' => $data['first_name'],
                     'last_name' => $data['last_name'],
                     'email' => filled($data['email'] ?? null) ? $data['email'] : null,
+                    'email_opt_in' => (bool) ($data['email_opt_in'] ?? false),
                     'dob' => $data['dob'] ?? $member->dob,
                     'category_id' => $irregular->id,
                 ]);
@@ -1388,6 +1390,7 @@ class CheckIn extends Page implements HasTable
             TextInput::make('first_name')->required()->maxLength(60),
             TextInput::make('last_name')->required()->maxLength(60),
             TextInput::make('email')->required(fn (): bool => MembershipSetting::current()->member_email_required)->email()->maxLength(120),
+            $this->emailOptInToggle(),
             Checkbox::make('appears_under_21')
                 ->label(__('Appears to be under :age', ['age' => MembershipSetting::current()->alcohol_flag_age]))
                 ->live(),
@@ -1396,6 +1399,18 @@ class CheckIn extends Page implements HasTable
                 ->required(fn (Get $get): bool => (bool) $get('appears_under_21'))
                 ->visible(fn (Get $get): bool => (bool) $get('appears_under_21')),
         ];
+    }
+
+    /**
+     * The member's bulk-email consent, asked alongside the email at the
+     * desk (sign-up, new paperwork, guest registration) -- the same field
+     * as the member form's "OK to email (bulk list)".
+     */
+    private function emailOptInToggle(): Toggle
+    {
+        return Toggle::make('email_opt_in')
+            ->label(__('OK to email (bulk list)'))
+            ->helperText(__('Included in the Members list\'s bulk email export when on and an email address is set.'));
     }
 
     // New paperwork means re-recording who the member is, not just ticking a
@@ -1411,7 +1426,7 @@ class CheckIn extends Page implements HasTable
             ->label(__('Record new paperwork'))
             ->modalDescription(__('Check each detail against the new paperwork and correct anything that has changed.'))
             ->schema($this->identityCaptureSchema())
-            ->fillForm(fn (): array => $this->getSelectedMember()?->only(['preferred_name', 'first_name', 'last_name', 'email']) ?? [])
+            ->fillForm(fn (): array => $this->getSelectedMember()?->only(['preferred_name', 'first_name', 'last_name', 'email', 'email_opt_in']) ?? [])
             ->visible(fn (): bool => ($member = $this->getSelectedMember()) && app(AdmissionPolicy::class)->needsPaperworkCapture($member))
             ->action(function (array $data): void {
                 if ($this->haltForTraining(__('Practice: paperwork recording simulated.'))) {
@@ -1427,6 +1442,7 @@ class CheckIn extends Page implements HasTable
                     'first_name' => $data['first_name'],
                     'last_name' => $data['last_name'],
                     'email' => filled($data['email'] ?? null) ? $data['email'] : null,
+                    'email_opt_in' => (bool) ($data['email_opt_in'] ?? false),
                     'dob' => $data['dob'] ?? $member->dob,
                 ]);
 
@@ -1712,6 +1728,7 @@ class CheckIn extends Page implements HasTable
                 TextInput::make('first_name')->required()->maxLength(60),
                 TextInput::make('last_name')->required()->maxLength(60),
                 TextInput::make('email')->email()->required(fn (): bool => MembershipSetting::current()->member_email_required)->maxLength(120),
+                $this->emailOptInToggle(),
                 Checkbox::make('appears_under_21')
                     ->label(__('Appears to be under :age', ['age' => MembershipSetting::current()->alcohol_flag_age]))
                     ->live(),
@@ -1758,6 +1775,7 @@ class CheckIn extends Page implements HasTable
                             'first_name' => $data['first_name'],
                             'last_name' => $data['last_name'],
                             'email' => filled($data['email'] ?? null) ? $data['email'] : null,
+                            'email_opt_in' => (bool) ($data['email_opt_in'] ?? false),
                             'dob' => $data['dob'] ?? null,
                             'category_id' => $guestCategory->id,
                             'sponsor_id' => $sponsor->id,
