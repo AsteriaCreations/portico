@@ -830,6 +830,45 @@ test('a member missing paperwork must be captured before checking in', function 
         ->and(Attendance::where('member_id', $member->id)->exists())->toBeTrue();
 });
 
+test('the desk identity forms record bulk-email consent', function () {
+    $prospect = clearMember($this->prospective, ['first_name' => null, 'email_opt_in' => false]);
+    $paperwork = clearMember($this->irregular, ['missing_paperwork' => true, 'email_opt_in' => true]);
+    $sponsor = returningMember($this->irregular);
+    $event = Event::factory()->create(['event_date' => now()->toDateString(), 'entry_fee' => 20]);
+
+    Livewire::test(CheckIn::class)
+        ->fillForm(['event_id' => $event->id, 'member_id' => $prospect->id])
+        ->callAction('saveAndPromote', data: [
+            'preferred_name' => 'Newb',
+            'first_name' => 'New',
+            'last_name' => 'Member',
+            'email' => 'new@example.com',
+            'email_opt_in' => true,
+        ])
+        ->assertHasNoActionErrors()
+        ->fillForm(['member_id' => $paperwork->id])
+        ->mountAction('confirmPaperwork')
+        ->assertActionDataSet(['email_opt_in' => true])
+        ->setActionData(['preferred_name' => 'Pat', 'email_opt_in' => false])
+        ->callMountedAction()
+        ->assertHasNoActionErrors()
+        ->fillForm(['member_id' => $sponsor->id])
+        ->callAction('checkIn', data: ['checked_in_at' => now()])
+        ->callAction('registerGuest', data: [
+            'username' => 'optinguest',
+            'preferred_name' => 'Opt',
+            'first_name' => 'Opt',
+            'last_name' => 'In',
+            'email' => 'opt.in@example.com',
+            'email_opt_in' => true,
+        ])
+        ->assertHasNoActionErrors();
+
+    expect($prospect->fresh()->email_opt_in)->toBeTrue()
+        ->and($paperwork->fresh()->email_opt_in)->toBeFalse()
+        ->and(Member::where('username', 'optinguest')->value('email_opt_in'))->toBeTrue();
+});
+
 test('the status line names missing paperwork, not sign-up, when that is the only gap', function () {
     $member = clearMember($this->irregular, ['missing_paperwork' => true]);
     $event = Event::factory()->create(['event_date' => now()->toDateString(), 'entry_fee' => 20]);

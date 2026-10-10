@@ -46,6 +46,10 @@ is fixes only.
   same voucher fields. The register and revenue reports count only the money actually taken; a
   subscription the credit covers entirely is recorded under the Voucher payment method. Needs
   `php artisan migrate` (adds `subscriptions.voucher_coverage` and `vouchers.subscription_id`).
+- **Save & promote to Irregular**, **Record new paperwork** and **Register a guest** on the
+  Check-In Desk now have the **OK to email (bulk list)** toggle next to the email, so consent is
+  captured at sign-up instead of needing a Manager to edit the member afterwards. Record new
+  paperwork shows the member's current setting.
 - Prepaid cash is now kept apart from the night it was taken until the event itself. Cash taken
   at the Check-In Desk for a future door-prepay event still counts as received on that shift,
   but comes off the box's expected close: the desk is told to put it in the event's prepay
