@@ -46,7 +46,8 @@ new class extends Component
     {
         $subscriptions = Subscription::query()
             ->whereRelation('addOn', 'kind', AddOnKind::Entry)
-            ->where('amount_paid', '>', 0)
+            // Paid in money or voucher credit; a $0 perk row is neither.
+            ->where(fn ($query) => $query->where('amount_paid', '>', 0)->orWhere('voucher_coverage', '>', 0))
             ->whereIn('member_id', $this->attendances->pluck('member_id'))
             ->get(['member_id', 'created_at'])
             ->groupBy('member_id');

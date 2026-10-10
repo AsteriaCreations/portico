@@ -53,6 +53,7 @@ use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 use Filament\Schemas\Components\Component;
 use Filament\Schemas\Components\Utilities\Get;
+use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
 use Filament\Support\Enums\Alignment;
 use Filament\Support\Enums\FontWeight;
@@ -493,8 +494,34 @@ class CheckIn extends Page implements HasTable
      */
     public function getLiveDueTotal(): float
     {
-        return Cents::toFloat(($this->getLivePriceBreakdown()?->amountPaidCents ?? 0) + $this->getLiveSubscriptionTotalCents())
+        return Cents::toFloat(($this->getLivePriceBreakdown()?->amountPaidCents ?? 0) + $this->getLiveSubscriptionTotalCents() - $this->getLiveSubscriptionVoucherCents())
             + $this->getLiveAddOnTotal();
+    }
+
+    /**
+     * The voucher credit left over after entry/pool that would go toward the
+     * subscriptions picked in Payment options -- the same split
+     * CheckInService makes, previewed without spending anything.
+     */
+    public function getLiveSubscriptionVoucherCents(): int
+    {
+        $member = $this->getSelectedMember();
+        $subscriptionTotal = $this->getLiveSubscriptionTotalCents();
+
+        if (! $member || $subscriptionTotal <= 0 || ! ($this->pricingData['apply_voucher'] ?? false) || ! MembershipSetting::current()->vouchers_enabled) {
+            return 0;
+        }
+
+        $payer = Member::find(! empty($this->pricingData['voucher_payer_id']) ? $this->pricingData['voucher_payer_id'] : $member->id);
+
+        if (! $payer) {
+            return 0;
+        }
+
+        $available = min(Cents::of($this->pricingData['voucher_amount'] ?? 0), Cents::of($payer->voucherBalance()));
+        $usedOnEntry = $this->getLivePriceBreakdown()?->voucherCoverageCents ?? 0;
+
+        return max(0, min($available - $usedOnEntry, $subscriptionTotal));
     }
 
     // Add-ons never go through PricingService/PriceBreakdown — they're a flat
@@ -560,6 +587,10 @@ class CheckIn extends Page implements HasTable
         $canGrantComp = Gate::allows('grant-event-comp');
         $entryFee = $this->getPriceBreakdown()?->entryFeeCents ?? 0;
         $ownBalance = $member?->voucherBalance() ?? 0.0;
+        // Entry/pool still owed plus any subscription picked above -- credit
+        // can pay toward either (CheckInService spends it in that order).
+        $dueBeforeVoucher = ($this->getLivePriceBreakdownBeforeVoucher()?->amountPaidCents ?? 0) + $this->getLiveSubscriptionTotalCents();
+        $defaultVoucherAmount = Cents::toFloat(min(Cents::of($ownBalance), $dueBeforeVoucher)) ?: null;
         $voucherLabel = $member
             ? __("Apply voucher credit — :amount available on :name's account", ['amount' => $this->formatCurrency($ownBalance), 'name' => $member->displayName()])
             : __('Apply voucher credit');
@@ -612,7 +643,10 @@ class CheckIn extends Page implements HasTable
                 Checkbox::make('apply_voucher')
                     ->label($voucherLabel)
                     ->live()
-                    ->visible($canPreviewPricing && $member && MembershipSetting::current()->vouchers_enabled && ($this->getLivePriceBreakdownBeforeVoucher()?->amountPaidCents ?? 0) > 0),
+                    // Picking a subscription after the form loaded changes
+                    // what's due, so the amount is re-suggested on ticking.
+                    ->afterStateUpdated(fn (Set $set, ?bool $state) => $state ? $set('voucher_amount', $defaultVoucherAmount) : null)
+                    ->visible($canPreviewPricing && $member && MembershipSetting::current()->vouchers_enabled && $dueBeforeVoucher > 0),
                 Select::make('voucher_payer_id')
                     ->label(__("Apply from a different member's balance (optional)"))
                     ->searchable()
@@ -627,7 +661,7 @@ class CheckIn extends Page implements HasTable
                     ->numeric()
                     ->minValue(0.01)
                     ->step(0.01)
-                    ->default(Cents::toFloat(min(Cents::of($ownBalance), $this->getLivePriceBreakdownBeforeVoucher()?->amountPaidCents ?? 0)) ?: null)
+                    ->default($defaultVoucherAmount)
                     ->required(fn (Get $get): bool => (bool) $get('apply_voucher'))
                     ->helperText(__('Capped automatically at the balance available and what\'s still due — a partial amount is fine.'))
                     ->visible(fn (Get $get): bool => $canPreviewPricing && (bool) $get('apply_voucher')),
@@ -1507,6 +1541,35 @@ class CheckIn extends Page implements HasTable
                     ->live()
                     ->options($this->paymentMethodOptions($openShift))
                     ->helperText(fn (Get $get): ?string => PaymentMethod::feeHelperText($get('payment_method'))),
+                // Same voucher fields as Payment options at check-in, minus
+                // the live default: the price isn't known until a plan and
+                // duration are picked, and the amount is capped server-side.
+                Checkbox::make('apply_voucher')
+                    ->label(__("Apply voucher credit — :amount available on :name's account", ['amount' => $this->formatCurrency($member?->voucherBalance() ?? 0.0), 'name' => $member?->displayName()]))
+                    ->live()
+                    ->visible(fn (): bool => MembershipSetting::current()->vouchers_enabled),
+                Select::make('voucher_payer_id')
+                    ->label(__("Apply from a different member's balance (optional)"))
+                    ->searchable()
+                    ->getSearchResultsUsing(fn (string $search) => static::searchMembers($search)
+                        ->mapWithKeys(fn (Member $payer) => [$payer->id => static::memberLabel($payer).' — '.$this->formatCurrency($payer->voucherBalance()).' available'])
+                        ->all())
+                    ->getOptionLabelUsing(fn ($value) => ($payer = Member::find($value)) ? static::memberLabel($payer) : null)
+                    ->helperText(__("Leave blank to use :name's own balance.", ['name' => $member?->displayName()]))
+                    ->visible(fn (Get $get): bool => (bool) $get('apply_voucher')),
+                TextInput::make('voucher_amount')
+                    ->label(__('Voucher amount to apply'))
+                    ->numeric()
+                    ->minValue(0.01)
+                    ->step(0.01)
+                    ->required(fn (Get $get): bool => (bool) $get('apply_voucher'))
+                    ->helperText(__('Capped automatically at the balance available and what\'s still due — a partial amount is fine.'))
+                    ->visible(fn (Get $get): bool => (bool) $get('apply_voucher')),
+                TextInput::make('voucher_reason')
+                    ->label(__('Reason (required — kept on the ledger)'))
+                    ->maxLength(255)
+                    ->required(fn (Get $get): bool => (bool) $get('apply_voucher'))
+                    ->visible(fn (Get $get): bool => (bool) $get('apply_voucher')),
             ])
             ->action(function (array $data): void {
                 if ($this->haltForTraining(__('Practice: subscription purchase simulated.'))) {
@@ -1531,36 +1594,65 @@ class CheckIn extends Page implements HasTable
                 $desiredStart = Carbon::parse($data['desired_start']);
                 $paymentMethod = $data['payment_method'] ?? null;
 
-                $rows = app(SubscriptionBundleService::class)->purchase(
-                    $member,
-                    $addOn,
-                    $months,
-                    $desiredStart,
-                    auth()->user(),
-                    $paymentMethod,
-                    $this->getOpenShift(),
-                );
+                [$rows, $voucherApplied] = DB::transaction(function () use ($data, $member, $addOn, $months, $desiredStart, $paymentMethod): array {
+                    $service = app(SubscriptionBundleService::class);
+                    $rows = $service->purchase(
+                        $member,
+                        $addOn,
+                        $months,
+                        $desiredStart,
+                        auth()->user(),
+                        $paymentMethod,
+                        $this->getOpenShift(),
+                    );
 
-                // Folded onto the first covered month's row rather than
-                // tracked as its own ledger — one flat fee per transaction,
-                // not per month, and this is the same "fold into the
-                // existing column" choice already made for Event Add-Ons.
-                // Deliberately never calls recordOneTimeMethodUsage() here:
-                // a subscription/membership purchase is never one-time-
-                // restricted, so there's nothing to stamp.
+                    // Locked like CheckInService's draw, so two registers
+                    // spending the same balance at once can't overdraw it.
+                    $voucherApplied = 0;
+                    if (($data['apply_voucher'] ?? false) && MembershipSetting::current()->vouchers_enabled) {
+                        $payer = Member::whereKey(! empty($data['voucher_payer_id']) ? $data['voucher_payer_id'] : $member->id)->lockForUpdate()->first();
+
+                        if ($payer) {
+                            $voucherApplied = $service->applyVoucher(
+                                $rows,
+                                $payer,
+                                min(Cents::of($data['voucher_amount'] ?? 0), Cents::of($payer->voucherBalance())),
+                                (string) ($data['voucher_reason'] ?? ''),
+                                auth()->user(),
+                            );
+                        }
+                    }
+
+                    // Folded onto the first month still owing money rather
+                    // than tracked as its own ledger — one flat fee per
+                    // transaction, not per month, and this is the same "fold
+                    // into the existing column" choice already made for Event
+                    // Add-Ons. Deliberately never calls
+                    // recordOneTimeMethodUsage() here: a subscription/
+                    // membership purchase is never one-time-restricted, so
+                    // there's nothing to stamp.
+                    $owing = $rows->first(fn (Subscription $row) => Cents::of($row->amount_paid) > 0);
+                    $transactionFee = $owing ? Cents::of(PaymentMethod::feeFor($paymentMethod)) : 0;
+                    if ($transactionFee > 0) {
+                        $owing->update(['amount_paid' => Cents::toDecimal(Cents::of($owing->amount_paid) + $transactionFee)]);
+                    }
+
+                    return [$rows, $voucherApplied];
+                });
+
                 $first = $rows->first();
-                $transactionFee = $rows->sum('amount_paid') > 0 ? PaymentMethod::feeFor($paymentMethod) : 0.0;
-                if ($transactionFee > 0) {
-                    $first->update(['amount_paid' => $first->amount_paid + $transactionFee]);
-                }
-
                 $last = $rows->last();
                 $rangeLabel = $first->covered_month->isSameMonth($last->covered_month)
                     ? $first->covered_month->translatedFormat('F Y')
                     : $first->covered_month->translatedFormat('F Y').' – '.$last->covered_month->translatedFormat('F Y');
 
+                $title = __('Subscription recorded — :amount covering :range', ['amount' => $this->formatCurrency((float) $rows->sum('amount_paid')), 'range' => $rangeLabel]);
+                if ($voucherApplied > 0) {
+                    $title .= ' ('.__(':amount voucher', ['amount' => $this->formatCurrency(Cents::toFloat($voucherApplied))]).')';
+                }
+
                 Notification::make()
-                    ->title(__('Subscription recorded — :amount covering :range', ['amount' => $this->formatCurrency((float) $rows->sum('amount_paid')), 'range' => $rangeLabel]))
+                    ->title($title)
                     ->success()
                     ->send();
             });

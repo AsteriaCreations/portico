@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-#[Fillable(['member_id', 'amount', 'reason', 'attendance_id', 'recorded_by'])]
+#[Fillable(['member_id', 'amount', 'reason', 'attendance_id', 'subscription_id', 'recorded_by'])]
 class Voucher extends Model
 {
     /** @use HasFactory<VoucherFactory> */
@@ -37,5 +37,10 @@ class Voucher extends Model
     public function recordedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'recorded_by');
+    }
+
+    public function subscription(): BelongsTo
+    {
+        return $this->belongsTo(Subscription::class);
     }
 }

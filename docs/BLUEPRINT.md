@@ -272,6 +272,7 @@ CREATE TABLE subscriptions (
   add_on_id     INT NOT NULL,                        -- what this covers: the entry add-on, or a subscribable one (e.g. Pool)
   covered_month DATE NOT NULL,                        -- first day of covered month (e.g. 2026-07-01)
   amount_paid   DECIMAL(8,2) NOT NULL DEFAULT 0,
+  voucher_coverage DECIMAL(8,2) NOT NULL DEFAULT 0,      -- voucher credit spent on this month; amount_paid is the money taken (see Vouchers)
   paid_on       DATE,
   recorded_by   INT,
   comp_source   VARCHAR(50),                          -- e.g. 'manager_monthly_perk'; NULL for a normal paid sub
@@ -368,10 +369,12 @@ CREATE TABLE vouchers (
   amount        DECIMAL(8,2) NOT NULL,                 -- positive = issued, negative = redeemed
   reason        VARCHAR(255) NOT NULL,                 -- required on every row — see Vouchers below
   attendance_id INT,                                    -- set on redemption rows: the visit this covered
+  subscription_id INT,                                  -- set on redemption rows that paid toward a subscription month
   recorded_by   INT NOT NULL,                            -- who performed the transaction
   created_at TIMESTAMP NULL,
   FOREIGN KEY (member_id)     REFERENCES members(id),
   FOREIGN KEY (attendance_id) REFERENCES attendance(id),
+  FOREIGN KEY (subscription_id) REFERENCES subscriptions(id),
   FOREIGN KEY (recorded_by)   REFERENCES users(id)
 );
 
@@ -571,7 +574,7 @@ Revenue reporting is unchanged: the Monthly Revenue chart already counts a visit
 
 `add_ons` is one editable catalog for two different shapes of "extra charge":
 
-- **Flat, non-subscribable** (the default — e.g. Private room rental, Sleepover): one catalog `price`, opt-in via a checkbox at check-in, always charged in full. Never touches `PricingService` at all — comp, subscriptions, and vouchers only ever apply to entry and to subscribable add-on lines, never to these. Recorded as an `attendance_add_ons` row with `fee`/`coverage`/`covered_by` left null — the row exists purely as a snapshot of what was sold and for how much.
+- **Flat, non-subscribable** (the default — e.g. Private room rental, Sleepover): one catalog `price`, opt-in via a checkbox at check-in, always charged in full. Never touches `PricingService` at all — comp, subscriptions, and vouchers only ever apply to entry and to subscribable add-on lines (vouchers also to a subscription purchase), never to these. Recorded as an `attendance_add_ons` row with `fee`/`coverage`/`covered_by` left null — the row exists purely as a snapshot of what was sold and for how much.
 - **Subscribable** (`subscribable = true` — Pool, at launch): participates in the same coverage engine entry does. A `plans` row can target it (`add_on_id`), a member can hold a `subscriptions` row covering it for a given month, and a one-time `add_on_day_passes` row can cover it for exactly one event. Coverage precedence is day pass, then an active subscription, then nothing — identical to entry's own host-then-subscription-then-nothing order, just without the host case. Priced automatically whenever the event has a price for it — no checkbox, the same "no staff action required" behavior Pool always had.
 
 A subscribable add-on can additionally be `priced_per_event = true` (Pool is the only one today) — its price comes from a per-event source (`events.pool_fee`) instead of one flat catalog `price`, since not every event has a pool. A day pass only ever makes sense for a `priced_per_event` add-on: a flat add-on's price never varies by event, so "buy just today's coverage" is identical to just checking the flat-add-on box that visit. The desk sells a day pass only for tonight's events (`Event::currentQuery()`), re-checked server-side; `membership_settings.day_pass_future_events_enabled` (Feature Flags, off by default) widens that to any event not yet ended. A pass sold ahead lands in that night's box with nothing tying it to the later event, unlike a prepaid entry (see "Prepaid cash").
@@ -608,7 +611,7 @@ Enforced everywhere a subscription can be created: the check-in page's "pay subs
 An append-only ledger of account credit per member — not a stored balance, to avoid the drift a stored total is prone to (especially when members are renamed). A member's available credit is always `SUM(vouchers.amount) WHERE member_id = ?`, computed live, never stored (same "derived, never stored" rule as everywhere else).
 
 - **Issued** by Admin only: a positive-amount row, with a required `reason`. There are many ways to earn one (referral, promo, manual goodwill), so this is free text, not an enum.
-- **Redeemed** by any role, at check-in, as a negative-amount row linked to the `attendance` row it covered via `attendance_id`.
+- **Redeemed** by any role at the desk, as a negative-amount row linked to what it covered: the `attendance` row via `attendance_id`, or a subscription month bought at the desk via `subscription_id` (see "Paying for a subscription with credit" below).
 - **Stackable, no expiry** — typically $25, credit accumulates and lasts until spent.
 - **On-behalf-of redemption.** The balance drawn from doesn't have to belong to the member checking in — anyone with redemption rights (Door included) can apply a *different* member's credit to cover this visit (e.g. a manager spending their own balance on someone else's entry). `reason` is mandatory on redemption rows for exactly this case — it's the only record of who a transfer was for.
 - **Corrections are new rows, never edits.** A wrongly-issued voucher is never updated or deleted; Admin adds an offsetting negative row with a `reason` explaining the correction. `vouchers` has no update/delete path — Manager can view the ledger, only Admin can issue or correct it (redemption at check-in is the one exception, open to every role — see Roles & permissions).
@@ -625,6 +628,8 @@ after due is computed by price(member, event):
 ```
 
 `attendance.voucher_coverage` stores `voucherApplied` as the price snapshot — same rule as `entry_coverage` and each add-on line's own `coverage`: never recomputed later.
+
+**Paying for a subscription with credit.** Credit also pays toward a subscription bought at the desk, either with a check-in or through the standalone "Buy Subscription". At check-in it goes to entry/pool first, then whatever is left of the entered amount goes to the subscription months in order. Each covered `subscriptions` row stores the split the same way as attendance: `amount_paid` is the money taken and `voucher_coverage` is the credit spent. Register reconciliation and revenue reports therefore keep summing `amount_paid` unchanged. A row the credit covers entirely is recorded under the Voucher payment method. Each covered month gets its own redemption row, linked by `vouchers.subscription_id` (and by `attendance_id` too, when it was bought with a check-in).
 
 ---
 

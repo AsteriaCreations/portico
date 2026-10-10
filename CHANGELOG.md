@@ -38,6 +38,14 @@ is fixes only.
 - The "Checked in tonight" list marks anyone who paid for a subscription with that visit (bought
   with the check-in, or by a later **Convert entry to subscription**) with a ticket icon labelled
   "Bought a subscription". A $0 subscription, such as the Manager perk, isn't marked.
+- Voucher credit can now pay for a subscription bought at the Check-In Desk. Picking a Regular
+  Subscription at check-in used to make the entry $0 and hide **Apply voucher credit**, because
+  credit only paid toward entry and pool. Now it stays visible while anything is owed: credit goes
+  to entry and pool first, then to the subscription (month by month for a bundle). Ticking it
+  re-suggests an amount that includes the subscription. **Buy Subscription (no check-in)** has the
+  same voucher fields. The register and revenue reports count only the money actually taken; a
+  subscription the credit covers entirely is recorded under the Voucher payment method. Needs
+  `php artisan migrate` (adds `subscriptions.voucher_coverage` and `vouchers.subscription_id`).
 - Prepaid cash is now kept apart from the night it was taken until the event itself. Cash taken
   at the Check-In Desk for a future door-prepay event still counts as received on that shift,
   but comes off the box's expected close: the desk is told to put it in the event's prepay

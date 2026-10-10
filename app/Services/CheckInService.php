@@ -74,6 +74,7 @@ class CheckInService
             $month = $event->event_date->clone()->startOfMonth();
             // All money in cents -- see App\Support\Cents.
             $subscriptionTotal = 0;
+            $boughtSubscriptions = collect();
 
             // Filtered to currently-purchasable add-ons (Pool
             // excluded while pool_enabled is off) -- looping
@@ -123,7 +124,7 @@ class CheckInService
                     if (! $plan) {
                         continue;
                     }
-                    Subscription::create([
+                    $boughtSubscriptions->push(Subscription::create([
                         'member_id' => $member->id,
                         'add_on_id' => $addOn->id,
                         'covered_month' => $month->toDateString(),
@@ -132,7 +133,7 @@ class CheckInService
                         'recorded_by' => $staff->id,
                         'payment_method' => $paymentMethod,
                         'register_shift_id' => $openShift?->id,
-                    ]);
+                    ]));
                     $subscriptionTotal += Cents::of($plan->price);
 
                     continue;
@@ -147,6 +148,7 @@ class CheckInService
                     $paymentMethod,
                     $openShift,
                 );
+                $boughtSubscriptions = $boughtSubscriptions->merge($bundleRows);
                 $subscriptionTotal += $bundleRows->sum(fn (Subscription $row) => Cents::of($row->amount_paid));
             }
 
@@ -209,11 +211,21 @@ class CheckInService
                 }
             }
 
+            // Whatever of the requested credit entry/pool didn't use goes on
+            // to the subscriptions bought above; it's spent once the
+            // attendance row exists, so its ledger rows can link to it.
+            $subscriptionVoucher = 0;
+            if ($voucherPayer && $subscriptionTotal > 0) {
+                $available = min($request->voucherAmountCents, Cents::of($voucherPayer->voucherBalance()));
+                $subscriptionVoucher = max(0, min($available - $voucherApplied, $subscriptionTotal));
+                $subscriptionTotal -= $subscriptionVoucher;
+            }
+
             // Voucher credit covered the whole visit, so nothing changed
             // hands: recorded as Voucher whatever the desk picked, or a
             // stray Cash pick reads as cash taken. A partial draw keeps the
             // desk's method, which is how the rest was paid.
-            if ($voucherApplied > 0 && ($breakdown->amountPaidCents + $addOnTotal + $subscriptionTotal) <= 0) {
+            if ($voucherApplied + $subscriptionVoucher > 0 && ($breakdown->amountPaidCents + $addOnTotal + $subscriptionTotal) <= 0) {
                 $paymentMethod = PaymentMethod::VOUCHER;
             }
 
@@ -290,7 +302,18 @@ class CheckInService
                 ]);
             }
 
-            return new CheckInResult($attendance, $breakdown, $subscriptionTotal, $voucherApplied, $addOnTotal);
+            if ($subscriptionVoucher > 0) {
+                app(SubscriptionBundleService::class)->applyVoucher(
+                    $boughtSubscriptions,
+                    $voucherPayer,
+                    $subscriptionVoucher,
+                    $request->voucherReason,
+                    $staff,
+                    $attendance,
+                );
+            }
+
+            return new CheckInResult($attendance, $breakdown, $subscriptionTotal, $voucherApplied + $subscriptionVoucher, $addOnTotal);
         });
     }
 }

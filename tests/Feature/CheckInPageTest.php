@@ -16,6 +16,7 @@ use App\Models\CompReason;
 use App\Models\Event;
 use App\Models\Member;
 use App\Models\MembershipSetting;
+use App\Models\PaymentMethod;
 use App\Models\Plan;
 use App\Models\Register;
 use App\Models\Subscription;
@@ -2558,4 +2559,56 @@ test('buttons that do not apply are left out rather than shown disabled', functi
         ->assertDontSee('Record a waiver signature')
         ->assertDontSee('Convert entry to subscription')
         ->assertDontSee('Mark as returned');
+});
+
+test('voucher credit stays available, and pays toward it, when a subscription covers tonight', function () {
+    // $20 entry is fully covered by the $25 subscription credit, so the only
+    // thing owed is the $60 subscription itself.
+    $member = clearMember($this->irregular, ['subscription_eligible' => true]);
+    $event = Event::factory()->create(['event_date' => now()->toDateString(), 'entry_fee' => 20, 'pool_fee' => 0]);
+    Voucher::factory()->for($member)->create(['amount' => 100, 'recorded_by' => $this->user->id]);
+
+    $page = Livewire::test(CheckIn::class)
+        ->fillForm(['event_id' => $event->id, 'member_id' => $member->id])
+        ->fillForm(['subscription_regular_duration' => '1'], 'pricingForm')
+        ->fillForm(['apply_voucher' => true], 'pricingForm')
+        ->assertSet('pricingData.voucher_amount', 60)
+        ->fillForm(['voucher_reason' => 'reward'], 'pricingForm');
+
+    expect($page->instance()->getLiveDueTotal())->toEqual(0.0);
+
+    $page->callAction('checkIn', data: ['checked_in_at' => now()])->assertHasNoActionErrors();
+
+    $subscription = Subscription::where('member_id', $member->id)->sole();
+    expect($subscription->amount_paid)->toEqual(0)
+        ->and($subscription->voucher_coverage)->toEqual(60)
+        ->and($subscription->payment_method)->toBe(PaymentMethod::VOUCHER)
+        ->and($member->voucherBalance())->toEqual(40.0);
+});
+
+test('a standalone subscription purchase can be paid partly with voucher credit', function () {
+    $member = clearMember($this->irregular, ['subscription_eligible' => true]);
+    Voucher::factory()->for($member)->create(['amount' => 40, 'recorded_by' => $this->user->id]);
+
+    Livewire::test(CheckIn::class)
+        ->fillForm(['member_id' => $member->id])
+        ->callAction('purchaseSubscription', data: [
+            'add_on_id' => $this->entry->id,
+            'desired_start' => now()->startOfMonth(),
+            'duration_months' => '1',
+            'payment_method' => 'comp',
+            'apply_voucher' => true,
+            'voucher_amount' => 75,
+            'voucher_reason' => 'reward',
+        ])
+        ->assertHasNoActionErrors();
+
+    $subscription = Subscription::where('member_id', $member->id)->sole();
+    expect($subscription->amount_paid)->toEqual(20)
+        ->and($subscription->voucher_coverage)->toEqual(40)
+        ->and($subscription->payment_method)->toBe('comp')
+        ->and(Voucher::where('subscription_id', $subscription->id)->sole())
+        ->amount->toEqual(-40)
+        ->attendance_id->toBeNull()
+        ->and($member->voucherBalance())->toEqual(0.0);
 });

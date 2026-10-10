@@ -13,12 +13,14 @@ use App\Models\Member;
 use App\Models\MembershipSetting;
 use App\Models\PaymentMethod;
 use App\Models\Plan;
+use App\Models\RegisterShift;
 use App\Models\Subscription;
 use App\Models\User;
 use App\Models\Voucher;
 use App\Services\CheckInRequest;
 use App\Services\CheckInResult;
 use App\Services\CheckInService;
+use App\Services\RegisterShiftService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
 /*
@@ -227,4 +229,92 @@ test('charges no card fee on a visit that subscription credit and a voucher cove
 
     expect($result->attendance->fresh()->amount_paid)->toEqual(0)
         ->and(Voucher::where('attendance_id', $result->attendance->id)->sole()->amount)->toEqual(-0.30);
+});
+
+test('spends voucher credit left over after entry on the subscription bought with the check-in', function () {
+    $member = serviceMember($this->category, 'subscriber', ['subscription_eligible' => true]);
+    Voucher::factory()->create(['member_id' => $member->id, 'amount' => 50]);
+
+    // $40 entry - $25 subscription credit leaves $15 entry; the other $35 of
+    // the $50 goes toward the $60 subscription, leaving $25 to pay.
+    $result = recordCheckIn($member, $this->event, $this->manager, new CheckInRequest(
+        paymentMethod: 'cash',
+        subscriptionMonths: [$this->entry->id => 1],
+        applyVoucher: true,
+        voucherAmountCents: 5000,
+        voucherReason: 'reward',
+    ));
+
+    $subscription = Subscription::where('member_id', $member->id)->sole();
+    expect($result->voucherAppliedCents)->toBe(5000)
+        ->and($result->subscriptionTotalCents)->toBe(2500)
+        ->and($result->attendance->amount_paid)->toEqual(0)
+        ->and($result->attendance->payment_method)->toBe('cash')
+        ->and($subscription->amount_paid)->toEqual(25)
+        ->and($subscription->voucher_coverage)->toEqual(35)
+        ->and($subscription->payment_method)->toBe('cash')
+        ->and(Voucher::where('subscription_id', $subscription->id)->sole())
+        ->amount->toEqual(-35)
+        ->attendance_id->toBe($result->attendance->id)
+        ->and($member->voucherBalance())->toEqual(0);
+});
+
+test('records Voucher on the visit and the subscription when credit covers both', function () {
+    $member = serviceMember($this->category, 'subscriber', ['subscription_eligible' => true]);
+    Voucher::factory()->create(['member_id' => $member->id, 'amount' => 100]);
+
+    $result = recordCheckIn($member, $this->event, $this->manager, new CheckInRequest(
+        paymentMethod: 'cash',
+        subscriptionMonths: [$this->entry->id => 1],
+        applyVoucher: true,
+        voucherAmountCents: 10000,
+        voucherReason: 'reward',
+    ));
+
+    $subscription = Subscription::where('member_id', $member->id)->sole();
+    expect($result->voucherAppliedCents)->toBe(7500)
+        ->and($result->attendance->payment_method)->toBe(PaymentMethod::VOUCHER)
+        ->and($subscription->amount_paid)->toEqual(0)
+        ->and($subscription->voucher_coverage)->toEqual(60)
+        ->and($subscription->payment_method)->toBe(PaymentMethod::VOUCHER)
+        ->and($member->voucherBalance())->toEqual(25);
+});
+
+test('spends voucher credit across a bundle month by month', function () {
+    Plan::create(['add_on_id' => $this->entry->id, 'duration_months' => 3, 'price' => 150, 'credit' => 25, 'effective_from' => '2026-01-01']);
+    $member = serviceMember($this->category, 'bundler', ['subscription_eligible' => true]);
+    $payer = serviceMember($this->category, 'payer');
+    Voucher::factory()->create(['member_id' => $payer->id, 'amount' => 80]);
+
+    // $15 on entry, then $65 across three $50 months: $50 + $15 + $0.
+    recordCheckIn($member, $this->event, $this->manager, new CheckInRequest(
+        paymentMethod: 'cash',
+        subscriptionMonths: [$this->entry->id => 3],
+        applyVoucher: true,
+        voucherPayerId: $payer->id,
+        voucherAmountCents: 8000,
+        voucherReason: 'gift',
+    ));
+
+    $rows = Subscription::where('member_id', $member->id)->orderBy('covered_month')->get();
+    expect($rows->map(fn (Subscription $row) => [(float) $row->amount_paid, (float) $row->voucher_coverage, $row->payment_method])->all())
+        ->toBe([[0.0, 50.0, PaymentMethod::VOUCHER], [35.0, 15.0, 'cash'], [50.0, 0.0, 'cash']])
+        ->and(Voucher::whereNotNull('subscription_id')->where('member_id', $payer->id)->count())->toBe(2)
+        ->and($payer->voucherBalance())->toEqual(0);
+});
+
+test('the register counts only the cash taken for a subscription a voucher partly paid', function () {
+    $shift = RegisterShift::factory()->create();
+    $member = serviceMember($this->category, 'subscriber', ['subscription_eligible' => true]);
+    Voucher::factory()->create(['member_id' => $member->id, 'amount' => 50]);
+
+    app(CheckInService::class)->record($member, $this->event, $this->manager, new CheckInRequest(
+        paymentMethod: 'cash',
+        subscriptionMonths: [$this->entry->id => 1],
+        applyVoucher: true,
+        voucherAmountCents: 5000,
+        voucherReason: 'reward',
+    ), $shift);
+
+    expect(app(RegisterShiftService::class)->cashReceivedCents($shift))->toBe(2500);
 });
