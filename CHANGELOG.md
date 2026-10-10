@@ -31,6 +31,10 @@ is fixes only.
 
 ### Added
 
+- The Check-In Desk's "Checked in tonight" list now names each person the way the member picker
+  does (the club's member search fields, such as username), so it matches what staff searched
+  by. Hover over a name to see the desk display name (preferred name by default); on a phone it
+  shows as a second line instead.
 - Prepaid cash is now kept apart from the night it was taken until the event itself. Cash taken
   at the Check-In Desk for a future door-prepay event still counts as received on that shift,
   but comes off the box's expected close: the desk is told to put it in the event's prepay

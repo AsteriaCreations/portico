@@ -59,12 +59,19 @@ new class extends Component
         @if ($this->attendances->isEmpty())
             <p class="px-3 py-2 text-sm text-gray-500 dark:text-gray-400">{{ __('No one checked in yet.') }}</p>
         @else
-            {{-- Below sm: one stacked card per person, so a phone at the desk
+            {{-- Each person is listed by pickerLabel() -- the text the member picker shows,
+            so it matches what staff searched by -- with displayName() (the desk greeting
+            name) as a hover title on the table, or a second line on a card (no hover on a phone).
+
+            Below sm: one stacked card per person, so a phone at the desk
             never needs the sideways scroll the 5-column table forces. --}}
             <div class="checked-in-roster-cards">
                 @foreach ($this->attendances as $checkedInAttendance)
                     <div class="border-t border-gray-200 py-2 text-sm dark:border-white/10">
-                        <p class="font-medium">{{ $checkedInAttendance->member->displayName() }}</p>
+                        <p class="font-medium">{{ \App\Models\Member::pickerLabel($checkedInAttendance->member) }}</p>
+                        @if ($checkedInAttendance->member->displayName() !== \App\Models\Member::pickerLabel($checkedInAttendance->member))
+                            <p class="text-gray-500 dark:text-gray-400">{{ $checkedInAttendance->member->displayName() }}</p>
+                        @endif
                         <p class="text-gray-500 dark:text-gray-400">{{ $this->event->name }} &middot; {{ $this->event->event_date->isoFormat('ll') }}</p>
                         <p class="text-gray-500 dark:text-gray-400">{{ $checkedInAttendance->checked_in_at->isoFormat('LT') }} &middot; {{ \App\Models\MembershipSetting::formatMoney($checkedInAttendance->amount_paid) }}</p>
                     </div>
@@ -86,7 +93,7 @@ new class extends Component
                     <tbody>
                         @foreach ($this->attendances as $checkedInAttendance)
                             <tr class="border-t border-gray-200 dark:border-white/10">
-                                <td class="px-3 py-2 text-sm">{{ $checkedInAttendance->member->displayName() }}</td>
+                                <td class="px-3 py-2 text-sm"><span title="{{ $checkedInAttendance->member->displayName() }}">{{ \App\Models\Member::pickerLabel($checkedInAttendance->member) }}</span></td>
                                 <td class="px-3 py-2 text-sm">{{ $this->event->name }}</td>
                                 <td class="px-3 py-2 text-sm">{{ $this->event->event_date->isoFormat('ll') }}</td>
                                 <td class="px-3 py-2 text-sm">{{ $checkedInAttendance->checked_in_at->isoFormat('LT') }}</td>
