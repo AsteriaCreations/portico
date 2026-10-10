@@ -1,9 +1,15 @@
 <?php
 
 use App\Enums\Role;
+use App\Filament\Admin\Resources\RegisterShifts\Pages\ListRegisterShifts;
+use App\Models\Attendance;
+use App\Models\MembershipSetting;
+use App\Models\Register;
 use App\Models\RegisterShift;
 use App\Models\User;
+use App\Services\RegisterShiftService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Livewire\Livewire;
 
 uses(RefreshDatabase::class);
 
@@ -47,4 +53,19 @@ test('a door user can view a single shift, including its miscellaneous payments 
     $shift = RegisterShift::factory()->create();
 
     $this->actingAs($door)->get("/admin/register-shifts/{$shift->id}")->assertSuccessful();
+});
+
+test('clicking a shift\'s variance peeks at the math behind it', function () {
+    $door = shiftUserWithRole(Role::Door);
+    $this->actingAs($door);
+
+    $service = app(RegisterShiftService::class);
+    $shift = $service->openShift(Register::factory()->create(), $door, 100);
+    Attendance::factory()->create(['register_shift_id' => $shift->id, 'payment_method' => 'cash', 'amount_paid' => 20]);
+    Attendance::factory()->create(['register_shift_id' => $shift->id, 'payment_method' => 'venmo', 'amount_paid' => 15]);
+    $closed = $service->closeShift($shift, $door, 118);
+
+    Livewire::test(ListRegisterShifts::class)
+        ->mountTableAction('varianceMath', $closed)
+        ->assertMountedActionModalSee(['Expected in the box', MembershipSetting::formatMoney(120), MembershipSetting::formatMoney(-2), 'Venmo']);
 });
