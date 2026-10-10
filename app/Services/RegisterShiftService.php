@@ -296,6 +296,45 @@ class RegisterShiftService
         ];
     }
 
+    /**
+     * Money taken on this shift by every non-cash method (Venmo, PayPal,
+     * card, ...), per method -- the part of revenueBreakdown() that never
+     * goes in the box, so the desk can tell it apart from the cash it
+     * counts. Same rows as revenueBreakdown(), prepays included; methods
+     * that took nothing (Voucher, Comp, a $0 kiosk check-in) are left out.
+     *
+     * @return array<string, int> method label => cents, in sort order
+     */
+    public function electronicByMethodCents(RegisterShift $shift): array
+    {
+        $cashCodes = PaymentMethod::cashCodes()->all();
+        $totals = [];
+
+        $rows = collect()
+            ->concat(Attendance::where('register_shift_id', $shift->id)->get(['payment_method', 'amount_paid']))
+            ->concat(VisitRemoval::where('register_shift_id', $shift->id)->where('after_shift_closed', true)->get(['payment_method', 'amount_paid']))
+            ->concat(Subscription::where('register_shift_id', $shift->id)->get(['payment_method', 'amount_paid']))
+            ->concat(AddOnDayPass::where('register_shift_id', $shift->id)->get(['payment_method', 'amount_paid']))
+            ->concat(MiscellaneousPayment::where('register_shift_id', $shift->id)->get(['payment_method', 'amount'])
+                ->map(fn (MiscellaneousPayment $payment) => (object) ['payment_method' => $payment->payment_method, 'amount_paid' => $payment->amount]));
+
+        foreach ($rows as $row) {
+            if ($row->payment_method === null || in_array($row->payment_method, $cashCodes, true)) {
+                continue;
+            }
+
+            $totals[$row->payment_method] = ($totals[$row->payment_method] ?? 0) + Cents::of($row->amount_paid);
+        }
+
+        return PaymentMethod::whereIn('code', array_keys($totals))
+            ->orderBy('sort_order')
+            ->orderBy('label')
+            ->get(['code', 'label'])
+            ->mapWithKeys(fn (PaymentMethod $method) => [$method->label => $totals[$method->code]])
+            ->filter(fn (int $cents) => $cents !== 0)
+            ->all();
+    }
+
     public function totalDrops(RegisterShift $shift): float
     {
         return Cents::toFloat($this->totalDropsCents($shift));

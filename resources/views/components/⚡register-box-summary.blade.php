@@ -41,6 +41,14 @@ new class extends Component
         return $this->shift ? app(RegisterShiftService::class)->revenueBreakdown($this->shift) : null;
     }
 
+    // The non-cash part of breakdown(), per method -- counted in those
+    // figures but never in the box.
+    #[Computed]
+    public function electronic(): array
+    {
+        return $this->shift ? app(RegisterShiftService::class)->electronicByMethodCents($this->shift) : [];
+    }
+
     // Cash handed to instructors out of this box -- already taken off
     // expected(), shown so the lower figure explains itself.
     #[Computed]
@@ -88,6 +96,15 @@ re-find these lines after every refresh. --}}
                 'other' => \App\Models\MembershipSetting::formatMoney($this->breakdown['other']),
             ]) }}
         </p>
+        @if ($this->electronic !== [])
+            <p role="status" class="text-sm text-gray-500">
+                {{ __('Electronic, included above but not in the box: :methods', [
+                    'methods' => collect($this->electronic)
+                        ->map(fn (int $cents, string $label) => $label.' '.\App\Models\MembershipSetting::formatMoney(\App\Support\Cents::toFloat($cents)))
+                        ->implode(' · '),
+                ]) }}
+            </p>
+        @endif
         @if ($this->prepaidAheadCents !== 0)
             <p role="status" class="text-sm text-gray-500">
                 {{ __('Prepaid cash for later events :amount — in each event\'s prepay envelope, not this box', ['amount' => \App\Models\MembershipSetting::formatMoney(\App\Support\Cents::toFloat($this->prepaidAheadCents))]) }}

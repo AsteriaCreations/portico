@@ -31,6 +31,11 @@ is fixes only.
 
 ### Added
 
+- The Check-In Desk's cash box summary now lists the money taken electronically (Venmo, PayPal,
+  card, ...) per payment method, since the Event / Subscription / Other figures above it count
+  every method but only the cash is in the box. **Close Box** lists the same totals, even when the
+  envelope reminder is off or no cash came in, so the night can be checked against each payment
+  app's own record.
 - The Check-In Desk's "Checked in tonight" list now names each person the way the member picker
   does (the club's member search fields, such as username), so it matches what staff searched
   by. Hover over a name to see the desk display name (preferred name by default); on a phone it
