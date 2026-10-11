@@ -105,7 +105,7 @@ class DemoDataSeeder extends Seeder
         $regulars = Member::factory()->count(45)->create(['category_id' => $irregular->id]);
 
         // A few flagged states, so the resources/reports that surface them
-        // (watchlist icon column, ban exclusion on Showrunner comps, under-21
+        // (watchlist badge, ban exclusion on Showrunner comps, under-21
         // flag at check-in) have something real to show.
         $banned = Member::factory()->count(2)->create([
             'category_id' => $irregular->id,
