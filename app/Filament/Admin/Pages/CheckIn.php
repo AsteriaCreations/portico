@@ -599,6 +599,17 @@ class CheckIn extends Page implements HasTable
         // can pay toward either (CheckInService spends it in that order).
         $dueBeforeVoucher = ($this->getLivePriceBreakdownBeforeVoucher()?->amountPaidCents ?? 0) + $this->getLiveSubscriptionTotalCents();
         $defaultVoucherAmount = Cents::toFloat(min(Cents::of($ownBalance), $dueBeforeVoucher)) ?: null;
+        // The suggestion follows whoever's balance is being drawn: the
+        // attendee's own, or the other member picked below. Seeding it from
+        // the attendee's balance alone left it blank (or at the attendee's
+        // smaller balance) when another member was paying.
+        $suggestVoucherAmount = function (mixed $payerId) use ($member, $ownBalance, $dueBeforeVoucher): ?float {
+            $balance = filled($payerId) && (int) $payerId !== $member?->id
+                ? (Member::find($payerId)?->voucherBalance() ?? 0.0)
+                : $ownBalance;
+
+            return Cents::toFloat(min(Cents::of($balance), $dueBeforeVoucher)) ?: null;
+        };
         $voucherLabel = $member
             ? __("Apply voucher credit — :amount available on :name's account", ['amount' => $this->formatCurrency($ownBalance), 'name' => $member->displayName()])
             : __('Apply voucher credit');
@@ -653,10 +664,12 @@ class CheckIn extends Page implements HasTable
                     ->live()
                     // Picking a subscription after the form loaded changes
                     // what's due, so the amount is re-suggested on ticking.
-                    ->afterStateUpdated(fn (Set $set, ?bool $state) => $state ? $set('voucher_amount', $defaultVoucherAmount) : null)
+                    ->afterStateUpdated(fn (Set $set, Get $get, ?bool $state) => $state ? $set('voucher_amount', $suggestVoucherAmount($get('voucher_payer_id'))) : null)
                     ->visible($canPreviewPricing && $member && MembershipSetting::current()->vouchers_enabled && $dueBeforeVoucher > 0),
                 Select::make('voucher_payer_id')
                     ->label(__("Apply from a different member's balance (optional)"))
+                    ->live()
+                    ->afterStateUpdated(fn (Set $set, mixed $state) => $set('voucher_amount', $suggestVoucherAmount($state)))
                     ->searchable()
                     ->getSearchResultsUsing(fn (string $search) => static::searchMembers($search)
                         ->mapWithKeys(fn (Member $payer) => [$payer->id => static::memberLabel($payer).' — '.$this->formatCurrency($payer->voucherBalance()).' available'])
@@ -670,6 +683,8 @@ class CheckIn extends Page implements HasTable
                     ->minValue(0.01)
                     ->step(0.01)
                     ->default($defaultVoucherAmount)
+                    // So the Due line follows a typed amount, not just a suggested one.
+                    ->live(onBlur: true)
                     ->required(fn (Get $get): bool => (bool) $get('apply_voucher'))
                     ->helperText(__('Capped automatically at the balance available and what\'s still due — a partial amount is fine.'))
                     ->visible(fn (Get $get): bool => $canPreviewPricing && (bool) $get('apply_voucher')),
