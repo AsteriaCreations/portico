@@ -49,6 +49,12 @@ is fixes only.
 - The "Checked in tonight" list marks anyone who paid for a subscription with that visit (bought
   with the check-in, or by a later **Convert entry to subscription**) with a ticket icon labelled
   "Bought a subscription". A $0 subscription, such as the Manager perk, isn't marked.
+- The "Checked in tonight" list also marks a guest (a person icon; hover for "Guest of" and the
+  sponsor's name) and a new member: an Irregular on their first visit, which is the night a
+  Prospective is promoted (a sparkles icon). **Active Patrons** shows the same two as **Guest** and
+  **New member** badges, and its **Watchlist** and **Overnight** badges now carry icons too.
+- A key above the "Checked in tonight" list says what each of its icons means (Guest, New
+  member, Bought a subscription). It shows once someone is checked in.
 - Voucher credit can now pay for a subscription bought at the Check-In Desk. Picking a Regular
   Subscription at check-in used to make the entry $0 and hide **Apply voucher credit**, because
   credit only paid toward entry and pool. Now it stays visible while anything is owed: credit goes

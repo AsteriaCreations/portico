@@ -26,7 +26,8 @@ new class extends Component
     public function attendances(): Collection
     {
         return Attendance::query()
-            ->with('member')
+            ->with(['member.category', 'member.sponsor'])
+            ->withFirstArrival()
             ->where('event_id', $this->eventId)
             ->whereNotNull('checked_in_at')
             ->orderByDesc('checked_in_at')
@@ -58,6 +59,43 @@ new class extends Component
             ->mapWithKeys(fn (Attendance $attendance): array => [$attendance->id => true])
             ->all();
     }
+
+    /**
+     * The icons beside a person's name, the same list for the phone cards
+     * and the table: a guest (with their sponsor), a member promoted from
+     * Prospective tonight, and a subscription bought with the visit.
+     *
+     * @return list<array{icon: string, label: string, color: string}>
+     */
+    public function markers(Attendance $attendance): array
+    {
+        $member = $attendance->member;
+        $legend = $this->legend();
+
+        return array_values(array_filter([
+            $member->isGuest() ? [
+                ...$legend['guest'],
+                'label' => $member->sponsor ? __('Guest of :sponsor', ['sponsor' => $member->sponsor->displayName()]) : __('Guest'),
+            ] : null,
+            $attendance->isNewMemberVisit() ? $legend['new_member'] : null,
+            isset($this->boughtSubscription[$attendance->id]) ? $legend['subscription'] : null,
+        ]));
+    }
+
+    /**
+     * Every icon markers() can show, with its plain meaning: the key above
+     * the list, and the single place each icon and color is defined.
+     *
+     * @return array<string, array{icon: string, label: string, color: string}>
+     */
+    public function legend(): array
+    {
+        return [
+            'guest' => ['icon' => 'heroicon-m-user-plus', 'label' => __('Guest'), 'color' => 'text-info-600 dark:text-info-400'],
+            'new_member' => ['icon' => 'heroicon-m-sparkles', 'label' => __('New member — first visit'), 'color' => 'text-primary-600 dark:text-primary-400'],
+            'subscription' => ['icon' => 'heroicon-m-ticket', 'label' => __('Bought a subscription'), 'color' => 'text-success-600 dark:text-success-400'],
+        ];
+    }
 };
 ?>
 
@@ -87,6 +125,18 @@ new class extends Component
         @if ($this->attendances->isEmpty())
             <p class="px-3 py-2 text-sm text-gray-500 dark:text-gray-400">{{ __('No one checked in yet.') }}</p>
         @else
+            {{-- Key to the icons beside names. The icons here are decorative (aria-hidden):
+            the text beside each says what it means, and the icons in the list carry their own
+            aria-label. --}}
+            <ul aria-label="{{ __('Icon key') }}" class="flex flex-wrap gap-x-4 gap-y-1 px-3 pb-2 text-xs text-gray-500 dark:text-gray-400">
+                @foreach ($this->legend() as $key)
+                    <li class="flex items-center gap-1">
+                        <span aria-hidden="true" class="{{ $key['color'] }}"><x-filament::icon :icon="$key['icon']" /></span>
+                        {{ $key['label'] }}
+                    </li>
+                @endforeach
+            </ul>
+
             {{-- Each person is listed by pickerLabel() -- the text the member picker shows,
             so it matches what staff searched by -- with displayName() (the desk greeting
             name) as a hover title on the table, or a second line on a card (no hover on a phone).
@@ -98,9 +148,9 @@ new class extends Component
                     <div class="border-t border-gray-200 py-2 text-sm dark:border-white/10">
                         <p class="flex items-center gap-1 font-medium">
                             {{ \App\Models\Member::pickerLabel($checkedInAttendance->member) }}
-                            @if (isset($this->boughtSubscription[$checkedInAttendance->id]))
-                                <span role="img" aria-label="{{ __('Bought a subscription') }}" title="{{ __('Bought a subscription') }}" class="text-success-600 dark:text-success-400"><x-filament::icon icon="heroicon-m-ticket" /></span>
-                            @endif
+                            @foreach ($this->markers($checkedInAttendance) as $marker)
+                                <span role="img" aria-label="{{ $marker['label'] }}" title="{{ $marker['label'] }}" class="{{ $marker['color'] }}"><x-filament::icon :icon="$marker['icon']" /></span>
+                            @endforeach
                         </p>
                         @if ($checkedInAttendance->member->displayName() !== \App\Models\Member::pickerLabel($checkedInAttendance->member))
                             <p class="text-gray-500 dark:text-gray-400">{{ $checkedInAttendance->member->displayName() }}</p>
@@ -129,9 +179,9 @@ new class extends Component
                                 <td class="px-3 py-2 text-sm">
                                     <span class="flex items-center gap-1">
                                         <span title="{{ $checkedInAttendance->member->displayName() }}">{{ \App\Models\Member::pickerLabel($checkedInAttendance->member) }}</span>
-                                        @if (isset($this->boughtSubscription[$checkedInAttendance->id]))
-                                            <span role="img" aria-label="{{ __('Bought a subscription') }}" title="{{ __('Bought a subscription') }}" class="text-success-600 dark:text-success-400"><x-filament::icon icon="heroicon-m-ticket" /></span>
-                                        @endif
+                                        @foreach ($this->markers($checkedInAttendance) as $marker)
+                                            <span role="img" aria-label="{{ $marker['label'] }}" title="{{ $marker['label'] }}" class="{{ $marker['color'] }}"><x-filament::icon :icon="$marker['icon']" /></span>
+                                        @endforeach
                                     </span>
                                 </td>
                                 <td class="px-3 py-2 text-sm">{{ $this->event->name }}</td>
