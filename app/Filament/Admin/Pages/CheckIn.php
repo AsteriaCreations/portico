@@ -22,7 +22,6 @@ use App\Models\PaymentMethod;
 use App\Models\Plan;
 use App\Models\Register;
 use App\Models\RegisterShift;
-use App\Models\Subscription;
 use App\Models\Voucher;
 use App\Notifications\LastCheckInNotification;
 use App\Services\AdmissionDecision;
@@ -1622,73 +1621,25 @@ class CheckIn extends Page implements HasTable
                 $addOn = AddOn::find($data['add_on_id']);
                 abort_unless($addOn, 404);
 
-                // Re-checked here, not just via the filtered Select options
-                // above -- same defensive pattern as every other standalone
-                // action in this app. Door can't reach the Settings page to
-                // flip pool_enabled, so hiding the option alone isn't
-                // enough. Entry is always purchasable.
-                $purchasableIds = AddOn::subscribable()->get()->filter(fn (AddOn $a) => $a->isCurrentlyPurchasable())->pluck('id');
-                abort_unless($addOn->id === AddOn::entry()->id || $purchasableIds->contains($addOn->id), 403);
+                // The service re-checks the add-on is purchasable, so a
+                // forged add_on_id can't route around the filtered options.
+                $sale = app(SubscriptionBundleService::class)->sell(
+                    $member,
+                    $addOn,
+                    (int) $data['duration_months'],
+                    Carbon::parse($data['desired_start']),
+                    auth()->user(),
+                    paymentMethod: $data['payment_method'] ?? null,
+                    registerShift: $this->getOpenShift(),
+                    applyVoucher: (bool) ($data['apply_voucher'] ?? false),
+                    voucherPayerId: ! empty($data['voucher_payer_id']) ? (int) $data['voucher_payer_id'] : null,
+                    voucherCents: Cents::of($data['voucher_amount'] ?? 0),
+                    voucherReason: (string) ($data['voucher_reason'] ?? ''),
+                );
 
-                $months = (int) $data['duration_months'];
-                $desiredStart = Carbon::parse($data['desired_start']);
-                $paymentMethod = $data['payment_method'] ?? null;
-
-                [$rows, $voucherApplied] = DB::transaction(function () use ($data, $member, $addOn, $months, $desiredStart, $paymentMethod): array {
-                    $service = app(SubscriptionBundleService::class);
-                    $rows = $service->purchase(
-                        $member,
-                        $addOn,
-                        $months,
-                        $desiredStart,
-                        auth()->user(),
-                        $paymentMethod,
-                        $this->getOpenShift(),
-                    );
-
-                    // Locked like CheckInService's draw, so two registers
-                    // spending the same balance at once can't overdraw it.
-                    $voucherApplied = 0;
-                    if (($data['apply_voucher'] ?? false) && MembershipSetting::current()->vouchers_enabled) {
-                        $payer = Member::whereKey(! empty($data['voucher_payer_id']) ? $data['voucher_payer_id'] : $member->id)->lockForUpdate()->first();
-
-                        if ($payer) {
-                            $voucherApplied = $service->applyVoucher(
-                                $rows,
-                                $payer,
-                                min(Cents::of($data['voucher_amount'] ?? 0), Cents::of($payer->voucherBalance())),
-                                (string) ($data['voucher_reason'] ?? ''),
-                                auth()->user(),
-                            );
-                        }
-                    }
-
-                    // Folded onto the first month still owing money rather
-                    // than tracked as its own ledger — one flat fee per
-                    // transaction, not per month, and this is the same "fold
-                    // into the existing column" choice already made for Event
-                    // Add-Ons. Deliberately never calls
-                    // recordOneTimeMethodUsage() here: a subscription/
-                    // membership purchase is never one-time-restricted, so
-                    // there's nothing to stamp.
-                    $owing = $rows->first(fn (Subscription $row) => Cents::of($row->amount_paid) > 0);
-                    $transactionFee = $owing ? Cents::of(PaymentMethod::feeFor($paymentMethod)) : 0;
-                    if ($transactionFee > 0) {
-                        $owing->update(['amount_paid' => Cents::toDecimal(Cents::of($owing->amount_paid) + $transactionFee)]);
-                    }
-
-                    return [$rows, $voucherApplied];
-                });
-
-                $first = $rows->first();
-                $last = $rows->last();
-                $rangeLabel = $first->covered_month->isSameMonth($last->covered_month)
-                    ? $first->covered_month->translatedFormat('F Y')
-                    : $first->covered_month->translatedFormat('F Y').' – '.$last->covered_month->translatedFormat('F Y');
-
-                $title = __('Subscription recorded — :amount covering :range', ['amount' => $this->formatCurrency((float) $rows->sum('amount_paid')), 'range' => $rangeLabel]);
-                if ($voucherApplied > 0) {
-                    $title .= ' ('.__(':amount voucher', ['amount' => $this->formatCurrency(Cents::toFloat($voucherApplied))]).')';
+                $title = __('Subscription recorded — :amount covering :range', ['amount' => $this->formatCurrency((float) $sale->rows->sum('amount_paid')), 'range' => $sale->rangeLabel()]);
+                if ($sale->voucherAppliedCents > 0) {
+                    $title .= ' ('.__(':amount voucher', ['amount' => $this->formatCurrency(Cents::toFloat($sale->voucherAppliedCents))]).')';
                 }
 
                 Notification::make()

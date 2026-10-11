@@ -177,34 +177,20 @@ class ListSubscriptions extends ListRecords
                 $months = (int) $data['duration_months'];
                 $desiredStart = Carbon::parse($data['desired_start']);
 
-                $paymentMethod = $data['payment_method'] ?? null;
-
-                $rows = app(SubscriptionBundleService::class)->purchase(
+                // Same sale path as the desk's Buy Subscription (fee folding,
+                // purchasable re-check), just with no voucher and no shift.
+                $sale = app(SubscriptionBundleService::class)->sell(
                     $member,
                     $addOn,
                     $months,
                     $desiredStart,
                     Auth::user(),
-                    $paymentMethod,
-                    null,
+                    paymentMethod: $data['payment_method'] ?? null,
+                    paidOn: filled($data['paid_on'] ?? null) ? Carbon::parse($data['paid_on']) : null,
                 );
 
-                // Folded onto the first covered month's row, same as
-                // CheckIn::purchaseSubscriptionAction() -- one flat fee per
-                // transaction, not per month.
-                $first = $rows->first();
-                $transactionFee = $rows->sum('amount_paid') > 0 ? PaymentMethod::feeFor($paymentMethod) : 0.0;
-                if ($transactionFee > 0) {
-                    $first->update(['amount_paid' => $first->amount_paid + $transactionFee]);
-                }
-
-                $last = $rows->last();
-                $rangeLabel = $first->covered_month->isSameMonth($last->covered_month)
-                    ? $first->covered_month->translatedFormat('F Y')
-                    : $first->covered_month->translatedFormat('F Y').' – '.$last->covered_month->translatedFormat('F Y');
-
                 Notification::make()
-                    ->title(__('Bundle recorded for :username — :amount covering :range', ['username' => $member->username, 'amount' => MembershipSetting::formatMoney((float) $rows->sum('amount_paid')), 'range' => $rangeLabel]))
+                    ->title(__('Bundle recorded for :username — :amount covering :range', ['username' => $member->username, 'amount' => MembershipSetting::formatMoney((float) $sale->rows->sum('amount_paid')), 'range' => $sale->rangeLabel()]))
                     ->success()
                     ->send();
             });
