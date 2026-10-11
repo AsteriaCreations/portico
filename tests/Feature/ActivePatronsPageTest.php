@@ -165,7 +165,7 @@ test('departing reduces CapacityService occupancy', function () {
     expect(app(CapacityService::class)->occupancy(today()))->toBe(0);
 });
 
-test('the watchlist icon renders for a watchlisted member and the watchlist-only filter narrows the table', function () {
+test('the watchlist badge renders for a watchlisted member and the watchlist-only filter narrows the table', function () {
     $volunteer = User::factory()->create(['active' => true, 'role' => Role::Volunteer]);
     $this->actingAs($volunteer);
 
@@ -177,6 +177,8 @@ test('the watchlist icon renders for a watchlisted member and the watchlist-only
     $clearAttendance = Attendance::factory()->for($clear)->for($event)->create(['checked_in_at' => now()]);
 
     Livewire::test(ActivePatrons::class)
+        ->assertTableColumnStateSet('flags', ['Watchlist'], $flaggedAttendance)
+        ->assertTableColumnStateSet('flags', null, $clearAttendance)
         ->assertCanSeeTableRecords([$flaggedAttendance, $clearAttendance])
         ->filterTable('watchlist_only', true)
         ->assertCanSeeTableRecords([$flaggedAttendance])
@@ -221,7 +223,7 @@ test('an overnight-flagged, non-departed patron stays visible after their event 
         ->assertCanNotSeeTableRecords([$ordinaryAttendance]);
 });
 
-test('the Overnight column reflects an overnight stay correctly', function () {
+test('the flags column badges Overnight only for an overnight stay', function () {
     $volunteer = User::factory()->create(['active' => true, 'role' => Role::Volunteer]);
     $this->actingAs($volunteer);
 
@@ -234,8 +236,8 @@ test('the Overnight column reflects an overnight stay correctly', function () {
     $ordinaryAttendance = Attendance::factory()->for($ordinary)->for($event)->create(['checked_in_at' => now()]);
 
     Livewire::test(ActivePatrons::class)
-        ->assertTableColumnStateSet('overnight', true, $overnightAttendance)
-        ->assertTableColumnStateSet('overnight', false, $ordinaryAttendance);
+        ->assertTableColumnStateSet('flags', ['Overnight'], $overnightAttendance)
+        ->assertTableColumnStateSet('flags', null, $ordinaryAttendance);
 });
 
 test('departing an overnight guest removes them from the table just like an ordinary patron', function () {
@@ -440,13 +442,10 @@ test('a forged visit note edit is rejected once visit_notes_enabled is off, leav
     $member = clearMemberForActivePatrons($this->irregular, ['username' => 'flag-off-visit-note']);
     $attendance = Attendance::factory()->for($member)->for($event)->create(['checked_in_at' => now(), 'visit_note' => 'Original note']);
 
-    // The column is hidden, but the underlying Action carries no ->visible()
-    // of its own (only the column does) -- callTableAction() reaches the
-    // closure the same way a forged request would, so the closure's own
-    // abort_unless(Gate::allows('manage-visit-notes')) is what's actually
-    // under test here, not Filament's client-side hiding.
+    // The action is hidden server-side, so Filament refuses to run it for a
+    // forged request; the closure's own abort_unless() is a second layer.
     Livewire::test(ActivePatrons::class)
-        ->callTableAction('editVisitNote', $attendance, data: ['visit_note' => 'Forged note']);
+        ->assertTableActionHidden('editVisitNote', $attendance);
 
     expect($attendance->refresh()->visit_note)->toBe('Original note');
 });
@@ -462,7 +461,7 @@ test('a forged behavior note add is rejected once behavior_notes_enabled is off,
     $attendance = Attendance::factory()->for($member)->for($event)->create(['checked_in_at' => now()]);
 
     Livewire::test(ActivePatrons::class)
-        ->callTableAction('addBehaviorNote', $attendance, data: ['note' => 'Should not be saved']);
+        ->assertTableActionHidden('addBehaviorNote', $attendance);
 
     expect(AttendanceBehaviorNote::where('attendance_id', $attendance->id)->exists())->toBeFalse();
 });
@@ -595,4 +594,10 @@ test('depart (already counted) is hidden with no unmatched anonymous departure, 
         ->toThrow(HttpException::class);
     expect($second->refresh()->departed_at)->toBeNull()
         ->and(app(CapacityService::class)->occupancy(today()))->toBe(1);
+});
+
+test('the table shows 25 patrons per page by default, so a busy night does not hide anyone behind paging', function () {
+    $this->actingAs(User::factory()->create(['active' => true, 'role' => Role::Volunteer]));
+
+    Livewire::test(ActivePatrons::class)->assertSet('tableRecordsPerPage', 25);
 });

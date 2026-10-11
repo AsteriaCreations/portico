@@ -21,7 +21,6 @@ use Filament\Support\Enums\Alignment;
 use Filament\Support\Enums\FontWeight;
 use Filament\Support\Enums\TextSize;
 use Filament\Support\Icons\Heroicon;
-use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\Layout\Split;
 use Filament\Tables\Columns\Layout\Stack;
 use Filament\Tables\Columns\TextColumn;
@@ -121,51 +120,46 @@ class ActivePatrons extends Page implements HasTable
                     ->orWhereHas('addOns', fn ($addOns) => $addOns->where('is_overnight', true)))
                 ->with(['addOns', 'behaviorNotes.createdBy', 'event', 'member.skills']))
             // Filament layout components (Split/Stack), not a flat column
-            // list -- each patron renders as one stacked card on a phone and
-            // a single row at sm+ width, so the page never needs the
-            // left/right horizontal scroll a 10-wide table forced. A layout
-            // component drops the column-header row, so each field carries
-            // its own icon/label on the card instead.
+            // list -- each patron renders as one card, so the page never
+            // needs the left/right horizontal scroll a 10-wide table forced.
+            // Kept short for a phone: flags show only when they apply, the
+            // event and arrival time share a line, and an empty note leaves
+            // no placeholder (the row's Visit note / Behavior note buttons
+            // add one).
             ->columns([
-                Split::make([
-                    Stack::make([
+                Stack::make([
+                    Split::make([
                         TextColumn::make('member.username')
                             ->label('Member')
                             ->weight(FontWeight::Bold)
                             ->searchable()
                             ->action($this->departAction()),
-                        TextColumn::make('event.name')
-                            ->label('Event')
-                            ->color('gray')
-                            ->size(TextSize::Small)
-                            ->icon(Heroicon::OutlinedCalendarDays),
-                        TextColumn::make('checked_in_at')
-                            ->label('Checked in')
-                            ->dateTime('M j, g:i A')
-                            ->color('gray')
-                            ->size(TextSize::Small)
-                            ->icon(Heroicon::OutlinedClock),
-                    ])->space(1),
-
-                    Stack::make([
-                        IconColumn::make('overnight')
-                            ->label('Overnight')
-                            ->boolean()
-                            ->getStateUsing(fn (Attendance $record): bool => $record->isOvernightStay())
-                            ->tooltip(fn (bool $state): string => $state ? __('Staying overnight') : __('Same-night guest')),
-                        IconColumn::make('member.on_watchlist')
-                            ->label('Watchlist')
-                            ->boolean()
-                            ->color(fn (?bool $state): string => $state ? __('warning') : __('gray'))
-                            ->tooltip(fn (?bool $state): string => $state ? __('On watchlist') : __('Not on watchlist')),
-                    ])->space(1)->alignment(Alignment::End)->grow(false),
-                ])->from('sm'),
+                        TextColumn::make('flags')
+                            ->label('Flags')
+                            ->badge()
+                            ->getStateUsing(fn (Attendance $record): array => array_values(array_filter([
+                                $record->member?->on_watchlist ? __('Watchlist') : null,
+                                $record->isOvernightStay() ? __('Overnight') : null,
+                            ])))
+                            ->color(fn (string $state): string => $state === __('Watchlist') ? 'warning' : 'info')
+                            ->alignment(Alignment::End)
+                            ->grow(false),
+                    ]),
+                    TextColumn::make('event.name')
+                        ->label('Event')
+                        ->color('gray')
+                        ->size(TextSize::Small)
+                        ->icon(Heroicon::OutlinedCalendarDays)
+                        // The date only for an arrival on an earlier day (an
+                        // overnight stay); tonight's arrivals need just the time.
+                        ->formatStateUsing(fn (?string $state, Attendance $record): string => ($state ?? __('Untitled event')).' · '
+                            .$record->checked_in_at->translatedFormat($record->checked_in_at->isToday() ? 'g:i A' : 'M j, g:i A')),
+                ])->space(1),
 
                 Stack::make([
                     TextColumn::make('member.skills.name')
                         ->label('Skills')
-                        ->badge()
-                        ->placeholder(__('—')),
+                        ->badge(),
                     TextColumn::make('member.watchlist_reason')
                         ->label('Watchlist reason')
                         ->color('warning')
@@ -182,14 +176,12 @@ class ActivePatrons extends Page implements HasTable
                     TextColumn::make('visit_note')
                         ->label('Visit note')
                         ->icon(Heroicon::OutlinedPencilSquare)
-                        ->placeholder(__('— add visit note —'))
                         ->wrap()
                         ->visible(fn (): bool => Gate::allows('manage-visit-notes'))
                         ->action($this->editVisitNoteAction()),
                     TextColumn::make('behaviorNotesSummary')
                         ->label('Behavior notes')
                         ->icon(Heroicon::OutlinedFlag)
-                        ->placeholder(__('— add behavior note —'))
                         ->wrap()
                         // One line per note: joined with "\n" they'd collapse
                         // into a single run-on line in the cell.
@@ -197,7 +189,7 @@ class ActivePatrons extends Page implements HasTable
                         ->visible(fn (): bool => Gate::allows('manage-behavior-notes'))
                         ->getStateUsing(fn (Attendance $record): ?array => $this->behaviorNotesSummary($record))
                         ->action($this->addBehaviorNoteAction()),
-                ])->space(2),
+                ])->space(1),
             ])
             ->filters([
                 Filter::make('watchlist_only')
@@ -213,7 +205,15 @@ class ActivePatrons extends Page implements HasTable
                             ->when($days, fn ($q) => $q->orWhereDate('watchlist_probation_start', '>', today()->subDays($days))));
                     }),
             ])
-            ->recordActions([$this->departAction(), $this->departAlreadyCountedAction()])
+            ->recordActions([
+                $this->departAction()->button(),
+                $this->departAlreadyCountedAction(),
+                $this->editVisitNoteAction(),
+                $this->addBehaviorNoteAction(),
+            ])
+            // 25, not the default 5: on a phone, paging through a busy night
+            // five cards at a time makes it easy to miss someone leaving.
+            ->defaultPaginationPageOption(25)
             ->poll('15s');
     }
 
@@ -284,6 +284,9 @@ class ActivePatrons extends Page implements HasTable
     {
         return Action::make('editVisitNote')
             ->label('Visit note')
+            ->icon(Heroicon::OutlinedPencilSquare)
+            ->color('gray')
+            ->visible(fn (): bool => Gate::allows('manage-visit-notes'))
             ->fillForm(fn (Attendance $record): array => ['visit_note' => $record->visit_note])
             ->schema([
                 TextInput::make('visit_note')
@@ -311,6 +314,9 @@ class ActivePatrons extends Page implements HasTable
     {
         return Action::make('addBehaviorNote')
             ->label('Behavior note')
+            ->icon(Heroicon::OutlinedFlag)
+            ->color('gray')
+            ->visible(fn (): bool => Gate::allows('manage-behavior-notes'))
             ->schema([
                 Textarea::make('note')->required(),
             ])
