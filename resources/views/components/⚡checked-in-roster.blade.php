@@ -70,24 +70,31 @@ new class extends Component
     public function markers(Attendance $attendance): array
     {
         $member = $attendance->member;
+        $legend = $this->legend();
 
         return array_values(array_filter([
             $member->isGuest() ? [
-                'icon' => 'heroicon-m-user-plus',
+                ...$legend['guest'],
                 'label' => $member->sponsor ? __('Guest of :sponsor', ['sponsor' => $member->sponsor->displayName()]) : __('Guest'),
-                'color' => 'text-info-600 dark:text-info-400',
             ] : null,
-            $attendance->isNewMemberVisit() ? [
-                'icon' => 'heroicon-m-sparkles',
-                'label' => __('New member — first visit'),
-                'color' => 'text-primary-600 dark:text-primary-400',
-            ] : null,
-            isset($this->boughtSubscription[$attendance->id]) ? [
-                'icon' => 'heroicon-m-ticket',
-                'label' => __('Bought a subscription'),
-                'color' => 'text-success-600 dark:text-success-400',
-            ] : null,
+            $attendance->isNewMemberVisit() ? $legend['new_member'] : null,
+            isset($this->boughtSubscription[$attendance->id]) ? $legend['subscription'] : null,
         ]));
+    }
+
+    /**
+     * Every icon markers() can show, with its plain meaning: the key above
+     * the list, and the single place each icon and color is defined.
+     *
+     * @return array<string, array{icon: string, label: string, color: string}>
+     */
+    public function legend(): array
+    {
+        return [
+            'guest' => ['icon' => 'heroicon-m-user-plus', 'label' => __('Guest'), 'color' => 'text-info-600 dark:text-info-400'],
+            'new_member' => ['icon' => 'heroicon-m-sparkles', 'label' => __('New member — first visit'), 'color' => 'text-primary-600 dark:text-primary-400'],
+            'subscription' => ['icon' => 'heroicon-m-ticket', 'label' => __('Bought a subscription'), 'color' => 'text-success-600 dark:text-success-400'],
+        ];
     }
 };
 ?>
@@ -118,6 +125,18 @@ new class extends Component
         @if ($this->attendances->isEmpty())
             <p class="px-3 py-2 text-sm text-gray-500 dark:text-gray-400">{{ __('No one checked in yet.') }}</p>
         @else
+            {{-- Key to the icons beside names. The icons here are decorative (aria-hidden):
+            the text beside each says what it means, and the icons in the list carry their own
+            aria-label. --}}
+            <ul aria-label="{{ __('Icon key') }}" class="flex flex-wrap gap-x-4 gap-y-1 px-3 pb-2 text-xs text-gray-500 dark:text-gray-400">
+                @foreach ($this->legend() as $key)
+                    <li class="flex items-center gap-1">
+                        <span aria-hidden="true" class="{{ $key['color'] }}"><x-filament::icon :icon="$key['icon']" /></span>
+                        {{ $key['label'] }}
+                    </li>
+                @endforeach
+            </ul>
+
             {{-- Each person is listed by pickerLabel() -- the text the member picker shows,
             so it matches what staff searched by -- with displayName() (the desk greeting
             name) as a hover title on the table, or a second line on a card (no hover on a phone).

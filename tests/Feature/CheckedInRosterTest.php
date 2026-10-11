@@ -168,3 +168,18 @@ test('the roster marks a guest with their sponsor and an Irregular on their firs
         ->toContain('aria-label="Guest of Hosty"')
         ->toContain('aria-label="New member — first visit"');
 });
+
+test('the roster shows a key to its icons once someone is checked in', function () {
+    $event = Event::factory()->create();
+
+    expect(Livewire::test('checked-in-roster', ['eventId' => $event->id])->html())
+        ->not->toContain('aria-label="Icon key"');
+
+    Attendance::factory()->create(['event_id' => $event->id, 'checked_in_at' => now()]);
+
+    expect(Livewire::test('checked-in-roster', ['eventId' => $event->id])->html())
+        ->toContain('aria-label="Icon key"')
+        ->toContain('Guest')
+        ->toContain('New member — first visit')
+        ->toContain('Bought a subscription');
+});
