@@ -2,9 +2,11 @@
 
 namespace App\Filament\Admin\Resources\Events\Tables;
 
+use App\Enums\EventRepeat;
 use App\Filament\Admin\Resources\Events\Schemas\EventForm;
 use App\Models\Event;
 use App\Models\MembershipSetting;
+use App\Services\EventDuplicator;
 use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteAction;
@@ -193,45 +195,64 @@ class EventsTable
 
     /**
      * Starts a new event from an existing one — reuses EventForm as-is so the
-     * modal never drifts from the plain create form. event_date/starts_at/
-     * ends_at are deliberately left blank (EventForm's own ->required() rules
-     * force a real date before it can save). created_by is set explicitly to
-     * whoever duplicated it, not the original creator — a schema filled via
-     * ->fillForm() with an explicit array skips per-field ->default() entirely
-     * (Filament only applies component defaults when filling with null), so
-     * EventForm's own Hidden('created_by')->default(...) never fires here.
+     * modal never drifts from the plain create form. event_date is left blank
+     * (EventForm's ->required() forces a real date), while starts_at/ends_at
+     * carry the source's times: picking the new date moves both onto it,
+     * keeping the event's length. The Repeat fields turn one duplicate into a
+     * run of them (EventDuplicator). A schema filled via ->fillForm() with an
+     * explicit array skips per-field ->default() entirely (Filament only
+     * applies component defaults when filling with null), so repeat,
+     * occurrences and created_by are set here explicitly -- created_by being
+     * whoever duplicated it, not the original creator.
      */
     protected static function duplicateAction(): Action
     {
         return Action::make('duplicate')
             ->label('Duplicate')
             ->icon(Heroicon::OutlinedDocumentDuplicate)
-            ->schema(fn (Schema $schema): Schema => EventForm::configure($schema, includeSummary: false, includeAddOnSelection: false))
+            ->schema(fn (Schema $schema): Schema => EventForm::configure($schema, includeSummary: false, includeAddOnSelection: false, includeRepeat: true))
             ->fillForm(fn (Event $record): array => [
                 ...$record->only([
                     'name', 'event_type_id', 'entry_fee',
                     'door_prepay_enabled', 'showrunner_id', 'host_id', 'notes',
                 ]),
+                'starts_at' => $record->starts_at?->toDateTimeString(),
+                'ends_at' => $record->ends_at?->toDateTimeString(),
                 // Never blindly carries a nonzero pool_fee onto a new event
                 // while pool is disabled -- the field's hidden on the form
                 // itself, but fillForm() bypasses that, so it needs its own
                 // explicit check.
                 'pool_fee' => MembershipSetting::current()->pool_enabled ? $record->pool_fee : 0,
+                'repeat' => EventRepeat::Once->value,
+                'occurrences' => 4,
                 'created_by' => Auth::id(),
             ])
-            ->action(function (array $data, Event $record): void {
-                $event = Event::create($data);
-                // add_on_ids isn't in the schema here (includeAddOnSelection:
-                // false above) -- copy the source's bindings directly instead
-                // of relying on the field, which wouldn't save through this
-                // plain Action anyway. See EventForm::configure()'s own
-                // comment on $includeAddOnSelection.
-                $event->addOns()->sync($record->addOns->pluck('id'));
+            ->action(function (array $data, Event $record, EventDuplicator $duplicator): void {
+                abort_unless(Gate::allows('create', Event::class), 403);
 
-                Notification::make()
-                    ->title(__('Event duplicated'))
-                    ->success()
-                    ->send();
+                $repeat = ($data['repeat'] ?? null) instanceof EventRepeat ? $data['repeat'] : (EventRepeat::tryFrom((string) ($data['repeat'] ?? '')) ?? EventRepeat::Once);
+                $count = (int) ($data['occurrences'] ?? 1);
+                unset($data['repeat'], $data['occurrences']);
+
+                // add_on_ids isn't in the schema here (includeAddOnSelection:
+                // false above) -- EventDuplicator copies the source's bindings
+                // directly instead, since the field wouldn't save through
+                // this plain Action anyway. See EventForm::configure()'s own
+                // comment on $includeAddOnSelection.
+                $result = $duplicator->duplicate($record, [...$data, 'created_by' => Auth::id()], $repeat, $count);
+
+                $notification = Notification::make()
+                    ->title(trans_choice('Created :count event|Created :count events', $result['created']));
+
+                if ($result['skipped'] !== []) {
+                    $notification
+                        ->body(__('Skipped (already has this event): :dates', ['dates' => implode(', ', $result['skipped'])]))
+                        ->warning();
+                } else {
+                    $notification->success();
+                }
+
+                $notification->send();
             })
             ->visible(fn (): bool => Gate::allows('create', Event::class));
     }
