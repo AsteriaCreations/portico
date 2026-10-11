@@ -7,6 +7,7 @@ use App\Filament\Admin\Resources\PaymentMethods\Pages\ListPaymentMethods;
 use App\Models\PaymentMethod;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Livewire\Livewire;
 
 uses(RefreshDatabase::class);
@@ -75,4 +76,29 @@ test('a payment method label is editable but code is immutable after creation', 
     $method->refresh();
     expect($method->label)->toBe('Cash (drawer)')
         ->and($method->code)->toBe('cash');
+});
+
+test('cashCodes reads the table once per request and a saved method drops the copy', function () {
+    PaymentMethod::forgetCashCodes();
+    $queries = 0;
+    DB::listen(function ($query) use (&$queries): void {
+        if (str_contains($query->sql, 'payment_methods')) {
+            $queries++;
+        }
+    });
+
+    foreach (range(1, 5) as $call) {
+        PaymentMethod::cashCodes();
+    }
+    expect($queries)->toBe(1);
+
+    $method = PaymentMethod::factory()->create(['code' => 'till', 'requires_register_shift' => true]);
+    expect(PaymentMethod::cashCodes()->all())->toContain('till');
+
+    $method->update(['requires_register_shift' => false]);
+    expect(PaymentMethod::cashCodes()->all())->not->toContain('till');
+
+    $method->update(['requires_register_shift' => true]);
+    $method->delete();
+    expect(PaymentMethod::cashCodes()->all())->not->toContain('till');
 });

@@ -7,6 +7,7 @@ use App\Models\AddOn;
 use App\Models\Attendance;
 use App\Models\Category;
 use App\Models\Event;
+use App\Models\InstructorPayout;
 use App\Models\Member;
 use App\Models\MembershipSetting;
 use App\Models\MiscellaneousPayment;
@@ -20,6 +21,7 @@ use App\Models\User;
 use App\Services\RegisterShiftService;
 use Filament\Notifications\Livewire\Notifications;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Livewire\Livewire;
 
 uses(RefreshDatabase::class);
@@ -577,4 +579,41 @@ test('the box summary and the close message list electronic payments apart from 
 
     expect($sent->notifications->map(fn ($notification) => $notification->getBody())->implode(' '))
         ->toContain('Taken electronically (not in the box or any envelope): Venmo $40.00 (total $40.00).');
+});
+
+test('the box summary sums payouts and prepaid cash once per poll and matches the separate service figures', function () {
+    $service = app(RegisterShiftService::class);
+    $shift = $service->openShift($this->register, $this->user, 100);
+    $event = Event::factory()->create(['event_date' => today()->toDateString()]);
+    $later = Event::factory()->create(['event_date' => today()->addWeek()->toDateString()]);
+
+    Attendance::factory()->for(cashClearMember($this->irregular))->for($event)->create(['register_shift_id' => $shift->id, 'payment_method' => 'cash', 'amount_paid' => 20, 'checked_in_at' => now()]);
+    Attendance::factory()->for(cashClearMember($this->irregular))->for($later)->create(['register_shift_id' => $shift->id, 'payment_method' => 'cash', 'amount_paid' => 30, 'prepaid_ahead' => true]);
+    InstructorPayout::factory()->create(['event_id' => $event->id, 'register_shift_id' => $shift->id, 'amount' => 25]);
+
+    expect($service->closingSummaryCents($shift))->toBe([
+        'expected' => $service->expectedClosingCountCents($shift),
+        'payouts' => $service->totalInstructorPayoutsCents($shift),
+        'prepaidAhead' => $service->heldPrepayCashCents($shift),
+    ])->and($service->closingSummaryCents($shift)['expected'])->toBe(9500);
+
+    $summary = Livewire::test('register-box-summary', ['registerId' => $this->register->id]);
+
+    $tables = [];
+    DB::listen(function ($query) use (&$tables): void {
+        foreach (['payment_methods', 'instructor_payouts'] as $table) {
+            if (str_contains($query->sql, "\"{$table}\"") || str_contains($query->sql, "`{$table}`")) {
+                $tables[$table] = ($tables[$table] ?? 0) + 1;
+            }
+        }
+    });
+    PaymentMethod::forgetCashCodes();
+    $summary->call('$refresh')
+        ->assertSee('expected now $95.00')
+        ->assertSee('Paid out to instructors $25.00')
+        ->assertSee('Prepaid cash for later events $30.00');
+
+    // payment_methods: the cash codes once, plus electronicByMethodCents()'s
+    // own label lookup only when there's electronic money (none here).
+    expect($tables)->toEqual(['payment_methods' => 1, 'instructor_payouts' => 1]);
 });
