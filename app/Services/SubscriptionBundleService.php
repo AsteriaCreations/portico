@@ -95,14 +95,15 @@ class SubscriptionBundleService
         ?int $voucherPayerId = null,
         int $voucherCents = 0,
         string $voucherReason = '',
+        ?CarbonInterface $paidOn = null,
     ): SubscriptionSaleResult {
         // Re-checked here, not just via each form's filtered Select options
         // -- a feature flag (e.g. pool_enabled) stops new writes even for a
         // forged add_on_id. Entry is always purchasable.
         abort_unless($addOn->is(AddOn::entry()) || (AddOn::subscribable()->whereKey($addOn->id)->exists() && $addOn->isCurrentlyPurchasable()), 403);
 
-        return DB::transaction(function () use ($member, $addOn, $months, $desiredStart, $staff, $paymentMethod, $registerShift, $applyVoucher, $voucherPayerId, $voucherCents, $voucherReason): SubscriptionSaleResult {
-            $rows = $this->purchase($member, $addOn, $months, $desiredStart, $staff, $paymentMethod, $registerShift);
+        return DB::transaction(function () use ($member, $addOn, $months, $desiredStart, $staff, $paymentMethod, $registerShift, $applyVoucher, $voucherPayerId, $voucherCents, $voucherReason, $paidOn): SubscriptionSaleResult {
+            $rows = $this->purchase($member, $addOn, $months, $desiredStart, $staff, $paymentMethod, $registerShift, $paidOn);
 
             // Locked like CheckInService's draw, so two registers spending
             // the same balance at once can't overdraw it.
@@ -136,6 +137,10 @@ class SubscriptionBundleService
     }
 
     /**
+     * $paidOn is when the money changed hands (defaults to today) -- the
+     * Subscriptions list lets a Manager record a payment taken earlier.
+     * Pricing still uses today's plan either way.
+     *
      * @return Collection<int, Subscription>
      */
     public function purchase(
@@ -146,6 +151,7 @@ class SubscriptionBundleService
         ?User $recordedBy,
         ?string $paymentMethod = null,
         ?RegisterShift $registerShift = null,
+        ?CarbonInterface $paidOn = null,
     ): Collection {
         abort_unless($member->isSubscriptionEligible(), 422, 'Member is not subscription-eligible.');
 
@@ -170,7 +176,7 @@ class SubscriptionBundleService
                 'add_on_id' => $addOn->id,
                 'covered_month' => $resolution->start->clone()->addMonthsNoOverflow($index)->toDateString(),
                 'amount_paid' => $shares[$index] / 100,
-                'paid_on' => now(),
+                'paid_on' => $paidOn ?? now(),
                 'recorded_by' => $recordedBy?->id,
                 'payment_method' => $paymentMethod,
                 'register_shift_id' => $registerShift?->id,

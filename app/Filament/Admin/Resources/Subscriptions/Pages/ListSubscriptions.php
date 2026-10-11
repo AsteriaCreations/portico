@@ -186,6 +186,7 @@ class ListSubscriptions extends ListRecords
                     $desiredStart,
                     Auth::user(),
                     paymentMethod: $data['payment_method'] ?? null,
+                    paidOn: filled($data['paid_on'] ?? null) ? Carbon::parse($data['paid_on']) : null,
                 );
 
                 Notification::make()
