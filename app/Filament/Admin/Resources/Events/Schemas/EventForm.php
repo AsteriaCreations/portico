@@ -2,10 +2,12 @@
 
 namespace App\Filament\Admin\Resources\Events\Schemas;
 
+use App\Enums\EventRepeat;
 use App\Models\AddOn;
 use App\Models\Event;
 use App\Models\Member;
 use App\Models\MembershipSetting;
+use App\Services\EventDuplicator;
 use App\Services\EventSummaryService;
 use App\Support\Cents;
 use Carbon\Carbon;
@@ -42,8 +44,11 @@ class EventForm
      * has no such hook, so the field would render but silently discard
      * whatever the user picks. duplicateAction() instead copies the source
      * event's current add-ons onto the new one directly, unconditionally.
+     *
+     * $includeRepeat adds duplicateAction()'s Repeat fields, which
+     * EventDuplicator turns into dates; they mean nothing on create/edit.
      */
-    public static function configure(Schema $schema, bool $includeSummary = true, bool $includeAddOnSelection = true): Schema
+    public static function configure(Schema $schema, bool $includeSummary = true, bool $includeAddOnSelection = true, bool $includeRepeat = false): Schema
     {
         return $schema
             ->components([
@@ -79,8 +84,16 @@ class EventForm
                             return;
                         }
 
-                        $time = filled($get('starts_at')) ? Carbon::parse($get('starts_at'))->format('H:i:s') : '00:00:00';
-                        $set('starts_at', Carbon::parse($state)->setTimeFromTimeString($time)->toDateTimeString());
+                        $oldStart = filled($get('starts_at')) ? Carbon::parse($get('starts_at')) : null;
+                        $newStart = Carbon::parse($state)->setTimeFromTimeString($oldStart?->format('H:i:s') ?? '00:00:00');
+                        $set('starts_at', $newStart->toDateTimeString());
+
+                        // Keep the event's length, so moving (or duplicating)
+                        // an overnight event still ends it the next day.
+                        if ($oldStart && filled($get('ends_at'))) {
+                            $length = (int) $oldStart->diffInSeconds(Carbon::parse($get('ends_at')), false);
+                            $set('ends_at', $newStart->copy()->addSeconds($length)->toDateTimeString());
+                        }
                     }),
                 DateTimePicker::make('starts_at')
                     ->helperText(__("Date defaults from the event date above — an event can't start on a different day."))
@@ -98,9 +111,27 @@ class EventForm
                         }
                     }),
                 DateTimePicker::make('ends_at')
-                    ->helperText(__('Set independently — pick the next day for an event that runs past midnight.'))
+                    ->helperText(__('Pick the next day for an event that runs past midnight. Changing the event date moves this too, keeping the same length.'))
                     ->required()
                     ->after('starts_at'),
+                ...($includeRepeat ? [
+                    Select::make('repeat')
+                        ->options(EventRepeat::class)
+                        ->default(EventRepeat::Once->value)
+                        ->selectablePlaceholder(false)
+                        ->required()
+                        ->live()
+                        ->helperText(__('Repeats start from the event date above. A date that already has this event (same name and type) is skipped.')),
+                    TextInput::make('occurrences')
+                        ->label('Number of events')
+                        ->numeric()
+                        ->integer()
+                        ->minValue(2)
+                        ->maxValue(EventDuplicator::MAX_OCCURRENCES)
+                        ->default(4)
+                        ->required(fn (Get $get): bool => static::repeats($get))
+                        ->visible(fn (Get $get): bool => static::repeats($get)),
+                ] : []),
                 DatePicker::make('comp_list_due_at')
                     ->label('Comp list due date')
                     ->helperText(__('Optional reminder date for staff to finalize Comp List additions by. Informational only — nothing is blocked once it passes.'))
@@ -198,6 +229,13 @@ class EventForm
                         }),
                 ] : []),
             ]);
+    }
+
+    private static function repeats(Get $get): bool
+    {
+        $repeat = $get('repeat');
+
+        return filled($repeat) && ($repeat instanceof EventRepeat ? $repeat : EventRepeat::from($repeat)) !== EventRepeat::Once;
     }
 
     /**

@@ -37,6 +37,13 @@ is fixes only.
 
 ### Added
 
+- **Duplicate** on the Events list now carries the start and end times over: pick the new date
+  and both move onto it, keeping the event's length, so an event that runs past midnight still
+  ends the next day. Moving an event's date on the edit form does the same. A new **Repeat**
+  choice in the same window creates a run of copies at once: weekly, every 2 weeks, or monthly on
+  the same weekday (the 2nd Friday stays the 2nd Friday; a 5th weekday a month lacks becomes that
+  month's last one), up to 26 events. A date that already has the same event (same name and type)
+  is skipped and listed in the confirmation.
 - The Check-In Desk's cash box summary now lists the money taken electronically (Venmo, PayPal,
   card, ...) per payment method, since the Event / Subscription / Other figures above it count
   every method but only the cash is in the box. **Close Box** lists the same totals, even when the

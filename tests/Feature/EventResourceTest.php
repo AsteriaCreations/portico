@@ -475,3 +475,72 @@ test('a manager cannot see the duplicate, download template, or bulk upload acti
         ->assertActionHidden('downloadEventTemplate')
         ->assertActionHidden('bulkUploadEvents');
 });
+
+test('duplicate carries the times over: picking a new date keeps an overnight event ending the next day', function () {
+    $original = Event::factory()->create([
+        'event_date' => '2026-09-04',
+        'starts_at' => '2026-09-04 20:00:00',
+        'ends_at' => '2026-09-05 02:00:00',
+    ]);
+
+    Livewire::test(ListEvents::class)
+        ->mountTableAction('duplicate', $original)
+        ->assertTableActionDataSet([
+            'starts_at' => '2026-09-04 20:00:00',
+            'ends_at' => '2026-09-05 02:00:00',
+        ])
+        ->fillForm(['event_date' => '2026-10-02'])
+        ->assertTableActionDataSet([
+            'starts_at' => '2026-10-02 20:00:00',
+            'ends_at' => '2026-10-03 02:00:00',
+        ]);
+});
+
+test('moving an event to another date on the edit form keeps its length', function () {
+    $event = Event::factory()->create([
+        'event_date' => '2026-09-04',
+        'starts_at' => '2026-09-04 22:00:00',
+        'ends_at' => '2026-09-05 03:30:00',
+    ]);
+
+    Livewire::test(EditEvent::class, ['record' => $event->getRouteKey()])
+        ->fillForm(['event_date' => '2026-09-11'])
+        ->assertFormSet([
+            'starts_at' => '2026-09-11 22:00:00',
+            'ends_at' => '2026-09-12 03:30:00',
+        ]);
+});
+
+test('duplicate can repeat weekly, creating each copy a week apart with the same times and add-ons', function () {
+    $addOn = AddOn::factory()->create(['subscribable' => false]);
+    $original = Event::factory()->create(['name' => 'Friday Social']);
+    $original->addOns()->attach($addOn->id);
+
+    Livewire::test(ListEvents::class)
+        ->callTableAction('duplicate', $original, data: [
+            'event_date' => '2026-10-02',
+            'starts_at' => '2026-10-02 20:00:00',
+            'ends_at' => '2026-10-03 02:00:00',
+            'repeat' => 'weekly',
+            'occurrences' => 3,
+        ])
+        ->assertHasNoTableActionErrors();
+
+    $copies = Event::where('id', '!=', $original->id)->where('name', 'Friday Social')->orderBy('event_date')->get();
+    expect($copies->map(fn (Event $event) => $event->starts_at->toDateTimeString())->all())->toBe([
+        '2026-10-02 20:00:00', '2026-10-09 20:00:00', '2026-10-16 20:00:00',
+    ])
+        ->and($copies->last()->ends_at->toDateTimeString())->toBe('2026-10-17 02:00:00')
+        ->and($copies->every(fn (Event $event) => $event->addOns()->pluck('add_ons.id')->all() === [$addOn->id]))->toBeTrue()
+        ->and($copies->every(fn (Event $event) => $event->created_by === auth()->id()))->toBeTrue();
+});
+
+test('the repeat count is only asked for once a repeat is chosen', function () {
+    $original = Event::factory()->create();
+
+    Livewire::test(ListEvents::class)
+        ->mountTableAction('duplicate', $original)
+        ->assertFormFieldHidden('occurrences')
+        ->fillForm(['repeat' => 'biweekly'])
+        ->assertFormFieldVisible('occurrences');
+});
