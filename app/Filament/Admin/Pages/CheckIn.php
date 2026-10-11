@@ -5,11 +5,11 @@ namespace App\Filament\Admin\Pages;
 use App\Enums\AdmissionOutcome;
 use App\Enums\Role;
 use App\Exceptions\CheckInRefused;
+use App\Exceptions\DayPassRefused;
 use App\Filament\Concerns\RenamesMemberUsername;
 use App\Filament\Concerns\ShowsKioskQrCode;
 use App\Filament\Concerns\TranslatesPageLabels;
 use App\Models\AddOn;
-use App\Models\AddOnDayPass;
 use App\Models\Attendance;
 use App\Models\Category;
 use App\Models\CompReason;
@@ -24,6 +24,7 @@ use App\Models\Register;
 use App\Models\RegisterShift;
 use App\Models\Voucher;
 use App\Notifications\LastCheckInNotification;
+use App\Services\AddOnDayPassService;
 use App\Services\AdmissionDecision;
 use App\Services\AdmissionPolicy;
 use App\Services\CapacityService;
@@ -1666,12 +1667,9 @@ class CheckIn extends Page implements HasTable
 
     // A one-time purchase covering a subscribable add-on for exactly one
     // event -- distinct from a subscription (a whole calendar month)
-    // purchasable above via purchaseSubscriptionAction(). Only meaningful
-    // for a priced_per_event add-on (Pool, at launch): a flat add-on's price
-    // never varies by event, so a "day pass" for one would be identical to
-    // just checking it at check-in. Not gated by isSubscriptionEligible()
-    // -- that rule only applies where a `subscriptions` row gets created,
-    // and this deliberately never creates one. Its own event Select, not
+    // purchasable above via purchaseSubscriptionAction(). The rules (which
+    // add-ons and events qualify, the fee, the one-time method) live in
+    // AddOnDayPassService; this is only the form. Its own event Select, not
     // coupled to whatever event is currently selected on the page, so staff
     // can sell a pass for a different night while mid-transaction on
     // tonight's. See docs/BLUEPRINT.md "Fee pipeline".
@@ -1680,20 +1678,8 @@ class CheckIn extends Page implements HasTable
         $member = $this->getSelectedMember();
         $openShift = $this->getOpenShift();
         $lockedOneTimeCodes = $member?->hasUsedOneTimeMethod() ? PaymentMethod::oneTimeCodes()->all() : [];
-        $dayPassableAddOns = AddOn::subscribable()->where('priced_per_event', true)->orderBy('sort_order')->get()
-            ->filter(fn (AddOn $addOn) => $addOn->isCurrentlyPurchasable())
-            // A member without valid paperwork for a gated add-on (e.g. a
-            // lapsed Pool Waiver) can't buy a day pass for it -- a day pass
-            // is pool use. Re-checked server-side in the closure too.
-            ->filter(fn (AddOn $addOn) => $member && $member->canUseAddOn($addOn))
-            // Not tied to the event currently selected on the page (see
-            // above), but if literally no event anywhere -- today or
-            // future -- has a nonzero fee for this add-on, there's nothing
-            // to sell a pass for at all: the button would just open onto an
-            // empty Event Select. Real desk report: tonight's event had a
-            // $0 pool fee and staff were still offered "Buy Day Pass" with
-            // no qualifying event behind it.
-            ->filter(fn (AddOn $addOn) => static::addOnDayPassEventOptionsQuery($addOn)->exists());
+        $dayPasses = app(AddOnDayPassService::class);
+        $dayPassableAddOns = $member ? $dayPasses->sellableAddOns($member) : collect();
         $defaultAddOnId = $dayPassableAddOns->count() === 1 ? $dayPassableAddOns->first()->id : null;
 
         return Action::make('purchaseAddOnDayPass')
@@ -1708,13 +1694,13 @@ class CheckIn extends Page implements HasTable
                     ->live(),
                 Select::make('event_id')
                     ->label(__('Event'))
-                    ->options(function (Get $get) {
+                    ->options(function (Get $get) use ($dayPasses) {
                         $addOn = $get('add_on_id') ? AddOn::find($get('add_on_id')) : null;
                         if (! $addOn) {
                             return [];
                         }
 
-                        return static::addOnDayPassEventOptionsQuery($addOn)
+                        return $dayPasses->eventOptionsQuery($addOn)
                             ->orderBy('event_date')
                             ->get()
                             ->mapWithKeys(fn (Event $event) => [$event->id => "{$event->name} — {$event->event_date->isoFormat('ll')} ({$this->formatCurrency((float) $addOn->priceFor($event))})"]);
@@ -1727,9 +1713,10 @@ class CheckIn extends Page implements HasTable
                         ->map(fn (string $label, string $code) => in_array($code, $lockedOneTimeCodes, true) ? "{$label} (cannot use — already used)" : $label)
                         ->all())
                     ->disableOptionWhen(fn (string $value): bool => in_array($value, $lockedOneTimeCodes, true))
+                    ->required()
                     ->helperText(fn (Get $get): ?string => PaymentMethod::feeHelperText($get('payment_method'))),
             ])
-            ->action(function (array $data): void {
+            ->action(function (array $data) use ($dayPasses): void {
                 if ($this->haltForTraining(__('Practice: day pass simulated.'))) {
                     return;
                 }
@@ -1739,52 +1726,24 @@ class CheckIn extends Page implements HasTable
 
                 $addOn = AddOn::find($data['add_on_id']);
                 abort_unless($addOn, 404);
-                // Re-checked here, not just via the filtered Select options
-                // above -- same defense-in-depth as purchaseSubscriptionAction().
-                $dayPassablePurchasableIds = AddOn::subscribable()->where('priced_per_event', true)->get()->filter(fn (AddOn $a) => $a->isCurrentlyPurchasable())->pluck('id');
-                abort_unless($dayPassablePurchasableIds->contains($addOn->id), 403);
-                // Paperwork gate (e.g. a valid Pool Waiver), re-checked
-                // server-side -- a forged add_on_id can't route around the
-                // filtered options above.
-                abort_unless($member->canUseAddOn($addOn), 403);
-
                 $event = Event::find($data['event_id']);
                 abort_unless($event, 404);
-                // The picker only offers unarchived events; a forged id
-                // for an archived one stops here.
-                abort_if($event->isArchived(), 403);
-                // Nor one the picker wouldn't offer -- a later event while
-                // day_pass_future_events_enabled is off, or an ended one.
-                abort_unless(static::addOnDayPassEventOptionsQuery($addOn)->whereKey($event->id)->exists(), 403);
 
-                $price = $addOn->priceFor($event);
-                abort_unless($price !== null, 422);
-
-                $paymentMethod = $data['payment_method'] ?? null;
-                $transactionFee = $price > 0 ? PaymentMethod::feeFor($paymentMethod) : 0.0;
-
+                // AddOnDayPassService::sell() re-checks the add-on, paperwork,
+                // event and one-time method the pickers above filter on.
                 try {
-                    $pass = AddOnDayPass::create([
-                        'member_id' => $member->id,
-                        'event_id' => $event->id,
-                        'add_on_id' => $addOn->id,
-                        'amount_paid' => $price + $transactionFee,
-                        'payment_method' => $paymentMethod,
-                        'register_shift_id' => $this->getOpenShift()?->id,
-                        'recorded_by' => auth()->id(),
-                    ]);
-                } catch (QueryException $exception) {
-                    if ($exception->getCode() !== '23000') {
-                        throw $exception;
-                    }
-
-                    Notification::make()->title(__(':username already has a :addon day pass for that event.', ['username' => $member->username, 'addon' => $addOn->name]))->danger()->send();
+                    $pass = $dayPasses->sell(
+                        $member,
+                        $addOn,
+                        $event,
+                        auth()->user(),
+                        paymentMethod: $data['payment_method'],
+                        registerShift: $this->getOpenShift(),
+                    );
+                } catch (DayPassRefused $refused) {
+                    Notification::make()->title($refused->getMessage())->danger()->send();
 
                     return;
-                }
-
-                if (in_array($paymentMethod, PaymentMethod::oneTimeCodes()->all(), true)) {
-                    $member->recordOneTimeMethodUsage(PaymentMethod::where('code', $paymentMethod)->value('label'));
                 }
 
                 Notification::make()
@@ -2449,23 +2408,6 @@ class CheckIn extends Page implements HasTable
     protected static function currentEventQuery(): Builder
     {
         return Event::currentQuery();
-    }
-
-    /**
-     * No point selling a day pass for an event that's already ended, or one
-     * with no price for this add-on at all. Reads event.pool_fee directly,
-     * same limitation as AddOn::priceFor() — Pool is the only
-     * priced_per_event add-on today. Only tonight's events unless
-     * day_pass_future_events_enabled: a pass sold for a later event would sit
-     * in tonight's box with nothing tying it to that event.
-     */
-    protected static function addOnDayPassEventOptionsQuery(AddOn $addOn): Builder
-    {
-        $events = MembershipSetting::current()->day_pass_future_events_enabled
-            ? Event::currentOrFutureQuery()
-            : Event::currentQuery();
-
-        return $events->where('pool_fee', '>', 0);
     }
 
     protected static function eventLabel(Event $event): string

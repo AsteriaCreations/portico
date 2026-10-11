@@ -15,6 +15,7 @@ use App\Models\Member;
 use App\Models\MembershipSetting;
 use App\Models\Plan;
 use App\Models\User;
+use App\Services\AddOnDayPassService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Collection;
 use Livewire\Livewire;
@@ -120,10 +121,7 @@ test('buying a second day pass for the same member, event, and add-on is rejecte
 
 function dayPassEventOptionIds(AddOn $addOn): Collection
 {
-    $method = (new ReflectionClass(CheckIn::class))->getMethod('addOnDayPassEventOptionsQuery');
-    $method->setAccessible(true);
-
-    return $method->invoke(null, $addOn)->pluck('id');
+    return app(AddOnDayPassService::class)->eventOptionsQuery($addOn)->pluck('id');
 }
 
 test('day_pass_future_events_enabled is off by default', function () {
@@ -243,4 +241,16 @@ test('the day passes relation manager access follows pool_enabled', function () 
 
     MembershipSetting::current()->update(['pool_enabled' => true]);
     expect($manager->can('viewAny', AddOnDayPass::class))->toBeTrue();
+});
+
+test('a day pass with no payment method is a form error, not a misleading "already has a day pass"', function () {
+    $member = clearMemberForPoolDayPass($this->irregular);
+    $event = Event::factory()->create(['event_date' => now()->toDateString(), 'pool_fee' => 15]);
+
+    Livewire::test(CheckIn::class)
+        ->fillForm(['member_id' => $member->id])
+        ->callAction('purchaseAddOnDayPass', data: ['add_on_id' => $this->pool->id, 'event_id' => $event->id, 'payment_method' => null])
+        ->assertHasActionErrors(['payment_method' => 'required']);
+
+    expect(AddOnDayPass::count())->toBe(0);
 });
