@@ -1382,6 +1382,52 @@ test('a voucher can be redeemed on behalf of a different member than the one che
         ->and($attendee->voucherBalance())->toEqual(0.0);
 });
 
+test("picking another member's balance suggests the amount from that member's balance, not the attendee's", function () {
+    // Regression: the amount was only ever seeded from the attendee's own
+    // balance, so with $0 of their own it stayed blank (Check in failed on
+    // "amount required") and with a smaller balance only that much was drawn.
+    $payer = clearMember($this->irregular, ['username' => 'payer1']);
+    $attendee = clearMember($this->irregular, ['username' => 'attendee1']);
+    $event = Event::factory()->create(['event_date' => now()->toDateString(), 'entry_fee' => 20, 'pool_fee' => 0]);
+    Voucher::factory()->for($payer)->create(['amount' => 50, 'recorded_by' => $this->user->id]);
+
+    $page = Livewire::test(CheckIn::class)
+        ->set('data.event_id', $event->id)
+        ->set('data.member_id', $attendee->id)
+        ->set('pricingData.apply_voucher', true)
+        ->set('pricingData.voucher_payer_id', $payer->id)
+        ->assertSet('pricingData.voucher_amount', 20.0);
+
+    expect($page->instance()->getLiveDueTotal())->toEqual(0.0);
+
+    $page->set('pricingData.voucher_reason', 'covering attendee1')
+        ->callAction('checkIn', data: ['checked_in_at' => now()])
+        ->assertHasNoActionErrors();
+
+    $attendance = Attendance::where('member_id', $attendee->id)->where('event_id', $event->id)->firstOrFail();
+    expect((float) $attendance->amount_paid)->toEqual(0.0)
+        ->and($payer->voucherBalance())->toEqual(30.0);
+});
+
+test("switching from the attendee's small balance to another payer re-suggests the full amount, and clearing it goes back", function () {
+    $payer = clearMember($this->irregular, ['username' => 'payer1']);
+    $attendee = clearMember($this->irregular, ['username' => 'attendee1']);
+    $event = Event::factory()->create(['event_date' => now()->toDateString(), 'entry_fee' => 20, 'pool_fee' => 0]);
+    Voucher::factory()->for($payer)->create(['amount' => 12, 'recorded_by' => $this->user->id]);
+    Voucher::factory()->for($attendee)->create(['amount' => 5, 'recorded_by' => $this->user->id]);
+
+    Livewire::test(CheckIn::class)
+        ->set('data.event_id', $event->id)
+        ->set('data.member_id', $attendee->id)
+        ->set('pricingData.apply_voucher', true)
+        ->assertSet('pricingData.voucher_amount', 5.0)
+        // Capped at the payer's balance, which is under what's due.
+        ->set('pricingData.voucher_payer_id', $payer->id)
+        ->assertSet('pricingData.voucher_amount', 12.0)
+        ->set('pricingData.voucher_payer_id', null)
+        ->assertSet('pricingData.voucher_amount', 5.0);
+});
+
 test('not applying a voucher at check-in leaves the balance untouched', function () {
     $member = clearMember($this->irregular);
     $event = Event::factory()->create(['event_date' => now()->toDateString(), 'entry_fee' => 40, 'pool_fee' => 0]);
