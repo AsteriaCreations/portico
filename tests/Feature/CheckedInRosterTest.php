@@ -3,6 +3,7 @@
 use App\Enums\AddOnKind;
 use App\Models\AddOn;
 use App\Models\Attendance;
+use App\Models\Category;
 use App\Models\Event;
 use App\Models\Member;
 use App\Models\MembershipSetting;
@@ -137,4 +138,33 @@ test('the roster marks a person who paid for a subscription with this visit', fu
     expect(array_keys($component->instance()->boughtSubscription))
         ->toBe([Attendance::where('member_id', $buyer->id)->value('id')]);
     expect($component->html())->toContain('aria-label="Bought a subscription"');
+});
+
+test('the roster marks a guest with their sponsor and an Irregular on their first visit as a new member', function () {
+    $irregular = Category::factory()->create(['name' => 'Irregular']);
+    $guestCategory = Category::factory()->create(['name' => 'Guest']);
+    $event = Event::factory()->create();
+    $lastWeek = Event::factory()->create(['event_date' => today()->subWeek()->toDateString()]);
+
+    $sponsor = Member::factory()->create(['username' => 'host', 'preferred_name' => 'Hosty', 'category_id' => $irregular->id]);
+    $guest = Member::factory()->create(['username' => 'visitor', 'category_id' => $guestCategory->id, 'sponsor_id' => $sponsor->id]);
+    $newMember = Member::factory()->create(['username' => 'newbie', 'category_id' => $irregular->id]);
+
+    Attendance::factory()->create(['member_id' => $sponsor->id, 'event_id' => $lastWeek->id, 'checked_in_at' => now()->subWeek()]);
+    foreach ([$sponsor, $guest, $newMember] as $member) {
+        Attendance::factory()->create(['member_id' => $member->id, 'event_id' => $event->id, 'checked_in_at' => now()]);
+    }
+
+    $component = Livewire::test('checked-in-roster', ['eventId' => $event->id]);
+    $labels = fn (Member $member): array => array_column($component->instance()->markers(
+        $component->instance()->attendances->firstWhere('member_id', $member->id)
+    ), 'label');
+
+    expect($labels($guest))->toBe(['Guest of Hosty'])
+        ->and($labels($newMember))->toBe(['New member — first visit'])
+        // Back for a second visit: no longer new.
+        ->and($labels($sponsor))->toBe([]);
+    expect($component->html())
+        ->toContain('aria-label="Guest of Hosty"')
+        ->toContain('aria-label="New member — first visit"');
 });

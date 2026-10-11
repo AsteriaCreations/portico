@@ -52,6 +52,22 @@ function clearMemberForActivePatrons(Category $category, array $overrides = []):
     ], $overrides));
 }
 
+/**
+ * An earlier, finished visit, so tonight isn't the member's first arrival
+ * and the "New member" flag stays out of a test about another flag.
+ */
+function givePriorVisit(Member ...$members): void
+{
+    $lastWeek = Event::factory()->create(['event_date' => today()->subWeek()->toDateString()]);
+
+    foreach ($members as $member) {
+        Attendance::factory()->for($member)->for($lastWeek)->create([
+            'checked_in_at' => now()->subWeek(),
+            'departed_at' => now()->subWeek()->addHours(3),
+        ]);
+    }
+}
+
 test('the page is accessible to Volunteer and above, but not Showrunner', function () {
     $showrunner = User::factory()->create(['active' => true, 'role' => Role::Showrunner]);
     $this->actingAs($showrunner);
@@ -172,6 +188,7 @@ test('the watchlist badge renders for a watchlisted member and the watchlist-onl
     $event = Event::factory()->create(['event_date' => today()->toDateString()]);
     $watchlisted = clearMemberForActivePatrons($this->irregular, ['username' => 'flagged-one', 'on_watchlist' => true]);
     $clear = clearMemberForActivePatrons($this->irregular, ['username' => 'clear-one']);
+    givePriorVisit($watchlisted, $clear);
 
     $flaggedAttendance = Attendance::factory()->for($watchlisted)->for($event)->create(['checked_in_at' => now()]);
     $clearAttendance = Attendance::factory()->for($clear)->for($event)->create(['checked_in_at' => now()]);
@@ -230,6 +247,7 @@ test('the flags column badges Overnight only for an overnight stay', function ()
     $event = Event::factory()->create(['event_date' => today()->toDateString()]);
     $overnight = clearMemberForActivePatrons($this->irregular, ['username' => 'overnight-icon']);
     $ordinary = clearMemberForActivePatrons($this->irregular, ['username' => 'ordinary-icon']);
+    givePriorVisit($overnight, $ordinary);
 
     $overnightAttendance = Attendance::factory()->for($overnight)->for($event)->create(['checked_in_at' => now()]);
     attachOvernightAddOn($overnightAttendance);
@@ -238,6 +256,27 @@ test('the flags column badges Overnight only for an overnight stay', function ()
     Livewire::test(ActivePatrons::class)
         ->assertTableColumnStateSet('flags', ['Overnight'], $overnightAttendance)
         ->assertTableColumnStateSet('flags', null, $ordinaryAttendance);
+});
+
+test('the flags column badges Guest for a guest and New member for an Irregular on their first visit', function () {
+    $volunteer = User::factory()->create(['active' => true, 'role' => Role::Volunteer]);
+    $this->actingAs($volunteer);
+
+    $guestCategory = Category::factory()->create(['name' => 'Guest', 'is_comped' => false]);
+    $event = Event::factory()->create(['event_date' => today()->toDateString()]);
+    $sponsor = clearMemberForActivePatrons($this->irregular, ['username' => 'sponsor-one']);
+    $guest = clearMemberForActivePatrons($guestCategory, ['username' => 'guest-one', 'sponsor_id' => $sponsor->id]);
+    $newMember = clearMemberForActivePatrons($this->irregular, ['username' => 'new-one']);
+    givePriorVisit($sponsor, $guest);
+
+    $sponsorAttendance = Attendance::factory()->for($sponsor)->for($event)->create(['checked_in_at' => now()]);
+    $guestAttendance = Attendance::factory()->for($guest)->for($event)->create(['checked_in_at' => now()]);
+    $newMemberAttendance = Attendance::factory()->for($newMember)->for($event)->create(['checked_in_at' => now()]);
+
+    Livewire::test(ActivePatrons::class)
+        ->assertTableColumnStateSet('flags', ['Guest'], $guestAttendance)
+        ->assertTableColumnStateSet('flags', ['New member'], $newMemberAttendance)
+        ->assertTableColumnStateSet('flags', null, $sponsorAttendance);
 });
 
 test('departing an overnight guest removes them from the table just like an ordinary patron', function () {

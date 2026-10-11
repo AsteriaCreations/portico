@@ -3,8 +3,11 @@
 namespace App\Models;
 
 use App\Enums\EntryCoverageSource;
+use Carbon\Carbon;
 use Database\Factories\AttendanceFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Attributes\Scope;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -93,6 +96,45 @@ class Attendance extends Model
         }
 
         return $this->addOns()->where('is_overnight', true)->exists();
+    }
+
+    /**
+     * Adds first_arrived_at: the member's earliest arrival on any visit, so
+     * isNewMemberVisit() can be read for a whole list without a query per
+     * row.
+     *
+     * @param  Builder<Attendance>  $query
+     */
+    #[Scope]
+    protected function withFirstArrival(Builder $query): void
+    {
+        $query->addSelect([
+            'first_arrived_at' => static::query()
+                ->from('attendance', 'earliest')
+                ->selectRaw('min(earliest.checked_in_at)')
+                ->whereColumn('earliest.member_id', 'attendance.member_id')
+                ->whereNotNull('earliest.checked_in_at'),
+        ]);
+    }
+
+    /**
+     * A Prospective promoted to Irregular at the desk on this visit: an
+     * Irregular member arriving for the first time. Derived, since the
+     * promotion itself isn't logged -- a Prospective can't check in until
+     * the desk records their details, so their first arrival is the night
+     * they were promoted.
+     */
+    public function isNewMemberVisit(): bool
+    {
+        if ($this->checked_in_at === null || $this->member?->category?->name !== 'Irregular') {
+            return false;
+        }
+
+        $firstArrival = array_key_exists('first_arrived_at', $this->attributes)
+            ? $this->attributes['first_arrived_at']
+            : static::query()->where('member_id', $this->member_id)->whereNotNull('checked_in_at')->min('checked_in_at');
+
+        return $firstArrival !== null && $this->checked_in_at->equalTo(Carbon::parse($firstArrival));
     }
 
     public function registerShift(): BelongsTo
