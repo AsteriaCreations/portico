@@ -61,9 +61,18 @@ class ActivePatrons extends Page implements HasTable
         return Gate::allows('record-departures');
     }
 
+    /**
+     * Per-request memos for the two lists the view reads more than once
+     * (the table query and the header both want the events). Protected, so
+     * Livewire never persists them: each 15s poll reads fresh.
+     */
+    protected ?Collection $activeEvents = null;
+
+    protected ?Collection $signedInStaff = null;
+
     public function getActiveEvents(): Collection
     {
-        return Event::currentQuery()->orderBy('event_date')->get();
+        return $this->activeEvents ??= Event::currentQuery()->orderBy('event_date')->get();
     }
 
     public function getOccupancy(): int
@@ -85,7 +94,7 @@ class ActivePatrons extends Page implements HasTable
      */
     public function getSignedInStaff(): Collection
     {
-        return User::signedInStaffQuery()->orderBy('name')->get();
+        return $this->signedInStaff ??= User::signedInStaffQuery()->orderBy('name')->get();
     }
 
     /**

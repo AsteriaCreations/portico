@@ -26,7 +26,15 @@ class PaymentMethod extends Model
      */
     public const VOUCHER = 'voucher';
 
+    private const CASH_CODES_INSTANCE = 'payment-methods.cash-codes';
+
     public $timestamps = false;
+
+    protected static function booted(): void
+    {
+        static::saved(fn () => static::forgetCashCodes());
+        static::deleted(fn () => static::forgetCashCodes());
+    }
 
     protected function casts(): array
     {
@@ -74,13 +82,27 @@ class PaymentMethod extends Model
      * The codes that require an open register shift to select, and that
      * count toward RegisterShiftService::cashReceived()'s box reconciliation.
      *
+     * Read once per request and held in the service container, the same way
+     * as MembershipSetting::current(): the desk's register box summary asked
+     * for it five times on every 10s poll. Saving or deleting a method drops
+     * the copy.
+     *
      * @return Collection<int, string>
      */
     public static function cashCodes(): Collection
     {
-        return static::query()
-            ->where('requires_register_shift', true)
-            ->pluck('code');
+        if (! app()->bound(self::CASH_CODES_INSTANCE)) {
+            app()->instance(self::CASH_CODES_INSTANCE, static::query()
+                ->where('requires_register_shift', true)
+                ->pluck('code'));
+        }
+
+        return app(self::CASH_CODES_INSTANCE);
+    }
+
+    public static function forgetCashCodes(): void
+    {
+        app()->forgetInstance(self::CASH_CODES_INSTANCE);
     }
 
     /**

@@ -5,6 +5,7 @@ use App\Models\Register;
 use App\Models\RegisterShift;
 use App\Services\PrepayCashService;
 use App\Services\RegisterShiftService;
+use App\Support\Cents;
 use Livewire\Attributes\Computed;
 use Livewire\Component;
 
@@ -27,10 +28,19 @@ new class extends Component
         return $register ? app(RegisterShiftService::class)->currentOpenShift($register) : null;
     }
 
+    // Expected close plus the instructor payouts and prepaid cash it takes
+    // off, summed once per poll -- expected(), paidOutCents() and
+    // prepaidAheadCents() all read from here.
+    #[Computed]
+    public function closingSummary(): ?array
+    {
+        return $this->shift ? app(RegisterShiftService::class)->closingSummaryCents($this->shift) : null;
+    }
+
     #[Computed]
     public function expected(): ?float
     {
-        return $this->shift ? app(RegisterShiftService::class)->expectedClosingCount($this->shift) : null;
+        return $this->closingSummary ? Cents::toFloat($this->closingSummary['expected']) : null;
     }
 
     // All payment methods, not just cash -- a "what came in tonight" picture
@@ -54,7 +64,7 @@ new class extends Component
     #[Computed]
     public function paidOutCents(): int
     {
-        return $this->shift ? app(RegisterShiftService::class)->totalInstructorPayoutsCents($this->shift) : 0;
+        return $this->closingSummary['payouts'] ?? 0;
     }
 
     // Prepaid cash for later events taken on this shift -- also off
@@ -62,7 +72,7 @@ new class extends Component
     #[Computed]
     public function prepaidAheadCents(): int
     {
-        return $this->shift ? app(RegisterShiftService::class)->heldPrepayCashCents($this->shift) : 0;
+        return $this->closingSummary['prepaidAhead'] ?? 0;
     }
 
     // Tonight's side of the same thing: what was prepaid in cash for the

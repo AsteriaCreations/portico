@@ -326,6 +326,10 @@ class RegisterShiftService
             $totals[$row->payment_method] = ($totals[$row->payment_method] ?? 0) + Cents::of($row->amount_paid);
         }
 
+        if ($totals === []) {
+            return [];
+        }
+
         return PaymentMethod::whereIn('code', array_keys($totals))
             ->orderBy('sort_order')
             ->orderBy('label')
@@ -352,8 +356,27 @@ class RegisterShiftService
 
     public function expectedClosingCountCents(RegisterShift $shift): int
     {
-        return Cents::of($shift->opening_count) + $this->cashReceivedCents($shift) - $this->totalDropsCents($shift)
-            - $this->totalInstructorPayoutsCents($shift) - $this->heldPrepayCashCents($shift);
+        return $this->closingSummaryCents($shift)['expected'];
+    }
+
+    /**
+     * expectedClosingCountCents() together with two of the figures it takes
+     * off, so a caller that also shows them (the desk's register box
+     * summary, polled every 10s) doesn't sum them a second time.
+     *
+     * @return array{expected: int, payouts: int, prepaidAhead: int}
+     */
+    public function closingSummaryCents(RegisterShift $shift): array
+    {
+        $payouts = $this->totalInstructorPayoutsCents($shift);
+        $prepaidAhead = $this->heldPrepayCashCents($shift);
+
+        return [
+            'expected' => Cents::of($shift->opening_count) + $this->cashReceivedCents($shift) - $this->totalDropsCents($shift)
+                - $payouts - $prepaidAhead,
+            'payouts' => $payouts,
+            'prepaidAhead' => $prepaidAhead,
+        ];
     }
 
     /**
