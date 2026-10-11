@@ -84,6 +84,25 @@ test('the bulk-purchase action creates a correctly-split bundle', function () {
         ->and((float) $rows->sum('amount_paid'))->toEqual(175.0);
 });
 
+test('the bulk-purchase action records the entered paid_on date, not today', function () {
+    $this->travelTo('2026-07-20');
+    Plan::create(['add_on_id' => $this->entry->id, 'duration_months' => 3, 'price' => 175, 'effective_from' => '2026-01-01']);
+    $member = Member::factory()->create(['subscription_eligible' => true]);
+
+    Livewire::test(ListSubscriptions::class)
+        ->callAction('bulkPurchase', data: [
+            'member_id' => $member->id,
+            'add_on_id' => $this->entry->id,
+            'desired_start' => '2026-07-01',
+            'duration_months' => 3,
+            'payment_method' => 'other',
+            'paid_on' => '2026-07-03',
+        ])
+        ->assertHasNoActionErrors();
+
+    expect(Subscription::where('member_id', $member->id)->pluck('paid_on')->map->toDateString()->unique()->all())->toBe(['2026-07-03']);
+});
+
 test('the bulk-purchase action adds the venmo transaction fee onto the first covered month', function () {
     Plan::create(['add_on_id' => $this->entry->id, 'duration_months' => 1, 'price' => 60, 'effective_from' => '2026-01-01']);
     Plan::create(['add_on_id' => $this->entry->id, 'duration_months' => 3, 'price' => 175, 'effective_from' => '2026-01-01']);
