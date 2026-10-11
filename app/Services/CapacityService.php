@@ -6,7 +6,9 @@ use App\Models\Attendance;
 use App\Models\Event;
 use App\Models\MembershipSetting;
 use App\Models\OccupancyAdjustment;
+use App\Models\User;
 use Carbon\CarbonInterface;
+use Illuminate\Support\Facades\DB;
 
 /**
  * How many people are in the building, against a hard cap — the third
@@ -24,6 +26,46 @@ class CapacityService
         $adjustment = (int) OccupancyAdjustment::whereDate('for_date', $date)->sum('delta');
 
         return max(0, $attending + $adjustment);
+    }
+
+    /**
+     * Anonymous departures (RecordDeparturesWidget) recorded for $date that
+     * haven't yet been matched to a named patron -- the net negative of that
+     * night's occupancy_adjustments, floored at zero.
+     */
+    public function unmatchedDepartures(CarbonInterface $date): int
+    {
+        return max(0, -(int) OccupancyAdjustment::whereDate('for_date', $date)->sum('delta'));
+    }
+
+    /**
+     * Departs a patron who already left through an anonymous "N people left"
+     * headcount, so occupancy doesn't drop twice: sets departed_at (the
+     * patron leaves Active Patrons) and writes a +1 adjustment on the
+     * event's own night that cancels it in occupancy(). Only allowed while
+     * that night still has an unmatched anonymous departure to absorb it,
+     * so it can never push the count above what the desk recorded.
+     */
+    public function departAlreadyCounted(Attendance $attendance, User $staff): void
+    {
+        $date = $attendance->event->event_date;
+        MembershipSetting::current();
+
+        DB::transaction(function () use ($attendance, $staff, $date): void {
+            $this->lockForAdmission();
+
+            abort_unless($this->unmatchedDepartures($date) > 0, 422, 'No anonymous departure is left to match on that night.');
+            abort_unless($attendance->refresh()->departed_at === null, 422, 'That patron is already departed.');
+
+            $attendance->update(['departed_at' => now()]);
+
+            OccupancyAdjustment::create([
+                'for_date' => $date,
+                'delta' => 1,
+                'reason' => "Matched to {$attendance->member->username} on Active Patrons (already counted in Record departures)",
+                'recorded_by' => $staff->id,
+            ]);
+        });
     }
 
     public function capacity(): ?int
