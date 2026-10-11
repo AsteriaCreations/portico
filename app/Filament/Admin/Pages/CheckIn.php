@@ -6,6 +6,7 @@ use App\Enums\AdmissionOutcome;
 use App\Enums\Role;
 use App\Exceptions\CheckInRefused;
 use App\Exceptions\DayPassRefused;
+use App\Exceptions\GuestRefused;
 use App\Filament\Concerns\RenamesMemberUsername;
 use App\Filament\Concerns\ShowsKioskQrCode;
 use App\Filament\Concerns\TranslatesPageLabels;
@@ -31,6 +32,7 @@ use App\Services\CapacityService;
 use App\Services\CheckInRequest;
 use App\Services\CheckInService;
 use App\Services\EntryCorrectionService;
+use App\Services\GuestRegistrationService;
 use App\Services\InstructorPayoutResult;
 use App\Services\InstructorPayoutService;
 use App\Services\PriceBreakdown;
@@ -69,7 +71,6 @@ use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Notification as LaravelNotification;
 use Symfony\Component\HttpKernel\Exception\HttpException;
@@ -1757,6 +1758,7 @@ class CheckIn extends Page implements HasTable
     {
         $sponsor = $this->getSelectedMember();
         $attendance = $this->getExistingAttendance();
+        $guests = app(GuestRegistrationService::class);
 
         return Action::make('registerGuest')
             ->label(__('Register a guest'))
@@ -1778,66 +1780,22 @@ class CheckIn extends Page implements HasTable
                     ->required(fn (Get $get): bool => (bool) $get('appears_under_21'))
                     ->visible(fn (Get $get): bool => (bool) $get('appears_under_21')),
             ])
-            ->visible(fn (): bool => $sponsor
-                && $attendance?->checked_in_at
-                && $sponsor->canSponsorGuests()
-                && $sponsor->hasGuestAllowanceLeft($attendance))
-            ->action(function (array $data) use ($sponsor): void {
+            ->visible(fn (): bool => $guests->canRegister($sponsor, $attendance))
+            ->action(function (array $data) use ($sponsor, $guests): void {
                 if ($this->haltForTraining(__('Practice: guest registration simulated.'))) {
                     return;
                 }
 
-                abort_unless($sponsor && $sponsor->canSponsorGuests(), 403);
+                abort_unless($sponsor, 403);
+                $attendance = $this->getExistingAttendance();
+                abort_unless($attendance, 403);
 
-                $guestCategory = Category::where('name', 'Guest')->firstOrFail();
-                $sponsorLabel = $sponsor->displayName();
-
-                // The unique() rule above already checked at validation time —
-                // this only catches the narrow race where two registers claim
-                // the same username in the gap between that check and this
-                // insert. Unlike member_number, a username collision here
-                // isn't silently retried with a different value: it's manual
-                // and required, so staff need to see it and pick another one.
+                // GuestRegistrationService::register() re-checks arrival,
+                // canSponsorGuests() and the guest limit (sponsor locked).
                 try {
-                    // The guest limit is re-checked with the sponsor's row
-                    // locked, so two registers can't both see "one left" and
-                    // each add a guest.
-                    $guest = DB::transaction(function () use ($data, $sponsor, $guestCategory, $sponsorLabel): ?Member {
-                        Member::whereKey($sponsor->id)->lockForUpdate()->first();
-                        $attendance = $this->getExistingAttendance();
-
-                        if (! $attendance || ! $sponsor->hasGuestAllowanceLeft($attendance)) {
-                            return null;
-                        }
-
-                        return Member::create([
-                            'username' => $data['username'],
-                            'preferred_name' => $data['preferred_name'],
-                            'first_name' => $data['first_name'],
-                            'last_name' => $data['last_name'],
-                            'email' => filled($data['email'] ?? null) ? $data['email'] : null,
-                            'email_opt_in' => (bool) ($data['email_opt_in'] ?? false),
-                            'dob' => $data['dob'] ?? null,
-                            'category_id' => $guestCategory->id,
-                            'sponsor_id' => $sponsor->id,
-                            'notes' => "Guest of {$sponsorLabel}.",
-                        ]);
-                    });
-                } catch (QueryException $exception) {
-                    if ($exception->getCode() !== '23000') {
-                        throw $exception;
-                    }
-
-                    Notification::make()->title(__('That username was just taken — please choose another.'))->danger()->send();
-
-                    return;
-                }
-
-                if (! $guest) {
-                    Notification::make()
-                        ->title(__('Guest limit reached — :max per member per night. No guest was registered.', ['max' => MembershipSetting::current()->max_guests_per_night]))
-                        ->danger()
-                        ->send();
+                    $guest = $guests->register($sponsor, $attendance, $data);
+                } catch (GuestRefused $refused) {
+                    Notification::make()->title($refused->getMessage())->danger()->send();
 
                     return;
                 }
