@@ -1015,6 +1015,41 @@ class CheckIn extends Page implements HasTable
         );
     }
 
+    // What the member goes by, changed on the spot. Hidden unless the
+    // change-member-preferred-name gate allows it -- for Door that means the
+    // club turned on door_preferred_name_change_enabled. Not logged, same as
+    // editing it on the member page. Blank clears it, so displayName()
+    // falls back to the next field.
+    public function changePreferredNameAction(): Action
+    {
+        return Action::make('changePreferredName')
+            ->label('Change preferred name')
+            ->visible(fn (): bool => $this->getSelectedMember() !== null && Gate::allows('change-member-preferred-name'))
+            ->fillForm(fn (): array => ['preferred_name' => $this->getSelectedMember()?->preferred_name])
+            ->schema([
+                TextInput::make('preferred_name')
+                    ->label('Preferred name')
+                    ->maxLength(60),
+            ])
+            ->action(function (array $data): void {
+                abort_unless(Gate::allows('change-member-preferred-name'), 403);
+
+                $member = $this->getSelectedMember();
+                abort_unless($member, 404);
+
+                if ($this->haltForTraining(__('Practice: preferred name change simulated.'))) {
+                    return;
+                }
+
+                $member->update(['preferred_name' => filled($data['preferred_name'] ?? null) ? trim($data['preferred_name']) : null]);
+
+                // The picker's label can include the preferred name.
+                $this->memberPickerVersion++;
+
+                Notification::make()->title(__('Preferred name updated'))->success()->send();
+            });
+    }
+
     // The member's kiosk QR, to print or photograph -- typically right after
     // they buy a subscription here. Hidden unless the club turned on
     // kiosk_checkin_enabled. In training mode an existing code still shows,

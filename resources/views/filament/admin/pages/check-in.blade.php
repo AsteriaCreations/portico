@@ -214,10 +214,16 @@
             <p class="font-medium">{{ $member->displayName() }}</p>
             <p class="text-sm text-gray-500">{{ $member->category->name }}</p>
 
-            {{-- Manager+, or Door once the club turns it on at Feature Flags. --}}
-            @if ($this->renameUsernameAction->isVisible())
-                <div class="mt-2">
-                    {{ $this->renameUsernameAction }}
+            {{-- Manager+, or Door once the club turns each on at Feature Flags. --}}
+            @if ($this->renameUsernameAction->isVisible() || $this->changePreferredNameAction->isVisible())
+                <div class="mt-2 flex flex-wrap gap-2">
+                    @if ($this->renameUsernameAction->isVisible())
+                        {{ $this->renameUsernameAction }}
+                    @endif
+
+                    @if ($this->changePreferredNameAction->isVisible())
+                        {{ $this->changePreferredNameAction }}
+                    @endif
                 </div>
             @endif
 

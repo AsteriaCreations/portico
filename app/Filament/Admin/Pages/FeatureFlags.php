@@ -81,6 +81,7 @@ class FeatureFlags extends Page
             'behavior_notes_enabled',
             'guests_enabled',
             'door_username_rename_enabled',
+            'door_preferred_name_change_enabled',
             'kiosk_checkin_enabled',
             'upstream_check_enabled',
             'deploy_trigger_enabled',
@@ -127,6 +128,10 @@ class FeatureFlags extends Page
                         Toggle::make('door_username_rename_enabled')
                             ->label('Door can rename usernames')
                             ->helperText(__('Adds a "Rename username" button for the selected member on the Check-In Desk, so Door staff can fix a username without a Manager. Every rename is still logged (old name, new name, who, when) on the member\'s record, and each one sends Managers and above a notification. Managers and above can always rename from the member\'s edit page. Off by default.'))
+                            ->required(),
+                        Toggle::make('door_preferred_name_change_enabled')
+                            ->label('Door can change preferred names')
+                            ->helperText(__('Adds a "Change preferred name" button for the selected member on the Check-In Desk, so Door staff can update what a member goes by without a Manager. Changes aren\'t logged, same as editing it on the member\'s page. Managers and above see the button either way. Off by default.'))
                             ->required(),
                         Toggle::make('kiosk_checkin_enabled')
                             ->label('Kiosk check-in')

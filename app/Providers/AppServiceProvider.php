@@ -113,6 +113,14 @@ class AppServiceProvider extends ServiceProvider
         Gate::define('rename-member-username', fn (User $user): bool => $user->role->atLeast(Role::Manager)
             || ($user->role->atLeast(Role::Door) && MembershipSetting::current()->door_username_rename_enabled));
 
+        // Same shape for the desk's "Change preferred name": Manager+
+        // always (they can edit it on the member page anyway), Door once the
+        // club turns on door_preferred_name_change_enabled. Not logged, like
+        // the member page. Re-checked server-side in
+        // CheckIn::changePreferredNameAction().
+        Gate::define('change-member-preferred-name', fn (User $user): bool => $user->role->atLeast(Role::Manager)
+            || ($user->role->atLeast(Role::Door) && MembershipSetting::current()->door_preferred_name_change_enabled));
+
         // Door+ once the club turns on kiosk_checkin_enabled: show or print a
         // member's kiosk QR code. Same "role + flag baked into the gate"
         // shape as manage-visit-notes; re-checked server-side by
