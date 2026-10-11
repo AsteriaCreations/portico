@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\AddOn;
 use App\Models\Attendance;
 use App\Models\Member;
+use App\Models\MembershipSetting;
 use App\Models\PaymentMethod;
 use App\Models\Plan;
 use App\Models\RegisterShift;
@@ -14,6 +15,7 @@ use App\Models\Voucher;
 use App\Support\Cents;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 
 /**
  * Multi-month subscription plan purchases — a bulk-discounted plan (e.g. 3
@@ -70,6 +72,67 @@ class SubscriptionBundleService
         }
 
         return Cents::of(Plan::currentFor($addOn, now(), max($months, 1))?->price);
+    }
+
+    /**
+     * A standalone subscription sale (no check-in): the bundle itself, an
+     * optional voucher draw, and the payment method's transaction fee, all
+     * in one transaction. Both the desk's "Buy Subscription" and the
+     * Subscriptions list's bulk purchase go through here, so the fee and
+     * voucher rules can't drift between them. A subscription purchase is
+     * never one-time-restricted (see Member::hasUsedOneTimeMethod()), so
+     * nothing is stamped for the payment method.
+     */
+    public function sell(
+        Member $member,
+        AddOn $addOn,
+        int $months,
+        CarbonInterface $desiredStart,
+        User $staff,
+        ?string $paymentMethod = null,
+        ?RegisterShift $registerShift = null,
+        bool $applyVoucher = false,
+        ?int $voucherPayerId = null,
+        int $voucherCents = 0,
+        string $voucherReason = '',
+    ): SubscriptionSaleResult {
+        // Re-checked here, not just via each form's filtered Select options
+        // -- a feature flag (e.g. pool_enabled) stops new writes even for a
+        // forged add_on_id. Entry is always purchasable.
+        abort_unless($addOn->is(AddOn::entry()) || (AddOn::subscribable()->whereKey($addOn->id)->exists() && $addOn->isCurrentlyPurchasable()), 403);
+
+        return DB::transaction(function () use ($member, $addOn, $months, $desiredStart, $staff, $paymentMethod, $registerShift, $applyVoucher, $voucherPayerId, $voucherCents, $voucherReason): SubscriptionSaleResult {
+            $rows = $this->purchase($member, $addOn, $months, $desiredStart, $staff, $paymentMethod, $registerShift);
+
+            // Locked like CheckInService's draw, so two registers spending
+            // the same balance at once can't overdraw it.
+            $voucherApplied = 0;
+            if ($applyVoucher && MembershipSetting::current()->vouchers_enabled) {
+                $payer = Member::whereKey($voucherPayerId ?: $member->id)->lockForUpdate()->first();
+
+                if ($payer) {
+                    $voucherApplied = $this->applyVoucher(
+                        $rows,
+                        $payer,
+                        min($voucherCents, Cents::of($payer->voucherBalance())),
+                        $voucherReason,
+                        $staff,
+                    );
+                }
+            }
+
+            // Folded onto the first month still owing money rather than
+            // tracked as its own ledger -- one flat fee per transaction, not
+            // per month, the same "fold into the existing column" choice
+            // made for Event Add-Ons. Nothing owed, no fee.
+            $owing = $rows->first(fn (Subscription $row) => Cents::of($row->amount_paid) > 0);
+            $transactionFee = $owing ? Cents::of(PaymentMethod::feeFor($paymentMethod)) : 0;
+            if ($transactionFee > 0) {
+                $owing->update(['amount_paid' => Cents::toDecimal(Cents::of($owing->amount_paid) + $transactionFee)]);
+            }
+
+            return new SubscriptionSaleResult($rows, $voucherApplied);
+        });
     }
 
     /**
