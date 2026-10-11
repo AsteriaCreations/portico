@@ -127,7 +127,8 @@ class ActivePatrons extends Page implements HasTable
                 ->where(fn ($query) => $query
                     ->whereIn('event_id', $eventIds)
                     ->orWhereHas('addOns', fn ($addOns) => $addOns->where('is_overnight', true)))
-                ->with(['addOns', 'behaviorNotes.createdBy', 'event', 'member.skills']))
+                ->with(['addOns', 'behaviorNotes.createdBy', 'event', 'member.category', 'member.skills'])
+                ->withFirstArrival())
             // Filament layout components (Split/Stack), not a flat column
             // list -- each patron renders as one card, so the page never
             // needs the left/right horizontal scroll a 10-wide table forced.
@@ -148,9 +149,22 @@ class ActivePatrons extends Page implements HasTable
                             ->badge()
                             ->getStateUsing(fn (Attendance $record): array => array_values(array_filter([
                                 $record->member?->on_watchlist ? __('Watchlist') : null,
+                                $record->member?->isGuest() ? __('Guest') : null,
+                                $record->isNewMemberVisit() ? __('New member') : null,
                                 $record->isOvernightStay() ? __('Overnight') : null,
                             ])))
-                            ->color(fn (string $state): string => $state === __('Watchlist') ? 'warning' : 'info')
+                            // The same icons as the desk's checked-in roster.
+                            ->icon(fn (string $state): Heroicon => match ($state) {
+                                __('Watchlist') => Heroicon::Eye,
+                                __('Guest') => Heroicon::UserPlus,
+                                __('New member') => Heroicon::Sparkles,
+                                default => Heroicon::Moon,
+                            })
+                            ->color(fn (string $state): string => match ($state) {
+                                __('Watchlist') => 'warning',
+                                __('New member') => 'primary',
+                                default => 'info',
+                            })
                             ->alignment(Alignment::End)
                             ->grow(false),
                     ]),

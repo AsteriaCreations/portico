@@ -26,7 +26,8 @@ new class extends Component
     public function attendances(): Collection
     {
         return Attendance::query()
-            ->with('member')
+            ->with(['member.category', 'member.sponsor'])
+            ->withFirstArrival()
             ->where('event_id', $this->eventId)
             ->whereNotNull('checked_in_at')
             ->orderByDesc('checked_in_at')
@@ -57,6 +58,36 @@ new class extends Component
                 ->contains(fn (Subscription $subscription): bool => $subscription->created_at->gte($attendance->created_at->clone()->subMinute())))
             ->mapWithKeys(fn (Attendance $attendance): array => [$attendance->id => true])
             ->all();
+    }
+
+    /**
+     * The icons beside a person's name, the same list for the phone cards
+     * and the table: a guest (with their sponsor), a member promoted from
+     * Prospective tonight, and a subscription bought with the visit.
+     *
+     * @return list<array{icon: string, label: string, color: string}>
+     */
+    public function markers(Attendance $attendance): array
+    {
+        $member = $attendance->member;
+
+        return array_values(array_filter([
+            $member->isGuest() ? [
+                'icon' => 'heroicon-m-user-plus',
+                'label' => $member->sponsor ? __('Guest of :sponsor', ['sponsor' => $member->sponsor->displayName()]) : __('Guest'),
+                'color' => 'text-info-600 dark:text-info-400',
+            ] : null,
+            $attendance->isNewMemberVisit() ? [
+                'icon' => 'heroicon-m-sparkles',
+                'label' => __('New member — first visit'),
+                'color' => 'text-primary-600 dark:text-primary-400',
+            ] : null,
+            isset($this->boughtSubscription[$attendance->id]) ? [
+                'icon' => 'heroicon-m-ticket',
+                'label' => __('Bought a subscription'),
+                'color' => 'text-success-600 dark:text-success-400',
+            ] : null,
+        ]));
     }
 };
 ?>
@@ -98,9 +129,9 @@ new class extends Component
                     <div class="border-t border-gray-200 py-2 text-sm dark:border-white/10">
                         <p class="flex items-center gap-1 font-medium">
                             {{ \App\Models\Member::pickerLabel($checkedInAttendance->member) }}
-                            @if (isset($this->boughtSubscription[$checkedInAttendance->id]))
-                                <span role="img" aria-label="{{ __('Bought a subscription') }}" title="{{ __('Bought a subscription') }}" class="text-success-600 dark:text-success-400"><x-filament::icon icon="heroicon-m-ticket" /></span>
-                            @endif
+                            @foreach ($this->markers($checkedInAttendance) as $marker)
+                                <span role="img" aria-label="{{ $marker['label'] }}" title="{{ $marker['label'] }}" class="{{ $marker['color'] }}"><x-filament::icon :icon="$marker['icon']" /></span>
+                            @endforeach
                         </p>
                         @if ($checkedInAttendance->member->displayName() !== \App\Models\Member::pickerLabel($checkedInAttendance->member))
                             <p class="text-gray-500 dark:text-gray-400">{{ $checkedInAttendance->member->displayName() }}</p>
@@ -129,9 +160,9 @@ new class extends Component
                                 <td class="px-3 py-2 text-sm">
                                     <span class="flex items-center gap-1">
                                         <span title="{{ $checkedInAttendance->member->displayName() }}">{{ \App\Models\Member::pickerLabel($checkedInAttendance->member) }}</span>
-                                        @if (isset($this->boughtSubscription[$checkedInAttendance->id]))
-                                            <span role="img" aria-label="{{ __('Bought a subscription') }}" title="{{ __('Bought a subscription') }}" class="text-success-600 dark:text-success-400"><x-filament::icon icon="heroicon-m-ticket" /></span>
-                                        @endif
+                                        @foreach ($this->markers($checkedInAttendance) as $marker)
+                                            <span role="img" aria-label="{{ $marker['label'] }}" title="{{ $marker['label'] }}" class="{{ $marker['color'] }}"><x-filament::icon :icon="$marker['icon']" /></span>
+                                        @endforeach
                                     </span>
                                 </td>
                                 <td class="px-3 py-2 text-sm">{{ $this->event->name }}</td>
