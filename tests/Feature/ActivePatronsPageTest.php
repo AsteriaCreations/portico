@@ -12,6 +12,7 @@ use App\Models\Category;
 use App\Models\Event;
 use App\Models\Member;
 use App\Models\MembershipSetting;
+use App\Models\OccupancyAdjustment;
 use App\Models\Skill;
 use App\Models\User;
 use App\Services\CapacityService;
@@ -21,6 +22,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Str;
 use Livewire\Livewire;
+use Symfony\Component\HttpKernel\Exception\HttpException;
 
 uses(RefreshDatabase::class);
 
@@ -547,4 +549,50 @@ test('the "also in the building" note lists names only once staff roles are turn
     MembershipSetting::current()->update(['active_patrons_show_staff_roles' => true]);
 
     Livewire::test(ActivePatrons::class)->assertSee('Vera Volunteer (Volunteer)');
+});
+
+test('departing an already-counted patron takes them off the list without lowering occupancy again', function () {
+    $volunteer = User::factory()->create(['active' => true, 'role' => Role::Volunteer]);
+    $this->actingAs($volunteer);
+
+    $event = Event::factory()->create(['event_date' => today()->toDateString()]);
+    $leaver = Attendance::factory()->for(clearMemberForActivePatrons($this->irregular, ['username' => 'left-earlier']))->for($event)->create(['checked_in_at' => now()]);
+    Attendance::factory()->for(clearMemberForActivePatrons($this->irregular, ['username' => 'still-here']))->for($event)->create(['checked_in_at' => now()]);
+
+    // The Dashboard's anonymous "1 person left".
+    OccupancyAdjustment::create(['for_date' => today(), 'delta' => -1, 'recorded_by' => $volunteer->id]);
+    expect(app(CapacityService::class)->occupancy(today()))->toBe(1);
+
+    Livewire::test(ActivePatrons::class)
+        ->assertTableActionVisible('departAlreadyCounted', $leaver)
+        ->callTableAction('departAlreadyCounted', $leaver)
+        ->assertHasNoTableActionErrors()
+        ->assertCanNotSeeTableRecords([$leaver]);
+
+    expect($leaver->refresh()->departed_at)->not->toBeNull()
+        ->and(app(CapacityService::class)->occupancy(today()))->toBe(1)
+        ->and(app(CapacityService::class)->unmatchedDepartures(today()))->toBe(0)
+        ->and(OccupancyAdjustment::latest('id')->first()->reason)->toContain('left-earlier');
+});
+
+test('depart (already counted) is hidden with no unmatched anonymous departure, and the service refuses it', function () {
+    $volunteer = User::factory()->create(['active' => true, 'role' => Role::Volunteer]);
+    $this->actingAs($volunteer);
+
+    $event = Event::factory()->create(['event_date' => today()->toDateString()]);
+    $first = Attendance::factory()->for(clearMemberForActivePatrons($this->irregular))->for($event)->create(['checked_in_at' => now()]);
+    $second = Attendance::factory()->for(clearMemberForActivePatrons($this->irregular))->for($event)->create(['checked_in_at' => now()]);
+
+    Livewire::test(ActivePatrons::class)->assertTableActionHidden('departAlreadyCounted', $first);
+
+    // One anonymous departure matches one patron, not two.
+    OccupancyAdjustment::create(['for_date' => today(), 'delta' => -1, 'recorded_by' => $volunteer->id]);
+    app(CapacityService::class)->departAlreadyCounted($first, $volunteer);
+
+    Livewire::test(ActivePatrons::class)->assertTableActionHidden('departAlreadyCounted', $second);
+
+    expect(fn () => app(CapacityService::class)->departAlreadyCounted($second, $volunteer))
+        ->toThrow(HttpException::class);
+    expect($second->refresh()->departed_at)->toBeNull()
+        ->and(app(CapacityService::class)->occupancy(today()))->toBe(1);
 });

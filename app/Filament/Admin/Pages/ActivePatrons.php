@@ -11,6 +11,7 @@ use App\Models\MembershipSetting;
 use App\Models\User;
 use App\Services\CapacityService;
 use BackedEnum;
+use Carbon\CarbonInterface;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
@@ -118,7 +119,7 @@ class ActivePatrons extends Page implements HasTable
                 ->where(fn ($query) => $query
                     ->whereIn('event_id', $eventIds)
                     ->orWhereHas('addOns', fn ($addOns) => $addOns->where('is_overnight', true)))
-                ->with(['addOns', 'behaviorNotes.createdBy', 'member.skills']))
+                ->with(['addOns', 'behaviorNotes.createdBy', 'event', 'member.skills']))
             // Filament layout components (Split/Stack), not a flat column
             // list -- each patron renders as one stacked card on a phone and
             // a single row at sm+ width, so the page never needs the
@@ -212,7 +213,7 @@ class ActivePatrons extends Page implements HasTable
                             ->when($days, fn ($q) => $q->orWhereDate('watchlist_probation_start', '>', today()->subDays($days))));
                     }),
             ])
-            ->recordActions([$this->departAction()])
+            ->recordActions([$this->departAction(), $this->departAlreadyCountedAction()])
             ->poll('15s');
     }
 
@@ -231,6 +232,45 @@ class ActivePatrons extends Page implements HasTable
 
                 Notification::make()->title(__('Marked departed'))->success()->send();
             });
+    }
+
+    /**
+     * For a patron who already left through the Dashboard's anonymous
+     * "Record departures" count: takes them off this list without lowering
+     * occupancy a second time (CapacityService::departAlreadyCounted()).
+     * Shown only while their event's night has an unmatched anonymous
+     * departure, re-checked in the service.
+     */
+    public function departAlreadyCountedAction(): Action
+    {
+        return Action::make('departAlreadyCounted')
+            ->label('Depart (already counted)')
+            ->color('gray')
+            ->visible(fn (Attendance $record): bool => $this->unmatchedDeparturesOn($record->event->event_date) > 0)
+            ->requiresConfirmation()
+            ->modalDescription(__('Use this when someone was already counted with "Record departures" on the Dashboard. They come off this list, and the people-in-building count stays the same.'))
+            ->action(function (Attendance $record): void {
+                abort_unless(Gate::allows('record-departures'), 403);
+
+                app(CapacityService::class)->departAlreadyCounted($record, Auth::user());
+                $this->unmatchedDepartures = [];
+
+                Notification::make()->title(__('Marked departed (count unchanged)'))->success()->send();
+            });
+    }
+
+    /**
+     * Per-request memo of CapacityService::unmatchedDepartures() by night,
+     * so the action's visible() check doesn't query once per row.
+     *
+     * @var array<string, int>
+     */
+    protected array $unmatchedDepartures = [];
+
+    protected function unmatchedDeparturesOn(CarbonInterface $date): int
+    {
+        return $this->unmatchedDepartures[$date->toDateString()]
+            ??= app(CapacityService::class)->unmatchedDepartures($date);
     }
 
     /**
