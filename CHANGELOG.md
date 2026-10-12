@@ -37,6 +37,11 @@ is fixes only.
 
 ### Added
 
+- `docs/DATA_DICTIONARY.md`: what every table and column means for someone querying the data,
+  the traps to avoid (what `amount_paid` includes, ledgers, computed statuses, datetime
+  "dates"), the derived rules as SQL, common report queries, and which columns are personal
+  data. `docs/DEPLOYMENT.md` §4a covers read-only database accounts: a full one, and a limited
+  one that can't see personal data.
 - **Duplicate** on the Events list now carries the start and end times over: pick the new date
   and both move onto it, keeping the event's length, so an event that runs past midnight still
   ends the next day. Moving an event's date on the edit form does the same. A new **Repeat**
