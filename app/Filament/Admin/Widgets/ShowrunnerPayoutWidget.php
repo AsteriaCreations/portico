@@ -38,9 +38,4 @@ class ShowrunnerPayoutWidget extends Widget
 
         return app(ShowrunnerPayoutService::class)->calculate($this->record);
     }
-
-    public function getSettings(): MembershipSetting
-    {
-        return MembershipSetting::current();
-    }
 }

@@ -15,13 +15,13 @@ class ShowrunnerPayoutTierSeeder extends Seeder
     {
         ShowrunnerPayoutTier::create([
             'min_headcount' => 0,
-            'max_headcount' => 34,
+            'max_headcount' => 35,
             'payout_type' => PayoutType::Voucher,
             'payout_value' => 25.00,
         ]);
 
         ShowrunnerPayoutTier::create([
-            'min_headcount' => 35,
+            'min_headcount' => 36,
             'max_headcount' => 100,
             'payout_type' => PayoutType::Percentage,
             'payout_value' => 10.00,
