@@ -60,7 +60,7 @@ All are Manager+ unless noted. They're grouped in the left nav exactly as listed
 | **Paperwork Types** | Waivers/forms a member signs. `required`, `renewal_months`, and `gates_add_on_id` (e.g. a Pool Waiver that gates the Pool add-on). |
 | **Skills** | A tag catalog (e.g. "First aid", "DJ"). Assigning a skill to a member is Admin+; editing the catalog is Manager+. |
 | **Event Types** | Social, Class, Munch, … Each event picks one. Its **Instructor Pay Rates** tab sets per-head instructor pay (only if `instructor_payouts_enabled`). |
-| **Showrunner Payout Tiers** | Headcount → commission bands for the Showrunner cut of the door (only if `showrunner_payouts_enabled`). |
+| **Showrunner Payout Tiers** | Headcount bands for the Showrunner's commission (only if `showrunner_payouts_enabled`). Percentage bands stack like tax brackets on the entry fee (e.g. attendees 36–100 at 10%, 101+ at 15%); a voucher band pays a flat amount for a small event (e.g. up to 35). |
 
 ### System
 
@@ -100,7 +100,6 @@ rarely need to touch most of them.
 | Searchable member fields | `Username` | Which fields the member search boxes match on, and what shows in member dropdown labels. |
 | Require email at sign-up | on | Whether the Check-In Desk requires an email when a Prospective finishes sign-up or a guest is registered. Name is always required. |
 | Hide personal info by default on the Members list | on | Whether the Members table masks name/DOB/email until "Show personal info". |
-| Showrunner commission includes pool / add-on revenue | off / off | Whether those revenue lines count toward the Showrunner's door cut. |
 | Upstream remote / branch | *(blank)* / `main` | A git remote already added on the server (this app never runs `git remote add` itself) that this fork tracks for updates. |
 | Deploy Scheduled Task name | *(blank)* | The exact name of a Windows Scheduled Task, already registered on the server, that "Run update now" fires — see [`docs/DEPLOYMENT.md`](DEPLOYMENT.md) §7 "Web-triggered updates". |
 

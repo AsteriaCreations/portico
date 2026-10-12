@@ -1,6 +1,5 @@
 <?php
 
-use App\Enums\AddOnCoverageSource;
 use App\Enums\AddOnKind;
 use App\Enums\EntryCoverageSource;
 use App\Enums\PayoutType;
@@ -9,9 +8,9 @@ use App\Models\Attendance;
 use App\Models\AttendanceAddOn;
 use App\Models\Category;
 use App\Models\Event;
-use App\Models\MembershipSetting;
 use App\Models\Plan;
 use App\Models\ShowrunnerPayoutTier;
+use App\Services\ShowrunnerPayoutBand;
 use App\Services\ShowrunnerPayoutService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
@@ -27,8 +26,10 @@ beforeEach(function () {
         'effective_from' => '2026-01-01',
     ]);
 
-    ShowrunnerPayoutTier::create(['min_headcount' => 0, 'max_headcount' => 34, 'payout_type' => PayoutType::Voucher, 'payout_value' => 25.00]);
-    ShowrunnerPayoutTier::create(['min_headcount' => 35, 'max_headcount' => 100, 'payout_type' => PayoutType::Percentage, 'payout_value' => 10.00]);
+    // The house rule: a $25 voucher up to 35 attendees, then 10% of the
+    // entry fee per attendee 36-100 and 15% per attendee from 101 on.
+    ShowrunnerPayoutTier::create(['min_headcount' => 0, 'max_headcount' => 35, 'payout_type' => PayoutType::Voucher, 'payout_value' => 25.00]);
+    ShowrunnerPayoutTier::create(['min_headcount' => 36, 'max_headcount' => 100, 'payout_type' => PayoutType::Percentage, 'payout_value' => 10.00]);
     ShowrunnerPayoutTier::create(['min_headcount' => 101, 'max_headcount' => null, 'payout_type' => PayoutType::Percentage, 'payout_value' => 15.00]);
 
     // Shared across every bulk-created member below so tests creating
@@ -50,51 +51,74 @@ function cashAttendance(Event $event, int $count, float $entryFee = 10.0): void
     ]);
 }
 
-test('under 35 attendees lands in the flat voucher tier', function () {
+/**
+ * @return list<array{int, int}> [attendees, cents] per paying band
+ */
+function bandSummary(array $bands): array
+{
+    return array_map(fn (ShowrunnerPayoutBand $band): array => [$band->attendees, $band->amountCents], $bands);
+}
+
+test('up to 35 attendees earns the flat voucher, including exactly 35', function (int $count) {
     $event = Event::factory()->create(['event_date' => '2026-07-19', 'entry_fee' => 10]);
-    cashAttendance($event, 34);
+    cashAttendance($event, $count);
 
     $result = $this->service->calculate($event);
 
-    expect($result->headcount)->toBe(34)
-        ->and($result->tier->payout_type)->toBe(PayoutType::Voucher)
+    expect($result->headcount)->toBe($count)
+        ->and($result->voucherTier?->payout_type)->toBe(PayoutType::Voucher)
+        ->and($result->bands)->toBe([])
         ->and($result->payoutAmountCents)->toBe(2500);
-});
+})->with([1, 34, 35]);
 
-test('35 to 100 attendees lands in the 10% tier, computed off entry revenue', function () {
-    $event = Event::factory()->create(['event_date' => '2026-07-19', 'entry_fee' => 10]);
-    cashAttendance($event, 35, entryFee: 10.0);
-
-    $result = $this->service->calculate($event);
-
-    expect($result->headcount)->toBe(35)
-        ->and($result->doorTotalCents)->toBe(35000)
-        ->and($result->tier->payout_value)->toEqual('10.00')
-        ->and($result->payoutAmountCents)->toBe(3500);
-});
-
-test('101 attendees lands in the 15% tier', function () {
-    $event = Event::factory()->create(['event_date' => '2026-07-19', 'entry_fee' => 10]);
-    cashAttendance($event, 101, entryFee: 10.0);
+test('the 36th attendee is the first to earn 10% of the entry fee', function () {
+    $event = Event::factory()->create(['event_date' => '2026-07-19', 'entry_fee' => 20]);
+    cashAttendance($event, 36, entryFee: 20.0);
 
     $result = $this->service->calculate($event);
 
-    expect($result->headcount)->toBe(101)
-        ->and($result->payoutAmountCents)->toBe(15150); // 15% of $1010
+    expect($result->voucherTier)->toBeNull()
+        ->and(bandSummary($result->bands))->toBe([[1, 200]]) // 1 × $20 × 10%
+        ->and($result->payoutAmountCents)->toBe(200);
 });
 
-test('above every configured tier, the top tier rate keeps applying with no cap', function () {
-    $event = Event::factory()->create(['event_date' => '2026-07-19', 'entry_fee' => 10]);
-    cashAttendance($event, 250, entryFee: 10.0);
+test('100 attendees: 65 of them at 10%', function () {
+    $event = Event::factory()->create(['event_date' => '2026-07-19', 'entry_fee' => 20]);
+    cashAttendance($event, 100, entryFee: 20.0);
 
     $result = $this->service->calculate($event);
 
-    expect($result->headcount)->toBe(250)
-        ->and($result->tier->min_headcount)->toBe(101)
-        ->and($result->payoutAmountCents)->toBe(37500); // 15% of $2500
+    expect(bandSummary($result->bands))->toBe([[65, 13000]]) // 65 × $20 × 10%
+        ->and($result->payoutAmountCents)->toBe(13000);
 });
 
-test('subscription-covered attendees count toward headcount and door total once the entry fee exceeds the subscription credit', function () {
+test('above 100 the 10% band stays capped at 65 attendees and the rest earn 15%', function () {
+    $event = Event::factory()->create(['event_date' => '2026-07-19', 'entry_fee' => 20]);
+    cashAttendance($event, 150, entryFee: 20.0);
+
+    $result = $this->service->calculate($event);
+
+    expect(bandSummary($result->bands))->toBe([[65, 13000], [50, 15000]]) // 65 × $20 × 10%, 50 × $20 × 15%
+        ->and($result->payoutAmountCents)->toBe(28000);
+});
+
+test("the payout uses the event's listed entry fee, not what each attendee actually paid", function () {
+    $event = Event::factory()->create(['event_date' => '2026-07-19', 'entry_fee' => 30]); // > $25 credit, so SH counts
+    cashAttendance($event, 30, entryFee: 30.0);
+    Attendance::factory()->for($event)->recycle($this->category)->count(10)->create([
+        'checked_in_at' => now(),
+        'entry_covered_by' => EntryCoverageSource::RegularSubscription,
+        'entry_fee' => 30,
+        'entry_coverage' => 25, // paid only $5 each
+    ]);
+
+    $result = $this->service->calculate($event);
+
+    expect($result->headcount)->toBe(40)
+        ->and(bandSummary($result->bands))->toBe([[5, 1500]]); // attendees 36-40 × $30 × 10%
+});
+
+test('subscription-covered attendees count toward the headcount once the entry fee exceeds the subscription credit', function () {
     $event = Event::factory()->create(['event_date' => '2026-07-19', 'entry_fee' => 30]); // > $25 credit
     Attendance::factory()->for($event)->recycle($this->category)->count(20)->create([
         'checked_in_at' => now(),
@@ -107,11 +131,10 @@ test('subscription-covered attendees count toward headcount and door total once 
 
     expect($result->includeSh)->toBeTrue()
         ->and($result->shCount)->toBe(20)
-        ->and($result->headcount)->toBe(20)
-        ->and($result->doorTotalCents)->toBe(10000); // 20 * (30 - 25)
+        ->and($result->headcount)->toBe(20);
 });
 
-test('subscription-covered attendees are excluded from headcount and door total when the entry fee does not exceed the subscription credit', function () {
+test('subscription-covered attendees are left out of the headcount when the entry fee does not exceed the subscription credit', function () {
     $event = Event::factory()->create(['event_date' => '2026-07-19', 'entry_fee' => 20]); // <= $25 credit
     Attendance::factory()->for($event)->recycle($this->category)->count(20)->create([
         'checked_in_at' => now(),
@@ -124,92 +147,113 @@ test('subscription-covered attendees are excluded from headcount and door total 
 
     expect($result->includeSh)->toBeFalse()
         ->and($result->shCount)->toBe(20) // still reported for display
-        ->and($result->headcount)->toBe(0)
-        ->and($result->doorTotalCents)->toBe(0);
+        ->and($result->headcount)->toBe(0);
 });
 
-test('comped, event-comp, and host entries never count toward headcount or door revenue', function () {
+test('staff (a comped category), per-event comps and the host never count toward the headcount', function () {
     $event = Event::factory()->create(['event_date' => '2026-07-19', 'entry_fee' => 10]);
     cashAttendance($event, 40, entryFee: 10.0);
-    Attendance::factory()->for($event)->recycle($this->category)->count(100)->create([
-        'checked_in_at' => now(),
-        'entry_covered_by' => EntryCoverageSource::EventComp,
-        'entry_fee' => 10,
-        'entry_coverage' => 10,
-    ]);
-    Attendance::factory()->for($event)->recycle($this->category)->count(5)->create([
-        'checked_in_at' => now(),
-        'entry_covered_by' => EntryCoverageSource::Host,
-        'entry_fee' => 10,
-        'entry_coverage' => 10,
-    ]);
+    foreach ([EntryCoverageSource::Comp, EntryCoverageSource::EventComp, EntryCoverageSource::Host] as $source) {
+        Attendance::factory()->for($event)->recycle($this->category)->count(30)->create([
+            'checked_in_at' => now(),
+            'entry_covered_by' => $source,
+            'entry_fee' => 10,
+            'entry_coverage' => 10,
+        ]);
+    }
 
     $result = $this->service->calculate($event);
 
     expect($result->headcount)->toBe(40)
-        ->and($result->doorTotalCents)->toBe(40000);
+        ->and(bandSummary($result->bands))->toBe([[5, 500]]);
 });
 
-test('pool and add-on revenue only count toward the door total when their settings toggle is on', function () {
-    $pool = AddOn::create(['name' => AddOn::POOL_NAME, 'subscribable' => true, 'priced_per_event' => true]);
-    $event = Event::factory()->create(['event_date' => '2026-07-19', 'entry_fee' => 10, 'pool_fee' => 5]);
-    $attendance = Attendance::factory()->for($event)->create([
-        'checked_in_at' => now(),
+test('prepaid attendees who never arrived do not count', function () {
+    $event = Event::factory()->create(['event_date' => '2026-07-19', 'entry_fee' => 10]);
+    cashAttendance($event, 36);
+    Attendance::factory()->for($event)->recycle($this->category)->count(10)->create([
+        'checked_in_at' => null,
         'entry_covered_by' => EntryCoverageSource::None,
         'entry_fee' => 10,
         'entry_coverage' => 0,
     ]);
-    AttendanceAddOn::factory()->for($attendance, 'attendance')->create([
-        'add_on_id' => $pool->id,
-        'name' => AddOn::POOL_NAME,
-        'price' => 5,
-        'fee' => 5,
-        'coverage' => 0,
-        'covered_by' => AddOnCoverageSource::None,
-    ]);
-    AttendanceAddOn::factory()->for($attendance, 'attendance')->create(['price' => 30]);
 
-    $offResult = $this->service->calculate($event);
-    expect($offResult->doorTotalCents)->toBe(1000)
-        ->and($offResult->poolRevenueCents)->toBe(500)
-        ->and($offResult->addonRevenueCents)->toBe(3000);
-
-    MembershipSetting::current()->update(['showrunner_door_includes_pool' => true, 'showrunner_door_includes_addons' => true]);
-
-    $onResult = $this->service->calculate($event);
-    expect($onResult->doorTotalCents)->toBe(4500); // 10 entry + 5 pool + 30 add-on
+    expect($this->service->calculate($event)->headcount)->toBe(36);
 });
 
-test('a percentage payout that lands on a fraction of a cent is rounded to the cent', function () {
-    ShowrunnerPayoutTier::query()->delete();
-    ShowrunnerPayoutTier::create(['min_headcount' => 0, 'max_headcount' => null, 'payout_type' => PayoutType::Percentage, 'payout_value' => 33.33]);
-    $event = Event::factory()->create(['event_date' => '2026-07-19', 'entry_fee' => 100.10]);
-    cashAttendance($event, 1, entryFee: 100.10);
+test('pool and add-on money play no part in the payout', function () {
+    $event = Event::factory()->create(['event_date' => '2026-07-19', 'entry_fee' => 10, 'pool_fee' => 5]);
+    cashAttendance($event, 36);
+    AttendanceAddOn::factory()->for(Attendance::first(), 'attendance')->create(['price' => 300]);
 
-    $result = $this->service->calculate($event);
-
-    expect($result->doorTotalCents)->toBe(10010)
-        ->and($result->payoutAmountCents)->toBe(3336); // 33.33% of $100.10 is $33.363333
+    expect($this->service->calculate($event)->payoutAmountCents)->toBe(100); // 1 × $10 × 10%
 });
 
-test('a percentage payout on an exact half cent rounds up', function () {
+test("each band's share is rounded to the cent, half up", function () {
     ShowrunnerPayoutTier::query()->delete();
-    ShowrunnerPayoutTier::create(['min_headcount' => 0, 'max_headcount' => null, 'payout_type' => PayoutType::Percentage, 'payout_value' => 15.00]);
+    ShowrunnerPayoutTier::create(['min_headcount' => 1, 'max_headcount' => null, 'payout_type' => PayoutType::Percentage, 'payout_value' => 15.00]);
     $event = Event::factory()->create(['event_date' => '2026-07-19', 'entry_fee' => 10.30]);
     cashAttendance($event, 1, entryFee: 10.30);
 
-    $result = $this->service->calculate($event);
-
-    expect($result->payoutAmountCents)->toBe(155); // 15% of $10.30 is $1.545; half-even would pay $1.54
+    expect($this->service->calculate($event)->payoutAmountCents)->toBe(155); // 15% of $10.30 is $1.545
 });
 
-test('no matching tier reports a null payout rather than guessing', function () {
+test('a headcount that reaches no paying tier pays $0', function () {
+    ShowrunnerPayoutTier::where('payout_type', PayoutType::Voucher)->delete();
+    $event = Event::factory()->create(['event_date' => '2026-07-19', 'entry_fee' => 10]);
+    cashAttendance($event, 20);
+
+    $result = $this->service->calculate($event);
+
+    expect($result->bands)->toBe([])
+        ->and($result->payoutAmountCents)->toBe(0);
+});
+
+test('no tiers configured reports a null payout rather than guessing', function () {
     ShowrunnerPayoutTier::query()->delete();
     $event = Event::factory()->create(['event_date' => '2026-07-19', 'entry_fee' => 10]);
     cashAttendance($event, 5);
 
+    expect($this->service->calculate($event)->payoutAmountCents)->toBeNull();
+});
+
+test('worked example from the club: 39 paid at the door, $975 door, pays $10', function () {
+    $event = Event::factory()->create(['event_date' => '2026-07-19', 'entry_fee' => 25]); // = the $25 credit, so SH wouldn't count
+    cashAttendance($event, 39, entryFee: 25.0);
+
     $result = $this->service->calculate($event);
 
-    expect($result->tier)->toBeNull()
-        ->and($result->payoutAmountCents)->toBeNull();
+    expect($result->headcount)->toBe(39)
+        ->and(bandSummary($result->bands))->toBe([[4, 1000]]) // (39 - 35) × $25 × 10%
+        ->and($result->payoutAmountCents)->toBe(1000);
+});
+
+test('legacy-imported subscription visits count like live ones once the fee exceeds the credit', function () {
+    $event = Event::factory()->create(['event_date' => '2026-07-19', 'entry_fee' => 30]); // > $25 credit
+    cashAttendance($event, 30, entryFee: 30.0);
+    Attendance::factory()->for($event)->recycle($this->category)->count(10)->create([
+        'checked_in_at' => now(),
+        'entry_covered_by' => EntryCoverageSource::LegacyImport,
+        'entry_fee' => 30,
+        'entry_coverage' => 30,
+    ]);
+
+    $result = $this->service->calculate($event);
+
+    expect($result->shCount)->toBe(10)
+        ->and($result->headcount)->toBe(40);
+});
+
+test('legacy 0.01 comps (imported as comped entries) never count', function () {
+    $event = Event::factory()->create(['event_date' => '2026-07-19', 'entry_fee' => 30]);
+    cashAttendance($event, 36, entryFee: 30.0);
+    Attendance::factory()->for($event)->recycle($this->category)->count(20)->create([
+        'checked_in_at' => now(),
+        'entry_covered_by' => EntryCoverageSource::Comp,
+        'entry_fee' => 30,
+        'entry_coverage' => 30,
+        'amount_paid' => 0,
+    ]);
+
+    expect($this->service->calculate($event)->headcount)->toBe(36);
 });

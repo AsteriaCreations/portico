@@ -81,8 +81,6 @@ class MembershipSettings extends Page
             'member_email_required',
             'hide_member_pii_by_default',
             'active_patrons_show_staff_roles',
-            'showrunner_door_includes_pool',
-            'showrunner_door_includes_addons',
             'upstream_remote',
             'upstream_branch',
             'deploy_task_name',
@@ -263,14 +261,6 @@ class MembershipSettings extends Page
                 Toggle::make('active_patrons_show_staff_roles')
                     ->label('Show staff roles on Active Patrons')
                     ->helperText(__('Active Patrons notes which staff are signed in ("Also in the building"). Turn this off to list their names only, without each person\'s role.'))
-                    ->required(),
-                Toggle::make('showrunner_door_includes_pool')
-                    ->label('Showrunner commission includes pool revenue')
-                    ->helperText(__('Entry revenue always counts toward the showrunner\'s commission base ("the door"). Turn this on to also count pool fee revenue from the same qualifying attendees.'))
-                    ->required(),
-                Toggle::make('showrunner_door_includes_addons')
-                    ->label('Showrunner commission includes add-on revenue')
-                    ->helperText(__('Turn this on to also count Event Add-On revenue (private room rental, sleepover, etc.) from the same qualifying attendees toward the showrunner\'s commission base.'))
                     ->required(),
                 TextInput::make('upstream_remote')
                     ->label('Upstream git remote name')

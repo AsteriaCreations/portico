@@ -90,7 +90,8 @@ SHOWRUNNER COMP REQUESTS
 
 SHOWRUNNER & INSTRUCTOR PAYOUTS
 ---------------------------------
-- Showrunner door commission — tiered payout (flat voucher amount or percentage of door total) based on arrived headcount, configurable per-tier via Showrunner Payout Tiers; door total optionally includes pool/add-on revenue alongside cash and subscription-covered entry revenue
+- Showrunner commission: bracketed by headcount, like tax brackets. Each percentage band pays its rate × the event's entry fee for the attendees numbered inside it (e.g. 36–100 at 10%, 101+ at 15%); a flat voucher band covers small events. Headcount = paid-at-door entries plus subscription-covered ones when the fee exceeds the subscription credit; comped entries (staff categories, per-event comps, the host) never count. Configurable via Showrunner Payout Tiers
+- Showrunner Payouts report (Manager+): every past event's commission, headcount and working, with a filtered total; opens on events with a showrunner, "All events" for re-checking history
 - Per-event-type instructor pay — configurable pay rate per event type, per coverage-source bucket (Instructor Pay Rates on Event Types), multiplied by arrived attendees in each bucket
 - Both shown as read-only, Manager+ widgets on the event edit page; reporting/liability only, never auto-issued
 - Instructor pay at the desk — the Check-In Desk shows tonight's running instructor payout to Door+; "Pay instructor" in the Cash box records the cash handed over (prefilled, editable, once per event; the calculated figure is snapshotted), which comes off the box's expected cash so close-out balances; Manager+ can add a signed correction with a reason; append-only `instructor_payouts` ledger; the event page shows what was paid

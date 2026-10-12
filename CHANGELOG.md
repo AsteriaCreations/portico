@@ -9,6 +9,21 @@ is fixes only.
 
 ## [Unreleased]
 
+### Changed
+
+- **The showrunner commission now works like tax brackets.** Each percentage tier pays its rate
+  on the event's listed entry fee for each attendee numbered inside it, instead of one tier's
+  rate on the whole door. With the default tiers (a $25 voucher up to 35 attendees, 36–100 at
+  10%, 101+ at 15%), 150 paying attendees at a $20 event pay 65 × $20 × 10% + 50 × $20 × 15% =
+  $280. Who counts is unchanged: paid-at-door entries, plus subscription-covered ones when the
+  fee is above the subscription credit; comped entries (staff categories, per-event comps, the
+  host) never count. Subscription visits imported from an old spreadsheet (`legacy_import`) now
+  count the same as live ones; before, they never counted. Pool and add-on money no longer play any part, so the two "Showrunner
+  commission includes pool / add-on revenue" settings are gone. **Migration:** an install still
+  on the original default tiers has them moved from 0–34 / 35–100 / 101+ to 0–35 / 36–100 /
+  101+ automatically. If your club set its own tiers, re-check them: a tier's range is now the
+  attendee numbers it covers, both ends included.
+
 ### Security
 
 - Filament updated to 5.8.3. Before 5.8.2, managing app-based multi-factor authentication didn't
@@ -37,6 +52,10 @@ is fixes only.
 
 ### Added
 
+- **Showrunner Payouts** report (Records, Manager+, behind `showrunner_payouts_enabled`): every
+  past event's commission with its headcount and how the amount adds up, plus a total for the
+  filtered events. It opens on events that had a showrunner; **All events** shows what every
+  night would have paid, which helps re-check imported history. A date range filter narrows it.
 - `docs/DATA_DICTIONARY.md`: what every table and column means for someone querying the data,
   the traps to avoid (what `amount_paid` includes, ledgers, computed statuses, datetime
   "dates"), the derived rules as SQL, common report queries, and which columns are personal
