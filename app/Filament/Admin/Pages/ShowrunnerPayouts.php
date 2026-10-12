@@ -17,6 +17,7 @@ use App\Services\ShowrunnerPayoutResult;
 use App\Services\ShowrunnerPayoutService;
 use App\Support\Cents;
 use BackedEnum;
+use Filament\Actions\Action;
 use Filament\Forms\Components\DatePicker;
 use Filament\Pages\Page;
 use Filament\Support\Enums\FontWeight;
@@ -29,6 +30,7 @@ use Filament\Tables\Filters\TernaryFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 use UnitEnum;
 
 /**
@@ -69,6 +71,64 @@ class ShowrunnerPayouts extends Page implements HasTable
     {
         return auth()->user()->role->atLeast(Role::Manager)
             && MembershipSetting::current()->showrunner_payouts_enabled;
+    }
+
+    protected function getHeaderActions(): array
+    {
+        return [
+            $this->exportPayoutsAction(),
+        ];
+    }
+
+    /**
+     * A plain CSV of exactly what the table shows -- same filters and sort
+     * (getTableQueryForExport()), every page, not just the visible one --
+     * built in one request like the member exports, since there's no queue
+     * worker for Filament's own Exporter. Amounts are bare numbers so a
+     * spreadsheet can sum them.
+     */
+    protected function exportPayoutsAction(): Action
+    {
+        return Action::make('exportPayouts')
+            ->label('Export (CSV)')
+            ->icon(Heroicon::OutlinedArrowDownTray)
+            ->action(function (): StreamedResponse {
+                $events = $this->getTableQueryForExport()->get();
+
+                return response()->streamDownload(function () use ($events): void {
+                    $handle = fopen('php://output', 'w');
+                    // UTF-8 BOM, so Excel shows the breakdown's "×" rather than mojibake.
+                    fwrite($handle, "\u{FEFF}");
+                    fputcsv($handle, [
+                        'Date', 'Event', 'Showrunner', 'Paid at Door', 'Subscribers', 'Subscribers Counted',
+                        'Headcount', 'Entry Fee', 'How It Adds Up', 'Payout Type', 'Payout',
+                    ]);
+
+                    foreach ($events as $event) {
+                        $result = $this->resultFor($event);
+
+                        fputcsv($handle, [
+                            $event->event_date->toDateString(),
+                            $event->name ?? $event->eventType?->name ?? __('Untitled event'),
+                            $event->showrunner ? Member::pickerLabel($event->showrunner) : null,
+                            (int) $event->cash_count,
+                            (int) $event->sh_count,
+                            $result->includeSh ? 'Yes' : 'No',
+                            $result->headcount,
+                            number_format(Cents::toFloat($result->entryFeeCents), 2, '.', ''),
+                            $this->breakdownFor($event),
+                            match (true) {
+                                $result->payoutAmountCents === null => null,
+                                $result->voucherTier !== null => 'Voucher',
+                                default => 'Commission',
+                            },
+                            $result->payoutAmountCents === null ? null : number_format(Cents::toFloat($result->payoutAmountCents), 2, '.', ''),
+                        ]);
+                    }
+
+                    fclose($handle);
+                }, 'showrunner-payouts-'.now()->toDateString().'.csv');
+            });
     }
 
     public function table(Table $table): Table

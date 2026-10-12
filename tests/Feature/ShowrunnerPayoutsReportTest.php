@@ -99,3 +99,42 @@ test('the Payout filter hides voucher-only nights, or shows only them', function
         ->assertCanNotSeeTableRecords([$commission])
         ->assertSee('Total for these events: $25.00');
 });
+
+test('the CSV export lists every row the filters match, with the payout and how it adds up', function () {
+    $showrunner = Member::factory()->create(['category_id' => $this->category->id]);
+    $commission = Event::factory()->create(['event_date' => '2026-09-05', 'name' => 'Commission Night', 'entry_fee' => 25, 'showrunner_id' => $showrunner->id]);
+    paidVisits($commission, 39); // $10
+    $voucher = Event::factory()->create(['event_date' => '2026-09-12', 'name' => 'Voucher Night', 'entry_fee' => 20, 'showrunner_id' => $showrunner->id]);
+    paidVisits($voucher, 20); // voucher, $25
+    Event::factory()->create(['event_date' => '2026-09-19', 'name' => 'Unrun Night', 'entry_fee' => 20, 'showrunner_id' => null]);
+
+    $livewire = Livewire::test(ShowrunnerPayouts::class)
+        ->callAction('exportPayouts')
+        ->assertFileDownloaded('showrunner-payouts-'.now()->toDateString().'.csv');
+
+    $content = base64_decode(data_get($livewire->effects, 'download.content'));
+
+    expect($content)
+        ->toContain('Date,Event,Showrunner')
+        ->toContain('2026-09-05,"Commission Night"')
+        ->toContain('"4 × $25.00 × 10%",Commission,10.00')
+        ->toContain('"$25.00 voucher",Voucher,25.00')
+        ->not->toContain('Unrun Night');
+});
+
+test('the CSV export follows the Payout filter', function () {
+    $showrunner = Member::factory()->create(['category_id' => $this->category->id]);
+    $commission = Event::factory()->create(['event_date' => '2026-09-05', 'name' => 'Commission Night', 'entry_fee' => 25, 'showrunner_id' => $showrunner->id]);
+    paidVisits($commission, 39);
+    $voucher = Event::factory()->create(['event_date' => '2026-09-12', 'name' => 'Voucher Night', 'entry_fee' => 20, 'showrunner_id' => $showrunner->id]);
+    paidVisits($voucher, 20);
+
+    $livewire = Livewire::test(ShowrunnerPayouts::class)
+        ->filterTable('payout_kind', true)
+        ->callAction('exportPayouts');
+
+    $content = base64_decode(data_get($livewire->effects, 'download.content'));
+
+    expect($content)->toContain('Commission Night')
+        ->not->toContain('Voucher Night');
+});
