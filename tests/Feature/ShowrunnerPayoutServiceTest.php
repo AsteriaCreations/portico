@@ -227,3 +227,33 @@ test('worked example from the club: 39 paid at the door, $975 door, pays $10', f
         ->and(bandSummary($result->bands))->toBe([[4, 1000]]) // (39 - 35) × $25 × 10%
         ->and($result->payoutAmountCents)->toBe(1000);
 });
+
+test('legacy-imported subscription visits count like live ones once the fee exceeds the credit', function () {
+    $event = Event::factory()->create(['event_date' => '2026-07-19', 'entry_fee' => 30]); // > $25 credit
+    cashAttendance($event, 30, entryFee: 30.0);
+    Attendance::factory()->for($event)->recycle($this->category)->count(10)->create([
+        'checked_in_at' => now(),
+        'entry_covered_by' => EntryCoverageSource::LegacyImport,
+        'entry_fee' => 30,
+        'entry_coverage' => 30,
+    ]);
+
+    $result = $this->service->calculate($event);
+
+    expect($result->shCount)->toBe(10)
+        ->and($result->headcount)->toBe(40);
+});
+
+test('legacy 0.01 comps (imported as comped entries) never count', function () {
+    $event = Event::factory()->create(['event_date' => '2026-07-19', 'entry_fee' => 30]);
+    cashAttendance($event, 36, entryFee: 30.0);
+    Attendance::factory()->for($event)->recycle($this->category)->count(20)->create([
+        'checked_in_at' => now(),
+        'entry_covered_by' => EntryCoverageSource::Comp,
+        'entry_fee' => 30,
+        'entry_coverage' => 30,
+        'amount_paid' => 0,
+    ]);
+
+    expect($this->service->calculate($event)->headcount)->toBe(36);
+});

@@ -11,6 +11,7 @@ use App\Models\Plan;
 use App\Models\ShowrunnerPayoutTier;
 use App\Support\Cents;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Collection;
 
 /**
  * Computes the showrunner's commission for an event from how many paying
@@ -18,8 +19,8 @@ use Illuminate\Database\Eloquent\Builder;
  * never auto-issues the small-event Voucher.
  *
  * Headcount: attendees who paid entry at the door, plus subscription-covered
- * ("SH") attendees once the event's entry fee exceeds the current Regular
- * plan's credit -- read from Plan::currentFor(), never hardcoded, the same
+ * ("SH") attendees -- live or imported from the old spreadsheet -- once the
+ * event's entry fee exceeds the current Regular plan's credit -- read from Plan::currentFor(), never hardcoded, the same
  * rule PricingService::build() uses to cap subscription coverage. Comped
  * entries (a comped category such as staff, a per-event comp, the host) never
  * count.
@@ -34,17 +35,37 @@ use Illuminate\Database\Eloquent\Builder;
  */
 class ShowrunnerPayoutService
 {
+    /**
+     * Entry coverage that means "came in on a subscription". A legacy-import
+     * row is the old spreadsheet's SH cell (or an SH member paying the
+     * difference), so it counts the same way as a live subscription visit.
+     */
+    public const SUBSCRIPTION_SOURCES = [EntryCoverageSource::RegularSubscription, EntryCoverageSource::LegacyImport];
+
     public function calculate(Event $event): ShowrunnerPayoutResult
     {
-        $creditThresholdCents = Cents::of(Plan::currentFor(AddOn::entry(), $event->event_date)?->credit);
-        $entryFeeCents = Cents::of($event->entry_fee);
-        $includeSh = $entryFeeCents > $creditThresholdCents;
+        return $this->fromCounts(
+            $event,
+            cashCount: $this->arrivedQuery($event)->where('entry_covered_by', EntryCoverageSource::None)->count(),
+            shCount: $this->arrivedQuery($event)->whereIn('entry_covered_by', self::SUBSCRIPTION_SOURCES)->count(),
+            creditCents: Cents::of(Plan::currentFor(AddOn::entry(), $event->event_date)?->credit),
+            tiers: ShowrunnerPayoutTier::orderBy('min_headcount')->get(),
+        );
+    }
 
-        $cashCount = $this->arrivedQuery($event)->where('entry_covered_by', EntryCoverageSource::None)->count();
-        $shCount = $this->arrivedQuery($event)->where('entry_covered_by', EntryCoverageSource::RegularSubscription)->count();
+    /**
+     * The same calculation from counts the caller already has -- the payout
+     * report loads them for a whole page of events at once (withCount) rather
+     * than querying per event.
+     *
+     * @param  Collection<int, ShowrunnerPayoutTier>  $tiers  ordered by min_headcount
+     */
+    public function fromCounts(Event $event, int $cashCount, int $shCount, int $creditCents, Collection $tiers): ShowrunnerPayoutResult
+    {
+        $entryFeeCents = Cents::of($event->entry_fee);
+        $includeSh = $entryFeeCents > $creditCents;
         $headcount = $cashCount + ($includeSh ? $shCount : 0);
 
-        $tiers = ShowrunnerPayoutTier::orderBy('min_headcount')->get();
         $bands = [];
         $voucherTier = null;
 

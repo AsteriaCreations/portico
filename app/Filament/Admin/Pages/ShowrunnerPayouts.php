@@ -1,0 +1,213 @@
+<?php
+
+namespace App\Filament\Admin\Pages;
+
+use App\Enums\EntryCoverageSource;
+use App\Enums\Role;
+use App\Filament\Admin\Resources\Events\EventResource;
+use App\Filament\Concerns\TranslatesPageLabels;
+use App\Models\AddOn;
+use App\Models\Event;
+use App\Models\Member;
+use App\Models\MembershipSetting;
+use App\Models\Plan;
+use App\Models\ShowrunnerPayoutTier;
+use App\Services\ShowrunnerPayoutBand;
+use App\Services\ShowrunnerPayoutResult;
+use App\Services\ShowrunnerPayoutService;
+use App\Support\Cents;
+use BackedEnum;
+use Filament\Forms\Components\DatePicker;
+use Filament\Pages\Page;
+use Filament\Support\Enums\FontWeight;
+use Filament\Support\Icons\Heroicon;
+use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Concerns\InteractsWithTable;
+use Filament\Tables\Contracts\HasTable;
+use Filament\Tables\Filters\Filter;
+use Filament\Tables\Filters\TernaryFilter;
+use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Collection;
+use UnitEnum;
+
+/**
+ * Every past event's showrunner commission in one list, for checking what is
+ * owed and for re-checking imported history. Opens on events that had a
+ * showrunner; the filter switches to every event, so a night without one
+ * still shows what it would have paid. Figures are computed live by
+ * ShowrunnerPayoutService, never stored -- the same numbers as the payout
+ * widget on each event's page.
+ */
+class ShowrunnerPayouts extends Page implements HasTable
+{
+    use InteractsWithTable;
+    use TranslatesPageLabels;
+
+    protected string $view = 'filament.admin.pages.showrunner-payouts';
+
+    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedBanknotes;
+
+    protected static ?string $navigationLabel = 'Showrunner Payouts';
+
+    protected static string|UnitEnum|null $navigationGroup = 'Records';
+
+    protected static ?int $navigationSort = 90;
+
+    /** @var array<int, ShowrunnerPayoutResult> */
+    protected array $results = [];
+
+    /** @var array<string, int> */
+    protected array $creditCentsByDate = [];
+
+    protected ?Collection $tiers = null;
+
+    protected ?Collection $entryPlans = null;
+
+    public static function canAccess(): bool
+    {
+        return auth()->user()->role->atLeast(Role::Manager)
+            && MembershipSetting::current()->showrunner_payouts_enabled;
+    }
+
+    public function table(Table $table): Table
+    {
+        return $table
+            ->query(fn (): Builder => Event::query()
+                ->with(['showrunner', 'eventType'])
+                ->whereDate('event_date', '<=', today())
+                ->withCount([
+                    'attendance as cash_count' => fn (Builder $query) => $query
+                        ->whereNotNull('checked_in_at')
+                        ->where('entry_covered_by', EntryCoverageSource::None),
+                    'attendance as sh_count' => fn (Builder $query) => $query
+                        ->whereNotNull('checked_in_at')
+                        ->whereIn('entry_covered_by', ShowrunnerPayoutService::SUBSCRIPTION_SOURCES),
+                ]))
+            ->defaultSort('event_date', 'desc')
+            ->description(fn (): string => __('Total for these events: :amount', [
+                'amount' => MembershipSetting::formatMoney(Cents::toFloat($this->filteredTotalCents())),
+            ]))
+            ->recordUrl(fn (Event $record): string => EventResource::getUrl('view', ['record' => $record]))
+            ->columns([
+                TextColumn::make('event_date')
+                    ->label('Date')
+                    ->date()
+                    ->sortable(),
+                TextColumn::make('name')
+                    ->label('Event')
+                    ->state(fn (Event $record): string => $record->name ?? $record->eventType?->name ?? __('Untitled event'))
+                    ->searchable(),
+                TextColumn::make('showrunner.username')
+                    ->label('Showrunner')
+                    ->state(fn (Event $record): ?string => $record->showrunner ? Member::pickerLabel($record->showrunner) : null)
+                    ->placeholder(__('None')),
+                TextColumn::make('cash_count')
+                    ->label('Paid at door')
+                    ->numeric(),
+                TextColumn::make('sh_count')
+                    ->label('Subscribers')
+                    ->numeric()
+                    ->color(fn (Event $record): ?string => $this->resultFor($record)->includeSh ? null : 'gray')
+                    ->tooltip(fn (Event $record): string => $this->resultFor($record)->includeSh
+                        ? __('Counted: the entry fee is above the subscription credit.')
+                        : __("Not counted: the entry fee isn't above the subscription credit.")),
+                TextColumn::make('headcount')
+                    ->label('Headcount')
+                    ->state(fn (Event $record): int => $this->resultFor($record)->headcount)
+                    ->numeric(),
+                TextColumn::make('entry_fee')
+                    ->label('Entry fee')
+                    ->money(),
+                TextColumn::make('breakdown')
+                    ->label('How it adds up')
+                    ->state(fn (Event $record): string => $this->breakdownFor($record))
+                    ->wrap(),
+                TextColumn::make('payout')
+                    ->label('Payout')
+                    ->state(fn (Event $record): ?float => ($cents = $this->resultFor($record)->payoutAmountCents) === null ? null : Cents::toFloat($cents))
+                    ->money()
+                    ->placeholder(__('No tiers set'))
+                    ->weight(FontWeight::SemiBold),
+            ])
+            ->filters([
+                TernaryFilter::make('has_showrunner')
+                    ->label('Showrunner')
+                    ->placeholder(__('All events'))
+                    ->trueLabel(__('Events with a showrunner'))
+                    ->falseLabel(__('Events without one'))
+                    ->default(true)
+                    ->queries(
+                        true: fn (Builder $query): Builder => $query->whereNotNull('showrunner_id'),
+                        false: fn (Builder $query): Builder => $query->whereNull('showrunner_id'),
+                        blank: fn (Builder $query): Builder => $query,
+                    ),
+                Filter::make('event_date')
+                    ->schema([
+                        DatePicker::make('from')->label('From'),
+                        DatePicker::make('until')->label('Until'),
+                    ])
+                    ->query(fn (Builder $query, array $data): Builder => $query
+                        ->when($data['from'] ?? null, fn (Builder $query, string $date): Builder => $query->whereDate('event_date', '>=', $date))
+                        ->when($data['until'] ?? null, fn (Builder $query, string $date): Builder => $query->whereDate('event_date', '<=', $date))),
+            ]);
+    }
+
+    public function resultFor(Event $event): ShowrunnerPayoutResult
+    {
+        return $this->results[$event->id] ??= app(ShowrunnerPayoutService::class)->fromCounts(
+            $event,
+            cashCount: (int) $event->cash_count,
+            shCount: (int) $event->sh_count,
+            creditCents: $this->creditCentsFor($event),
+            tiers: $this->tiers ??= ShowrunnerPayoutTier::orderBy('min_headcount')->get(),
+        );
+    }
+
+    private function breakdownFor(Event $event): string
+    {
+        $result = $this->resultFor($event);
+
+        if ($result->voucherTier) {
+            return __(':amount voucher', ['amount' => MembershipSetting::formatMoney($result->voucherTier->payout_value)]);
+        }
+
+        if ($result->bands === []) {
+            return '—';
+        }
+
+        return collect($result->bands)
+            ->map(fn (ShowrunnerPayoutBand $band): string => __(':count × :fee × :percent%', [
+                'count' => $band->attendees,
+                'fee' => MembershipSetting::formatMoney(Cents::toFloat($result->entryFeeCents)),
+                'percent' => rtrim(rtrim(number_format((float) $band->tier->payout_value, 2), '0'), '.'),
+            ]))
+            ->implode(' + ');
+    }
+
+    private function filteredTotalCents(): int
+    {
+        return $this->getFilteredTableQuery()
+            ->get()
+            ->sum(fn (Event $event): int => $this->resultFor($event)->payoutAmountCents ?? 0);
+    }
+
+    /**
+     * Plan::currentFor()'s rule, applied to the Regular plans loaded once, so
+     * a long "All events" list doesn't query once per night.
+     */
+    private function creditCentsFor(Event $event): int
+    {
+        $this->entryPlans ??= Plan::where('add_on_id', AddOn::entry()->id)
+            ->where('duration_months', 1)
+            ->orderByDesc('effective_from')
+            ->get();
+
+        $date = $event->event_date->toDateString();
+
+        return $this->creditCentsByDate[$date] ??= Cents::of($this->entryPlans->first(
+            fn (Plan $plan): bool => $plan->effective_from->toDateString() <= $date
+                && ($plan->effective_to === null || $plan->effective_to->toDateString() >= $date),
+        )?->credit);
+    }
+}
