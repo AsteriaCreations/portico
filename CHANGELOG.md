@@ -9,6 +9,11 @@ is fixes only.
 
 ## [Unreleased]
 
+### Added
+
+- **Showrunner Payouts: a Payout filter.** "Commission only" leaves out nights that fell in the
+  flat voucher tier; "Voucher only" shows just those. The total follows the filter.
+
 ### Changed
 
 - **The showrunner commission now works like tax brackets.** Each percentage tier pays its rate
