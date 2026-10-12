@@ -17,6 +17,7 @@ Where to look next:
 - [`docs/FEATURES.md`](docs/FEATURES.md) — a flat inventory of what's built, by area.
 - [`docs/CONFIGURING.md`](docs/CONFIGURING.md) — setting Portico up for your club.
 - [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md) — standing it up on a club LAN.
+- [`docs/DATA_DICTIONARY.md`](docs/DATA_DICTIONARY.md) — what the tables mean, for analysts querying the data.
 - [`CHANGELOG.md`](CHANGELOG.md) — what changed, release by release.
 
 > **License note:** Portico is [AGPL-3.0-or-later](LICENSE). If you run a modified version

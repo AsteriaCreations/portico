@@ -396,6 +396,94 @@ Then run `php artisan optimize`.
 
 ---
 
+## 4a. Read-only access for reporting (optional)
+
+For someone who wants to run SQL or connect a BI tool to the data, see
+[DATA_DICTIONARY.md](DATA_DICTIONARY.md) for what the tables mean. **Never give them the app's own
+database user** (`DB_USERNAME`): it can write, and a reporting tool with write access can break
+the live desk.
+
+**The safest option is a copy, not the live database.** Restore last night's backup (§4) into a
+separate database or another machine, and let the analyst work there. Nothing they do can touch
+the desk, and the box doesn't need to accept database connections from the network. Use a live
+read-only account (below) only when they need up-to-the-minute numbers.
+
+Run these as the database root user (`mysql -u root -p`), replacing `<portico>` with your
+`DB_DATABASE` and choosing a strong password. Create the account as `@'localhost'` (see the
+MariaDB gotcha in §1) for someone working on the box itself; for another PC on the LAN, use
+`@'<their-ip>'`. In that case MariaDB must also listen on the LAN (`bind-address`) and Windows
+Firewall must allow 3306 from that IP only.
+
+**Full read-only** (a trusted club officer). Sees every column, including personal data:
+
+```sql
+CREATE USER 'portico_report'@'localhost' IDENTIFIED BY '<strong password>';
+GRANT SELECT ON `<portico>`.* TO 'portico_report'@'localhost';
+```
+
+**Limited read-only** (anyone else). No names, emails, birth dates, staff notes or secrets.
+Analysts report by `members.id` / `member_number` instead:
+
+```sql
+CREATE USER 'portico_analyst'@'localhost' IDENTIFIED BY '<strong password>';
+
+-- Tables with nothing personal in them: whole-table access.
+GRANT SELECT ON `<portico>`.add_on_day_passes TO 'portico_analyst'@'localhost';
+GRANT SELECT ON `<portico>`.add_on_event TO 'portico_analyst'@'localhost';
+GRANT SELECT ON `<portico>`.add_ons TO 'portico_analyst'@'localhost';
+GRANT SELECT ON `<portico>`.attendance_add_ons TO 'portico_analyst'@'localhost';
+GRANT SELECT ON `<portico>`.categories TO 'portico_analyst'@'localhost';
+GRANT SELECT ON `<portico>`.comp_reasons TO 'portico_analyst'@'localhost';
+GRANT SELECT ON `<portico>`.event_types TO 'portico_analyst'@'localhost';
+GRANT SELECT ON `<portico>`.events TO 'portico_analyst'@'localhost';
+GRANT SELECT ON `<portico>`.instructor_pay_rates TO 'portico_analyst'@'localhost';
+GRANT SELECT ON `<portico>`.instructor_payouts TO 'portico_analyst'@'localhost';
+GRANT SELECT ON `<portico>`.miscellaneous_payments TO 'portico_analyst'@'localhost';
+GRANT SELECT ON `<portico>`.occupancy_adjustments TO 'portico_analyst'@'localhost';
+GRANT SELECT ON `<portico>`.paperwork_types TO 'portico_analyst'@'localhost';
+GRANT SELECT ON `<portico>`.member_paperwork TO 'portico_analyst'@'localhost';
+GRANT SELECT ON `<portico>`.payment_corrections TO 'portico_analyst'@'localhost';
+GRANT SELECT ON `<portico>`.payment_methods TO 'portico_analyst'@'localhost';
+GRANT SELECT ON `<portico>`.plans TO 'portico_analyst'@'localhost';
+GRANT SELECT ON `<portico>`.register_drops TO 'portico_analyst'@'localhost';
+GRANT SELECT ON `<portico>`.register_shifts TO 'portico_analyst'@'localhost';
+GRANT SELECT ON `<portico>`.registers TO 'portico_analyst'@'localhost';
+GRANT SELECT ON `<portico>`.showrunner_payout_tiers TO 'portico_analyst'@'localhost';
+GRANT SELECT ON `<portico>`.skills TO 'portico_analyst'@'localhost';
+GRANT SELECT ON `<portico>`.member_skill TO 'portico_analyst'@'localhost';
+GRANT SELECT ON `<portico>`.subscriptions TO 'portico_analyst'@'localhost';
+GRANT SELECT ON `<portico>`.vouchers TO 'portico_analyst'@'localhost';
+GRANT SELECT ON `<portico>`.visit_removals TO 'portico_analyst'@'localhost';
+
+-- Tables with personal or free-text columns: only the safe columns.
+GRANT SELECT (id, member_number, category_id, is_active, subscription_eligible, on_watchlist,
+  is_banned, banned_until, missing_paperwork, is_deceased, sponsor_id, email_opt_in,
+  probation_override_start, date_vetted, created_at, updated_at)
+  ON `<portico>`.members TO 'portico_analyst'@'localhost';
+GRANT SELECT (id, member_id, event_id, checked_in_by, checked_in_at, departed_at, entry_fee,
+  entry_coverage, entry_covered_by, voucher_coverage, amount_paid, payment_method,
+  comp_reason_id, register_shift_id, prepaid_ahead, created_at, updated_at)
+  ON `<portico>`.attendance TO 'portico_analyst'@'localhost';
+GRANT SELECT (id, member_id, status, value, changed_by, created_at)
+  ON `<portico>`.member_status_changes TO 'portico_analyst'@'localhost';
+GRANT SELECT (id, event_id, member_id, comp_reason_id, requested_by, status, reviewed_by,
+  reviewed_at, attendance_id, created_at, updated_at)
+  ON `<portico>`.comp_requests TO 'portico_analyst'@'localhost';
+GRANT SELECT (id, role, active, member_id, created_at)
+  ON `<portico>`.users TO 'portico_analyst'@'localhost';
+GRANT SELECT (id, subscription_eligibility_threshold, subscription_eligibility_window_months,
+  probation_period_days, venue_capacity, currency, week_starts_on)
+  ON `<portico>`.membership_settings TO 'portico_analyst'@'localhost';
+```
+
+Left out entirely: behavior notes, watchlist reviews, ban exceptions, username history, guest
+follow-ups and the framework tables (sessions, cache, jobs, password resets). A future update
+that adds a table or column doesn't extend the limited account automatically; that's
+deliberate. Re-grant if the analyst needs the new data. To remove an account later:
+`DROP USER 'portico_analyst'@'localhost';`.
+
+---
+
 ## 5. Mail (optional)
 
 Two features send email: `events:notify-ended` (the owner's event summary) and emailing
