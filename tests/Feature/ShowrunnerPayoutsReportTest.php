@@ -81,3 +81,21 @@ test('is Manager and up, and hidden when showrunner payouts are switched off', f
     MembershipSetting::current()->update(['showrunner_payouts_enabled' => false]);
     $this->get(ShowrunnerPayouts::getUrl())->assertForbidden();
 });
+
+test('the Payout filter hides voucher-only nights, or shows only them', function () {
+    $showrunner = Member::factory()->create(['category_id' => $this->category->id]);
+    $commission = Event::factory()->create(['event_date' => '2026-09-05', 'entry_fee' => 25, 'showrunner_id' => $showrunner->id]);
+    paidVisits($commission, 39); // $10
+    $voucher = Event::factory()->create(['event_date' => '2026-09-12', 'entry_fee' => 20, 'showrunner_id' => $showrunner->id]);
+    paidVisits($voucher, 20); // voucher, $25
+
+    Livewire::test(ShowrunnerPayouts::class)
+        ->filterTable('payout_kind', true)
+        ->assertCanSeeTableRecords([$commission])
+        ->assertCanNotSeeTableRecords([$voucher])
+        ->assertSee('Total for these events: $10.00')
+        ->filterTable('payout_kind', false)
+        ->assertCanSeeTableRecords([$voucher])
+        ->assertCanNotSeeTableRecords([$commission])
+        ->assertSee('Total for these events: $25.00');
+});

@@ -35,7 +35,8 @@ use UnitEnum;
  * Every past event's showrunner commission in one list, for checking what is
  * owed and for re-checking imported history. Opens on events that had a
  * showrunner; the filter switches to every event, so a night without one
- * still shows what it would have paid. Figures are computed live by
+ * still shows what it would have paid. The Payout filter hides (or shows only)
+ * nights that fell in the flat voucher tier. Figures are computed live by
  * ShowrunnerPayoutService, never stored -- the same numbers as the payout
  * widget on each event's page.
  */
@@ -73,17 +74,7 @@ class ShowrunnerPayouts extends Page implements HasTable
     public function table(Table $table): Table
     {
         return $table
-            ->query(fn (): Builder => Event::query()
-                ->with(['showrunner', 'eventType'])
-                ->whereDate('event_date', '<=', today())
-                ->withCount([
-                    'attendance as cash_count' => fn (Builder $query) => $query
-                        ->whereNotNull('checked_in_at')
-                        ->where('entry_covered_by', EntryCoverageSource::None),
-                    'attendance as sh_count' => fn (Builder $query) => $query
-                        ->whereNotNull('checked_in_at')
-                        ->whereIn('entry_covered_by', ShowrunnerPayoutService::SUBSCRIPTION_SOURCES),
-                ]))
+            ->query(fn (): Builder => $this->payoutsQuery())
             ->defaultSort('event_date', 'desc')
             ->description(fn (): string => __('Total for these events: :amount', [
                 'amount' => MembershipSetting::formatMoney(Cents::toFloat($this->filteredTotalCents())),
@@ -150,6 +141,31 @@ class ShowrunnerPayouts extends Page implements HasTable
                     ->query(fn (Builder $query, array $data): Builder => $query
                         ->when($data['from'] ?? null, fn (Builder $query, string $date): Builder => $query->whereDate('event_date', '>=', $date))
                         ->when($data['until'] ?? null, fn (Builder $query, string $date): Builder => $query->whereDate('event_date', '<=', $date))),
+                TernaryFilter::make('payout_kind')
+                    ->label('Payout')
+                    ->placeholder(__('All payouts'))
+                    ->trueLabel(__('Commission only'))
+                    ->falseLabel(__('Voucher only'))
+                    ->queries(
+                        true: fn (Builder $query): Builder => $query->whereKeyNot($this->voucherEventIds()),
+                        false: fn (Builder $query): Builder => $query->whereKey($this->voucherEventIds()),
+                        blank: fn (Builder $query): Builder => $query,
+                    ),
+            ]);
+    }
+
+    private function payoutsQuery(): Builder
+    {
+        return Event::query()
+            ->with(['showrunner', 'eventType'])
+            ->whereDate('event_date', '<=', today())
+            ->withCount([
+                'attendance as cash_count' => fn (Builder $query) => $query
+                    ->whereNotNull('checked_in_at')
+                    ->where('entry_covered_by', EntryCoverageSource::None),
+                'attendance as sh_count' => fn (Builder $query) => $query
+                    ->whereNotNull('checked_in_at')
+                    ->whereIn('entry_covered_by', ShowrunnerPayoutService::SUBSCRIPTION_SOURCES),
             ]);
     }
 
@@ -183,6 +199,20 @@ class ShowrunnerPayouts extends Page implements HasTable
                 'percent' => rtrim(rtrim(number_format((float) $band->tier->payout_value, 2), '0'), '.'),
             ]))
             ->implode(' + ');
+    }
+
+    /**
+     * The tier an event lands in depends on its computed headcount, so this
+     * can't be a plain WHERE. Filament hands filters a bare nested builder
+     * (no attendance counts), so work the tiers out from the page's own query.
+     *
+     * @return array<int, int>
+     */
+    private function voucherEventIds(): array
+    {
+        return $this->payoutsQuery()->get()
+            ->filter(fn (Event $event): bool => $this->resultFor($event)->voucherTier !== null)
+            ->modelKeys();
     }
 
     private function filteredTotalCents(): int
