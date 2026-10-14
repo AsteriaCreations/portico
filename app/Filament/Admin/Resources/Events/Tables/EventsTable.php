@@ -213,7 +213,7 @@ class EventsTable
             ->schema(fn (Schema $schema): Schema => EventForm::configure($schema, includeSummary: false, includeAddOnSelection: false, includeRepeat: true))
             ->fillForm(fn (Event $record): array => [
                 ...$record->only([
-                    'name', 'event_type_id', 'entry_fee',
+                    'name', 'event_type_id', 'entry_fee', 'comped_entry_fee',
                     'door_prepay_enabled', 'showrunner_id', 'host_id', 'notes',
                 ]),
                 'starts_at' => $record->starts_at?->toDateTimeString(),
