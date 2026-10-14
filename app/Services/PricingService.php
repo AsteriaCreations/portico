@@ -13,7 +13,8 @@ use Illuminate\Support\Collection;
 
 /**
  * The single source of truth for what a member owes at an event. Entry is
- * priced on its own (host bypass, category comp, the Regular subscription's
+ * priced on its own (host bypass, category comp — full, or reduced to the
+ * event's comped_entry_fee — the Regular subscription's
  * per-visit credit); every subscribable add-on (Pool, at launch — see
  * AddOn::subscribable()) is priced independently of entry and of every other
  * add-on, each drawing on its own subscription/day-pass/comp coverage. See
@@ -93,13 +94,18 @@ class PricingService
                 ->values()
                 ->all();
 
+            // An event can charge comped categories a reduced entry
+            // instead of free (events.comped_entry_fee); add-ons stay
+            // comped either way.
+            $compedDue = $event->comped_entry_fee !== null ? min($entryFee, Cents::of($event->comped_entry_fee)) : 0;
+
             return new PriceBreakdown(
                 entryFeeCents: $entryFee,
-                entryCoverageCents: $entryFee,
+                entryCoverageCents: $entryFee - $compedDue,
                 entryCoveredBy: EntryCoverageSource::Comp,
                 addOnLines: $addOnLines,
                 voucherCoverageCents: 0,
-                amountPaidCents: 0,
+                amountPaidCents: $compedDue,
             );
         }
 

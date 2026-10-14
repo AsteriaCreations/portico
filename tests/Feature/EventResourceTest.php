@@ -126,6 +126,50 @@ test('fees must be zero or more, to the cent', function () {
     expect(Event::where('name', 'Fee Check')->exists())->toBeFalse();
 });
 
+test('the staff entry fee is optional, saves when set, and must be zero or more', function () {
+    $base = [
+        'event_date' => '2026-08-01',
+        'starts_at' => '2026-08-01 20:00:00',
+        'ends_at' => '2026-08-01 23:00:00',
+        'entry_fee' => 20,
+        'pool_fee' => 0,
+    ];
+
+    Livewire::test(CreateEvent::class)
+        ->fillForm([...$base, 'name' => 'Free Staff'])
+        ->call('create')
+        ->assertHasNoFormErrors();
+
+    Livewire::test(CreateEvent::class)
+        ->fillForm([...$base, 'name' => 'Reduced Staff', 'comped_entry_fee' => 5])
+        ->call('create')
+        ->assertHasNoFormErrors();
+
+    Livewire::test(CreateEvent::class)
+        ->fillForm([...$base, 'name' => 'Negative Staff', 'comped_entry_fee' => -5])
+        ->call('create')
+        ->assertHasFormErrors(['comped_entry_fee']);
+
+    expect(Event::where('name', 'Free Staff')->firstOrFail()->comped_entry_fee)->toBeNull()
+        ->and(Event::where('name', 'Reduced Staff')->firstOrFail()->comped_entry_fee)->toEqual(5)
+        ->and(Event::where('name', 'Negative Staff')->exists())->toBeFalse();
+});
+
+test('duplicating an event carries its staff entry fee', function () {
+    $original = Event::factory()->create(['entry_fee' => 20, 'comped_entry_fee' => 5]);
+
+    Livewire::test(ListEvents::class)
+        ->callTableAction('duplicate', $original, data: [
+            'event_date' => '2026-09-01',
+            'starts_at' => '2026-09-01 20:00:00',
+            'ends_at' => '2026-09-01 23:00:00',
+        ])
+        ->assertHasNoTableActionErrors();
+
+    $duplicate = Event::where('id', '!=', $original->id)->latest('id')->firstOrFail();
+    expect($duplicate->comped_entry_fee)->toEqual(5);
+});
+
 test('starts_at must be on the event date, while ends_at may run past midnight', function () {
     Livewire::test(CreateEvent::class)
         ->fillForm([

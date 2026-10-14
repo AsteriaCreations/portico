@@ -155,6 +155,15 @@ class EventForm
                     ->rule('decimal:0,2')
                     ->prefix('$')
                     ->default(0),
+                TextInput::make('comped_entry_fee')
+                    ->label('Staff entry fee')
+                    ->helperText(__('Leave blank for free entry. Set an amount to charge comped categories (Owner, Manager, Emeritus, Staff) a reduced entry at this event.'))
+                    ->numeric()
+                    ->minValue(0)
+                    ->step(0.01)
+                    ->rule('decimal:0,2')
+                    ->prefix('$')
+                    ->default(null),
                 TextInput::make('pool_fee')
                     ->label('Pool fee')
                     ->helperText(__('0 if the pool is closed / not offered.'))

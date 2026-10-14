@@ -70,6 +70,50 @@ test('a comped category owes nothing on any event', function () {
         ->and(poolLine($breakdown)->coverageCents)->toBe(500);
 });
 
+test('a comped category pays the event comped_entry_fee for entry, add-ons stay comped', function () {
+    $category = Category::factory()->create(['is_comped' => true]);
+    $member = Member::factory()->create(['category_id' => $category->id]);
+    $event = Event::factory()->create(['event_date' => '2026-07-19', 'entry_fee' => 20, 'comped_entry_fee' => 5, 'pool_fee' => 5]);
+
+    $breakdown = $this->pricing->price($member, $event);
+
+    expect($breakdown->amountPaidCents)->toBe(500)
+        ->and($breakdown->entryCoveredBy)->toBe(EntryCoverageSource::Comp)
+        ->and($breakdown->entryCoverageCents)->toBe(1500)
+        ->and(poolLine($breakdown)->coveredBy)->toBe(AddOnCoverageSource::Comp)
+        ->and(poolLine($breakdown)->coverageCents)->toBe(500);
+});
+
+test('a comped_entry_fee above the entry fee is capped at the entry fee', function () {
+    $category = Category::factory()->create(['is_comped' => true]);
+    $member = Member::factory()->create(['category_id' => $category->id]);
+    $event = Event::factory()->create(['event_date' => '2026-07-19', 'entry_fee' => 8, 'comped_entry_fee' => 12]);
+
+    $breakdown = $this->pricing->price($member, $event);
+
+    expect($breakdown->amountPaidCents)->toBe(800)
+        ->and($breakdown->entryCoverageCents)->toBe(0);
+});
+
+test('comped_entry_fee does not change what a non-comped member owes', function () {
+    $category = Category::factory()->create(['is_comped' => false]);
+    $member = Member::factory()->create(['category_id' => $category->id]);
+    $event = Event::factory()->create(['event_date' => '2026-07-19', 'entry_fee' => 20, 'comped_entry_fee' => 5]);
+
+    expect($this->pricing->price($member, $event)->amountPaidCents)->toBe(2000);
+});
+
+test('applyEventComp still waives a comped member reduced entry in full', function () {
+    $category = Category::factory()->create(['is_comped' => true]);
+    $member = Member::factory()->create(['category_id' => $category->id]);
+    $event = Event::factory()->create(['event_date' => '2026-07-19', 'entry_fee' => 20, 'comped_entry_fee' => 5]);
+
+    $breakdown = $this->pricing->applyEventComp($this->pricing->price($member, $event));
+
+    expect($breakdown->amountPaidCents)->toBe(0)
+        ->and($breakdown->entryCoveredBy)->toBe(EntryCoverageSource::EventComp);
+});
+
 test('entry-only event, regular subscription covers up to the credit', function (float $entryFee, int $expectedDue) {
     $category = Category::factory()->create(['is_comped' => false]);
     $member = Member::factory()->create(['category_id' => $category->id]);

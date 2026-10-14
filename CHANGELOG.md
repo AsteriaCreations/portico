@@ -11,6 +11,13 @@ is fixes only.
 
 ### Added
 
+- **Events: a Staff entry fee.** Leave it blank and comped categories (Owner, Manager, Emeritus,
+  Staff) get in free as before. Set it and they pay that amount for entry at that event instead
+  (never more than the entry fee); Pool and other add-ons stay comped. Duplicating an event
+  carries it over. These entries are still recorded as comp, so they don't count toward the
+  showrunner's commission headcount and instructor pay treats them as comp, same as before.
+  **Migration:** adds `events.comped_entry_fee` (nullable; existing events are unchanged).
+
 - **Showrunner Payouts: a Payout filter.** "Commission only" leaves out nights that fell in the
   flat voucher tier; "Voucher only" shows just those. The total follows the filter.
 

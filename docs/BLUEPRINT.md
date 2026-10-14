@@ -197,6 +197,7 @@ CREATE TABLE events (
   name          VARCHAR(80),                         -- 'Sunday Pool Social', etc.
   event_type_id INT,                                 -- FK -> event_types (label / analytics ONLY, not a fee input)
   entry_fee     DECIMAL(8,2) NOT NULL DEFAULT 0,     -- regular admission; 0 => pool-only event
+  comped_entry_fee DECIMAL(8,2),                     -- what comped categories pay for entry here; NULL => free (the usual comp), capped at entry_fee
   pool_fee      DECIMAL(8,2) NOT NULL DEFAULT 0,     -- Pool add-on's price for this event; 0 => pool closed / none (see add_ons below)
   door_prepay_enabled BOOLEAN NOT NULL DEFAULT FALSE, -- lets this event surface at the check-in desk ahead of its own date
   showrunner_id INT,                                  -- FK -> members; the member running this event (Showrunner role's comp-list nominations, Admin-approved)
@@ -406,12 +407,14 @@ part here.
 price(member, event):
     entry = event.entry_fee        # 0 on a pool-only event
 
-    # Comp categories are free on everything subscribable
+    # Comp categories are free on everything subscribable — except entry
+    # at an event with a comped_entry_fee, where they pay that (capped at entry)
     if member.category.is_comped:
         lines = [ (addOn, fee, fee, 'comp') for addOn in subscribable_add_ons()
                   if (fee := addOn.price_for(event)) is not None ]
-        return entry_fee=entry, entry_cov=entry, entry_src='comp',
-               add_on_lines=lines, due=0
+        due = min(entry, event.comped_entry_fee) if event.comped_entry_fee is not None else 0
+        return entry_fee=entry, entry_cov=entry - due, entry_src='comp',
+               add_on_lines=lines, due=due
 
     month = first_of_month(event.event_date)
 
