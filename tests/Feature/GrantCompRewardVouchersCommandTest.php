@@ -152,3 +152,87 @@ test('a missing system user records a CommandRun failure', function () {
         ->and($run->last_failure_at)->not->toBeNull()
         ->and($run->last_failure_message)->toBe('system user not found');
 });
+
+test('a workday attendee who stays the minimum hours gets the workday voucher once it ends', function () {
+    $event = Event::factory()->create(['name' => 'Spring Workday', 'ends_at' => now()->subHour(), 'workday_voucher_amount' => 20, 'workday_min_hours' => 4]);
+    $attendance = Attendance::factory()->for($event)->create([
+        'checked_in_at' => now()->subHours(6),
+        'departed_at' => now()->subHours(2),
+    ]);
+
+    $this->artisan('vouchers:grant-comp-rewards')->assertSuccessful();
+
+    $voucher = Voucher::where('attendance_id', $attendance->id)->firstOrFail();
+    expect($voucher->member_id)->toBe($attendance->member_id)
+        ->and($voucher->amount)->toEqual(20)
+        ->and($voucher->recorded_by)->toBe($this->systemUser->id)
+        ->and($voucher->reason)->toContain('Spring Workday');
+});
+
+test('a workday attendee short of the minimum hours, or with no recorded departure, gets nothing', function () {
+    $event = Event::factory()->create(['ends_at' => now()->subHour(), 'workday_voucher_amount' => 20, 'workday_min_hours' => 4]);
+    $short = Attendance::factory()->for($event)->create([
+        'checked_in_at' => now()->subHours(5),
+        'departed_at' => now()->subHours(2), // 3 hours
+    ]);
+    $neverDeparted = Attendance::factory()->for($event)->create([
+        'checked_in_at' => now()->subHours(8),
+        'departed_at' => null,
+    ]);
+    $noShow = Attendance::factory()->for($event)->create([
+        'checked_in_at' => null,
+        'departed_at' => null,
+    ]);
+
+    $this->artisan('vouchers:grant-comp-rewards')->assertSuccessful();
+
+    expect(Voucher::whereIn('attendance_id', [$short->id, $neverDeparted->id, $noShow->id])->exists())->toBeFalse();
+});
+
+test('no workday voucher before the event ends, or for an ordinary event', function () {
+    $ongoing = Event::factory()->create(['ends_at' => now()->addHour(), 'workday_voucher_amount' => 20, 'workday_min_hours' => 4]);
+    $ordinary = Event::factory()->create(['ends_at' => now()->subHour()]);
+    foreach ([$ongoing, $ordinary] as $event) {
+        Attendance::factory()->for($event)->create([
+            'checked_in_at' => now()->subHours(9),
+            'departed_at' => now()->subHours(2),
+        ]);
+    }
+
+    $this->artisan('vouchers:grant-comp-rewards')->assertSuccessful();
+
+    expect(Voucher::count())->toBe(0);
+});
+
+test('the workday voucher is granted once, even when a voucher was spent at that visit', function () {
+    $event = Event::factory()->create(['ends_at' => now()->subHour(), 'workday_voucher_amount' => 20, 'workday_min_hours' => 4]);
+    $attendance = Attendance::factory()->for($event)->create([
+        'checked_in_at' => now()->subHours(6),
+        'departed_at' => now()->subHours(2),
+    ]);
+    Voucher::factory()->create([
+        'member_id' => $attendance->member_id,
+        'amount' => -10,
+        'attendance_id' => $attendance->id,
+        'recorded_by' => $this->systemUser->id,
+    ]);
+
+    $this->artisan('vouchers:grant-comp-rewards')->assertSuccessful();
+    $this->artisan('vouchers:grant-comp-rewards')->assertSuccessful();
+
+    expect(Voucher::where('attendance_id', $attendance->id)->where('amount', '>', 0)->count())->toBe(1);
+});
+
+test('a comped workday attendee gets one reward, not both', function () {
+    $reason = CompReason::factory()->create(['grants_voucher_amount' => 25]);
+    $event = Event::factory()->create(['ends_at' => now()->subHour(), 'workday_voucher_amount' => 20, 'workday_min_hours' => 4]);
+    $attendance = Attendance::factory()->for($event)->create([
+        'checked_in_at' => now()->subHours(6),
+        'departed_at' => now()->subHours(2),
+        'comp_reason_id' => $reason->id,
+    ]);
+
+    $this->artisan('vouchers:grant-comp-rewards')->assertSuccessful();
+
+    expect(Voucher::where('attendance_id', $attendance->id)->pluck('amount')->all())->toEqual(['25.00']);
+});

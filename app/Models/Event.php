@@ -11,7 +11,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-#[Fillable(['event_date', 'starts_at', 'ends_at', 'ended_notification_sent_at', 'comp_list_due_at', 'name', 'event_type_id', 'entry_fee', 'comped_entry_fee', 'pool_fee', 'door_prepay_enabled', 'showrunner_id', 'host_id', 'notes', 'created_by'])]
+#[Fillable(['event_date', 'starts_at', 'ends_at', 'ended_notification_sent_at', 'comp_list_due_at', 'name', 'event_type_id', 'entry_fee', 'comped_entry_fee', 'pool_fee', 'workday_voucher_amount', 'workday_min_hours', 'door_prepay_enabled', 'showrunner_id', 'host_id', 'notes', 'created_by'])]
 class Event extends Model
 {
     /** @use HasFactory<EventFactory> */
@@ -28,6 +28,8 @@ class Event extends Model
             'entry_fee' => 'decimal:2',
             'comped_entry_fee' => 'decimal:2',
             'pool_fee' => 'decimal:2',
+            'workday_voucher_amount' => 'decimal:2',
+            'workday_min_hours' => 'decimal:2',
             'door_prepay_enabled' => 'boolean',
             'archived_at' => 'datetime',
         ];

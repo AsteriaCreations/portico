@@ -47,6 +47,10 @@ class AttendanceRelationManager extends RelationManager
                     ->disabled(),
                 DateTimePicker::make('checked_in_at')
                     ->required(),
+                DateTimePicker::make('departed_at')
+                    ->label('Departed at')
+                    ->after('checked_in_at')
+                    ->helperText(__('Usually recorded on Active Patrons. Correct it here if a departure was missed: a workday voucher depends on it.')),
                 TextInput::make('entry_fee')->numeric()->prefix('$')->disabled(),
                 TextInput::make('entry_coverage')->numeric()->prefix('$')->disabled(),
                 Select::make('entry_covered_by')->options(EntryCoverageSource::class)->disabled(),
@@ -85,6 +89,10 @@ class AttendanceRelationManager extends RelationManager
                 TextColumn::make('checked_in_at')
                     ->dateTime()
                     ->sortable(),
+                TextColumn::make('departed_at')
+                    ->dateTime()
+                    ->sortable()
+                    ->toggleable(),
                 TextColumn::make('entry_fee')->money()->sortable(),
                 TextColumn::make('entry_coverage')->money()->sortable(),
                 TextColumn::make('entry_covered_by')->badge(),

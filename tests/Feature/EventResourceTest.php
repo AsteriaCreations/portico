@@ -170,6 +170,52 @@ test('duplicating an event carries its staff entry fee', function () {
     expect($duplicate->comped_entry_fee)->toEqual(5);
 });
 
+test('a workday needs both its voucher amount and minimum hours, and saves them', function () {
+    $base = [
+        'event_date' => '2026-08-01',
+        'starts_at' => '2026-08-01 09:00:00',
+        'ends_at' => '2026-08-01 17:00:00',
+        'entry_fee' => 0,
+        'pool_fee' => 0,
+    ];
+
+    Livewire::test(CreateEvent::class)
+        ->fillForm([...$base, 'name' => 'Spring Workday', 'workday_voucher_amount' => 20, 'workday_min_hours' => 4])
+        ->call('create')
+        ->assertHasNoFormErrors();
+
+    Livewire::test(CreateEvent::class)
+        ->fillForm([...$base, 'name' => 'Amount Only', 'workday_voucher_amount' => 20])
+        ->call('create')
+        ->assertHasFormErrors(['workday_min_hours']);
+
+    Livewire::test(CreateEvent::class)
+        ->fillForm([...$base, 'name' => 'Hours Only', 'workday_min_hours' => 4])
+        ->call('create')
+        ->assertHasFormErrors(['workday_voucher_amount']);
+
+    $workday = Event::where('name', 'Spring Workday')->firstOrFail();
+    expect($workday->workday_voucher_amount)->toEqual(20)
+        ->and($workday->workday_min_hours)->toEqual(4)
+        ->and(Event::whereIn('name', ['Amount Only', 'Hours Only'])->exists())->toBeFalse();
+});
+
+test('duplicating a workday carries its voucher amount and minimum hours', function () {
+    $original = Event::factory()->create(['workday_voucher_amount' => 20, 'workday_min_hours' => 4]);
+
+    Livewire::test(ListEvents::class)
+        ->callTableAction('duplicate', $original, data: [
+            'event_date' => '2026-09-01',
+            'starts_at' => '2026-09-01 09:00:00',
+            'ends_at' => '2026-09-01 17:00:00',
+        ])
+        ->assertHasNoTableActionErrors();
+
+    $duplicate = Event::where('id', '!=', $original->id)->latest('id')->firstOrFail();
+    expect($duplicate->workday_voucher_amount)->toEqual(20)
+        ->and($duplicate->workday_min_hours)->toEqual(4);
+});
+
 test('starts_at must be on the event date, while ends_at may run past midnight', function () {
     Livewire::test(CreateEvent::class)
         ->fillForm([
