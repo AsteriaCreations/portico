@@ -2,6 +2,7 @@
 
 use App\Enums\AddOnKind;
 use App\Enums\EntryCoverageSource;
+use App\Enums\Role;
 use App\Filament\Admin\Resources\Events\Pages\EditEvent;
 use App\Filament\Admin\Resources\Events\RelationManagers\AttendanceRelationManager as EventAttendanceRelationManager;
 use App\Filament\Admin\Resources\Members\Pages\EditMember;
@@ -38,6 +39,30 @@ test('the attendance relation manager renders on the event edit page', function 
         'ownerRecord' => $event,
         'pageClass' => EditEvent::class,
     ])->assertSuccessful();
+});
+
+test('a missed departure can be recorded from the event page, but not before the arrival', function () {
+    $this->actingAs(User::factory()->create(['active' => true, 'role' => Role::Manager]));
+    $event = Event::factory()->create();
+    $attendance = Attendance::factory()->for($event)->create([
+        'checked_in_at' => '2026-07-19 09:00:00',
+        'departed_at' => null,
+    ]);
+
+    $relationManager = fn () => Livewire::test(EventAttendanceRelationManager::class, [
+        'ownerRecord' => $event,
+        'pageClass' => EditEvent::class,
+    ]);
+
+    $relationManager()
+        ->callTableAction('edit', $attendance, data: ['departed_at' => '2026-07-19 08:00:00'])
+        ->assertHasTableActionErrors(['departed_at']);
+
+    $relationManager()
+        ->callTableAction('edit', $attendance, data: ['departed_at' => '2026-07-19 14:00:00'])
+        ->assertHasNoTableActionErrors();
+
+    expect($attendance->refresh()->departed_at->toDateTimeString())->toBe('2026-07-19 14:00:00');
 });
 
 test('checking a member in from the event page prices the attendance via the pricing service', function () {

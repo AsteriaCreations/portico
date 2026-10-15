@@ -96,6 +96,7 @@ One row per event night. Several events can share a date.
 | `starts_at`, `ends_at` | Times; `ends_at` may be the next day for an event that runs past midnight. |
 | `name`, `event_type_id` | Label; `event_types` is an analytics taxonomy (Social, Class, …) and has no effect on price. |
 | `entry_fee`, `pool_fee` | Price at the door *as currently set*. For what people actually paid, use `attendance`. |
+| `workday_voucher_amount`, `workday_min_hours` | Set together on a workday event: an attendee whose `departed_at` is at least `workday_min_hours` after `checked_in_at` is granted a voucher of `workday_voucher_amount` once the event ends (a `vouchers` row with that `attendance_id`). Both blank = an ordinary event. |
 | `comped_entry_fee` | What comped categories (Owner, Manager, Emeritus, Staff) pay for entry at this event. Blank = free. Their attendance rows still say `entry_covered_by = 'comp'`, with `entry_coverage` below `entry_fee`. |
 | `door_prepay_enabled` | Desk may sell it before the night. |
 | `showrunner_id`, `host_id` | → `members`. Host gets in free automatically. |

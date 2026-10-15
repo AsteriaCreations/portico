@@ -11,6 +11,21 @@ is fixes only.
 
 ### Added
 
+- **Events: workday vouchers.** Give an event a workday voucher amount and a minimum number of
+  hours, and everyone who stays at least that long (check-in time to recorded departure) gets
+  that voucher automatically once the event ends, from the same scheduled
+  `vouchers:grant-comp-rewards` task that grants comp rewards. Record each worker's departure on
+  Active Patrons; someone with no departure gets nothing until a Manager fills in the new
+  **Departed at** field on the event's Attendance tab. A visit earns one reward at most: a
+  comped worker whose comp reason grants a voucher gets that one only. Duplicating an event
+  carries both fields. **Migration:** adds `events.workday_voucher_amount` and
+  `events.workday_min_hours` (nullable; existing events are unchanged).
+
+### Fixed
+
+- **Comp-reward vouchers:** a comped attendee who spent a voucher at that visit now still gets
+  their reward. The "already rewarded" check used to count the spent (negative) voucher.
+
 - **Events: a Staff entry fee.** Leave it blank and comped categories (Owner, Manager, Emeritus,
   Staff) get in free as before. Set it and they pay that amount for entry at that event instead
   (never more than the entry fee); Pool and other add-ons stay comped. Duplicating an event

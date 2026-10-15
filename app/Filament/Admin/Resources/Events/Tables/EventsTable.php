@@ -214,6 +214,7 @@ class EventsTable
             ->fillForm(fn (Event $record): array => [
                 ...$record->only([
                     'name', 'event_type_id', 'entry_fee', 'comped_entry_fee',
+                    'workday_voucher_amount', 'workday_min_hours',
                     'door_prepay_enabled', 'showrunner_id', 'host_id', 'notes',
                 ]),
                 'starts_at' => $record->starts_at?->toDateTimeString(),
