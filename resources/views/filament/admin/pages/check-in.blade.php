@@ -408,6 +408,11 @@
                         {{ __('Check-in closed at :time — no new check-ins for this event.', ['time' => $event->checkin_closes_at->isoFormat('LT')]) }}
                     </p>
                 @elseif ($hasRoom)
+                    @if ($this->isCheckInOpenForFirstVisit())
+                        <p class="mt-2">
+                            {{ __('Check-in closed at :time, but this is their first visit, so they can still be checked in.', ['time' => $event->checkin_closes_at->isoFormat('LT')]) }}
+                        </p>
+                    @endif
                     <div class="mt-4">
                         {{ $this->checkInAction }}
                     </div>

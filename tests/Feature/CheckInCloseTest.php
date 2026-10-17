@@ -39,6 +39,9 @@ beforeEach(function () {
         'on_watchlist' => false,
         'missing_paperwork' => false,
     ]);
+    // A returning member: a first visit is let through after the close.
+    Attendance::factory()->for($this->member)->for(Event::factory()->create(['event_date' => '2026-01-10']))
+        ->create(['checked_in_at' => '2026-01-10 21:00:00']);
 });
 
 /**
@@ -100,7 +103,7 @@ test('a check-in reaching the service after the close is refused and writes noth
     expect(fn () => app(CheckInService::class)->record($this->member, $event, $this->user, new CheckInRequest(checkedInAt: now()), null))
         ->toThrow(CheckInRefused::class);
 
-    expect(Attendance::count())->toBe(0);
+    expect(Attendance::where('event_id', $event->id)->count())->toBe(0);
 });
 
 test('someone already on the Prepay List can still be marked arrived after the close', function () {
@@ -149,4 +152,45 @@ test('duplicating an event moves its close time with it', function () {
     ], EventRepeat::Weekly, 2);
 
     expect(Event::whereDate('event_date', '2026-10-31')->sole()->checkin_closes_at->toDateTimeString())->toBe('2026-11-01 00:15:00');
+});
+
+test('a Prospective finishing paperwork after the close can still be checked in at the desk, with a note saying why', function () {
+    $prospective = Category::factory()->create(['name' => 'Prospective', 'is_comped' => false]);
+    $newcomer = Member::factory()->create([
+        'category_id' => $prospective->id,
+        'dob' => '1990-01-01',
+        'is_banned' => false,
+        'on_watchlist' => false,
+        'first_name' => null,
+        'last_name' => null,
+        'email' => null,
+    ]);
+    $event = closingEvent('2026-10-17 23:00:00', '2026-10-17 20:45:00');
+
+    Livewire::test(CheckIn::class)
+        ->fillForm(['event_id' => $event->id, 'member_id' => $newcomer->id])
+        ->callAction('saveAndPromote', data: [
+            'preferred_name' => 'Newb',
+            'first_name' => 'New',
+            'last_name' => 'Member',
+            'email' => 'new@example.com',
+        ])
+        ->assertHasNoActionErrors()
+        ->assertActionVisible('checkIn')
+        ->assertSee('this is their first visit')
+        ->callAction('checkIn', data: ['checked_in_at' => now()])
+        ->assertHasNoActionErrors();
+
+    expect(Attendance::where('member_id', $newcomer->id)->where('event_id', $event->id)->exists())->toBeTrue();
+});
+
+test('an unarrived prepay doesn\'t make a visit, but an arrived one does', function () {
+    $newcomer = Member::factory()->create(['category_id' => $this->irregular->id]);
+    $event = closingEvent('2026-10-17 23:00:00', '2026-10-17 20:45:00');
+    $later = Event::factory()->create(['event_date' => '2026-10-24']);
+    Attendance::factory()->for($newcomer)->for($later)->create(['checked_in_at' => null]);
+
+    expect($newcomer->isFirstVisit())->toBeTrue()
+        ->and($event->isCheckInClosedFor($newcomer))->toBeFalse()
+        ->and($event->isCheckInClosedFor($this->member))->toBeTrue();
 });

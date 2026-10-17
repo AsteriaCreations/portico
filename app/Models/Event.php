@@ -79,6 +79,17 @@ class Event extends Model
         return $this->checkin_closes_at !== null && $this->checkin_closes_at->lte(now());
     }
 
+    /**
+     * isCheckInClosed(), except for someone on their first visit: a
+     * Prospective still doing paperwork at the close can be checked in
+     * while the event stays on the desk. Desk only -- the kiosk reads
+     * isCheckInClosed() and stays closed for everyone.
+     */
+    public function isCheckInClosedFor(Member $member): bool
+    {
+        return $this->isCheckInClosed() && ! $member->isFirstVisit();
+    }
+
     public function eventType(): BelongsTo
     {
         return $this->belongsTo(EventType::class);

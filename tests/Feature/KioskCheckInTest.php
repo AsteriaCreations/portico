@@ -146,7 +146,9 @@ test('with no event running the kiosk is closed', function () {
     expect(Attendance::count())->toBe(0);
 });
 
-test('after the event\'s check-in close the kiosk is closed', function () {
+// The member has never visited: the desk's first-visit exception doesn't
+// reach the kiosk.
+test('after the event\'s check-in close the kiosk is closed, even for a first visit', function () {
     $this->event->update(['checkin_closes_at' => now()->subMinute()]);
 
     scanAtKiosk($this, $this->member->kiosk_token)->assertJson(['status' => 'closed']);
