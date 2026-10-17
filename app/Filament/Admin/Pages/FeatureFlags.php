@@ -83,6 +83,7 @@ class FeatureFlags extends Page
             'door_username_rename_enabled',
             'door_preferred_name_change_enabled',
             'kiosk_checkin_enabled',
+            'kiosk_show_code_enabled',
             'upstream_check_enabled',
             'deploy_trigger_enabled',
         ]));
@@ -136,6 +137,10 @@ class FeatureFlags extends Page
                         Toggle::make('kiosk_checkin_enabled')
                             ->label('Kiosk check-in')
                             ->helperText(__('Adds a "Kiosk QR code" button for the selected member on the Check-In Desk and on the member\'s page, showing a code to print or photograph. The code only identifies the member: the kiosk lets them in only while they have an active subscription and owe nothing, and sends anyone else to the desk. Off by default.'))
+                            ->required(),
+                        Toggle::make('kiosk_show_code_enabled')
+                            ->label('Show codes on the kiosk')
+                            ->helperText(__('Adds a "Show on kiosk" button next to "Kiosk QR code", for a desk whose screen faces staff. The kiosk tablet shows the member\'s code for 60 seconds so they can take a picture of it with their phone. Anyone at the tablet can see it while it\'s up. Needs Kiosk check-in on. Off by default.'))
                             ->required(),
                     ]),
                 Section::make(__('Records'))

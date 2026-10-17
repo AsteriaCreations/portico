@@ -16,3 +16,10 @@ Route::get('/kiosk', [KioskCheckInController::class, 'show'])->name('kiosk');
 Route::post('/kiosk/scan', [KioskCheckInController::class, 'scan'])
     ->middleware(VerifyKioskDevice::class)
     ->name('kiosk.scan');
+
+// A member's code sent from the desk ("Show on kiosk") for them to
+// photograph; the tablet polls for it while scanning. It hands out a
+// credential, so it sits behind the same guard as a scan.
+Route::post('/kiosk/show-code', [KioskCheckInController::class, 'showCode'])
+    ->middleware(VerifyKioskDevice::class)
+    ->name('kiosk.show-code');

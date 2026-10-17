@@ -2,7 +2,9 @@
 
 namespace App\Filament\Concerns;
 
+use App\Models\Event;
 use App\Models\Member;
+use App\Services\KioskCodeDisplay;
 use App\Services\KioskCodeMailer;
 use App\Services\KioskQrCode;
 use Closure;
@@ -63,6 +65,64 @@ trait ShowsKioskQrCode
             })
             ->modalSubmitAction(false)
             ->modalCancelActionLabel(__('Close'));
+    }
+
+    /**
+     * Sends the member's kiosk code to the kiosk tablet (KioskCodeDisplay),
+     * creating it if they have none, so they can photograph it there -- for
+     * a desk whose screen faces staff. Started only from here, never at the
+     * tablet: the kiosk is unattended and the code is a credential. The
+     * tablet only shows codes while it's scanning, so with no event running
+     * nothing is sent. The desk's training mode sends nothing either.
+     *
+     * @param  Closure(): ?Member  $resolveMember  the member whose code to send
+     * @param  Closure(): bool|null  $isPractice  true to send nothing (the desk's training mode)
+     */
+    protected function makeShowKioskQrCodeAction(Closure $resolveMember, ?Closure $isPractice = null): Action
+    {
+        return Action::make('showKioskQrCode')
+            ->label('Show on kiosk')
+            ->icon(Heroicon::OutlinedDeviceTablet)
+            ->color('gray')
+            ->visible(fn (): bool => $resolveMember() !== null && Gate::allows('show-kiosk-code-on-kiosk'))
+            ->requiresConfirmation()
+            ->modalHeading(__('Show the kiosk QR code on the kiosk?'))
+            ->modalDescription(__('The kiosk tablet shows this member\'s code for :seconds seconds so they can take a picture of it. Anyone at the tablet can see it, so send it only while the member is standing there.', ['seconds' => KioskCodeDisplay::SECONDS]))
+            ->modalSubmitActionLabel(__('Show'))
+            ->action(function () use ($resolveMember, $isPractice): void {
+                abort_unless(Gate::allows('show-kiosk-code-on-kiosk'), 403);
+
+                $member = $resolveMember();
+                abort_unless($member, 404);
+
+                if ($isPractice && $isPractice()) {
+                    Notification::make()
+                        ->title(__('Practice only — nothing saved'))
+                        ->body(__('Practice: nothing was sent to the kiosk.'))
+                        ->warning()
+                        ->send();
+
+                    return;
+                }
+
+                if (! Event::anyCurrentlyActive()) {
+                    Notification::make()
+                        ->title(__('The kiosk is closed'))
+                        ->body(__('The kiosk only shows codes while an event is running. Show or print the code here instead.'))
+                        ->warning()
+                        ->send();
+
+                    return;
+                }
+
+                app(KioskCodeDisplay::class)->queue($member);
+
+                Notification::make()
+                    ->title(__('Showing on the kiosk'))
+                    ->body(__('The code appears on the kiosk within a few seconds, for :seconds seconds.', ['seconds' => KioskCodeDisplay::SECONDS]))
+                    ->success()
+                    ->send();
+            });
     }
 
     /**

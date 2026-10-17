@@ -11,6 +11,18 @@ is fixes only.
 
 ### Added
 
+- **Kiosk: show a member's code on the kiosk.** "Show codes on the kiosk" on Feature Flags (off by
+  default, needs Kiosk check-in) adds a "Show on kiosk" button next to "Kiosk QR code" at the
+  Check-In Desk (Door and up) and on the member's page. The kiosk tablet then shows that member's
+  code for 60 seconds so they can photograph it with their phone, for a desk whose screen faces
+  staff. It's sent only from the desk, never asked for at the tablet, and only while an event is
+  running (when the kiosk is scanning); it's shown once, and a code replaced in the meantime never
+  appears. Training mode sends nothing. The tablet collects it from a new `POST /kiosk/show-code`
+  behind the same device cookie as a scan, and the kiosk rate limit now counts each endpoint
+  separately so this never uses up the scans' budget. New column
+  `membership_settings.kiosk_show_code_enabled` (run `migrate`); the kiosk screen changed, so the
+  update needs `npm run build`.
+
 - **Events: workday vouchers.** Give an event a workday voucher amount and a minimum number of
   hours, and everyone who stays at least that long (check-in time to recorded departure) gets
   that voucher automatically once the event ends, from the same scheduled

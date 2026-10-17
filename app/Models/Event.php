@@ -220,6 +220,16 @@ class Event extends Model
     }
 
     /**
+     * Whether any event is running right now: what opens the kiosk
+     * (KioskCheckInController::show()), and what "Show on kiosk" checks
+     * before telling staff the tablet will show the code.
+     */
+    public static function anyCurrentlyActive(): bool
+    {
+        return static::currentQuery()->get()->contains(fn (Event $event): bool => $event->isCurrentlyActive());
+    }
+
+    /**
      * Per-instance mirror of currentQuery()'s own today-or-window logic, for
      * deciding whether a single already-loaded Event is happening right now
      * (a live arrival) vs. only selectable because of door_prepay_enabled

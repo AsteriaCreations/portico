@@ -6,11 +6,14 @@ use App\Http\Middleware\VerifyKioskDevice;
 use App\Models\Event;
 use App\Models\MembershipSetting;
 use App\Services\KioskCheckInService;
+use App\Services\KioskCodeDisplay;
+use App\Services\KioskQrCode;
 use App\Support\ViteBuild;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 use Symfony\Component\HttpFoundation\Cookie;
 
 class KioskCheckInController extends Controller
@@ -40,7 +43,8 @@ class KioskCheckInController extends Controller
             'orgName' => $settings->org_name,
             'isLinked' => $settings->kioskDeviceSecretMatches($request->cookie(VerifyKioskDevice::COOKIE)),
             'badSetupLink' => $key !== null,
-            'isOpen' => Event::currentQuery()->get()->contains(fn (Event $event): bool => $event->isCurrentlyActive()),
+            'isOpen' => Event::anyCurrentlyActive(),
+            'showsCodes' => $settings->kiosk_show_code_enabled,
             'isBuilt' => ViteBuild::has(self::SCRIPT),
             'script' => self::SCRIPT,
         ]);
@@ -53,6 +57,25 @@ class KioskCheckInController extends Controller
         ]);
 
         return response()->json($kiosk->scan($validated['token'])->toArray());
+    }
+
+    /**
+     * The tablet's poll for a code staff sent from the desk ("Show on
+     * kiosk"). Handed out once: the next poll gets nothing. 204 while
+     * nothing is waiting, or with the feature off.
+     */
+    public function showCode(KioskCodeDisplay $display, KioskQrCode $qr): JsonResponse|Response
+    {
+        $member = MembershipSetting::current()->kiosk_show_code_enabled ? $display->take() : null;
+
+        if ($member === null) {
+            return response()->noContent();
+        }
+
+        return response()->json([
+            'name' => $member->displayName(),
+            'qr' => $qr->pngDataUri($member->kiosk_token),
+        ]);
     }
 
     private function deviceCookie(Request $request, string $secret): Cookie
