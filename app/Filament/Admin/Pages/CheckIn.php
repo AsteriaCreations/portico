@@ -316,6 +316,18 @@ class CheckIn extends Page implements HasTable
         return $this->selectedEventCache[1];
     }
 
+    /**
+     * Whether the selected event is running and past its check-in close
+     * time. A prepay for a later event is never closed here;
+     * CheckInService re-checks this under its own transaction.
+     */
+    public function isCheckInClosed(): bool
+    {
+        $event = $this->getSelectedEvent();
+
+        return $event !== null && $event->isCurrentlyActive() && $event->isCheckInClosed();
+    }
+
     public function getSelectedMember(): ?Member
     {
         $id = $this->data['member_id'] ?? null;
@@ -995,6 +1007,7 @@ class CheckIn extends Page implements HasTable
             ->visible(fn (): bool => ! $this->getExistingAttendance()
                 && ! ($this->getDecision()?->blocksCheckIn() ?? true)
                 && $this->getDecision()?->outcome !== AdmissionOutcome::Capture
+                && ! $this->isCheckInClosed()
                 && ($event === null || app(CapacityService::class)->hasRoom($event->event_date)))
             ->action(function (array $data): void {
                 if ($this->haltForTraining(__('Practice check-in complete — :amount would have been charged. Nothing was saved.', ['amount' => $this->formatCurrency($this->getLiveDueTotal())]))) {

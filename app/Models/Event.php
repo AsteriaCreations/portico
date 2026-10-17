@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Carbon\CarbonInterface;
 use Database\Factories\EventFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
@@ -10,8 +11,9 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Carbon;
 
-#[Fillable(['event_date', 'starts_at', 'ends_at', 'ended_notification_sent_at', 'comp_list_due_at', 'name', 'event_type_id', 'entry_fee', 'comped_entry_fee', 'pool_fee', 'workday_voucher_amount', 'workday_min_hours', 'door_prepay_enabled', 'showrunner_id', 'host_id', 'notes', 'created_by'])]
+#[Fillable(['event_date', 'starts_at', 'ends_at', 'checkin_closes_at', 'ended_notification_sent_at', 'comp_list_due_at', 'name', 'event_type_id', 'entry_fee', 'comped_entry_fee', 'pool_fee', 'workday_voucher_amount', 'workday_min_hours', 'door_prepay_enabled', 'showrunner_id', 'host_id', 'notes', 'created_by'])]
 class Event extends Model
 {
     /** @use HasFactory<EventFactory> */
@@ -23,6 +25,7 @@ class Event extends Model
             'event_date' => 'date',
             'starts_at' => 'datetime',
             'ends_at' => 'datetime',
+            'checkin_closes_at' => 'datetime',
             'ended_notification_sent_at' => 'datetime',
             'comp_list_due_at' => 'date',
             'entry_fee' => 'decimal:2',
@@ -33,6 +36,47 @@ class Event extends Model
             'door_prepay_enabled' => 'boolean',
             'archived_at' => 'datetime',
         ];
+    }
+
+    /**
+     * Every save path (form, duplicate, bulk upload, factory) gets a check-in
+     * close time once the event has an end: blank means "use the default",
+     * not "never close". A club wanting check-in open to the end sets it to
+     * ends_at.
+     */
+    protected static function booted(): void
+    {
+        static::saving(function (Event $event): void {
+            if ($event->checkin_closes_at === null && $event->starts_at && $event->ends_at) {
+                $event->checkin_closes_at = static::defaultCheckInClose($event->starts_at, $event->ends_at);
+            }
+        });
+    }
+
+    /**
+     * An event that runs past midnight closes check-in
+     * checkin_close_minutes_overnight before its end; any other closes
+     * checkin_close_minutes_same_day before (Membership Settings). Never
+     * before the event starts.
+     */
+    public static function defaultCheckInClose(CarbonInterface $startsAt, CarbonInterface $endsAt): Carbon
+    {
+        $settings = MembershipSetting::current();
+        $minutes = $endsAt->isSameDay($startsAt)
+            ? $settings->checkin_close_minutes_same_day
+            : $settings->checkin_close_minutes_overnight;
+
+        return Carbon::instance(Carbon::instance($endsAt)->subMinutes($minutes)->max($startsAt));
+    }
+
+    /**
+     * Whether the desk and kiosk have stopped taking new check-ins for this
+     * event. Arrivals already on the Prepay/Comp List (markArrivedAction),
+     * departures and future-event prepays are unaffected.
+     */
+    public function isCheckInClosed(): bool
+    {
+        return $this->checkin_closes_at !== null && $this->checkin_closes_at->lte(now());
     }
 
     public function eventType(): BelongsTo

@@ -71,6 +71,16 @@ class CheckInService
                 );
             }
 
+            // Fresh for the same reason: an Admin may have moved the close
+            // time. Only a live arrival is refused; a prepay for a later
+            // event is not a check-in tonight.
+            if ($event->isCurrentlyActive() && $event->fresh()->isCheckInClosed()) {
+                throw new CheckInRefused(
+                    __('Check-in closed — check-in not saved.'),
+                    __('Check-in for this event has closed. Nothing was recorded or charged.'),
+                );
+            }
+
             $month = $event->event_date->clone()->startOfMonth();
             // All money in cents -- see App\Support\Cents.
             $subscriptionTotal = 0;

@@ -19,7 +19,7 @@ use Illuminate\Support\Str;
  * supplies the initial defaults for a fresh install — it's just no longer
  * read anywhere else in the app afterward.
  */
-#[Fillable(['subscription_eligibility_threshold', 'subscription_eligibility_window_months', 'probation_period_days', 'guests_allowed_during_probation', 'max_guests_per_night', 'venue_capacity', 'default_opening_float', 'event_window_buffer_minutes', 'week_starts_on', 'age_of_majority', 'alcohol_flag_age', 'watchlist_notify_label', 'watchlist_probation_mode', 'watchlist_probation_days', 'watchlist_probation_blocks_guests', 'currency', 'locale', 'org_name', 'role_labels', 'member_search_fields', 'checkin_display_name_field', 'member_email_required', 'hide_member_pii_by_default', 'active_patrons_show_staff_roles', 'vouchers_enabled', 'add_ons_enabled', 'showrunner_comp_requests_enabled', 'manager_perk_enabled', 'suspensions_enabled', 'pool_enabled', 'day_pass_future_events_enabled', 'prepay_enabled', 'register_shifts_enabled', 'cash_envelope_reminder_enabled', 'showrunner_payouts_enabled', 'instructor_payouts_enabled', 'visit_notes_enabled', 'behavior_notes_enabled', 'guests_enabled', 'door_username_rename_enabled', 'door_preferred_name_change_enabled', 'kiosk_checkin_enabled', 'kiosk_show_code_enabled', 'upstream_check_enabled', 'upstream_remote', 'upstream_branch', 'deploy_trigger_enabled', 'deploy_task_name'])]
+#[Fillable(['subscription_eligibility_threshold', 'subscription_eligibility_window_months', 'probation_period_days', 'guests_allowed_during_probation', 'max_guests_per_night', 'venue_capacity', 'default_opening_float', 'event_window_buffer_minutes', 'checkin_close_minutes_overnight', 'checkin_close_minutes_same_day', 'week_starts_on', 'age_of_majority', 'alcohol_flag_age', 'watchlist_notify_label', 'watchlist_probation_mode', 'watchlist_probation_days', 'watchlist_probation_blocks_guests', 'currency', 'locale', 'org_name', 'role_labels', 'member_search_fields', 'checkin_display_name_field', 'member_email_required', 'hide_member_pii_by_default', 'active_patrons_show_staff_roles', 'vouchers_enabled', 'add_ons_enabled', 'showrunner_comp_requests_enabled', 'manager_perk_enabled', 'suspensions_enabled', 'pool_enabled', 'day_pass_future_events_enabled', 'prepay_enabled', 'register_shifts_enabled', 'cash_envelope_reminder_enabled', 'showrunner_payouts_enabled', 'instructor_payouts_enabled', 'visit_notes_enabled', 'behavior_notes_enabled', 'guests_enabled', 'door_username_rename_enabled', 'door_preferred_name_change_enabled', 'kiosk_checkin_enabled', 'kiosk_show_code_enabled', 'upstream_check_enabled', 'upstream_remote', 'upstream_branch', 'deploy_trigger_enabled', 'deploy_task_name'])]
 class MembershipSetting extends Model
 {
     /**
@@ -40,6 +40,8 @@ class MembershipSetting extends Model
             'venue_capacity' => 'integer',
             'default_opening_float' => 'decimal:2',
             'event_window_buffer_minutes' => 'integer',
+            'checkin_close_minutes_overnight' => 'integer',
+            'checkin_close_minutes_same_day' => 'integer',
             'week_starts_on' => 'integer',
             'age_of_majority' => 'integer',
             'alcohol_flag_age' => 'integer',

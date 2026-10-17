@@ -403,7 +403,11 @@
                 change it, without staff needing to re-navigate to it after every toggle. --}}
                 <p role="status" class="mt-3 text-xl font-bold">{{ __('Due: :amount', ['amount' => \App\Models\MembershipSetting::formatMoney($this->getLiveDueTotal())]) }}</p>
 
-                @if ($hasRoom)
+                @if ($this->isCheckInClosed())
+                    <p class="mt-2 desk-text-stop">
+                        {{ __('Check-in closed at :time — no new check-ins for this event.', ['time' => $event->checkin_closes_at->isoFormat('LT')]) }}
+                    </p>
+                @elseif ($hasRoom)
                     <div class="mt-4">
                         {{ $this->checkInAction }}
                     </div>
