@@ -94,6 +94,7 @@ One row per event night. Several events can share a date.
 |---|---|
 | `event_date` | The night it belongs to. |
 | `starts_at`, `ends_at` | Times; `ends_at` may be the next day for an event that runs past midnight. |
+| `checkin_closes_at` | When the desk and kiosk stopped taking new check-ins for this event. Defaults to an hour before `ends_at` for an event running past midnight, 30 minutes otherwise (both set in Membership Settings). Blank only on events that had ended before this column existed. |
 | `name`, `event_type_id` | Label; `event_types` is an analytics taxonomy (Social, Class, …) and has no effect on price. |
 | `entry_fee`, `pool_fee` | Price at the door *as currently set*. For what people actually paid, use `attendance`. |
 | `workday_voucher_amount`, `workday_min_hours` | Set together on a workday event: an attendee whose `departed_at` is at least `workday_min_hours` after `checked_in_at` is granted a voucher of `workday_voucher_amount` once the event ends (a `vouchers` row with that `attendance_id`). Both blank = an ordinary event. |

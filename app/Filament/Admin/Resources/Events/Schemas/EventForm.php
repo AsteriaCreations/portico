@@ -94,6 +94,11 @@ class EventForm
                             $length = (int) $oldStart->diffInSeconds(Carbon::parse($get('ends_at')), false);
                             $set('ends_at', $newStart->copy()->addSeconds($length)->toDateTimeString());
                         }
+
+                        if ($oldStart && filled($get('checkin_closes_at'))) {
+                            $offset = (int) $oldStart->diffInSeconds(Carbon::parse($get('checkin_closes_at')), false);
+                            $set('checkin_closes_at', $newStart->copy()->addSeconds($offset)->toDateTimeString());
+                        }
                     }),
                 DateTimePicker::make('starts_at')
                     ->helperText(__("Date defaults from the event date above — an event can't start on a different day."))
@@ -113,7 +118,22 @@ class EventForm
                 DateTimePicker::make('ends_at')
                     ->helperText(__('Pick the next day for an event that runs past midnight. Changing the event date moves this too, keeping the same length.'))
                     ->required()
-                    ->after('starts_at'),
+                    ->after('starts_at')
+                    ->live(onBlur: true)
+                    ->afterStateUpdated(function (?string $state, Set $set, Get $get): void {
+                        if (blank($state) || blank($get('starts_at'))) {
+                            return;
+                        }
+
+                        $set('checkin_closes_at', Event::defaultCheckInClose(Carbon::parse($get('starts_at')), Carbon::parse($state))->toDateTimeString());
+                    }),
+                DateTimePicker::make('checkin_closes_at')
+                    ->label('Check-in closes at')
+                    ->helperText(fn (): string => __('No new check-ins at the desk or kiosk after this. People already on the Prepay or Comp List can still be marked arrived. Defaults to :overnight minutes before the end for an event that runs past midnight, :sameDay minutes otherwise; leave blank for that default.', [
+                        'overnight' => MembershipSetting::current()->checkin_close_minutes_overnight,
+                        'sameDay' => MembershipSetting::current()->checkin_close_minutes_same_day,
+                    ]))
+                    ->afterOrEqual('starts_at'),
                 ...($includeRepeat ? [
                     Select::make('repeat')
                         ->options(EventRepeat::class)

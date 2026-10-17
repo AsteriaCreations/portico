@@ -62,6 +62,10 @@ class KioskCheckInService
             return new KioskScanResult(KioskScanStatus::AlreadyCheckedIn, __('You\'re already checked in. Welcome back!'), $name);
         }
 
+        if ($event->isCheckInClosed()) {
+            return new KioskScanResult(KioskScanStatus::Closed, __('Check-in for tonight has closed.'), $name);
+        }
+
         $decision = $this->admission->decide($member, $event);
         if ($decision->outcome !== AdmissionOutcome::Ok) {
             $this->alert->send($member, $decision->message);

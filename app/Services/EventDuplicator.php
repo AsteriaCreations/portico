@@ -89,6 +89,7 @@ class EventDuplicator
                     'event_date' => $date->toDateString(),
                     'starts_at' => static::shift($data['starts_at'] ?? null, $days),
                     'ends_at' => static::shift($data['ends_at'] ?? null, $days),
+                    'checkin_closes_at' => static::shift($data['checkin_closes_at'] ?? null, $days),
                     'comp_list_due_at' => static::shift($data['comp_list_due_at'] ?? null, $days),
                 ]);
                 $event->addOns()->sync($addOnIds);

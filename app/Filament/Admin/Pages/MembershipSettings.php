@@ -66,6 +66,8 @@ class MembershipSettings extends Page
             'venue_capacity',
             'default_opening_float',
             'event_window_buffer_minutes',
+            'checkin_close_minutes_overnight',
+            'checkin_close_minutes_same_day',
             'week_starts_on',
             'age_of_majority',
             'alcohol_flag_age',
@@ -140,6 +142,22 @@ class MembershipSettings extends Page
                     ->helperText(__('Minutes of slack on either side of an event\'s start/end time when deciding whether it\'s "current" for the check-in page\'s event picker — lets staff pull an event up a little early and keep working it a little after it ends.'))
                     ->numeric()
                     ->minValue(0)
+                    ->required(),
+                TextInput::make('checkin_close_minutes_overnight')
+                    ->label('Check-in closes before the end — overnight events (minutes)')
+                    ->helperText(__('Default check-in close time for an event that runs past midnight: this many minutes before it ends. Each event can override it. Changing this doesn\'t move events already saved.'))
+                    ->numeric()
+                    ->integer()
+                    ->minValue(0)
+                    ->maxValue(1440)
+                    ->required(),
+                TextInput::make('checkin_close_minutes_same_day')
+                    ->label('Check-in closes before the end — same-day events (minutes)')
+                    ->helperText(__('Default check-in close time for an event that ends the day it starts: this many minutes before it ends. Each event can override it. Changing this doesn\'t move events already saved.'))
+                    ->numeric()
+                    ->integer()
+                    ->minValue(0)
+                    ->maxValue(1440)
                     ->required(),
                 Select::make('week_starts_on')
                     ->label('Week starts on')

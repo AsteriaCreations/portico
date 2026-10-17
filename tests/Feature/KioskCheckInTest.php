@@ -146,6 +146,14 @@ test('with no event running the kiosk is closed', function () {
     expect(Attendance::count())->toBe(0);
 });
 
+test('after the event\'s check-in close the kiosk is closed', function () {
+    $this->event->update(['checkin_closes_at' => now()->subMinute()]);
+
+    scanAtKiosk($this, $this->member->kiosk_token)->assertJson(['status' => 'closed']);
+
+    expect(Attendance::count())->toBe(0);
+});
+
 test('with two events running at once the kiosk sends everyone to the desk, without an alert', function () {
     Event::factory()->create(['event_date' => today()->toDateString(), 'entry_fee' => 20, 'pool_fee' => 0]);
 

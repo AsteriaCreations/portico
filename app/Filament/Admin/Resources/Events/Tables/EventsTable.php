@@ -219,6 +219,7 @@ class EventsTable
                 ]),
                 'starts_at' => $record->starts_at?->toDateTimeString(),
                 'ends_at' => $record->ends_at?->toDateTimeString(),
+                'checkin_closes_at' => $record->checkin_closes_at?->toDateTimeString(),
                 // Never blindly carries a nonzero pool_fee onto a new event
                 // while pool is disabled -- the field's hidden on the form
                 // itself, but fillForm() bypasses that, so it needs its own

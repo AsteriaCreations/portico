@@ -11,6 +11,15 @@ is fixes only.
 
 ### Added
 
+- **Events: check-in close time.** Each event has a "Check-in closes at" time; after it the Check-In
+  Desk hides "Check in" (saying when it closed), the kiosk shows "closed", and a check-in already
+  on screen is refused when submitted. People already on the Prepay or Comp List can still be
+  marked arrived, and prepays for later events are unaffected. Left blank, it defaults to an hour
+  before the end for an event that runs past midnight and 30 minutes before otherwise; both are
+  editable on Membership Settings, and the event form refills it when the end time changes.
+  Events not yet over get the default when you migrate. New columns `events.checkin_closes_at`,
+  `membership_settings.checkin_close_minutes_overnight` and `checkin_close_minutes_same_day`
+  (run `migrate`).
 - **Kiosk: show a member's code on the kiosk.** "Show codes on the kiosk" on Feature Flags (off by
   default, needs Kiosk check-in) adds a "Show on kiosk" button next to "Kiosk QR code" at the
   Check-In Desk (Door and up) and on the member's page. The kiosk tablet then shows that member's
