@@ -28,6 +28,8 @@ below cover only what happens on the tablet itself. --}}
         .result[data-status="already_checked_in"] { background: #1e40af; }
         .result[data-status="see_staff"], .result[data-status="not_recognized"], .result[data-status="error"] { background: #92400e; }
         .result[data-status="closed"] { background: #374151; }
+        .code-image { display: block; width: min(80vw, 420px); height: auto; margin: 0 auto 16px; padding: 12px; border-radius: 16px; background: #fff; image-rendering: pixelated; }
+        .done { margin-top: 16px; padding: 16px 48px; border: 0; border-radius: 12px; background: #f9fafb; color: #111827; font-size: 24px; font-weight: 700; cursor: pointer; }
         [hidden] { display: none !important; }
     </style>
     @if ($isBuilt)
@@ -39,7 +41,13 @@ below cover only what happens on the tablet itself. --}}
         id="kiosk"
         data-scan-url="{{ route('kiosk.scan') }}"
         data-open="{{ $isOpen && $isLinked ? '1' : '0' }}"
+        @if ($showsCodes)
+            data-show-code-url="{{ route('kiosk.show-code') }}"
+            data-show-code-seconds="{{ \App\Services\KioskCodeDisplay::SECONDS }}"
+        @endif
         data-strings="{{ json_encode([
+            'codeFor' => __('Your kiosk QR code, :name'),
+            'hidesIn' => __('This code disappears in :seconds seconds.'),
             'badKey' => __('This tablet is no longer set up. An Admin needs to open a new setup link on it from Feature Flags.'),
             'turnedOff' => __('Kiosk check-in is turned off. Please see the front desk.'),
             'busy' => __('Too many scans at once. Please wait a moment and try again.'),
@@ -86,6 +94,17 @@ below cover only what happens on the tablet itself. --}}
                 <p class="prompt">{{ __('Hold your kiosk QR code up to the camera.') }}</p>
                 <p class="note">{{ __('No code, or need to pay? Please see the front desk.') }}</p>
             </div>
+
+            @if ($showsCodes)
+                {{-- A code sent from the desk ("Show on kiosk"), for the member to photograph. --}}
+                <div class="panel" data-screen="code" hidden>
+                    <p class="prompt" data-code-name role="status" aria-live="polite"></p>
+                    <img class="code-image" data-code-image alt="{{ __('Your kiosk QR code') }}">
+                    <p class="prompt">{{ __('Take a picture of this code with your phone. Next time, hold the picture up to this camera to check in.') }}</p>
+                    <p class="note" data-code-countdown></p>
+                    <button type="button" class="done" data-code-done>{{ __('Done') }}</button>
+                </div>
+            @endif
         @endif
 
         {{-- Announced to screen readers as each scan's result arrives. --}}

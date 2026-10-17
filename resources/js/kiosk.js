@@ -10,6 +10,9 @@ const SAME_CODE_COOLDOWN_MS = 8000;
 const SHOW_RESULT_MS = { admitted: 4000, already_checked_in: 4000 };
 const SHOW_OTHER_RESULT_MS = 7000;
 const CLOSED_RELOAD_MS = 60000;
+// 20 a minute: well inside the kiosk rate limit, which counts this
+// endpoint separately from scans.
+const POLL_FOR_CODE_MS = 3000;
 
 function start() {
     if (!root) {
@@ -28,7 +31,10 @@ function start() {
     const screens = {
         message: root.querySelector('[data-screen="message"]'),
         scan: root.querySelector('[data-screen="scan"]'),
+        code: root.querySelector('[data-screen="code"]'),
     };
+    const showCodeUrl = root.dataset.showCodeUrl;
+    const showCodeSeconds = Number(root.dataset.showCodeSeconds) || 60;
     const result = root.querySelector('[data-result]');
     const video = root.querySelector('[data-video]');
     const canvas = document.createElement('canvas');
@@ -42,6 +48,9 @@ function start() {
     function show(name) {
         screens.message.hidden = name !== 'message';
         screens.scan.hidden = name !== 'scan';
+        if (screens.code) {
+            screens.code.hidden = name !== 'code';
+        }
     }
 
     // A lasting problem only staff can fix: stop scanning and say so.
@@ -156,6 +165,73 @@ function start() {
         }
 
         window.setInterval(scanFrame, SCAN_EVERY_MS);
+        if (showCodeUrl && screens.code) {
+            window.setInterval(pollForCode, POLL_FOR_CODE_MS);
+        }
+    }
+
+    // "Show on kiosk": staff sent a member's code from the desk. Scanning
+    // pauses while it's up, so the camera doesn't read the code back off
+    // this screen.
+    function showCode(name, qr) {
+        busy = true;
+        let secondsLeft = showCodeSeconds;
+        const image = screens.code.querySelector('[data-code-image]');
+        const countdown = screens.code.querySelector('[data-code-countdown]');
+        const done = screens.code.querySelector('[data-code-done]');
+
+        screens.code.querySelector('[data-code-name]').textContent = strings.codeFor.replace(':name', name);
+        image.src = qr;
+        countdown.textContent = strings.hidesIn.replace(':seconds', secondsLeft);
+        show('code');
+
+        const ticker = window.setInterval(() => {
+            secondsLeft -= 1;
+            countdown.textContent = strings.hidesIn.replace(':seconds', secondsLeft);
+            if (secondsLeft <= 0) {
+                finish();
+            }
+        }, 1000);
+
+        function finish() {
+            window.clearInterval(ticker);
+            done.removeEventListener('click', finish);
+            image.removeAttribute('src');
+            backToScanning();
+        }
+
+        done.addEventListener('click', finish);
+    }
+
+    // Asks the server whether a code is waiting. Holds `busy` while asking,
+    // so a scan can't start in between and the code (handed out only once)
+    // is never lost. Failures are silent: the scan path already reports them.
+    async function pollForCode() {
+        if (busy) {
+            return;
+        }
+        busy = true;
+
+        let body = null;
+        try {
+            const response = await fetch(showCodeUrl, {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: { Accept: 'application/json' },
+            });
+            if (response.status === 200) {
+                body = await response.json();
+            }
+        } catch {
+            // Offline for a moment: try again on the next poll.
+        }
+
+        if (body?.qr) {
+            showCode(body.name, body.qr);
+
+            return;
+        }
+        busy = false;
     }
 
     // Keeps an unattended tablet's screen on, where the browser allows it.

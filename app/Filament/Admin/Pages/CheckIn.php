@@ -876,6 +876,17 @@ class CheckIn extends Page implements HasTable
         );
     }
 
+    // Sends the code to the kiosk tablet for the member to photograph,
+    // once the club turns on kiosk_show_code_enabled. Training mode sends
+    // nothing.
+    public function showKioskQrCodeAction(): Action
+    {
+        return $this->makeShowKioskQrCodeAction(
+            resolveMember: fn (): ?Member => $this->getSelectedMember(),
+            isPractice: fn (): bool => $this->trainingMode,
+        );
+    }
+
     /**
      * Subscription payment options for one add-on (or Entry) at check-in:
      * "no payment," the ordinary single month (hidden outright if that

@@ -235,6 +235,10 @@
                     @if ($this->emailKioskQrCodeAction->isVisible())
                         {{ $this->emailKioskQrCodeAction }}
                     @endif
+
+                    @if ($this->showKioskQrCodeAction->isVisible())
+                        {{ $this->showKioskQrCodeAction }}
+                    @endif
                 </div>
             @endif
 

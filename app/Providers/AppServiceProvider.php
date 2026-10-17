@@ -43,10 +43,11 @@ class AppServiceProvider extends ServiceProvider
         // silently -- worse than not claiming the check at all.
         Password::defaults(fn (): Password => Password::min(12)->mixedCase()->numbers()->symbols());
 
-        // The kiosk's scan endpoint (routes/kiosk.php): generous for a door
+        // The kiosk's endpoints (routes/kiosk.php): generous for a door
         // queue scanning one code every couple of seconds, low enough to stop
-        // anyone guessing codes.
-        RateLimiter::for('kiosk', fn (Request $request): Limit => Limit::perMinute(30)->by($request->ip()));
+        // anyone guessing codes. Counted per endpoint, so the tablet's
+        // show-code poll never eats into the scans' budget.
+        RateLimiter::for('kiosk', fn (Request $request): Limit => Limit::perMinute(30)->by($request->ip().'|'.$request->path()));
 
         Gate::define('view-sensitive-member-fields', fn (User $user): bool => $user->role->atLeast(Role::Manager));
 
@@ -138,6 +139,13 @@ class AppServiceProvider extends ServiceProvider
         // FeatureFlags::setUpKioskDeviceAction().
         Gate::define('set-up-kiosk-device', fn (User $user): bool => $user->role->atLeast(Role::Admin)
             && MembershipSetting::current()->kiosk_checkin_enabled);
+
+        // Sending a member's code to the kiosk tablet for them to photograph:
+        // whoever may show the code at the desk, once the club turns this on.
+        // Re-checked server-side by ShowsKioskQrCode.
+        Gate::define('show-kiosk-code-on-kiosk', fn (User $user): bool => $user->role->atLeast(Role::Door)
+            && MembershipSetting::current()->kiosk_checkin_enabled
+            && MembershipSetting::current()->kiosk_show_code_enabled);
 
         // Emailing every subscriber at once is a mass mailing in the club's
         // name, so Manager+ (Door can still email one member from the desk).
