@@ -14,7 +14,9 @@ is fixes only.
 - **Events: check-in close time.** Each event has a "Check-in closes at" time; after it the Check-In
   Desk hides "Check in" (saying when it closed), the kiosk shows "closed", and a check-in already
   on screen is refused when submitted. People already on the Prepay or Comp List can still be
-  marked arrived, and prepays for later events are unaffected. Left blank, it defaults to an hour
+  marked arrived, and prepays for later events are unaffected. Someone on their first visit (never
+  marked arrived anywhere, e.g. a Prospective finishing paperwork) can still be checked in at the
+  desk, which says why; the kiosk stays closed for everyone. Left blank, it defaults to an hour
   before the end for an event that runs past midnight and 30 minutes before otherwise; both are
   editable on Membership Settings, and the event form refills it when the end time changes.
   Events not yet over get the default when you migrate. New columns `events.checkin_closes_at`,

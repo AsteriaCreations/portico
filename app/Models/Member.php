@@ -295,6 +295,16 @@ class Member extends Model
             ->count();
     }
 
+    /**
+     * Never marked arrived at any event: an unarrived prepay doesn't count
+     * as a visit. Lets a new member through after check-in closes
+     * (Event::isCheckInClosedFor()).
+     */
+    public function isFirstVisit(): bool
+    {
+        return ! $this->attendance()->whereNotNull('checked_in_at')->exists();
+    }
+
     public function hasBanExceptionFor(Event $event): bool
     {
         return $this->banExceptions()->where('event_id', $event->id)->exists();

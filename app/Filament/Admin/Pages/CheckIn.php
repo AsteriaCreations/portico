@@ -318,14 +318,28 @@ class CheckIn extends Page implements HasTable
 
     /**
      * Whether the selected event is running and past its check-in close
-     * time. A prepay for a later event is never closed here;
-     * CheckInService re-checks this under its own transaction.
+     * time for the selected member (a first visit is let through, see
+     * Event::isCheckInClosedFor()). A prepay for a later event is never
+     * closed here; CheckInService re-checks this under its own transaction.
      */
     public function isCheckInClosed(): bool
     {
         $event = $this->getSelectedEvent();
+        $member = $this->getSelectedMember();
 
-        return $event !== null && $event->isCurrentlyActive() && $event->isCheckInClosed();
+        return $event !== null && $event->isCurrentlyActive()
+            && ($member ? $event->isCheckInClosedFor($member) : $event->isCheckInClosed());
+    }
+
+    /**
+     * Check-in has closed but the selected member is on a first visit, so
+     * the desk still offers Check in and says why.
+     */
+    public function isCheckInOpenForFirstVisit(): bool
+    {
+        $event = $this->getSelectedEvent();
+
+        return $event !== null && $event->isCurrentlyActive() && $event->isCheckInClosed() && ! $this->isCheckInClosed();
     }
 
     public function getSelectedMember(): ?Member
