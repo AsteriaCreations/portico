@@ -169,6 +169,32 @@ test('the roster marks a guest with their sponsor and an Irregular on their firs
         ->toContain('aria-label="New member — first visit"');
 });
 
+test('the roster marks a watchlisted member, and one recently off the watchlist, without the reason', function () {
+    MembershipSetting::current()->update(['watchlist_probation_mode' => 'custom', 'watchlist_probation_days' => 30]);
+    $event = Event::factory()->create();
+    $watchlisted = Member::factory()->create(['on_watchlist' => true, 'watchlist_reason' => 'secret reason']);
+    $recent = Member::factory()->create(['watchlist_probation_start' => today()->subDays(29)]);
+    $longAgo = Member::factory()->create(['watchlist_probation_start' => today()->subDays(30)]);
+    foreach ([$watchlisted, $recent, $longAgo] as $member) {
+        // An earlier visit, so tonight isn't a "new member" first visit.
+        Attendance::factory()->create(['member_id' => $member->id, 'checked_in_at' => now()->subWeek()]);
+        Attendance::factory()->create(['member_id' => $member->id, 'event_id' => $event->id, 'checked_in_at' => now()]);
+    }
+
+    $component = Livewire::test('checked-in-roster', ['eventId' => $event->id]);
+    $labels = fn (Member $member): array => array_column($component->instance()->markers(
+        $component->instance()->attendances->firstWhere('member_id', $member->id)
+    ), 'label');
+
+    expect($labels($watchlisted))->toBe(['Watchlist'])
+        ->and($labels($recent))->toBe(['Recently off watchlist'])
+        ->and($labels($longAgo))->toBe([]);
+    expect($component->html())
+        ->toContain('aria-label="Watchlist"')
+        ->toContain('aria-label="Recently off watchlist"')
+        ->not->toContain('secret reason');
+});
+
 test('the roster shows a key to its icons once someone is checked in', function () {
     $event = Event::factory()->create();
 

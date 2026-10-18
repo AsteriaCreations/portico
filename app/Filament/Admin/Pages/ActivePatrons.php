@@ -149,6 +149,7 @@ class ActivePatrons extends Page implements HasTable
                             ->badge()
                             ->getStateUsing(fn (Attendance $record): array => array_values(array_filter([
                                 $record->member?->on_watchlist ? __('Watchlist') : null,
+                                $record->member?->isOnWatchlistProbation() ? __('Recently off watchlist') : null,
                                 $record->member?->isGuest() ? __('Guest') : null,
                                 $record->isNewMemberVisit() ? __('New member') : null,
                                 $record->isSubscriptionPurchaseVisit() ? __('New subscription') : null,
@@ -157,6 +158,7 @@ class ActivePatrons extends Page implements HasTable
                             // The same icons as the desk's checked-in roster.
                             ->icon(fn (string $state): Heroicon => match ($state) {
                                 __('Watchlist') => Heroicon::Eye,
+                                __('Recently off watchlist') => Heroicon::EyeSlash,
                                 __('Guest') => Heroicon::UserPlus,
                                 __('New member') => Heroicon::Sparkles,
                                 __('New subscription') => Heroicon::Ticket,
@@ -164,6 +166,7 @@ class ActivePatrons extends Page implements HasTable
                             })
                             ->color(fn (string $state): string => match ($state) {
                                 __('Watchlist') => 'warning',
+                                __('Recently off watchlist') => 'gray',
                                 __('New member') => 'primary',
                                 __('New subscription') => 'success',
                                 default => 'info',

@@ -49,8 +49,10 @@ new class extends Component
 
     /**
      * The icons beside a person's name, the same list for the phone cards
-     * and the table: a guest (with their sponsor), a member promoted from
-     * Prospective tonight, and a subscription bought with the visit.
+     * and the table: on the watchlist (or recently off it), a guest (with
+     * their sponsor), a member promoted from Prospective tonight, and a
+     * subscription bought with the visit. Only that a member is on the
+     * watchlist, never why: the reason stays Manager+.
      *
      * @return list<array{icon: string, label: string, color: string}>
      */
@@ -60,6 +62,11 @@ new class extends Component
         $legend = $this->legend();
 
         return array_values(array_filter([
+            match (true) {
+                $member->on_watchlist => $legend['watchlist'],
+                $member->isOnWatchlistProbation() => $legend['watchlist_probation'],
+                default => null,
+            },
             $member->isGuest() ? [
                 ...$legend['guest'],
                 'label' => $member->sponsor ? __('Guest of :sponsor', ['sponsor' => $member->sponsor->displayName()]) : __('Guest'),
@@ -78,6 +85,8 @@ new class extends Component
     public function legend(): array
     {
         return [
+            'watchlist' => ['icon' => 'heroicon-m-eye', 'label' => __('Watchlist'), 'color' => 'text-warning-600 dark:text-warning-400'],
+            'watchlist_probation' => ['icon' => 'heroicon-m-eye-slash', 'label' => __('Recently off watchlist'), 'color' => 'text-gray-400 dark:text-gray-500'],
             'guest' => ['icon' => 'heroicon-m-user-plus', 'label' => __('Guest'), 'color' => 'text-info-600 dark:text-info-400'],
             'new_member' => ['icon' => 'heroicon-m-sparkles', 'label' => __('New member — first visit'), 'color' => 'text-primary-600 dark:text-primary-400'],
             'subscription' => ['icon' => 'heroicon-m-ticket', 'label' => __('Bought a subscription'), 'color' => 'text-success-600 dark:text-success-400'],
