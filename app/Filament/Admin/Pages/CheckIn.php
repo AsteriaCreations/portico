@@ -1011,7 +1011,10 @@ class CheckIn extends Page implements HasTable
                         ->map(fn (string $label, string $code) => in_array($code, $lockedOneTimeCodes, true) ? "{$label} (cannot use — already used)" : $label)
                         ->all())
                     ->disableOptionWhen(fn (string $value): bool => in_array($value, $lockedOneTimeCodes, true))
-                    ->helperText(fn (Get $get): ?string => PaymentMethod::feeHelperText($get('payment_method'))),
+                    ->helperText(fn (Get $get): ?string => PaymentMethod::feeHelperText($get('payment_method')))
+                    // Nothing changes hands on a $0 visit, so there's no
+                    // method to ask for; CheckInService records none.
+                    ->visible(fn (): bool => $this->getLiveDueTotal() > 0),
                 TextInput::make('on_behalf_note')
                     ->label(__('On behalf of / guest note'))
                     ->maxLength(120),

@@ -250,7 +250,7 @@ test('closing a box with prepaid cash names a separate envelope per event and le
 
     Livewire::test(CheckIn::class)
         ->set('registerId', $this->register->id)
-        ->callAction('closeShift', data: ['closing_count' => 120])
+        ->callAction('closeShift', data: ['closing_count' => 120, 'drop_amount' => 0])
         ->assertHasNoActionErrors();
 
     $body = lastPrepayNotificationBody();

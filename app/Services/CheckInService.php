@@ -238,6 +238,12 @@ class CheckInService
             // desk's method, which is how the rest was paid.
             if ($voucherApplied + $subscriptionVoucher > 0 && ($breakdown->amountPaidCents + $addOnTotal + $subscriptionTotal) <= 0) {
                 $paymentMethod = PaymentMethod::VOUCHER;
+            } elseif (($breakdown->amountPaidCents + $addOnTotal + $subscriptionTotal) <= 0 && $paymentMethod !== PaymentMethod::KIOSK) {
+                // A $0 visit took no payment: the desk doesn't ask for a
+                // method, and a stale or forged one mustn't read as cash
+                // taken or spend a one-time method. The kiosk's own code
+                // stays, since it records where the visit came from.
+                $paymentMethod = null;
             }
 
             // Folded onto the attendance row rather than tracked
