@@ -17,6 +17,7 @@ use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Str;
 
 #[Fillable([
@@ -698,44 +699,60 @@ class Member extends Model
     }
 
     /**
-     * A member picker's display label, built from ONLY the fields the club
-     * has enabled for member search (MembershipSetting::member_search_fields,
-     * default username-only). Name, preferred name, and email never appear in
-     * a dropdown unless the club deliberately turned that field on -- the
-     * label echoes exactly what staff can search on, nothing more, so PII is
-     * exposed only where it's actually needed. Falls back to the username (or
-     * the id) if the member has no value for any enabled field, so a row is
-     * never blank.
+     * A member picker's display label: one compact identifier -- the first
+     * of username, name, preferred name, member number, email that the club
+     * has enabled for search (MembershipSetting::member_search_fields,
+     * default username-only) and the member has. Searching on more fields
+     * doesn't lengthen every label; a field outside the enabled set never
+     * appears, so PII shows only where the club opted in.
+     *
+     * Given the $search a dropdown result was found by, it also shows the
+     * enabled field(s) that matched, so staff can see why a row came up
+     * (e.g. "jdoe · jane@example.com" for a search on "jane@"). Email only
+     * ever shows to Manager+ (view-sensitive-member-fields), matched or not.
+     * Falls back to the username (or the id) so a row is never blank.
      */
-    public static function pickerLabel(self $member): string
+    public static function pickerLabel(self $member, ?string $search = null): string
     {
         $fields = MembershipSetting::current()->member_search_fields ?: ['username'];
-        $enabled = fn (string $field): bool => in_array($field, $fields, true);
+        $showEmail = Gate::allows('view-sensitive-member-fields');
 
         $name = trim(implode(', ', array_filter([$member->last_name, $member->first_name])), ', ');
-        $hasName = $enabled('name') && $name !== '';
-        $hasUsername = $enabled('username') && (bool) $member->username;
+        $display = [
+            'username' => $member->username,
+            'name' => $name,
+            'preferred_name' => $member->preferred_name ? "\"{$member->preferred_name}\"" : null,
+            'member_number' => $member->member_number ? "#{$member->member_number}" : null,
+            'email' => $showEmail ? $member->email : null,
+        ];
+        $matches = [
+            'username' => [$member->username],
+            'name' => [$member->first_name, $member->last_name],
+            'preferred_name' => [$member->preferred_name],
+            'member_number' => [(string) $member->member_number],
+            'email' => [$member->email],
+        ];
 
-        $parts = [];
-        if ($hasName && $hasUsername) {
-            $parts[] = "{$name} ({$member->username})";
-        } elseif ($hasName) {
-            $parts[] = $name;
-        } elseif ($hasUsername) {
-            $parts[] = $member->username;
+        $available = array_values(array_filter(
+            array_keys($display),
+            fn (string $field): bool => in_array($field, $fields, true) && filled($display[$field]),
+        ));
+
+        if ($available === []) {
+            return $member->username ?: "#{$member->id}";
         }
 
-        if ($enabled('preferred_name') && $member->preferred_name) {
-            $parts[] = "\"{$member->preferred_name}\"";
-        }
-        if ($enabled('member_number') && $member->member_number) {
-            $parts[] = "#{$member->member_number}";
-        }
-        if ($enabled('email') && $member->email) {
-            $parts[] = $member->email;
+        $parts = [$display[$available[0]]];
+
+        if (filled($search)) {
+            foreach (array_slice($available, 1) as $field) {
+                if (collect($matches[$field])->contains(fn (?string $value): bool => filled($value) && Str::contains($value, $search, ignoreCase: true))) {
+                    $parts[] = $display[$field];
+                }
+            }
         }
 
-        return $parts === [] ? ($member->username ?: "#{$member->id}") : implode(' · ', $parts);
+        return implode(' · ', $parts);
     }
 
     /**

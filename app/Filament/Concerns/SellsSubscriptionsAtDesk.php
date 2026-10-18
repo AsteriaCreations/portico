@@ -113,7 +113,7 @@ trait SellsSubscriptionsAtDesk
                     ->label(__("Apply from a different member's balance (optional)"))
                     ->searchable()
                     ->getSearchResultsUsing(fn (string $search) => static::searchMembers($search)
-                        ->mapWithKeys(fn (Member $payer) => [$payer->id => static::memberLabel($payer).' — '.$this->formatCurrency($payer->voucherBalance()).' available'])
+                        ->mapWithKeys(fn (Member $payer) => [$payer->id => static::memberLabel($payer, $search).' — '.$this->formatCurrency($payer->voucherBalance()).' available'])
                         ->all())
                     ->getOptionLabelUsing(fn ($value) => ($payer = Member::find($value)) ? static::memberLabel($payer) : null)
                     ->helperText(__("Leave blank to use :name's own balance.", ['name' => $member?->displayName()]))
