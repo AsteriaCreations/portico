@@ -249,7 +249,7 @@ class MembershipSettings extends Page
                     ->visible(fn (): bool => Gate::allows('manage-org-name')),
                 CheckboxList::make('member_search_fields')
                     ->label('Searchable member fields')
-                    ->helperText(__('Which fields staff can search on in every member picker — the check-in desk, the Showrunner/Host selects, subscriptions, vouchers, and the rest. Username is the desk\'s primary lookup; add others only if staff actually need them.'))
+                    ->helperText(__('Which fields staff can search on in every member picker — the check-in desk, the Showrunner/Host selects, subscriptions, vouchers, and the rest. Username is the desk\'s primary lookup; add others only if staff actually need them. Each result shows the first of these fields the member has, plus, at the desk, whichever other field matched what was typed. Email only ever shows to Manager and up.'))
                     ->options([
                         'username' => __('Username'),
                         'name' => __('Name (first & last)'),

@@ -262,7 +262,7 @@ class CheckIn extends Page implements HasTable
                     ->live()
                     ->searchable()
                     ->getSearchResultsUsing(fn (string $search) => static::searchMembers($search)
-                        ->mapWithKeys(fn (Member $member) => [$member->id => static::memberLabel($member)])
+                        ->mapWithKeys(fn (Member $member) => [$member->id => static::memberLabel($member, $search)])
                         ->all())
                     ->getOptionLabelUsing(fn ($value) => ($member = Member::find($value)) ? static::memberLabel($member) : null)
                     ->required(),
@@ -692,7 +692,7 @@ class CheckIn extends Page implements HasTable
                     ->afterStateUpdated(fn (Set $set, mixed $state) => $set('voucher_amount', $suggestVoucherAmount($state)))
                     ->searchable()
                     ->getSearchResultsUsing(fn (string $search) => static::searchMembers($search)
-                        ->mapWithKeys(fn (Member $payer) => [$payer->id => static::memberLabel($payer).' — '.$this->formatCurrency($payer->voucherBalance()).' available'])
+                        ->mapWithKeys(fn (Member $payer) => [$payer->id => static::memberLabel($payer, $search).' — '.$this->formatCurrency($payer->voucherBalance()).' available'])
                         ->all())
                     ->getOptionLabelUsing(fn ($value) => ($payer = Member::find($value)) ? static::memberLabel($payer) : null)
                     ->helperText(__("Leave blank to use :name's own balance.", ['name' => $member?->displayName()]))
@@ -1309,13 +1309,12 @@ class CheckIn extends Page implements HasTable
     }
 
     /**
-     * The dropdown echoes back exactly the fields staff can search on
-     * (Member::searchableColumns()) — username alone by default, more only
-     * where the club has opted in. See Member::pickerLabel().
+     * One compact identifier, plus — for a search result — whichever enabled
+     * search field matched what was typed. See Member::pickerLabel().
      */
-    protected static function memberLabel(Member $member): string
+    protected static function memberLabel(Member $member, ?string $search = null): string
     {
-        return Member::pickerLabel($member);
+        return Member::pickerLabel($member, $search);
     }
 
     /**

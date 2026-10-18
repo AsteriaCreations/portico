@@ -66,6 +66,13 @@ is fixes only.
 
 ### Fixed
 
+- **Member pickers no longer show every search field in every result.** Turning on more
+  "Searchable member fields" (e.g. name and email) used to add each one to every result's label.
+  Now a label shows one identifier, the first enabled field the member has (usually the
+  username). At the Check-In Desk a search result also shows whichever other enabled field matched
+  what was typed, so staff can see why it came up. Email only ever shows to Manager and up, even
+  when it's what matched. This also shortens the checked-in roster, the event/subscription/voucher
+  pickers and the Showrunner Payouts list. No migration.
 - **Comp-reward vouchers:** a comped attendee who spent a voucher at that visit now still gets
   their reward. The "already rewarded" check used to count the spent (negative) voucher.
 
