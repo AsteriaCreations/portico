@@ -246,17 +246,18 @@ test('the scheduled jobs widget shows a recent success in green', function () {
 
     expect($stats[0]->getValue())->toBe(CommandRun::firstWhere('command', 'backup:database')->last_success_at->diffForHumans())
         ->and($stats[0]->getColor())->toBe('success')
-        ->and($stats[0]->getDescription())->toBeNull();
+        ->and($stats[0]->getDescription())->toBe('Running normally');
 });
 
-test('the scheduled jobs widget flags a stale last-success as danger', function () {
+test('the scheduled jobs widget flags a stale last-success as danger, saying it is overdue in words', function () {
     $this->actingAs(User::factory()->create(['active' => true, 'role' => Role::Admin]));
     CommandRun::create(['command' => 'backup:database', 'last_success_at' => now()->subHours(30)]);
 
     $widget = new ScheduledJobsWidget;
     $stats = (fn () => $this->getStats())->call($widget);
 
-    expect($stats[0]->getColor())->toBe('danger');
+    expect($stats[0]->getColor())->toBe('danger')
+        ->and($stats[0]->getDescription())->toBe('Overdue — no success in 26 hours');
 });
 
 test('the scheduled jobs widget flags a failure after the last success as danger, with a description', function () {
@@ -568,6 +569,7 @@ test('register variance widget sums variance across shifts closed this week only
 
     expect($totalStat->getValue())->toBe('$10.00')
         ->and($totalStat->getColor())->toBe('warning')
+        ->and($totalStat->getDescription())->toBe('Over')
         ->and($countStat->getValue())->toBe('1 of 2');
 });
 
@@ -586,6 +588,7 @@ test('register variance widget counts a drawer that balances to the cent as exac
 
     expect($totalStat->getValue())->toBe('$0.00')
         ->and($totalStat->getColor())->toBe('success')
+        ->and($totalStat->getDescription())->toBe('Balanced')
         ->and($countStat->getValue())->toBe('0 of 1');
 });
 

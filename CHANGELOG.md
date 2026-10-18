@@ -11,6 +11,14 @@ is fixes only.
 
 ### Added
 
+- **Nothing relies on color alone (colorblind pass).** Everywhere a color carried meaning on its
+  own, it now comes with a shape or words too. The Check-In Desk's status line starts with an
+  icon for its verdict (check, warning triangle, no-entry sign). Register variance shows an
+  up/down/check icon on Register Shifts, and the dashboard total says "Balanced", "Over" or
+  "Short". The Technical page's scheduled-job cards say "Running normally" or "Overdue", each with
+  an icon. A due watchlist review gets a warning icon and "Review due" on hover in the Members list,
+  and a **Due** badge on the Owner's "Review watchlist" button. Signed amounts on Payment
+  corrections and Vouchers get up/down icons. No migration, no `npm run build`.
 - **Watchlist icons on the checked-in roster and Active Patrons.** The Check-In Desk's checked-in
   roster marks a watchlisted member with an amber eye icon, and a member on watchlist probation
   (recently taken off the watchlist) with a grey eye-slash, both listed in the roster's icon key.
