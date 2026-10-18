@@ -62,8 +62,14 @@ class AdminPanelProvider extends PanelProvider
             // gate); null org_name falls back to the existing config('app.name')
             // behavior, so an upgrade never changes what's displayed.
             ->brandName(fn (): string => MembershipSetting::current()->org_name ?: config('app.name'))
-            ->colors([
+            // A closure, read when the panel boots -- once per request under
+            // Apache/PHP-FPM, after the session has started -- so a user with
+            // "Colorblind-friendly colors" on (My account) gets
+            // static::colorblindPalette(). (A long-lived worker like Octane
+            // boots the panel once and would need this moved to middleware.)
+            ->colors(fn (): array => [
                 'primary' => Color::Amber,
+                ...(auth()->user()?->colorblind_palette ? static::colorblindPalette() : []),
             ])
             ->discoverResources(in: app_path('Filament/Admin/Resources'), for: 'App\Filament\Admin\Resources')
             ->discoverPages(in: app_path('Filament/Admin/Pages'), for: 'App\Filament\Admin\Pages')
@@ -186,5 +192,23 @@ class AdminPanelProvider extends PanelProvider
     private static function themeIsBuilt(): bool
     {
         return ViteBuild::has(self::THEME);
+    }
+
+    /**
+     * The Okabe-Ito colorblind-safe palette in place of Filament's
+     * green/red/amber/blue: good is blue, bad is vermillion, warning orange,
+     * info reddish purple (so it isn't mistaken for "good"). Every --success-*
+     * etc. CSS variable follows, including the desk's own .desk-text-* lines.
+     *
+     * @return array<string, array<int, string>>
+     */
+    public static function colorblindPalette(): array
+    {
+        return [
+            'success' => Color::hex('#0072B2'),
+            'danger' => Color::hex('#D55E00'),
+            'warning' => Color::hex('#E69F00'),
+            'info' => Color::hex('#CC79A7'),
+        ];
     }
 }

@@ -5,6 +5,8 @@ use App\Filament\Admin\Pages\MyAccount;
 use App\Mail\EventEndedSummary;
 use App\Models\Event;
 use App\Models\User;
+use App\Providers\Filament\AdminPanelProvider;
+use Filament\Support\Colors\Color;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Mail;
 use Livewire\Livewire;
@@ -199,4 +201,36 @@ test('an unflagged user can still open Change password from the user menu', func
     $user = User::factory()->create(['role' => Role::Showrunner, 'active' => true, 'must_change_password' => false]);
 
     $this->actingAs($user)->get('/admin/change-password')->assertSuccessful();
+});
+
+test('turning on colorblind-friendly colors saves it and reloads the page so it takes effect', function () {
+    $user = User::factory()->create(['role' => Role::Door, 'active' => true]);
+    $this->actingAs($user);
+
+    Livewire::test(MyAccount::class)
+        ->assertSet('data.colorblind_palette', false)
+        ->set('data.colorblind_palette', true)
+        ->callAction('save')
+        ->assertRedirect(MyAccount::getUrl());
+
+    expect($user->refresh()->colorblind_palette)->toBeTrue();
+});
+
+// Two tests, not one: Filament boots the panel (and reads its colors) once per
+// app instance -- once per request in production, but once per test here.
+test('a user with colorblind-friendly colors on gets the blue/vermillion palette', function () {
+    $palette = AdminPanelProvider::colorblindPalette();
+    $user = User::factory()->create(['role' => Role::Door, 'active' => true, 'colorblind_palette' => true]);
+
+    $this->actingAs($user)->get('/admin/my-account')
+        ->assertSee('--success-500:'.$palette['success'][500], false)
+        ->assertSee('--danger-500:'.$palette['danger'][500], false);
+});
+
+test('a user without it keeps the standard green and red', function () {
+    $user = User::factory()->create(['role' => Role::Door, 'active' => true]);
+
+    $this->actingAs($user)->get('/admin/my-account')
+        ->assertDontSee(AdminPanelProvider::colorblindPalette()['success'][500], false)
+        ->assertSee('--success-500:'.Color::Green[500], false);
 });

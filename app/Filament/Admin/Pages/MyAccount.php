@@ -44,6 +44,7 @@ class MyAccount extends Page
             'sign_in_email' => auth()->user()->email,
             'contact_email' => auth()->user()->contact_email,
             'email_opt_in' => auth()->user()->email_opt_in,
+            'colorblind_palette' => auth()->user()->colorblind_palette,
         ]);
     }
 
@@ -79,6 +80,9 @@ class MyAccount extends Page
                 Toggle::make('email_opt_in')
                     ->label('Email me club communications')
                     ->helperText(__('Turn off to stop club email, such as event summaries. You still get notifications in the app (the bell).')),
+                Toggle::make('colorblind_palette')
+                    ->label('Colorblind-friendly colors')
+                    ->helperText(__('Shows good and bad as blue and orange instead of green and red, everywhere in the app, for you only.')),
             ]);
     }
 
@@ -92,11 +96,17 @@ class MyAccount extends Page
                 auth()->user()->update([
                     'contact_email' => self::normalize($data['contact_email'] ?? null),
                     'email_opt_in' => (bool) ($data['email_opt_in'] ?? true),
+                    'colorblind_palette' => (bool) ($data['colorblind_palette'] ?? false),
                 ]);
 
                 $this->data['current_password'] = null;
 
                 Notification::make()->title(__('Account updated'))->success()->send();
+
+                // The palette is applied as a page loads, so reload to show a change.
+                if (auth()->user()->wasChanged('colorblind_palette')) {
+                    $this->redirect(static::getUrl());
+                }
             });
     }
 
