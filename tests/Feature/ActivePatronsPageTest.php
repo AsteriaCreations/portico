@@ -691,3 +691,19 @@ test('the table shows 25 patrons per page by default, so a busy night does not h
 
     Livewire::test(ActivePatrons::class)->assertSet('tableRecordsPerPage', 25);
 });
+
+test('patrons list newest arrival first by default, and Sort by flips it to oldest first', function () {
+    $this->actingAs(User::factory()->create(['active' => true, 'role' => Role::Volunteer]));
+    $this->travelTo(today()->setTime(23, 0));
+
+    $event = Event::factory()->create(['event_date' => today()->toDateString()]);
+    // Created out of arrival order, so the default can't be insertion order.
+    $middle = Attendance::factory()->for(clearMemberForActivePatrons($this->irregular))->for($event)->create(['checked_in_at' => now()->subHours(2)]);
+    $earliest = Attendance::factory()->for(clearMemberForActivePatrons($this->irregular))->for($event)->create(['checked_in_at' => now()->subHours(3)]);
+    $latest = Attendance::factory()->for(clearMemberForActivePatrons($this->irregular))->for($event)->create(['checked_in_at' => now()->subHour()]);
+
+    Livewire::test(ActivePatrons::class)
+        ->assertCanSeeTableRecords([$latest, $middle, $earliest], inOrder: true)
+        ->sortTable('event.name', 'asc')
+        ->assertCanSeeTableRecords([$earliest, $middle, $latest], inOrder: true);
+});

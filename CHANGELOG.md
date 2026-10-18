@@ -81,6 +81,9 @@ is fixes only.
 
 ### Changed
 
+- **Active Patrons: sort by arrival time.** The list now shows the newest arrivals first, like the
+  desk's checked-in roster; it used to follow no set order. **Sort by** above the list switches to
+  oldest first, and the choice is remembered for the rest of the sign-in. No migration.
 - **The showrunner commission now works like tax brackets.** Each percentage tier pays its rate
   on the event's listed entry fee for each attendee numbered inside it, instead of one tier's
   rate on the whole door. With the default tiers (a $25 voucher up to 35 attendees, 36–100 at
