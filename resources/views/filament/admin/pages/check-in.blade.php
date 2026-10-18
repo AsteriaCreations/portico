@@ -190,7 +190,12 @@
             class="rounded-xl px-5 py-4"
             style="border-left: 5px solid {{ $toneColor }}; background-color: color-mix(in srgb, {{ $toneColor }} 10%, transparent);"
         >
-            <p class="desk-text-{{ $strip['tone'] }} text-base" style="font-weight: 600;">{{ $strip['headline'] }}</p>
+            {{-- A shape per verdict, so it reads at a glance without telling
+            the colours apart. Decorative: the headline says it in words. --}}
+            <p class="desk-text-{{ $strip['tone'] }} text-base" style="display: flex; align-items: center; gap: .5rem; font-weight: 600;">
+                <x-filament::icon aria-hidden="true" :icon="['go' => 'heroicon-m-check-circle', 'check' => 'heroicon-m-exclamation-triangle', 'stop' => 'heroicon-m-no-symbol'][$strip['tone']]" />
+                {{ $strip['headline'] }}
+            </p>
             @if ($strip['detail'])
                 <p class="mt-1 text-sm" style="opacity: .75;">{{ $strip['detail'] }}</p>
             @endif

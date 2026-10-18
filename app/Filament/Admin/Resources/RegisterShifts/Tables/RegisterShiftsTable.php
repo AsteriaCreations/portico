@@ -6,6 +6,7 @@ use App\Models\RegisterShift;
 use App\Services\RegisterShiftService;
 use Filament\Actions\Action;
 use Filament\Actions\ViewAction;
+use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 
@@ -90,6 +91,13 @@ class RegisterShiftsTable
                         $state == 0.0 => 'success',
                         $state > 0 => 'warning',
                         default => 'danger',
+                    })
+                    // A shape as well as the colour: balanced, over, short.
+                    ->icon(fn (?float $state): ?Heroicon => match (true) {
+                        $state === null => null,
+                        $state == 0.0 => Heroicon::CheckCircle,
+                        $state > 0 => Heroicon::ArrowUpCircle,
+                        default => Heroicon::ArrowDownCircle,
                     }),
             ])
             ->recordActions([

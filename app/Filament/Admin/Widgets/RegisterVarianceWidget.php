@@ -7,6 +7,7 @@ use App\Models\MembershipSetting;
 use App\Models\RegisterShift;
 use App\Services\RegisterShiftService;
 use App\Support\Cents;
+use Filament\Support\Icons\Heroicon;
 use Filament\Widgets\StatsOverviewWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
 
@@ -52,6 +53,17 @@ class RegisterVarianceWidget extends StatsOverviewWidget
                     $total === 0 => 'success',
                     $total > 0 => 'warning',
                     default => 'danger',
+                })
+                // Said in words too, not by colour alone.
+                ->description(match (true) {
+                    $total === 0 => __('Balanced'),
+                    $total > 0 => __('Over'),
+                    default => __('Short'),
+                })
+                ->descriptionIcon(match (true) {
+                    $total === 0 => Heroicon::CheckCircle,
+                    $total > 0 => Heroicon::ArrowUpCircle,
+                    default => Heroicon::ArrowDownCircle,
                 }),
             Stat::make(__('Shifts with variance'), __(':count of :total', ['count' => $variances->filter(fn (?int $v) => $v !== null && $v !== 0)->count(), 'total' => $shifts->count()])),
         ];

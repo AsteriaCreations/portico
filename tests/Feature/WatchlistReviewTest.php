@@ -5,6 +5,7 @@ use App\Enums\Role;
 use App\Enums\WatchlistReviewDecision;
 use App\Filament\Admin\Resources\Members\MemberResource;
 use App\Filament\Admin\Resources\Members\Pages\EditMember;
+use App\Filament\Admin\Resources\Members\Pages\ListMembers;
 use App\Models\Member;
 use App\Models\MembershipSetting;
 use App\Models\MemberStatusChange;
@@ -50,6 +51,23 @@ test('the Members nav badge counts only due watchlist reviews', function () {
     watchlisted(['watchlist_review_on' => null]);
 
     expect(MemberResource::getNavigationBadge())->toBe('2');
+});
+
+test('a due review is said in words as well as red: "Review due" on the list, "Due" on the Owner\'s button', function () {
+    $owner = User::factory()->create(['role' => Role::Owner, 'active' => true]);
+    actingAs($owner);
+    $later = watchlisted(['watchlist_review_on' => today()->addMonth()]);
+    Livewire::test(ListMembers::class)->assertDontSee('Review due');
+
+    $due = watchlisted(['watchlist_review_on' => today()]);
+    Livewire::test(ListMembers::class)->assertSee('Review due');
+
+    $badge = fn (Member $member): ?string => Livewire::test(EditMember::class, ['record' => $member->getRouteKey()])
+        ->assertActionVisible('reviewWatchlist')
+        ->instance()->getAction('reviewWatchlist')->getBadge();
+
+    expect($badge($due))->toBe('Due')
+        ->and($badge($later))->toBeNull();
 });
 
 test('the Members nav badge is hidden when nothing is due', function () {
