@@ -11,9 +11,13 @@ is fixes only.
 
 ### Added
 
-- **Active Patrons: sort by arrival time.** The list now shows the newest arrivals first, like the
-  desk's checked-in roster; it used to follow no set order. **Sort by** above the list switches to
-  oldest first, and the choice is remembered for the rest of the sign-in. No migration.
+- **Watchlist icons on the checked-in roster and Active Patrons.** The Check-In Desk's checked-in
+  roster marks a watchlisted member with an amber eye icon, and a member on watchlist probation
+  (recently taken off the watchlist) with a grey eye-slash, both listed in the roster's icon key.
+  Active Patrons, which already badged **Watchlist**, adds a grey **Recently off watchlist** badge
+  with the same eye-slash. Each icon has its own shape, so none relies on color alone. Only the
+  status shows, never the reason (still Manager+). No migration; the roster's new icon color needs
+  `npm run build`.
 - **Active Patrons: New subscription badge and guest sponsor.** A patron who paid for an entry
   subscription with tonight's visit gets a green **New subscription** badge with the same ticket
   icon as the desk's checked-in roster, and hovering a guest's badges shows who they're a guest
@@ -69,6 +73,9 @@ is fixes only.
 
 ### Changed
 
+- **Active Patrons: sort by arrival time.** The list now shows the newest arrivals first, like the
+  desk's checked-in roster; it used to follow no set order. **Sort by** above the list switches to
+  oldest first, and the choice is remembered for the rest of the sign-in. No migration.
 - **The showrunner commission now works like tax brackets.** Each percentage tier pays its rate
   on the event's listed entry fee for each attendee numbered inside it, instead of one tier's
   rate on the whole door. With the default tiers (a $25 voucher up to 35 attendees, 36–100 at
