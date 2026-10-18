@@ -434,6 +434,18 @@ test('the status line headline uses the contrast-safe text colour for its tone, 
         ->not->toContain('color: var(--danger-600');
 });
 
+test('the status line headline starts with an icon, so the verdict never rests on colour alone', function () {
+    $clear = clearMember($this->irregular);
+    $banned = clearMember($this->irregular, ['username' => 'banned-one', 'is_banned' => true, 'ban_reason' => 'x']);
+    $headlineIcon = fn (string $tone): string => '/<p class="desk-text-'.$tone.' text-base"[^>]*>\s*<svg/';
+
+    $component = Livewire::test(CheckIn::class)->set('data.member_id', $clear->id);
+    expect($component->html())->toMatch($headlineIcon('go'));
+
+    $component->set('data.member_id', $banned->id);
+    expect($component->html())->toMatch($headlineIcon('stop'));
+});
+
 test('the save and promote action is visible for an incomplete Prospective member, with no event picked', function () {
     $member = clearMember($this->prospective, ['first_name' => null, 'last_name' => null, 'email' => null]);
 

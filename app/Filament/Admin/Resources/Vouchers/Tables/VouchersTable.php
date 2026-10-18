@@ -2,6 +2,7 @@
 
 namespace App\Filament\Admin\Resources\Vouchers\Tables;
 
+use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 
@@ -19,6 +20,7 @@ class VouchersTable
                 TextColumn::make('amount')
                     ->money()
                     ->color(fn (float $state) => $state >= 0 ? 'success' : 'danger')
+                    ->icon(fn (float $state): Heroicon => $state >= 0 ? Heroicon::ArrowUpCircle : Heroicon::ArrowDownCircle)
                     ->sortable(),
                 TextColumn::make('reason')
                     ->limit(60)

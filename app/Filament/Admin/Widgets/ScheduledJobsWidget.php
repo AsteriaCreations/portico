@@ -5,6 +5,7 @@ namespace App\Filament\Admin\Widgets;
 use App\Enums\Role;
 use App\Models\CommandRun;
 use App\Models\MembershipSetting;
+use Filament\Support\Icons\Heroicon;
 use Filament\Widgets\StatsOverviewWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
 
@@ -51,14 +52,20 @@ class ScheduledJobsWidget extends StatsOverviewWidget
         $run = CommandRun::firstWhere('command', $command);
 
         if (! $run?->last_success_at) {
-            return Stat::make($label, __('Never run'))->color('danger');
+            return Stat::make($label, __('Never run'))->descriptionIcon(Heroicon::ExclamationTriangle)->color('danger');
         }
 
         $isFailing = $run->last_failure_at?->gt($run->last_success_at) ?? false;
         $isStale = $run->last_success_at->lt(now()->subHours(self::STALE_AFTER_HOURS));
 
+        // Every state is said in words with its own icon, not by colour alone.
         return Stat::make($label, $run->last_success_at->diffForHumans())
-            ->description($isFailing ? __('Failing since :when', ['when' => $run->last_failure_at->diffForHumans()]) : null)
+            ->description(match (true) {
+                $isFailing => __('Failing since :when', ['when' => $run->last_failure_at->diffForHumans()]),
+                $isStale => __('Overdue — no success in :hours hours', ['hours' => self::STALE_AFTER_HOURS]),
+                default => __('Running normally'),
+            })
+            ->descriptionIcon($isFailing || $isStale ? Heroicon::ExclamationTriangle : Heroicon::CheckCircle)
             ->color($isFailing || $isStale ? 'danger' : 'success');
     }
 }

@@ -52,6 +52,9 @@ class EditMember extends EditRecord
             ->label('Review watchlist')
             ->icon('heroicon-o-scale')
             ->color(fn (): string => $this->getRecord()->isWatchlistReviewDue() ? 'danger' : 'gray')
+            // "Due" in words too, not just a red button.
+            ->badge(fn (): ?string => $this->getRecord()->isWatchlistReviewDue() ? __('Due') : null)
+            ->badgeColor('danger')
             ->visible(fn (): bool => $this->getRecord()->on_watchlist && Gate::allows('resolve-watchlist'))
             ->modalDescription(fn (): string => $this->getRecord()->watchlist_review_on
                 ? __('Review date: :date. Reason on file: :reason', ['date' => $this->getRecord()->watchlist_review_on->isoFormat('ll'), 'reason' => $this->getRecord()->watchlist_reason ?? '—'])

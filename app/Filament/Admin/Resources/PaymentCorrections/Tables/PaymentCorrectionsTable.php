@@ -4,6 +4,7 @@ namespace App\Filament\Admin\Resources\PaymentCorrections\Tables;
 
 use Carbon\Carbon;
 use Filament\Forms\Components\DatePicker;
+use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\Filter;
 use Filament\Tables\Table;
@@ -41,7 +42,8 @@ class PaymentCorrectionsTable
                 TextColumn::make('net_amount')
                     ->label('Collected (+) / refunded (−)')
                     ->money()
-                    ->color(fn (string $state): string => (float) $state < 0 ? 'danger' : 'success'),
+                    ->color(fn (string $state): string => (float) $state < 0 ? 'danger' : 'success')
+                    ->icon(fn (string $state): Heroicon => (float) $state < 0 ? Heroicon::ArrowDownCircle : Heroicon::ArrowUpCircle),
                 TextColumn::make('payment_method')
                     ->label('Method')
                     ->placeholder(__('—')),
