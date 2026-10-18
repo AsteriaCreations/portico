@@ -127,7 +127,7 @@ class ActivePatrons extends Page implements HasTable
                 ->where(fn ($query) => $query
                     ->whereIn('event_id', $eventIds)
                     ->orWhereHas('addOns', fn ($addOns) => $addOns->where('is_overnight', true)))
-                ->with(['addOns', 'behaviorNotes.createdBy', 'event', 'member.category', 'member.skills'])
+                ->with(['addOns', 'behaviorNotes.createdBy', 'event', 'member.category', 'member.paidEntrySubscriptions', 'member.skills', 'member.sponsor'])
                 ->withFirstArrival())
             // Filament layout components (Split/Stack), not a flat column
             // list -- each patron renders as one card, so the page never
@@ -151,6 +151,7 @@ class ActivePatrons extends Page implements HasTable
                                 $record->member?->on_watchlist ? __('Watchlist') : null,
                                 $record->member?->isGuest() ? __('Guest') : null,
                                 $record->isNewMemberVisit() ? __('New member') : null,
+                                $record->isSubscriptionPurchaseVisit() ? __('New subscription') : null,
                                 $record->isOvernightStay() ? __('Overnight') : null,
                             ])))
                             // The same icons as the desk's checked-in roster.
@@ -158,13 +159,18 @@ class ActivePatrons extends Page implements HasTable
                                 __('Watchlist') => Heroicon::Eye,
                                 __('Guest') => Heroicon::UserPlus,
                                 __('New member') => Heroicon::Sparkles,
+                                __('New subscription') => Heroicon::Ticket,
                                 default => Heroicon::Moon,
                             })
                             ->color(fn (string $state): string => match ($state) {
                                 __('Watchlist') => 'warning',
                                 __('New member') => 'primary',
+                                __('New subscription') => 'success',
                                 default => 'info',
                             })
+                            ->tooltip(fn (Attendance $record): ?string => $record->member?->isGuest() && $record->member->sponsor
+                                ? __('Guest of :sponsor', ['sponsor' => $record->member->sponsor->displayName()])
+                                : null)
                             ->alignment(Alignment::End)
                             ->grow(false),
                     ]),

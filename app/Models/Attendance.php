@@ -137,6 +137,20 @@ class Attendance extends Model
         return $firstArrival !== null && $this->checked_in_at->equalTo(Carbon::parse($firstArrival));
     }
 
+    /**
+     * The member paid for an entry subscription at or after this visit's
+     * check-in -- bought with the check-in itself, or by a later "Convert
+     * entry to subscription". Derived from timestamps: nothing links a
+     * subscriptions row to the attendance it was sold with. Eager-load
+     * member.paidEntrySubscriptions to read it for a list without a query
+     * per row.
+     */
+    public function isSubscriptionPurchaseVisit(): bool
+    {
+        return (bool) $this->member?->paidEntrySubscriptions
+            ->contains(fn (Subscription $subscription): bool => $subscription->created_at->gte($this->created_at->clone()->subMinute()));
+    }
+
     public function registerShift(): BelongsTo
     {
         return $this->belongsTo(RegisterShift::class);
