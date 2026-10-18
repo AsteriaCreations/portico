@@ -19,7 +19,7 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Facades\DB;
 
-#[Fillable(['name', 'email', 'contact_email', 'email_opt_in', 'password', 'role', 'active', 'member_id', 'default_register_id', 'must_change_password'])]
+#[Fillable(['name', 'email', 'contact_email', 'email_opt_in', 'colorblind_palette', 'password', 'role', 'active', 'member_id', 'default_register_id', 'must_change_password'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable implements FilamentUser
 {
@@ -55,6 +55,7 @@ class User extends Authenticatable implements FilamentUser
             'active' => 'boolean',
             'must_change_password' => 'boolean',
             'email_opt_in' => 'boolean',
+            'colorblind_palette' => 'boolean',
         ];
     }
 

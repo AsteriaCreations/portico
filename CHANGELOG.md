@@ -11,6 +11,13 @@ is fixes only.
 
 ### Added
 
+- **Colorblind-friendly colors (per user).** A new **Colorblind-friendly colors** switch on My
+  account swaps the panel's green/red/amber/blue for the colorblind-safe Okabe-Ito palette, for
+  that user only: good is blue, bad is vermillion (orange-red), warnings orange, and info reddish
+  purple. Everything colored follows, including the Check-In Desk's status line and the roster
+  icons. Saving reloads the page so the change shows straight away. It works alongside the earlier
+  pass that gave every color an icon or words. New column `users.colorblind_palette` (run `migrate`);
+  no `npm run build`.
 - **Nothing relies on color alone (colorblind pass).** Everywhere a color carried meaning on its
   own, it now comes with a shape or words too. The Check-In Desk's status line starts with an
   icon for its verdict (check, warning triangle, no-entry sign). Register variance shows an
