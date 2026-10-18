@@ -618,7 +618,7 @@ test('the box summary sums payouts and prepaid cash once per poll and matches th
     expect($tables)->toEqual(['payment_methods' => 1, 'instructor_payouts' => 1]);
 });
 
-test('with no drop yet, Close Box offers a drop pre-filled with the envelope cash and records it before closing', function () {
+test('with no drop yet, ticking the Close Box drop records the pre-filled envelope cash before closing', function () {
     MembershipSetting::current()->update(['cash_envelope_reminder_enabled' => true]);
     $shift = app(RegisterShiftService::class)->openShift($this->register, $this->user, 100);
     $event = Event::factory()->create(['name' => 'Friday Social', 'event_date' => today(), 'entry_fee' => 20, 'pool_fee' => 0]);
@@ -627,7 +627,10 @@ test('with no drop yet, Close Box offers a drop pre-filled with the envelope cas
     Livewire::test(CheckIn::class)
         ->set('registerId', $this->register->id)
         ->mountAction('closeShift')
-        ->assertSchemaStateSet(['drop_amount' => 20.0])
+        ->assertSchemaStateSet(['record_drop' => false, 'drop_amount' => 20.0])
+        ->assertFormFieldHidden('drop_amount')
+        ->fillForm(['record_drop' => true])
+        ->assertFormFieldVisible('drop_amount')
         ->fillForm(['closing_count' => 100])
         ->callMountedAction()
         ->assertHasNoActionErrors();
@@ -640,14 +643,14 @@ test('with no drop yet, Close Box offers a drop pre-filled with the envelope cas
         ->and(app(RegisterShiftService::class)->varianceCents($shift->fresh()))->toBe(0);
 });
 
-test('Close Box records no drop when the offered amount is cleared to 0', function () {
+test('Close Box records no drop unless the box is ticked', function () {
     $shift = app(RegisterShiftService::class)->openShift($this->register, $this->user, 100);
     $event = Event::factory()->create(['event_date' => today(), 'entry_fee' => 20, 'pool_fee' => 0]);
     Attendance::factory()->create(['event_id' => $event->id, 'register_shift_id' => $shift->id, 'payment_method' => 'cash', 'amount_paid' => 20]);
 
     Livewire::test(CheckIn::class)
         ->set('registerId', $this->register->id)
-        ->callAction('closeShift', data: ['closing_count' => 120, 'drop_amount' => 0])
+        ->callAction('closeShift', data: ['closing_count' => 120])
         ->assertHasNoActionErrors();
 
     expect(RegisterDrop::exists())->toBeFalse()
@@ -663,7 +666,7 @@ test('Close Box offers no drop once one is recorded, and never adds a second', f
     Livewire::test(CheckIn::class)
         ->set('registerId', $this->register->id)
         ->mountAction('closeShift')
-        ->assertFormFieldDoesNotExist('drop_amount')
+        ->assertFormFieldDoesNotExist('record_drop')
         ->fillForm(['closing_count' => 100])
         ->callMountedAction()
         ->assertHasNoActionErrors();
@@ -677,7 +680,7 @@ test('Close Box offers no drop when no cash came in', function () {
     Livewire::test(CheckIn::class)
         ->set('registerId', $this->register->id)
         ->mountAction('closeShift')
-        ->assertFormFieldDoesNotExist('drop_amount');
+        ->assertFormFieldDoesNotExist('record_drop');
 });
 
 test('a $0 check-in does not ask for a payment method, and a forged one is recorded as none', function () {

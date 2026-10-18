@@ -18,6 +18,7 @@ use App\Support\Cents;
 use Carbon\CarbonInterface;
 use Closure;
 use Filament\Actions\Action;
+use Filament\Forms\Components\Checkbox;
 use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
@@ -323,7 +324,8 @@ trait ManagesCashBox
         return Action::make('closeShift')
             ->label(__('Close Box'))
             // No drop yet: offer one for what the envelopes should hold, so
-            // the final count is just what stays in the box.
+            // the final count is just what stays in the box. Off by default,
+            // so counting with the envelopes still in the box works as before.
             ->schema(fn (): array => [
                 ...($this->undroppedCashCents() > 0 ? [
                     Placeholder::make('envelope_snapshot')
@@ -331,13 +333,18 @@ trait ManagesCashBox
                         ->content(fn (): string => MembershipSetting::current()->cash_envelope_reminder_enabled
                             ? $this->envelopeReminderBody($this->getOpenShift(), now())
                             : __('Cash to drop: :amount.', ['amount' => $this->formatCurrency(Cents::toFloat($this->undroppedCashCents()))])),
+                    Checkbox::make('record_drop')
+                        ->label(__('Record a drop for the envelopes before closing'))
+                        ->live(),
                     TextInput::make('drop_amount')
-                        ->label(__('Drop before closing'))
-                        ->helperText(__('Recorded as a drop first. Set to 0 to close without one.'))
+                        ->label(__('Drop amount'))
+                        ->helperText(__('Count what stays in the box after the envelopes are out.'))
                         ->numeric()
-                        ->minValue(0)
+                        ->minValue(0.01)
                         ->step(0.01)
-                        ->default(fn (): float => Cents::toFloat($this->undroppedCashCents())),
+                        ->default(fn (): float => Cents::toFloat($this->undroppedCashCents()))
+                        ->visible(fn (Get $get): bool => (bool) $get('record_drop'))
+                        ->required(fn (Get $get): bool => (bool) $get('record_drop')),
                 ] : []),
                 TextInput::make('closing_count')
                     ->label(__('Final count'))
@@ -360,7 +367,7 @@ trait ManagesCashBox
                 abort_unless($shift, 404);
 
                 $service = app(RegisterShiftService::class);
-                $dropAmount = (float) ($data['drop_amount'] ?? 0);
+                $dropAmount = ($data['record_drop'] ?? false) ? (float) ($data['drop_amount'] ?? 0) : 0.0;
 
                 $closed = DB::transaction(function () use ($service, $shift, $data, $dropAmount): RegisterShift {
                     // Re-checked: another register may have dropped since

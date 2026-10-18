@@ -13,9 +13,10 @@ is fixes only.
 
 - **Close Box offers the drop.** When no drop has been recorded yet and cash came in, Close Box
   shows what the envelopes should hold (the envelope reminder's breakdown when that flag is on,
-  otherwise the total) and a **Drop before closing** amount pre-filled with it. Closing records that
-  drop first ("Envelopes at close"), so the final count is just what stays in the box; set it to 0
-  to close without one. Never offered once a drop exists, and re-checked at submit.
+  otherwise the total) and a **Record a drop for the envelopes before closing** checkbox, off by
+  default. Ticking it shows the drop amount, pre-filled with that total; closing then records the
+  drop first ("Envelopes at close"), so the final count is just what stays in the box. Never offered
+  once a drop exists, and re-checked at submit.
 - **No payment method on a $0 check-in.** The desk's Check in modal stops asking for a payment
   method when nothing is due, and `CheckInService` records none for a $0 visit, so a stale or
   forged pick can't read as cash taken or spend a one-time method (the kiosk's own code is kept).
