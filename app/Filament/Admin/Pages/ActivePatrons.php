@@ -174,8 +174,12 @@ class ActivePatrons extends Page implements HasTable
                             ->alignment(Alignment::End)
                             ->grow(false),
                     ]),
+                    // Labelled for the table's "Sort by" control (the only
+                    // place a stacked layout shows it): it sorts by arrival,
+                    // not by event name.
                     TextColumn::make('event.name')
-                        ->label('Event')
+                        ->label('Arrival time')
+                        ->sortable(query: fn (Builder $query, string $direction): Builder => $query->orderBy('attendance.checked_in_at', $direction))
                         ->color('gray')
                         ->size(TextSize::Small)
                         ->icon(Heroicon::OutlinedCalendarDays)
@@ -243,6 +247,11 @@ class ActivePatrons extends Page implements HasTable
             // 25, not the default 5: on a phone, paging through a busy night
             // five cards at a time makes it easy to miss someone leaving.
             ->defaultPaginationPageOption(25)
+            // Newest arrivals first, like the desk's checked-in roster; the
+            // Sort by control flips it to oldest first, and the choice sticks
+            // for this session.
+            ->defaultSort('event.name', 'desc')
+            ->persistSortInSession()
             ->poll('15s');
     }
 

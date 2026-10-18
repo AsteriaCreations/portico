@@ -11,6 +11,9 @@ is fixes only.
 
 ### Added
 
+- **Active Patrons: sort by arrival time.** The list now shows the newest arrivals first, like the
+  desk's checked-in roster; it used to follow no set order. **Sort by** above the list switches to
+  oldest first, and the choice is remembered for the rest of the sign-in. No migration.
 - **Active Patrons: New subscription badge and guest sponsor.** A patron who paid for an entry
   subscription with tonight's visit gets a green **New subscription** badge with the same ticket
   icon as the desk's checked-in roster, and hovering a guest's badges shows who they're a guest
