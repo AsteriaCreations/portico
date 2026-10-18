@@ -204,6 +204,23 @@ test('the watchlist badge renders for a watchlisted member and the watchlist-onl
         ->assertCanNotSeeTableRecords([$clearAttendance]);
 });
 
+test('a member on watchlist probation gets a Recently off watchlist badge, which ends with the probation', function () {
+    $this->actingAs(User::factory()->create(['active' => true, 'role' => Role::Volunteer]));
+    MembershipSetting::current()->update(['watchlist_probation_mode' => 'custom', 'watchlist_probation_days' => 30]);
+
+    $event = Event::factory()->create(['event_date' => today()->toDateString()]);
+    $recent = clearMemberForActivePatrons($this->irregular, ['username' => 'recent-one', 'watchlist_probation_start' => today()->subDays(29)]);
+    $longAgo = clearMemberForActivePatrons($this->irregular, ['username' => 'longago-one', 'watchlist_probation_start' => today()->subDays(30)]);
+    givePriorVisit($recent, $longAgo);
+
+    $recentAttendance = Attendance::factory()->for($recent)->for($event)->create(['checked_in_at' => now()]);
+    $longAgoAttendance = Attendance::factory()->for($longAgo)->for($event)->create(['checked_in_at' => now()]);
+
+    Livewire::test(ActivePatrons::class)
+        ->assertTableColumnStateSet('flags', ['Recently off watchlist'], $recentAttendance)
+        ->assertTableColumnStateSet('flags', null, $longAgoAttendance);
+});
+
 function attachOvernightAddOn(Attendance $attendance): void
 {
     $addOn = AddOn::factory()->create(['name' => 'Sleepover', 'is_overnight' => true]);

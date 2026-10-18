@@ -19,6 +19,13 @@ is fixes only.
   an icon. A due watchlist review gets a warning icon and "Review due" on hover in the Members list,
   and a **Due** badge on the Owner's "Review watchlist" button. Signed amounts on Payment
   corrections and Vouchers get up/down icons. No migration, no `npm run build`.
+- **Watchlist icons on the checked-in roster and Active Patrons.** The Check-In Desk's checked-in
+  roster marks a watchlisted member with an amber eye icon, and a member on watchlist probation
+  (recently taken off the watchlist) with a grey eye-slash, both listed in the roster's icon key.
+  Active Patrons, which already badged **Watchlist**, adds a grey **Recently off watchlist** badge
+  with the same eye-slash. Each icon has its own shape, so none relies on color alone. Only the
+  status shows, never the reason (still Manager+). No migration; the roster's new icon color needs
+  `npm run build`.
 - **Active Patrons: New subscription badge and guest sponsor.** A patron who paid for an entry
   subscription with tonight's visit gets a green **New subscription** badge with the same ticket
   icon as the desk's checked-in roster, and hovering a guest's badges shows who they're a guest
