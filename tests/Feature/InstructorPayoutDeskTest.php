@@ -36,8 +36,17 @@ beforeEach(function () {
     InstructorPayRate::create(['event_type_id' => $yoga->id, 'entry_covered_by' => EntryCoverageSource::None, 'rate' => 10.00]);
     InstructorPayRate::create(['event_type_id' => $yoga->id, 'entry_covered_by' => EntryCoverageSource::RegularSubscription, 'rate' => 5.00]);
 
+    // Mid-class: payouts only show once an event has started.
+    $this->travelTo(today()->setTime(21, 0));
+
     // 3 x $10 + 2 x $5 = $40 owed.
-    $this->yoga = Event::factory()->create(['name' => 'Sunrise Yoga', 'event_type_id' => $yoga->id, 'event_date' => today()->toDateString()]);
+    $this->yoga = Event::factory()->create([
+        'name' => 'Sunrise Yoga',
+        'event_type_id' => $yoga->id,
+        'event_date' => today()->toDateString(),
+        'starts_at' => today()->setTime(20, 0),
+        'ends_at' => today()->setTime(23, 0),
+    ]);
     Attendance::factory()->for($this->yoga)->count(3)->create(['checked_in_at' => now(), 'entry_covered_by' => EntryCoverageSource::None]);
     Attendance::factory()->for($this->yoga)->count(2)->create(['checked_in_at' => now(), 'entry_covered_by' => EntryCoverageSource::RegularSubscription]);
 });
@@ -68,6 +77,36 @@ test('the desk line is absent with the flag off, for an event not on tonight, or
 
     Event::factory()->create(['name' => 'Social', 'event_type_id' => EventType::factory()->create()->id, 'event_date' => today()->toDateString()]);
     $this->get('/admin/check-in')->assertDontSee('instructor payout so far');
+});
+
+test('a class later today is not offered for payout until it starts, less the event window buffer', function () {
+    $this->actingAs($this->door);
+    MembershipSetting::current()->update(['event_window_buffer_minutes' => 30]);
+    openDeskBox($this->door);
+
+    // Just after midnight, during the night before's overnight event.
+    $this->travelTo(today()->setTime(0, 30));
+    $this->get('/admin/check-in')->assertDontSee('instructor payout so far');
+    Livewire::test(CheckIn::class)
+        ->set('registerId', $this->register->id)
+        ->assertActionHidden('payInstructor');
+
+    $this->travelTo(today()->setTime(19, 29));
+    $this->get('/admin/check-in')->assertDontSee('instructor payout so far');
+
+    $this->travelTo(today()->setTime(19, 31));
+    $this->get('/admin/check-in')->assertSee('Sunrise Yoga instructor payout so far: $40.00');
+    Livewire::test(CheckIn::class)
+        ->set('registerId', $this->register->id)
+        ->assertActionVisible('payInstructor');
+});
+
+test('an event with no start time is offered for payout all day', function () {
+    $this->actingAs($this->door);
+    $this->yoga->update(['starts_at' => null, 'ends_at' => null]);
+
+    $this->travelTo(today()->setTime(0, 30));
+    $this->get('/admin/check-in')->assertSee('Sunrise Yoga instructor payout so far: $40.00');
 });
 
 test('paying the instructor records the payout and takes it off the box\'s expected cash', function () {
