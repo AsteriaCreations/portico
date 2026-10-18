@@ -1,9 +1,7 @@
 <?php
 
-use App\Enums\AddOnKind;
 use App\Models\Attendance;
 use App\Models\Event;
-use App\Models\Subscription;
 use Illuminate\Support\Collection;
 use Livewire\Attributes\Computed;
 use Livewire\Component;
@@ -26,7 +24,7 @@ new class extends Component
     public function attendances(): Collection
     {
         return Attendance::query()
-            ->with(['member.category', 'member.sponsor'])
+            ->with(['member.category', 'member.sponsor', 'member.paidEntrySubscriptions'])
             ->withFirstArrival()
             ->where('event_id', $this->eventId)
             ->whereNotNull('checked_in_at')
@@ -35,27 +33,16 @@ new class extends Component
     }
 
     /**
-     * Attendance ids whose member paid for an entry subscription at or after
-     * that visit's check-in -- bought with the check-in itself, or by a later
-     * "Convert entry to subscription". Derived from timestamps: nothing links
-     * a subscriptions row to the attendance it was sold with.
+     * Attendance ids that get the subscription icon; see
+     * Attendance::isSubscriptionPurchaseVisit().
      *
      * @return array<int, true>
      */
     #[Computed]
     public function boughtSubscription(): array
     {
-        $subscriptions = Subscription::query()
-            ->whereRelation('addOn', 'kind', AddOnKind::Entry)
-            // Paid in money or voucher credit; a $0 perk row is neither.
-            ->where(fn ($query) => $query->where('amount_paid', '>', 0)->orWhere('voucher_coverage', '>', 0))
-            ->whereIn('member_id', $this->attendances->pluck('member_id'))
-            ->get(['member_id', 'created_at'])
-            ->groupBy('member_id');
-
         return $this->attendances
-            ->filter(fn (Attendance $attendance): bool => ($subscriptions[$attendance->member_id] ?? collect())
-                ->contains(fn (Subscription $subscription): bool => $subscription->created_at->gte($attendance->created_at->clone()->subMinute())))
+            ->filter(fn (Attendance $attendance): bool => $attendance->isSubscriptionPurchaseVisit())
             ->mapWithKeys(fn (Attendance $attendance): array => [$attendance->id => true])
             ->all();
     }

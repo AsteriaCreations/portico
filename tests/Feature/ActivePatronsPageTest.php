@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\AddOnKind;
 use App\Enums\Role;
 use App\Filament\Admin\Pages\ActivePatrons;
 use App\Filament\Admin\Resources\Members\Pages\EditMember;
@@ -14,6 +15,7 @@ use App\Models\Member;
 use App\Models\MembershipSetting;
 use App\Models\OccupancyAdjustment;
 use App\Models\Skill;
+use App\Models\Subscription;
 use App\Models\User;
 use App\Services\CapacityService;
 use Carbon\Carbon;
@@ -277,6 +279,38 @@ test('the flags column badges Guest for a guest and New member for an Irregular 
         ->assertTableColumnStateSet('flags', ['Guest'], $guestAttendance)
         ->assertTableColumnStateSet('flags', ['New member'], $newMemberAttendance)
         ->assertTableColumnStateSet('flags', null, $sponsorAttendance);
+});
+
+test('the flags column badges New subscription only for a subscription paid for with this visit, and names a guest\'s sponsor on hover', function () {
+    $this->actingAs(User::factory()->create(['active' => true, 'role' => Role::Volunteer]));
+
+    $entry = AddOn::create(['name' => AddOn::ENTRY_NAME, 'kind' => AddOnKind::Entry, 'subscribable' => true]);
+    $guestCategory = Category::factory()->create(['name' => 'Guest', 'is_comped' => false]);
+    $event = Event::factory()->create(['event_date' => today()->toDateString()]);
+    $buyer = clearMemberForActivePatrons($this->irregular, ['username' => 'buyer']);
+    $oldSubscriber = clearMemberForActivePatrons($this->irregular, ['username' => 'oldsub']);
+    $perk = clearMemberForActivePatrons($this->irregular, ['username' => 'perk']);
+    $sponsor = clearMemberForActivePatrons($this->irregular, ['username' => 'host', 'preferred_name' => 'Hosty']);
+    $guest = clearMemberForActivePatrons($guestCategory, ['username' => 'visitor', 'sponsor_id' => $sponsor->id]);
+    givePriorVisit($buyer, $oldSubscriber, $perk, $sponsor, $guest);
+
+    // Bought last week, before tonight's visit: no badge.
+    $this->travel(-7)->days();
+    Subscription::factory()->create(['member_id' => $oldSubscriber->id, 'add_on_id' => $entry->id, 'amount_paid' => 60]);
+    $this->travelBack();
+
+    $attendances = collect([$buyer, $oldSubscriber, $perk, $guest])
+        ->mapWithKeys(fn (Member $member): array => [$member->username => Attendance::factory()->for($member)->for($event)->create(['checked_in_at' => now()])]);
+    Subscription::factory()->create(['member_id' => $buyer->id, 'add_on_id' => $entry->id, 'amount_paid' => 60]);
+    // A $0 subscription (e.g. the Manager perk) wasn't paid for.
+    Subscription::factory()->create(['member_id' => $perk->id, 'add_on_id' => $entry->id, 'amount_paid' => 0, 'voucher_coverage' => 0]);
+
+    Livewire::test(ActivePatrons::class)
+        ->assertTableColumnStateSet('flags', ['New subscription'], $attendances['buyer'])
+        ->assertTableColumnStateSet('flags', null, $attendances['oldsub'])
+        ->assertTableColumnStateSet('flags', null, $attendances['perk'])
+        ->assertTableColumnStateSet('flags', ['Guest'], $attendances['visitor'])
+        ->assertSee('Guest of Hosty');
 });
 
 test('departing an overnight guest removes them from the table just like an ordinary patron', function () {

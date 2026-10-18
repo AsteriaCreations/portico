@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\AddOnKind;
 use App\Enums\WatchlistReviewDecision;
 use Carbon\CarbonInterface;
 use Database\Factories\MemberFactory;
@@ -87,6 +88,17 @@ class Member extends Model
     public function subscriptions(): HasMany
     {
         return $this->hasMany(Subscription::class);
+    }
+
+    /**
+     * Entry subscriptions paid in money or voucher credit; a $0 perk row is
+     * neither. Backs Attendance::isSubscriptionPurchaseVisit().
+     */
+    public function paidEntrySubscriptions(): HasMany
+    {
+        return $this->subscriptions()
+            ->whereRelation('addOn', 'kind', AddOnKind::Entry)
+            ->where(fn ($query) => $query->where('amount_paid', '>', 0)->orWhere('voucher_coverage', '>', 0));
     }
 
     public function attendance(): HasMany

@@ -11,6 +11,11 @@ is fixes only.
 
 ### Added
 
+- **Active Patrons: New subscription badge and guest sponsor.** A patron who paid for an entry
+  subscription with tonight's visit gets a green **New subscription** badge with the same ticket
+  icon as the desk's checked-in roster, and hovering a guest's badges shows who they're a guest
+  of, as on the roster. Both screens now share one rule for the subscription icon
+  (`Attendance::isSubscriptionPurchaseVisit()`). No migration.
 - **Events: check-in close time.** Each event has a "Check-in closes at" time; after it the Check-In
   Desk hides "Check in" (saying when it closed), the kiosk shows "closed", and a check-in already
   on screen is refused when submitted. People already on the Prepay or Comp List can still be
