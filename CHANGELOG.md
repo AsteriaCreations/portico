@@ -83,6 +83,11 @@ is fixes only.
 
 ### Fixed
 
+- **Instructor payout waits for the class to start.** The desk's **Pay instructor** button and
+  "instructor payout so far" line counted any event dated today, so from midnight on, a class
+  later that day showed up during the night before's overnight event. An event with a start time
+  now appears only once it has started (less the event window buffer); one with no start time
+  keeps the whole-day rule.
 - **Member pickers no longer show every search field in every result.** Turning on more
   "Searchable member fields" (e.g. name and email) used to add each one to every result's label.
   Now a label shows one identifier, the first enabled field the member has (usually the

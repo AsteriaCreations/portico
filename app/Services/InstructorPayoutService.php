@@ -6,6 +6,7 @@ use App\Models\Attendance;
 use App\Models\Event;
 use App\Models\InstructorPayout;
 use App\Models\InstructorPayRate;
+use App\Models\MembershipSetting;
 use App\Support\Cents;
 use Illuminate\Database\Eloquent\Builder;
 
@@ -21,14 +22,23 @@ class InstructorPayoutService
 {
     /**
      * Events on the Check-In Desk right now (Event::currentQuery()) whose
-     * type pays an instructor per head. Callers check
-     * instructor_payouts_enabled themselves.
+     * type pays an instructor per head, once they've started. currentQuery()
+     * counts all of event_date from midnight, so without the start check a
+     * class later today showed up for payout during the night before's
+     * overnight event. An event with no starts_at keeps the whole-day rule.
+     * Callers check instructor_payouts_enabled themselves.
      *
      * @return Builder<Event>
      */
     public function currentEventsQuery(): Builder
     {
-        return Event::currentQuery()->whereHas('eventType.instructorPayRates')->orderBy('starts_at')->orderBy('name');
+        $startsBy = now()->addMinutes(MembershipSetting::current()->event_window_buffer_minutes);
+
+        return Event::currentQuery()
+            ->where(fn (Builder $query) => $query->whereNull('starts_at')->orWhere('starts_at', '<=', $startsBy))
+            ->whereHas('eventType.instructorPayRates')
+            ->orderBy('starts_at')
+            ->orderBy('name');
     }
 
     /**
