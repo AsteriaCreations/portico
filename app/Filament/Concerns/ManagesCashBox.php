@@ -15,8 +15,11 @@ use App\Services\InstructorPayoutResult;
 use App\Services\InstructorPayoutService;
 use App\Services\RegisterShiftService;
 use App\Support\Cents;
+use Carbon\CarbonInterface;
 use Closure;
 use Filament\Actions\Action;
+use Filament\Forms\Components\Checkbox;
+use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
@@ -24,6 +27,7 @@ use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Support\Icons\Heroicon;
+use Illuminate\Support\Facades\DB;
 
 /**
  * The Check-In Desk's cash-box actions: open the box, record a drop or a
@@ -319,7 +323,29 @@ trait ManagesCashBox
     {
         return Action::make('closeShift')
             ->label(__('Close Box'))
-            ->schema([
+            // No drop yet: offer one for what the envelopes should hold, so
+            // the final count is just what stays in the box. Off by default,
+            // so counting with the envelopes still in the box works as before.
+            ->schema(fn (): array => [
+                ...($this->undroppedCashCents() > 0 ? [
+                    Placeholder::make('envelope_snapshot')
+                        ->label(__('No drop recorded yet'))
+                        ->content(fn (): string => MembershipSetting::current()->cash_envelope_reminder_enabled
+                            ? $this->envelopeReminderBody($this->getOpenShift(), now())
+                            : __('Cash to drop: :amount.', ['amount' => $this->formatCurrency(Cents::toFloat($this->undroppedCashCents()))])),
+                    Checkbox::make('record_drop')
+                        ->label(__('Record a drop for the envelopes before closing'))
+                        ->live(),
+                    TextInput::make('drop_amount')
+                        ->label(__('Drop amount'))
+                        ->helperText(__('Count what stays in the box after the envelopes are out.'))
+                        ->numeric()
+                        ->minValue(0.01)
+                        ->step(0.01)
+                        ->default(fn (): float => Cents::toFloat($this->undroppedCashCents()))
+                        ->visible(fn (Get $get): bool => (bool) $get('record_drop'))
+                        ->required(fn (Get $get): bool => (bool) $get('record_drop')),
+                ] : []),
                 TextInput::make('closing_count')
                     ->label(__('Final count'))
                     ->numeric()
@@ -341,7 +367,17 @@ trait ManagesCashBox
                 abort_unless($shift, 404);
 
                 $service = app(RegisterShiftService::class);
-                $closed = $service->closeShift($shift, auth()->user(), (float) $data['closing_count'], $data['notes'] ?? null);
+                $dropAmount = ($data['record_drop'] ?? false) ? (float) ($data['drop_amount'] ?? 0) : 0.0;
+
+                $closed = DB::transaction(function () use ($service, $shift, $data, $dropAmount): RegisterShift {
+                    // Re-checked: another register may have dropped since
+                    // the modal opened, and that drop already took the cash.
+                    if ($dropAmount > 0 && $service->totalDropsCents($shift) === 0) {
+                        $service->recordDrop($shift, auth()->user(), $dropAmount, __('Envelopes at close'));
+                    }
+
+                    return $service->closeShift($shift, auth()->user(), (float) $data['closing_count'], $data['notes'] ?? null);
+                });
                 $variance = $service->varianceCents($closed) ?? 0;
                 $label = $variance === 0 ? __('exact') : ($variance > 0 ? __('over') : __('short'));
 
@@ -356,7 +392,7 @@ trait ManagesCashBox
                 $body = [];
                 $cashReceivedCents = $service->cashReceivedCents($closed);
                 if ($cashReceivedCents > 0 && MembershipSetting::current()->cash_envelope_reminder_enabled) {
-                    $body[] = $this->envelopeReminderBody($closed, $cashReceivedCents);
+                    $body[] = $this->envelopeReminderBody($closed, $closed->closed_at);
                 }
 
                 // Never in the box, so never in an envelope -- listed so the
@@ -379,7 +415,28 @@ trait ManagesCashBox
             });
     }
 
-    private function envelopeReminderBody(RegisterShift $shift, int $cashReceivedCents): string
+    /**
+     * The cash that would go into envelopes if the box closed now, with no
+     * drop recorded yet: everything taken in over the opening float, after
+     * instructor payouts and prepay cash held for later events. Zero once
+     * any drop exists, since a drop is how the envelopes leave the box.
+     */
+    private function undroppedCashCents(): int
+    {
+        $shift = $this->getOpenShift();
+        $service = app(RegisterShiftService::class);
+
+        if (! $shift || $service->totalDropsCents($shift) !== 0) {
+            return 0;
+        }
+
+        return max(0, $service->expectedClosingCountCents($shift) - Cents::of($shift->opening_count));
+    }
+
+    /**
+     * @param  CarbonInterface  $date  labels an envelope with no event to name; the close time, or now() for the preview before closing
+     */
+    private function envelopeReminderBody(RegisterShift $shift, CarbonInterface $date): string
     {
         $service = app(RegisterShiftService::class);
         $breakdown = $service->cashRevenueBreakdownCents($shift);
@@ -396,7 +453,7 @@ trait ManagesCashBox
         // subscription/misc-payment cash transaction) -- nothing to name, so
         // label the envelope with the date the box closed instead.
         if ($eventLabels === '') {
-            $eventLabels = $shift->closed_at->isoFormat('ll');
+            $eventLabels = $date->isoFormat('ll');
         }
 
         $lines = [];
@@ -423,7 +480,7 @@ trait ManagesCashBox
 
         if ($breakdown['subscription'] !== 0) {
             $lines[] = __('Subscription cash goes in its own envelope, labelled "Subscriptions — :date": :amount.', [
-                'date' => $shift->closed_at->isoFormat('ll'),
+                'date' => $date->isoFormat('ll'),
                 'amount' => $this->formatCurrency(Cents::toFloat($breakdown['subscription'])),
             ]);
         }

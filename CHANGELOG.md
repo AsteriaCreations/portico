@@ -11,6 +11,16 @@ is fixes only.
 
 ### Added
 
+- **Close Box offers the drop.** When no drop has been recorded yet and cash came in, Close Box
+  shows what the envelopes should hold (the envelope reminder's breakdown when that flag is on,
+  otherwise the total) and a **Record a drop for the envelopes before closing** checkbox, off by
+  default. Ticking it shows the drop amount, pre-filled with that total; closing then records the
+  drop first ("Envelopes at close"), so the final count is just what stays in the box. Never offered
+  once a drop exists, and re-checked at submit.
+- **No payment method on a $0 check-in.** The desk's Check in modal stops asking for a payment
+  method when nothing is due, and `CheckInService` records none for a $0 visit, so a stale or
+  forged pick can't read as cash taken or spend a one-time method (the kiosk's own code is kept).
+
 - **Colorblind-friendly colors (per user).** A new **Colorblind-friendly colors** switch on My
   account swaps the panel's green/red/amber/blue for the colorblind-safe Okabe-Ito palette, for
   that user only: good is blue, bad is vermillion (orange-red), warnings orange, and info reddish
