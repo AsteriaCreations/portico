@@ -123,6 +123,10 @@ is fixes only.
 
 ### Security
 
+- `symfony/yaml` updated to 8.1.9 (CVE-2026-109413: a deeply nested YAML document could crash the
+  process through unbounded recursion; fixed in 8.1.6). It's a dev-only package (via
+  `laravel/boost`), and production installs use `--no-dev`, so nothing deployed was exposed.
+  `composer audit` reported it; Dependabot didn't.
 - Filament updated to 5.8.3. Before 5.8.2, managing app-based multi-factor authentication didn't
   ask for the password again (medium-severity advisory). Portico doesn't turn on Filament's MFA,
   so nothing was exposed, but the update clears the Dependabot alert.
