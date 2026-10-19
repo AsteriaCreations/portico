@@ -86,6 +86,7 @@ class FeatureFlags extends Page
             'kiosk_show_code_enabled',
             'kiosk_subscribers_only',
             'hold_desk_prepay_cash',
+            'separate_subscription_envelope',
             'upstream_check_enabled',
             'deploy_trigger_enabled',
         ]));
@@ -114,7 +115,11 @@ class FeatureFlags extends Page
                             ->required(),
                         Toggle::make('cash_envelope_reminder_enabled')
                             ->label('Cash envelope reminder on closing the box')
-                            ->helperText(__('When a box closes with cash collected, the confirmation stays on screen until it is dismissed and tells staff to seal the cash in an envelope labelled with the Entry / Other amounts and the event(s) or date it covers, with subscription cash and each event\'s prepaid cash in envelopes of their own. Only cash payment methods count. It\'s a reminder only: nothing extra is saved. Has no effect while register shift tracking is off. Off by default.'))
+                            ->helperText(__('When a box closes with cash collected, the confirmation stays on screen until it is dismissed and tells staff to seal the cash in an envelope labelled with the Entry / Other amounts and the event(s) or date it covers, with each event\'s prepaid cash (and, by default, subscription cash) in envelopes of their own. Only cash payment methods count. It\'s a reminder only: nothing extra is saved. Has no effect while register shift tracking is off. Off by default.'))
+                            ->required(),
+                        Toggle::make('separate_subscription_envelope')
+                            ->label('Subscription cash in its own envelope')
+                            ->helperText(__('On, the close-box envelope reminder puts subscription cash in an envelope of its own, labelled with the date. Off, it goes in the night\'s envelope with entry and other cash, listed as its own amount. Only changes what the reminder says. Has no effect while the envelope reminder is off. On by default.'))
                             ->required(),
                         Toggle::make('hold_desk_prepay_cash')
                             ->label('Hold desk prepay cash for its event')
@@ -150,7 +155,7 @@ class FeatureFlags extends Page
                             ->required(),
                         Toggle::make('kiosk_show_code_enabled')
                             ->label('Show codes on the kiosk')
-                            ->helperText(__('Adds a "Show on kiosk" button next to "Kiosk QR code", for a desk whose screen faces staff. The kiosk tablet shows the member\'s code for 60 seconds so they can take a picture of it with their phone. Anyone at the tablet can see it while it\'s up. Needs Kiosk check-in on. Off by default.'))
+                            ->helperText(__('Adds a "Show on kiosk" button next to "Kiosk QR code", for a desk whose screen faces staff. The kiosk tablet shows the member\'s code (for 60 seconds by default; set on Membership Settings) so they can take a picture of it with their phone. Anyone at the tablet can see it while it\'s up. Needs Kiosk check-in on. Off by default.'))
                             ->required(),
                     ]),
                 Section::make(__('Records'))

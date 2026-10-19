@@ -11,6 +11,16 @@ is fixes only.
 
 ### Added
 
+- **Three more club settings, each defaulting to what Portico already did.** **Migration:** four
+  `membership_settings` columns.
+  - **Subscription cash in its own envelope** (Feature Flags, on). Off, the close-box envelope
+    reminder puts subscription cash in the night's envelope, listed as its own amount.
+  - **Move a guest on when their follow-up is sent**, and **Category after follow-up**
+    (Membership Settings: on, Irregular). A club can send welcomed guests to another category, or
+    leave them as Guests. **Mark follow-up not sent** moves back to Guest anyone still in that
+    category. A deleted category falls back to Irregular.
+  - **Kiosk "Show on kiosk" time** (Membership Settings, 60 seconds; 10–300). How long the tablet
+    shows a member's code.
 - **Three club-policy settings, each defaulting to what Portico already did.** Upgrading changes
   nothing until a club flips one. **Migration:** three `membership_settings` columns.
   - **Kiosk admits subscribers only** (Feature Flags, on). Off, the kiosk also lets in anyone else

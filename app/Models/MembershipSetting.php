@@ -5,6 +5,7 @@ namespace App\Models;
 use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Number;
 use Illuminate\Support\Str;
 
@@ -19,7 +20,7 @@ use Illuminate\Support\Str;
  * supplies the initial defaults for a fresh install — it's just no longer
  * read anywhere else in the app afterward.
  */
-#[Fillable(['subscription_eligibility_threshold', 'subscription_eligibility_window_months', 'probation_period_days', 'guests_allowed_during_probation', 'max_guests_per_night', 'venue_capacity', 'default_opening_float', 'event_window_buffer_minutes', 'checkin_close_minutes_overnight', 'checkin_close_minutes_same_day', 'first_visit_after_close_enabled', 'week_starts_on', 'age_of_majority', 'alcohol_flag_age', 'watchlist_notify_label', 'watchlist_probation_mode', 'watchlist_probation_days', 'watchlist_probation_blocks_guests', 'currency', 'locale', 'org_name', 'role_labels', 'member_search_fields', 'checkin_display_name_field', 'member_email_required', 'hide_member_pii_by_default', 'active_patrons_show_staff_roles', 'vouchers_enabled', 'add_ons_enabled', 'showrunner_comp_requests_enabled', 'manager_perk_enabled', 'suspensions_enabled', 'pool_enabled', 'day_pass_future_events_enabled', 'prepay_enabled', 'register_shifts_enabled', 'cash_envelope_reminder_enabled', 'hold_desk_prepay_cash', 'showrunner_payouts_enabled', 'instructor_payouts_enabled', 'visit_notes_enabled', 'behavior_notes_enabled', 'guests_enabled', 'door_username_rename_enabled', 'door_preferred_name_change_enabled', 'kiosk_checkin_enabled', 'kiosk_show_code_enabled', 'kiosk_subscribers_only', 'upstream_check_enabled', 'upstream_remote', 'upstream_branch', 'deploy_trigger_enabled', 'deploy_task_name'])]
+#[Fillable(['subscription_eligibility_threshold', 'subscription_eligibility_window_months', 'probation_period_days', 'guests_allowed_during_probation', 'max_guests_per_night', 'guest_followup_moves_category', 'guest_followup_category_id', 'venue_capacity', 'default_opening_float', 'event_window_buffer_minutes', 'checkin_close_minutes_overnight', 'checkin_close_minutes_same_day', 'first_visit_after_close_enabled', 'week_starts_on', 'age_of_majority', 'alcohol_flag_age', 'watchlist_notify_label', 'watchlist_probation_mode', 'watchlist_probation_days', 'watchlist_probation_blocks_guests', 'currency', 'locale', 'org_name', 'role_labels', 'member_search_fields', 'checkin_display_name_field', 'member_email_required', 'hide_member_pii_by_default', 'active_patrons_show_staff_roles', 'vouchers_enabled', 'add_ons_enabled', 'showrunner_comp_requests_enabled', 'manager_perk_enabled', 'suspensions_enabled', 'pool_enabled', 'day_pass_future_events_enabled', 'prepay_enabled', 'register_shifts_enabled', 'cash_envelope_reminder_enabled', 'hold_desk_prepay_cash', 'separate_subscription_envelope', 'showrunner_payouts_enabled', 'instructor_payouts_enabled', 'visit_notes_enabled', 'behavior_notes_enabled', 'guests_enabled', 'door_username_rename_enabled', 'door_preferred_name_change_enabled', 'kiosk_checkin_enabled', 'kiosk_show_code_enabled', 'kiosk_show_code_seconds', 'kiosk_subscribers_only', 'upstream_check_enabled', 'upstream_remote', 'upstream_branch', 'deploy_trigger_enabled', 'deploy_task_name'])]
 class MembershipSetting extends Model
 {
     /**
@@ -37,6 +38,8 @@ class MembershipSetting extends Model
             'probation_period_days' => 'integer',
             'guests_allowed_during_probation' => 'boolean',
             'max_guests_per_night' => 'integer',
+            'guest_followup_moves_category' => 'boolean',
+            'guest_followup_category_id' => 'integer',
             'venue_capacity' => 'integer',
             'default_opening_float' => 'decimal:2',
             'event_window_buffer_minutes' => 'integer',
@@ -64,6 +67,7 @@ class MembershipSetting extends Model
             'register_shifts_enabled' => 'boolean',
             'cash_envelope_reminder_enabled' => 'boolean',
             'hold_desk_prepay_cash' => 'boolean',
+            'separate_subscription_envelope' => 'boolean',
             'showrunner_payouts_enabled' => 'boolean',
             'instructor_payouts_enabled' => 'boolean',
             'visit_notes_enabled' => 'boolean',
@@ -74,6 +78,7 @@ class MembershipSetting extends Model
             'kiosk_checkin_enabled' => 'boolean',
             'kiosk_show_code_enabled' => 'boolean',
             'kiosk_subscribers_only' => 'boolean',
+            'kiosk_show_code_seconds' => 'integer',
             'upstream_check_enabled' => 'boolean',
             'deploy_trigger_enabled' => 'boolean',
         ];
@@ -192,6 +197,9 @@ class MembershipSetting extends Model
             // What the desk always did: cash for a later event goes in that
             // event's prepay envelope, not the box. See CheckInService.
             'hold_desk_prepay_cash' => true,
+            // What the envelope reminder always did. See
+            // ManagesCashBox::envelopeReminderBody().
+            'separate_subscription_envelope' => true,
             // What the desk always did. See Event::isCheckInClosedFor().
             'first_visit_after_close_enabled' => true,
             // Both brand-new features -- on by default so they work out of
@@ -206,6 +214,11 @@ class MembershipSetting extends Model
             // is on probation. See Member::canSponsorGuests().
             'guests_enabled' => true,
             'guests_allowed_during_probation' => false,
+            // What marking a follow-up sent always did: move the guest to
+            // Irregular (a null category means Irregular). See
+            // self::guestFollowupTargetCategory().
+            'guest_followup_moves_category' => true,
+            'guest_followup_category_id' => null,
             // Renaming was Manager+ only; a club opts Door in on the
             // Feature Flags page. See the rename-member-username gate.
             'door_username_rename_enabled' => false,
@@ -220,6 +233,8 @@ class MembershipSetting extends Model
             'kiosk_checkin_enabled' => false,
             // What the kiosk always did. See KioskCheckInService::scan().
             'kiosk_subscribers_only' => true,
+            // What "Show on kiosk" always used. See KioskCodeDisplay::seconds().
+            'kiosk_show_code_seconds' => 60,
             // Off and unconfigured -- a fresh install has no upstream remote
             // at all, and this never silently starts running git commands.
             // See App\Services\UpstreamUpdateChecker.
@@ -291,6 +306,30 @@ class MembershipSetting extends Model
     public static function watchlistNotifyLabel(): string
     {
         return static::current()->watchlist_notify_label ?: (string) config('membership.watchlist_notify_label');
+    }
+
+    /**
+     * Where a guest goes once their follow-up is marked sent, or null to
+     * leave them a Guest. An unset or deleted choice means Irregular, which
+     * is what marking it sent always did.
+     */
+    public static function guestFollowupTargetCategory(): ?Category
+    {
+        $settings = static::current();
+
+        if (! $settings->guest_followup_moves_category) {
+            return null;
+        }
+
+        return $settings->guestFollowupCategory ?? Category::where('name', 'Irregular')->firstOrFail();
+    }
+
+    /**
+     * @return BelongsTo<Category, $this>
+     */
+    public function guestFollowupCategory(): BelongsTo
+    {
+        return $this->belongsTo(Category::class, 'guest_followup_category_id');
     }
 
     /**

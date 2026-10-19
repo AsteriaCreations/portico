@@ -4,6 +4,7 @@ namespace App\Filament\Admin\Pages;
 
 use App\Enums\Role;
 use App\Filament\Concerns\TranslatesPageLabels;
+use App\Models\Category;
 use App\Models\MembershipSetting;
 use BackedEnum;
 use Closure;
@@ -63,12 +64,15 @@ class MembershipSettings extends Page
             'probation_period_days',
             'guests_allowed_during_probation',
             'max_guests_per_night',
+            'guest_followup_moves_category',
+            'guest_followup_category_id',
             'venue_capacity',
             'default_opening_float',
             'event_window_buffer_minutes',
             'checkin_close_minutes_overnight',
             'checkin_close_minutes_same_day',
             'first_visit_after_close_enabled',
+            'kiosk_show_code_seconds',
             'week_starts_on',
             'age_of_majority',
             'alcohol_flag_age',
@@ -127,6 +131,17 @@ class MembershipSettings extends Page
                     ->integer()
                     ->minValue(1)
                     ->maxValue(50),
+                Toggle::make('guest_followup_moves_category')
+                    ->label('Move a guest on when their follow-up is sent')
+                    ->helperText(__('When a guest is marked "follow-up sent" on the Members list, moves them out of Guest into the category below. Off, they stay a Guest and only the follow-up is recorded. On by default.'))
+                    ->live()
+                    ->required(),
+                Select::make('guest_followup_category_id')
+                    ->label('Category after follow-up')
+                    ->helperText(__('Where a guest goes once their follow-up is sent. Blank means Irregular. If the chosen category is later deleted, Irregular is used.'))
+                    ->placeholder(__('Irregular'))
+                    ->options(fn (): array => Category::whereNotIn('name', ['Prospective', 'Guest'])->orderBy('name')->pluck('name', 'id')->all())
+                    ->visible(fn (Get $get): bool => (bool) $get('guest_followup_moves_category')),
                 TextInput::make('venue_capacity')
                     ->label('Venue capacity')
                     ->helperText(__('Hard cap on how many people can be in the building at once. Leave blank to not enforce a capacity limit.'))
@@ -163,6 +178,14 @@ class MembershipSettings extends Page
                 Toggle::make('first_visit_after_close_enabled')
                     ->label('Let a first visit check in after close')
                     ->helperText(__('Lets the Check-In Desk still check in someone on their first visit (e.g. a new member finishing paperwork) after an event\'s check-in has closed. Off, check-in closes for everyone. The kiosk is always closed after close. On by default.'))
+                    ->required(),
+                TextInput::make('kiosk_show_code_seconds')
+                    ->label('Kiosk "Show on kiosk" time (seconds)')
+                    ->helperText(__('How long the kiosk tablet shows a member\'s code after staff send it with "Show on kiosk", long enough for them to take a picture. Anyone at the tablet can see it while it\'s up. Only matters while "Show codes on the kiosk" is on (Feature Flags).'))
+                    ->numeric()
+                    ->integer()
+                    ->minValue(10)
+                    ->maxValue(300)
                     ->required(),
                 Select::make('week_starts_on')
                     ->label('Week starts on')

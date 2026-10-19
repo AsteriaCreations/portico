@@ -1,7 +1,9 @@
 <?php
 
 use App\Enums\Role;
+use App\Filament\Admin\Pages\FeatureFlags;
 use App\Filament\Admin\Pages\MembershipSettings;
+use App\Models\Category;
 use App\Models\MembershipSetting;
 use App\Models\User;
 use Filament\Facades\Filament;
@@ -258,4 +260,52 @@ test('letting a first visit check in after close defaults on and can be turned o
         ->assertHasNoErrors();
 
     expect(MembershipSetting::current()->fresh()->first_visit_after_close_enabled)->toBeFalse();
+});
+
+test('the guest follow-up category and kiosk show-code time default to what the app always did, and save', function () {
+    $staff = Category::factory()->create(['name' => 'Staff']);
+    Category::factory()->create(['name' => 'Guest']);
+    $setting = MembershipSetting::current();
+    expect($setting->guest_followup_moves_category)->toBeTrue()
+        ->and($setting->guest_followup_category_id)->toBeNull()
+        ->and($setting->kiosk_show_code_seconds)->toBe(60);
+
+    $this->actingAs(userWithRoleForSettings(Role::Manager));
+
+    Livewire::test(MembershipSettings::class)
+        ->assertSchemaStateSet(['guest_followup_moves_category' => true, 'kiosk_show_code_seconds' => 60])
+        ->fillForm(['guest_followup_category_id' => $staff->id, 'kiosk_show_code_seconds' => 5])
+        ->callAction('save')
+        ->assertHasFormErrors(['kiosk_show_code_seconds']);
+
+    Livewire::test(MembershipSettings::class)
+        ->fillForm(['guest_followup_category_id' => $staff->id, 'kiosk_show_code_seconds' => 30])
+        ->callAction('save')
+        ->assertHasNoErrors();
+
+    $setting = MembershipSetting::current()->fresh();
+    expect($setting->guest_followup_category_id)->toBe($staff->id)
+        ->and($setting->kiosk_show_code_seconds)->toBe(30);
+});
+
+test('the follow-up category picker never offers Guest or Prospective', function () {
+    $guest = Category::factory()->create(['name' => 'Guest']);
+    $this->actingAs(userWithRoleForSettings(Role::Manager));
+
+    Livewire::test(MembershipSettings::class)
+        ->fillForm(['guest_followup_category_id' => $guest->id])
+        ->callAction('save')
+        ->assertHasFormErrors(['guest_followup_category_id']);
+});
+
+test('the separate subscription envelope setting defaults on and saves on Feature Flags', function () {
+    expect(MembershipSetting::current()->separate_subscription_envelope)->toBeTrue();
+    $this->actingAs(userWithRoleForSettings(Role::Manager));
+
+    Livewire::test(FeatureFlags::class)
+        ->fillForm(['separate_subscription_envelope' => false])
+        ->callAction('save')
+        ->assertHasNoErrors();
+
+    expect(MembershipSetting::current()->fresh()->separate_subscription_envelope)->toBeFalse();
 });
