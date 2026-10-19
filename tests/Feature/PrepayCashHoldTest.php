@@ -322,3 +322,33 @@ test('refunding held prepay cash points at the event\'s prepay cash, not a drawe
 
     expect($removals->refundLabel($atDesk->fresh()))->toContain('prepay cash held for this event');
 });
+
+test('with desk prepay cash holding turned off, a desk prepay\'s cash stays in tonight\'s box', function () {
+    MembershipSetting::current()->update(['hold_desk_prepay_cash' => false]);
+    $shift = $this->service->openShift($this->register, $this->manager, 100);
+    $member = prepayMember($this->irregular);
+
+    Livewire::test(CheckIn::class)
+        ->set('registerId', $this->register->id)
+        ->fillForm(['event_id' => $this->future->id, 'member_id' => $member->id])
+        ->callAction('checkIn', data: ['payment_method' => 'cash'])
+        ->assertHasNoActionErrors();
+
+    $attendance = Attendance::where('member_id', $member->id)->sole();
+
+    expect($attendance->prepaid_ahead)->toBeFalse()
+        ->and($attendance->checked_in_at)->toBeNull()
+        ->and((string) lastPrepayNotificationBody())->not->toContain('prepay envelope')
+        ->and($this->service->heldPrepayCashCents($shift))->toBe(0)
+        ->and($this->service->expectedClosingCountCents($shift))->toBe(13000);
+});
+
+test('turning desk prepay cash holding off leaves cash already held for its event', function () {
+    $shift = $this->service->openShift($this->register, $this->manager, 100);
+    heldVisit($this->future, ['register_shift_id' => $shift->id]);
+
+    MembershipSetting::current()->update(['hold_desk_prepay_cash' => false]);
+
+    expect($this->service->heldPrepayCashCents($shift))->toBe(3000)
+        ->and($this->service->expectedClosingCountCents($shift))->toBe(10000);
+});

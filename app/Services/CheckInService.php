@@ -273,8 +273,10 @@ class CheckInService
                 // this box at close and is held for the event instead (see
                 // RegisterShiftService::heldPrepayCashCents()). A past
                 // event still flagged for door prepay isn't "ahead" -- that
-                // money stays in the box, as it always did.
-                'prepaid_ahead' => ! $event->isCurrentlyActive() && $event->event_date->isAfter(today()),
+                // money stays in the box, as it always did. With
+                // hold_desk_prepay_cash off it stays in the box too.
+                'prepaid_ahead' => MembershipSetting::current()->hold_desk_prepay_cash
+                    && ! $event->isCurrentlyActive() && $event->event_date->isAfter(today()),
                 'on_behalf_note' => $request->onBehalfNote,
                 'notes' => $request->notes,
                 'comp_reason_id' => $compReasonId,
