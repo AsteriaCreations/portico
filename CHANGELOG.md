@@ -11,6 +11,19 @@ is fixes only.
 
 ### Added
 
+- **Kiosk timings and the kiosk-code email batch are club settings, each defaulting to what
+  Portico already did.** **Migration:** five `membership_settings` columns. **Needs `npm run
+  build`** (the kiosk script reads its times from the page now).
+  - **Kiosk screen times** (Membership Settings): how long the tablet shows "checked in" /
+    "already checked in" (`kiosk_result_seconds`, 4), any other result (`kiosk_problem_result_seconds`,
+    7), and how long it ignores the same code held up again (`kiosk_same_code_cooldown_seconds`, 8).
+  - **Kiosk scans allowed per minute** (`kiosk_requests_per_minute`, 30): the kiosk rate limit, per
+    tablet and endpoint. It can be raised for a busy door, never lowered below 30, so the
+    show-code poll always fits.
+  - **Kiosk codes emailed per click** (`kiosk_code_email_batch_size`, 50): the batch "Email kiosk
+    codes" sends; lower it if a slow mail server times the page out. `KioskCodeMailer::BATCH_SIZE`
+    is replaced by `KioskCodeMailer::batchSize()`.
+
 - **Three more club settings, each defaulting to what Portico already did.** **Migration:** four
   `membership_settings` columns.
   - **Subscription cash in its own envelope** (Feature Flags, on). Off, the close-box envelope
