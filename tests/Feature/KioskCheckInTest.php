@@ -260,3 +260,28 @@ test('the scan endpoint is rate limited', function () {
 
     scanAtKiosk($this, 'no-such-code')->assertTooManyRequests();
 });
+
+test('with subscribers only turned off, a comped-category member who owes nothing is checked in', function () {
+    $this->settings->update(['kiosk_subscribers_only' => false]);
+    $comped = Category::factory()->create(['name' => 'Staff', 'is_comped' => true]);
+    $member = Member::factory()->create(['category_id' => $comped->id, 'dob' => '1990-01-01', 'missing_paperwork' => false]);
+    $member->ensureKioskToken();
+
+    scanAtKiosk($this, $member->kiosk_token)->assertJson(['status' => 'admitted']);
+
+    $attendance = Attendance::where('member_id', $member->id)->sole();
+    expect($attendance->payment_method)->toBe(PaymentMethod::KIOSK)
+        ->and((float) $attendance->amount_paid)->toBe(0.0);
+});
+
+test('with subscribers only turned off, a member who owes money is still sent to the desk', function () {
+    $this->settings->update(['kiosk_subscribers_only' => false]);
+    $member = Member::factory()->create(['category_id' => $this->category->id, 'dob' => '1990-01-01', 'missing_paperwork' => false]);
+    $member->ensureKioskToken();
+
+    scanAtKiosk($this, $member->kiosk_token)
+        ->assertJson(['status' => 'see_staff'])
+        ->assertSee('something to pay for tonight');
+
+    expect(Attendance::count())->toBe(0);
+});

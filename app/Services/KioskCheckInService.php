@@ -9,6 +9,7 @@ use App\Models\AddOn;
 use App\Models\Attendance;
 use App\Models\Event;
 use App\Models\Member;
+use App\Models\MembershipSetting;
 use App\Models\PaymentMethod;
 use App\Models\User;
 use Illuminate\Database\QueryException;
@@ -18,8 +19,9 @@ use Illuminate\Support\Facades\Log;
  * One scan at the unattended kiosk. It admits only the case that needs no
  * human judgment at all: a recognised member, exactly one event running, no
  * visit on file yet, an admission decision of exactly Ok, room in the
- * building, an active Regular subscription for the event's month, and
- * nothing to pay. Anything else sends the member to the desk; the cases
+ * building, an active Regular subscription for the event's month (unless
+ * kiosk_subscribers_only is off), and nothing to pay. Anything else sends
+ * the member to the desk; the cases
  * staff must handle in person also alert every active Door+
  * (KioskStaffAlert).
  *
@@ -79,12 +81,21 @@ class KioskCheckInService
             return $this->seeStaff($name);
         }
 
-        // Both, not just the price: a comped category or a host also prices
-        // at nothing, and the kiosk only stands in for the desk for
-        // subscribers. Pool or another add-on owed means money changes hands.
+        // Both, not just the price, while kiosk_subscribers_only is on: a
+        // comped category or a host also prices at nothing, and by default
+        // the kiosk only stands in for the desk for subscribers. Off, anyone
+        // who owes $0 gets in. Pool or another add-on owed always means
+        // money changes hands.
         $month = $event->event_date->clone()->startOfMonth();
-        if (! $member->hasActiveSubscriptionFor(AddOn::entry(), $month) || $this->pricing->price($member, $event)->amountPaidCents > 0) {
+        $subscribersOnly = MembershipSetting::current()->kiosk_subscribers_only;
+        if ($subscribersOnly && ! $member->hasActiveSubscriptionFor(AddOn::entry(), $month)) {
             return $this->seeStaff($name, __('Your subscription doesn\'t cover tonight. Please see the front desk.'));
+        }
+
+        if ($this->pricing->price($member, $event)->amountPaidCents > 0) {
+            return $this->seeStaff($name, $subscribersOnly
+                ? __('Your subscription doesn\'t cover tonight. Please see the front desk.')
+                : __('There\'s something to pay for tonight. Please see the front desk.'));
         }
 
         $systemUser = User::where('email', config('membership.system_user_email'))->first();
