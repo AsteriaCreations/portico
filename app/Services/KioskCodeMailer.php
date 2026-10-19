@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Mail\KioskCodeEmail;
 use App\Models\AddOn;
 use App\Models\Member;
+use App\Models\MembershipSetting;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Mail;
 use Throwable;
@@ -20,8 +21,14 @@ use Throwable;
  */
 class KioskCodeMailer
 {
-    /** Per click: a slow SMTP round trip per member, inside one web request. */
-    public const BATCH_SIZE = 50;
+    /**
+     * Per click: a slow SMTP round trip per member, inside one web request.
+     * membership_settings.kiosk_code_email_batch_size (default 50).
+     */
+    public static function batchSize(): int
+    {
+        return MembershipSetting::current()->kiosk_code_email_batch_size;
+    }
 
     public function __construct(private KioskQrCode $qr) {}
 
@@ -71,11 +78,14 @@ class KioskCodeMailer
     /**
      * Sends the next batch of pendingSubscribers(). A member the mail server
      * refuses is reported and left pending; the rest of the batch continues.
+     * $limit defaults to batchSize().
      *
      * @return array{sent: int, failed: list<string>, remaining: int}
      */
-    public function sendBatch(int $limit = self::BATCH_SIZE): array
+    public function sendBatch(?int $limit = null): array
     {
+        $limit ??= self::batchSize();
+
         // Logging a whole batch would mark nobody and help nobody.
         if (! self::isConfigured()) {
             return ['sent' => 0, 'failed' => [], 'remaining' => $this->pendingSubscribers()->count()];

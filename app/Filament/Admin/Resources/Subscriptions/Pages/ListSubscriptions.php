@@ -58,7 +58,7 @@ class ListSubscriptions extends ListRecords
                 $description = trans_choice(
                     ':count subscriber this month has an email, is opted in to club email, and hasn\'t been sent their code yet.|:count subscribers this month have an email, are opted in to club email, and haven\'t been sent their code yet.',
                     $pending,
-                ).' '.__('This sends up to :batch now; click again for the next batch.', ['batch' => KioskCodeMailer::BATCH_SIZE]);
+                ).' '.__('This sends up to :batch now; click again for the next batch.', ['batch' => KioskCodeMailer::batchSize()]);
 
                 if (! KioskCodeMailer::isConfigured()) {
                     $description .= ' '.__('Email isn\'t set up on this server yet, so nothing can be sent until it is (see Mail in docs/DEPLOYMENT.md).');

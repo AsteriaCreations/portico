@@ -351,3 +351,20 @@ test('the kiosk rate limit defaults to 30 a minute and can only be raised', func
 
     expect(MembershipSetting::current()->fresh()->kiosk_requests_per_minute)->toBe(60);
 });
+
+test('the kiosk code email batch defaults to 50 and saves', function () {
+    expect(MembershipSetting::current()->kiosk_code_email_batch_size)->toBe(50);
+    $this->actingAs(userWithRoleForSettings(Role::Manager));
+
+    Livewire::test(MembershipSettings::class)
+        ->fillForm(['kiosk_code_email_batch_size' => 0])
+        ->callAction('save')
+        ->assertHasFormErrors(['kiosk_code_email_batch_size']);
+
+    Livewire::test(MembershipSettings::class)
+        ->fillForm(['kiosk_code_email_batch_size' => 20])
+        ->callAction('save')
+        ->assertHasNoErrors();
+
+    expect(MembershipSetting::current()->fresh()->kiosk_code_email_batch_size)->toBe(20);
+});

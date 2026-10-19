@@ -77,6 +77,7 @@ class MembershipSettings extends Page
             'kiosk_problem_result_seconds',
             'kiosk_same_code_cooldown_seconds',
             'kiosk_requests_per_minute',
+            'kiosk_code_email_batch_size',
             'week_starts_on',
             'age_of_majority',
             'alcohol_flag_age',
@@ -222,6 +223,14 @@ class MembershipSettings extends Page
                     ->integer()
                     ->minValue(30)
                     ->maxValue(600)
+                    ->required(),
+                TextInput::make('kiosk_code_email_batch_size')
+                    ->label('Kiosk codes emailed per click')
+                    ->helperText(__('How many subscribers one click of "Email kiosk codes" (Subscriptions) sends to; click again for the next batch. Each email waits on the mail server, so a big batch can time out the page — lower it if that happens.'))
+                    ->numeric()
+                    ->integer()
+                    ->minValue(1)
+                    ->maxValue(200)
                     ->required(),
                 Select::make('week_starts_on')
                     ->label('Week starts on')
