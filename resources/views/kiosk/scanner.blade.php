@@ -43,7 +43,7 @@ below cover only what happens on the tablet itself. --}}
         data-open="{{ $isOpen && $isLinked ? '1' : '0' }}"
         @if ($showsCodes)
             data-show-code-url="{{ route('kiosk.show-code') }}"
-            data-show-code-seconds="{{ \App\Services\KioskCodeDisplay::SECONDS }}"
+            data-show-code-seconds="{{ \App\Services\KioskCodeDisplay::seconds() }}"
         @endif
         data-strings="{{ json_encode([
             'codeFor' => __('Your kiosk QR code, :name'),

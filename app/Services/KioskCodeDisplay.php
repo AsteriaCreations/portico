@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Member;
+use App\Models\MembershipSetting;
 use Illuminate\Support\Facades\Cache;
 
 /**
@@ -16,8 +17,14 @@ class KioskCodeDisplay
 {
     private const CACHE_KEY = 'kiosk.show-code';
 
-    /** How long a sent code waits for the tablet, and how long the tablet shows it. */
-    public const SECONDS = 60;
+    /**
+     * How long a sent code waits for the tablet, and how long the tablet
+     * shows it: membership_settings.kiosk_show_code_seconds (default 60).
+     */
+    public static function seconds(): int
+    {
+        return MembershipSetting::current()->kiosk_show_code_seconds;
+    }
 
     /** Creates the member's code if they have none, then sends it. */
     public function queue(Member $member): void
@@ -25,7 +32,7 @@ class KioskCodeDisplay
         Cache::put(self::CACHE_KEY, [
             'member_id' => $member->getKey(),
             'token' => $member->ensureKioskToken(),
-        ], self::SECONDS);
+        ], self::seconds());
     }
 
     /**

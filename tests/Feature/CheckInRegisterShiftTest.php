@@ -717,3 +717,22 @@ test('a check-in with something due still asks for a payment method', function (
         ->mountAction('checkIn')
         ->assertFormFieldVisible('payment_method');
 });
+
+test('with a separate subscription envelope turned off, subscription cash goes in the night\'s envelope', function () {
+    MembershipSetting::current()->update(['cash_envelope_reminder_enabled' => true, 'separate_subscription_envelope' => false]);
+    $shift = app(RegisterShiftService::class)->openShift($this->register, $this->user, 100);
+    $event = Event::factory()->create(['name' => 'Friday Social', 'event_date' => today()]);
+    Attendance::factory()->create(['event_id' => $event->id, 'register_shift_id' => $shift->id, 'payment_method' => 'cash', 'amount_paid' => 20]);
+    Subscription::factory()->create(['register_shift_id' => $shift->id, 'payment_method' => 'cash', 'amount_paid' => 60]);
+
+    Livewire::test(CheckIn::class)
+        ->set('registerId', $this->register->id)
+        ->callAction('closeShift', data: ['closing_count' => 180])
+        ->assertHasNoActionErrors();
+
+    $body = lastNotificationBody();
+
+    expect($body)->toContain('Entry: $20.00 · Subscriptions: $60.00 · Other: $0.00 (total $80.00)')
+        ->and($body)->toContain('Make an envelope for Friday Social')
+        ->and($body)->not->toContain('its own envelope');
+});
