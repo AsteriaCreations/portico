@@ -46,8 +46,10 @@ class AppServiceProvider extends ServiceProvider
         // The kiosk's endpoints (routes/kiosk.php): generous for a door
         // queue scanning one code every couple of seconds, low enough to stop
         // anyone guessing codes. Counted per endpoint, so the tablet's
-        // show-code poll never eats into the scans' budget.
-        RateLimiter::for('kiosk', fn (Request $request): Limit => Limit::perMinute(30)->by($request->ip().'|'.$request->path()));
+        // show-code poll never eats into the scans' budget. The limit is
+        // membership_settings.kiosk_requests_per_minute (default 30, never
+        // below 30, so the poll's 20 a minute always fits).
+        RateLimiter::for('kiosk', fn (Request $request): Limit => Limit::perMinute(MembershipSetting::current()->kiosk_requests_per_minute)->by($request->ip().'|'.$request->path()));
 
         Gate::define('view-sensitive-member-fields', fn (User $user): bool => $user->role->atLeast(Role::Manager));
 

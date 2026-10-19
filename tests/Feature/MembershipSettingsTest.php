@@ -334,3 +334,20 @@ test('the kiosk screen times default to what the kiosk always used, and save', f
         ->and($setting->kiosk_problem_result_seconds)->toBe(10)
         ->and($setting->kiosk_same_code_cooldown_seconds)->toBe(12);
 });
+
+test('the kiosk rate limit defaults to 30 a minute and can only be raised', function () {
+    expect(MembershipSetting::current()->kiosk_requests_per_minute)->toBe(30);
+    $this->actingAs(userWithRoleForSettings(Role::Manager));
+
+    Livewire::test(MembershipSettings::class)
+        ->fillForm(['kiosk_requests_per_minute' => 20])
+        ->callAction('save')
+        ->assertHasFormErrors(['kiosk_requests_per_minute']);
+
+    Livewire::test(MembershipSettings::class)
+        ->fillForm(['kiosk_requests_per_minute' => 60])
+        ->callAction('save')
+        ->assertHasNoErrors();
+
+    expect(MembershipSetting::current()->fresh()->kiosk_requests_per_minute)->toBe(60);
+});

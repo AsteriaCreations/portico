@@ -76,6 +76,7 @@ class MembershipSettings extends Page
             'kiosk_result_seconds',
             'kiosk_problem_result_seconds',
             'kiosk_same_code_cooldown_seconds',
+            'kiosk_requests_per_minute',
             'week_starts_on',
             'age_of_majority',
             'alcohol_flag_age',
@@ -213,6 +214,14 @@ class MembershipSettings extends Page
                     ->integer()
                     ->minValue(1)
                     ->maxValue(60)
+                    ->required(),
+                TextInput::make('kiosk_requests_per_minute')
+                    ->label('Kiosk scans allowed per minute')
+                    ->helperText(__('The most scans the kiosk tablet may send in a minute; past it, the tablet asks the member to wait a moment. It stops anyone guessing codes. Raise it only if a busy door hits it. At least 30.'))
+                    ->numeric()
+                    ->integer()
+                    ->minValue(30)
+                    ->maxValue(600)
                     ->required(),
                 Select::make('week_starts_on')
                     ->label('Week starts on')
