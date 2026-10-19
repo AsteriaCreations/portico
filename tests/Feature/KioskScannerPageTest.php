@@ -186,3 +186,21 @@ test('turning kiosk check-in on reminds an admin to set up the tablet', function
 
     expect(DB::table('notifications')->where('notifiable_id', $admin->id)->where('data', 'like', '%set up the kiosk tablet%')->exists())->toBeTrue();
 });
+
+test('the kiosk screen gets its message and repeat-scan times from Membership Settings', function () {
+    withKioskBuild(true, function () {
+        Event::factory()->create(['event_date' => today()->toDateString()]);
+
+        openKiosk($this)
+            ->assertSee('data-result-seconds="4"', false)
+            ->assertSee('data-problem-result-seconds="7"', false)
+            ->assertSee('data-same-code-cooldown-seconds="8"', false);
+
+        MembershipSetting::current()->update(['kiosk_result_seconds' => 2, 'kiosk_problem_result_seconds' => 12, 'kiosk_same_code_cooldown_seconds' => 15]);
+
+        openKiosk($this)
+            ->assertSee('data-result-seconds="2"', false)
+            ->assertSee('data-problem-result-seconds="12"', false)
+            ->assertSee('data-same-code-cooldown-seconds="15"', false);
+    });
+});

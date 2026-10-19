@@ -6,9 +6,6 @@ import jsQR from 'jsqr';
 
 const root = document.getElementById('kiosk');
 const SCAN_EVERY_MS = 200;
-const SAME_CODE_COOLDOWN_MS = 8000;
-const SHOW_RESULT_MS = { admitted: 4000, already_checked_in: 4000 };
-const SHOW_OTHER_RESULT_MS = 7000;
 const CLOSED_RELOAD_MS = 60000;
 // 20 a minute: well inside the kiosk rate limit, which counts this
 // endpoint separately from scans.
@@ -35,6 +32,11 @@ function start() {
     };
     const showCodeUrl = root.dataset.showCodeUrl;
     const showCodeSeconds = Number(root.dataset.showCodeSeconds) || 60;
+    // Membership Settings; the fallbacks are the defaults.
+    const successMs = (Number(root.dataset.resultSeconds) || 4) * 1000;
+    const resultMs = { admitted: successMs, already_checked_in: successMs };
+    const problemResultMs = (Number(root.dataset.problemResultSeconds) || 7) * 1000;
+    const sameCodeCooldownMs = (Number(root.dataset.sameCodeCooldownSeconds) || 8) * 1000;
     const result = root.querySelector('[data-result]');
     const video = root.querySelector('[data-video]');
     const canvas = document.createElement('canvas');
@@ -92,7 +94,7 @@ function start() {
                 body: JSON.stringify({ token }),
             });
         } catch {
-            showResult('error', strings.offline, SHOW_OTHER_RESULT_MS, backToScanning);
+            showResult('error', strings.offline, problemResultMs, backToScanning);
 
             return;
         }
@@ -103,17 +105,17 @@ function start() {
             return;
         }
         if (response.status === 404) {
-            showResult('closed', strings.turnedOff, SHOW_OTHER_RESULT_MS, () => window.location.reload());
+            showResult('closed', strings.turnedOff, problemResultMs, () => window.location.reload());
 
             return;
         }
         if (response.status === 429) {
-            showResult('error', strings.busy, SHOW_OTHER_RESULT_MS, backToScanning);
+            showResult('error', strings.busy, problemResultMs, backToScanning);
 
             return;
         }
         if (!response.ok) {
-            showResult('error', strings.offline, SHOW_OTHER_RESULT_MS, backToScanning);
+            showResult('error', strings.offline, problemResultMs, backToScanning);
 
             return;
         }
@@ -121,12 +123,12 @@ function start() {
         const body = await response.json();
 
         if (body.status === 'closed') {
-            showResult('closed', body.message, SHOW_OTHER_RESULT_MS, () => window.location.reload());
+            showResult('closed', body.message, problemResultMs, () => window.location.reload());
 
             return;
         }
 
-        showResult(body.status, body.message, SHOW_RESULT_MS[body.status] ?? SHOW_OTHER_RESULT_MS, backToScanning);
+        showResult(body.status, body.message, resultMs[body.status] ?? problemResultMs, backToScanning);
     }
 
     function scanFrame() {
@@ -146,7 +148,7 @@ function start() {
         if (!code || !code.data) {
             return;
         }
-        if (code.data === lastCode && Date.now() - lastCodeAt < SAME_CODE_COOLDOWN_MS) {
+        if (code.data === lastCode && Date.now() - lastCodeAt < sameCodeCooldownMs) {
             return;
         }
 

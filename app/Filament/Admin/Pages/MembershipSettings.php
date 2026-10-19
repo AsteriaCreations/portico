@@ -73,6 +73,9 @@ class MembershipSettings extends Page
             'checkin_close_minutes_same_day',
             'first_visit_after_close_enabled',
             'kiosk_show_code_seconds',
+            'kiosk_result_seconds',
+            'kiosk_problem_result_seconds',
+            'kiosk_same_code_cooldown_seconds',
             'week_starts_on',
             'age_of_majority',
             'alcohol_flag_age',
@@ -186,6 +189,30 @@ class MembershipSettings extends Page
                     ->integer()
                     ->minValue(10)
                     ->maxValue(300)
+                    ->required(),
+                TextInput::make('kiosk_result_seconds')
+                    ->label('Kiosk "checked in" message time (seconds)')
+                    ->helperText(__('How long the kiosk shows "checked in" or "already checked in" after a scan before it is ready for the next person.'))
+                    ->numeric()
+                    ->integer()
+                    ->minValue(1)
+                    ->maxValue(30)
+                    ->required(),
+                TextInput::make('kiosk_problem_result_seconds')
+                    ->label('Kiosk problem message time (seconds)')
+                    ->helperText(__('How long the kiosk shows any other result, such as "see staff" or "code not recognized", so there is time to read it.'))
+                    ->numeric()
+                    ->integer()
+                    ->minValue(1)
+                    ->maxValue(60)
+                    ->required(),
+                TextInput::make('kiosk_same_code_cooldown_seconds')
+                    ->label('Kiosk ignores a repeated code for (seconds)')
+                    ->helperText(__('After a scan, the kiosk ignores the same code for this long, so a code still held up to the camera isn\'t scanned twice. A different code scans right away.'))
+                    ->numeric()
+                    ->integer()
+                    ->minValue(1)
+                    ->maxValue(60)
                     ->required(),
                 Select::make('week_starts_on')
                     ->label('Week starts on')
