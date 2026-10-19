@@ -245,3 +245,17 @@ test('the club week follows the language by default, and the chosen start day on
         ->and(MembershipSetting::endOfWeek()->toDateTimeString())->toBe('2026-09-24 23:59:59')
         ->and(MembershipSetting::startOfWeek(now()->subWeek())->toDateString())->toBe('2026-09-11');
 });
+
+test('letting a first visit check in after close defaults on and can be turned off', function () {
+    expect(MembershipSetting::current()->first_visit_after_close_enabled)->toBeTrue();
+
+    $this->actingAs(userWithRoleForSettings(Role::Manager));
+
+    Livewire::test(MembershipSettings::class)
+        ->assertSchemaStateSet(['first_visit_after_close_enabled' => true])
+        ->fillForm(['first_visit_after_close_enabled' => false])
+        ->callAction('save')
+        ->assertHasNoErrors();
+
+    expect(MembershipSetting::current()->fresh()->first_visit_after_close_enabled)->toBeFalse();
+});

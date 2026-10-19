@@ -11,6 +11,17 @@ is fixes only.
 
 ### Added
 
+- **Three club-policy settings, each defaulting to what Portico already did.** Upgrading changes
+  nothing until a club flips one. **Migration:** three `membership_settings` columns.
+  - **Kiosk admits subscribers only** (Feature Flags, on). Off, the kiosk also lets in anyone else
+    who owes nothing tonight, such as a comped category or the event's host. Anyone with money to
+    pay, or anything for staff, still goes to the desk.
+  - **Let a first visit check in after close** (Membership Settings, on). Off, an event's check-in
+    close applies to everyone at the desk, first visits included.
+  - **Hold desk prepay cash for its event** (Feature Flags, on). Off, cash the desk takes for a
+    later event stays in tonight's box and counts toward tonight's close-out. Cash already held
+    stays held, and Prepay List cash is always held.
+
 - **Close Box offers the drop.** When no drop has been recorded yet and cash came in, Close Box
   shows what the envelopes should hold (the envelope reminder's breakdown when that flag is on,
   otherwise the total) and a **Record a drop for the envelopes before closing** checkbox, off by
