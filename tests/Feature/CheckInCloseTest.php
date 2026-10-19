@@ -194,3 +194,26 @@ test('an unarrived prepay doesn\'t make a visit, but an arrived one does', funct
         ->and($event->isCheckInClosedFor($newcomer))->toBeFalse()
         ->and($event->isCheckInClosedFor($this->member))->toBeTrue();
 });
+
+test('with first visits after close turned off, a first visit is closed out like everyone else', function () {
+    MembershipSetting::current()->update(['first_visit_after_close_enabled' => false]);
+    $irregular = Member::factory()->create([
+        'category_id' => $this->irregular->id,
+        'dob' => '1990-01-01',
+        'is_banned' => false,
+        'on_watchlist' => false,
+        'missing_paperwork' => false,
+    ]);
+    $event = closingEvent('2026-10-17 23:00:00', '2026-10-17 20:45:00');
+
+    expect($irregular->isFirstVisit())->toBeTrue()
+        ->and($event->isCheckInClosedFor($irregular))->toBeTrue();
+
+    Livewire::test(CheckIn::class)
+        ->fillForm(['event_id' => $event->id, 'member_id' => $irregular->id])
+        ->assertActionHidden('checkIn');
+
+    expect(fn () => app(CheckInService::class)->record($irregular, $event, $this->user, new CheckInRequest, null))
+        ->toThrow(CheckInRefused::class);
+    expect(Attendance::where('member_id', $irregular->id)->exists())->toBeFalse();
+});
