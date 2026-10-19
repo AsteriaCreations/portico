@@ -87,7 +87,7 @@ trait ShowsKioskQrCode
             ->visible(fn (): bool => $resolveMember() !== null && Gate::allows('show-kiosk-code-on-kiosk'))
             ->requiresConfirmation()
             ->modalHeading(__('Show the kiosk QR code on the kiosk?'))
-            ->modalDescription(__('The kiosk tablet shows this member\'s code for :seconds seconds so they can take a picture of it. Anyone at the tablet can see it, so send it only while the member is standing there.', ['seconds' => KioskCodeDisplay::SECONDS]))
+            ->modalDescription(__('The kiosk tablet shows this member\'s code for :seconds seconds so they can take a picture of it. Anyone at the tablet can see it, so send it only while the member is standing there.', ['seconds' => KioskCodeDisplay::seconds()]))
             ->modalSubmitActionLabel(__('Show'))
             ->action(function () use ($resolveMember, $isPractice): void {
                 abort_unless(Gate::allows('show-kiosk-code-on-kiosk'), 403);
@@ -119,7 +119,7 @@ trait ShowsKioskQrCode
 
                 Notification::make()
                     ->title(__('Showing on the kiosk'))
-                    ->body(__('The code appears on the kiosk within a few seconds, for :seconds seconds.', ['seconds' => KioskCodeDisplay::SECONDS]))
+                    ->body(__('The code appears on the kiosk within a few seconds, for :seconds seconds.', ['seconds' => KioskCodeDisplay::seconds()]))
                     ->success()
                     ->send();
             });

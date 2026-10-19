@@ -74,7 +74,7 @@ test('a sent code is handed to the tablet once, with the member\'s name', functi
 test('a sent code the tablet never collects expires', function () {
     app(KioskCodeDisplay::class)->queue($this->member);
 
-    $this->travel(KioskCodeDisplay::SECONDS + 1)->seconds();
+    $this->travel(KioskCodeDisplay::seconds() + 1)->seconds();
 
     pollKiosk($this)->assertNoContent();
 });
@@ -192,4 +192,14 @@ test('an admin can turn show-on-kiosk on at feature flags', function () {
         ->assertHasNoFormErrors();
 
     expect(MembershipSetting::current()->kiosk_show_code_enabled)->toBeTrue();
+});
+
+test('a sent code waits as long as Membership Settings says', function () {
+    $this->settings->update(['kiosk_show_code_seconds' => 20]);
+    app(KioskCodeDisplay::class)->queue($this->member);
+
+    $this->travel(21)->seconds();
+
+    pollKiosk($this)->assertNoContent();
+    expect(KioskCodeDisplay::seconds())->toBe(20);
 });
