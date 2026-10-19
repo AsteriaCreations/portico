@@ -564,3 +564,48 @@ test('the member status export includes registered date, sponsor and follow-up s
         ->toContain('thesponsor')
         ->toContain('2026-09-20');
 });
+
+test('marking follow-up sent moves a guest to the category chosen on Membership Settings, and undoing it moves them back', function () {
+    $guestCategory = Category::factory()->create(['name' => 'Guest']);
+    Category::factory()->create(['name' => 'Irregular']);
+    $welcomed = Category::factory()->create(['name' => 'Welcomed']);
+    MembershipSetting::current()->update(['guest_followup_category_id' => $welcomed->id]);
+    $guest = Member::factory()->create(['category_id' => $guestCategory->id]);
+
+    $guest->markGuestFollowupSent(auth()->user());
+    expect($guest->fresh()->category_id)->toBe($welcomed->id);
+
+    $guest->fresh()->clearGuestFollowup();
+    expect($guest->fresh()->category_id)->toBe($guestCategory->id);
+});
+
+test('with moving turned off, marking follow-up sent records it and leaves the guest a Guest', function () {
+    $guestCategory = Category::factory()->create(['name' => 'Guest']);
+    Category::factory()->create(['name' => 'Irregular']);
+    MembershipSetting::current()->update(['guest_followup_moves_category' => false]);
+    $guest = Member::factory()->create(['category_id' => $guestCategory->id]);
+
+    expect($guest->markGuestFollowupSent(auth()->user()))->toBeTrue()
+        ->and($guest->fresh()->guest_followup_sent_at)->not->toBeNull()
+        ->and($guest->fresh()->category_id)->toBe($guestCategory->id);
+
+    $guest->fresh()->clearGuestFollowup();
+    expect($guest->fresh()->guest_followup_sent_at)->toBeNull()
+        ->and($guest->fresh()->category_id)->toBe($guestCategory->id);
+});
+
+test('a deleted follow-up category falls back to Irregular', function () {
+    $guestCategory = Category::factory()->create(['name' => 'Guest']);
+    $irregular = Category::factory()->create(['name' => 'Irregular']);
+    $welcomed = Category::factory()->create(['name' => 'Welcomed']);
+    MembershipSetting::current()->update(['guest_followup_category_id' => $welcomed->id]);
+    $welcomed->delete();
+    MembershipSetting::forgetCurrent();
+
+    expect(MembershipSetting::current()->guest_followup_category_id)->toBeNull();
+
+    $guest = Member::factory()->create(['category_id' => $guestCategory->id]);
+    $guest->markGuestFollowupSent(auth()->user());
+
+    expect($guest->fresh()->category_id)->toBe($irregular->id);
+});

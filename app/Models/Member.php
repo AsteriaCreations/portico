@@ -198,7 +198,9 @@ class Member extends Model
     /**
      * Records that the club has sent this guest its follow-up (welcome email,
      * waiver, membership info -- whatever it sends), and who marked it, and
-     * moves the guest to Irregular: once welcomed they're a standard member.
+     * moves the guest to the club's chosen category (Irregular by default:
+     * once welcomed they're a standard member), or leaves them a Guest if
+     * the club chose that. See MembershipSetting::guestFollowupTargetCategory().
      * Set only through here, not mass assignment, so the plain edit form
      * can't change it. Returns false for a non-guest, which is left untouched.
      */
@@ -208,11 +210,12 @@ class Member extends Model
             return false;
         }
 
-        $this->forceFill([
-            'guest_followup_sent_at' => now(),
-            'guest_followup_sent_by' => $by->id,
-            'category_id' => Category::where('name', 'Irregular')->firstOrFail()->id,
-        ])->save();
+        $target = MembershipSetting::guestFollowupTargetCategory();
+
+        $this->forceFill(array_merge(
+            ['guest_followup_sent_at' => now(), 'guest_followup_sent_by' => $by->id],
+            $target ? ['category_id' => $target->id] : [],
+        ))->save();
         $this->unsetRelation('category');
 
         return true;
@@ -220,13 +223,14 @@ class Member extends Model
 
     /**
      * Undoes markGuestFollowupSent(), e.g. after marking the wrong guest:
-     * clears the mark and, if they're still the Irregular it made them,
-     * moves them back to Guest. A member recategorized since is left in
+     * clears the mark and, if they're still in the category it moved them
+     * to, moves them back to Guest. A member recategorized since is left in
      * their category.
      */
     public function clearGuestFollowup(): void
     {
-        $revertToGuest = $this->guest_followup_sent_at !== null && $this->category?->name === 'Irregular';
+        $target = MembershipSetting::guestFollowupTargetCategory();
+        $revertToGuest = $this->guest_followup_sent_at !== null && $target !== null && $this->category_id === $target->id;
 
         $this->forceFill(array_merge(
             ['guest_followup_sent_at' => null, 'guest_followup_sent_by' => null],
