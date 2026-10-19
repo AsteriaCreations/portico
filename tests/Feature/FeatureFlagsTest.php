@@ -102,3 +102,21 @@ test('saving updates the singleton row', function () {
         ->and($setting->behavior_notes_enabled)->toBeFalse()
         ->and($setting->guests_enabled)->toBeFalse();
 });
+
+test('the kiosk subscribers-only and desk prepay holding settings default on and save', function () {
+    $setting = MembershipSetting::current();
+    expect($setting->kiosk_subscribers_only)->toBeTrue()
+        ->and($setting->hold_desk_prepay_cash)->toBeTrue();
+
+    $this->actingAs(userWithRoleForFeatureFlags(Role::Manager));
+
+    Livewire::test(FeatureFlags::class)
+        ->assertSchemaStateSet(['kiosk_subscribers_only' => true, 'hold_desk_prepay_cash' => true])
+        ->fillForm(['kiosk_subscribers_only' => false, 'hold_desk_prepay_cash' => false])
+        ->callAction('save')
+        ->assertHasNoErrors();
+
+    $setting = MembershipSetting::current()->fresh();
+    expect($setting->kiosk_subscribers_only)->toBeFalse()
+        ->and($setting->hold_desk_prepay_cash)->toBeFalse();
+});

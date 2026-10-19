@@ -84,6 +84,8 @@ class FeatureFlags extends Page
             'door_preferred_name_change_enabled',
             'kiosk_checkin_enabled',
             'kiosk_show_code_enabled',
+            'kiosk_subscribers_only',
+            'hold_desk_prepay_cash',
             'upstream_check_enabled',
             'deploy_trigger_enabled',
         ]));
@@ -114,6 +116,10 @@ class FeatureFlags extends Page
                             ->label('Cash envelope reminder on closing the box')
                             ->helperText(__('When a box closes with cash collected, the confirmation stays on screen until it is dismissed and tells staff to seal the cash in an envelope labelled with the Entry / Other amounts and the event(s) or date it covers, with subscription cash and each event\'s prepaid cash in envelopes of their own. Only cash payment methods count. It\'s a reminder only: nothing extra is saved. Has no effect while register shift tracking is off. Off by default.'))
                             ->required(),
+                        Toggle::make('hold_desk_prepay_cash')
+                            ->label('Hold desk prepay cash for its event')
+                            ->helperText(__('On, cash the Check-In Desk takes for a later event goes in that event\'s prepay envelope, and the box\'s expected count leaves it out. Off, it stays in tonight\'s box and is counted like the rest of tonight\'s cash. Only changes payments taken from now on; cash already held stays held. Cash recorded on an event\'s Prepay List is always held for the event. On by default.'))
+                            ->required(),
                         Toggle::make('visit_notes_enabled')
                             ->label('Patron visit notes enabled')
                             ->helperText(__('Turns off the Visit note column on Active Patrons (e.g. a clothing description to spot a flagged patron tonight). Never affects an already-saved note on an existing attendance row, but nothing shows it once it drops off Active Patrons regardless. Leave on unless this club doesn\'t want staff jotting this kind of note.'))
@@ -136,7 +142,11 @@ class FeatureFlags extends Page
                             ->required(),
                         Toggle::make('kiosk_checkin_enabled')
                             ->label('Kiosk check-in')
-                            ->helperText(__('Adds a "Kiosk QR code" button for the selected member on the Check-In Desk and on the member\'s page, showing a code to print or photograph. The code only identifies the member: the kiosk lets them in only while they have an active subscription and owe nothing, and sends anyone else to the desk. Off by default.'))
+                            ->helperText(__('Adds a "Kiosk QR code" button for the selected member on the Check-In Desk and on the member\'s page, showing a code to print or photograph. The code only identifies the member: the kiosk lets them in only when they owe nothing (and, by default, have an active subscription), and sends anyone else to the desk. Off by default.'))
+                            ->required(),
+                        Toggle::make('kiosk_subscribers_only')
+                            ->label('Kiosk admits subscribers only')
+                            ->helperText(__('On, the kiosk lets a member in only with an active subscription for the event\'s month. Off, it also lets in anyone else who owes nothing tonight, such as a comped category or the event\'s host. Either way, anyone with something to pay, a watchlist or ID check, or anything else for staff is sent to the desk. Needs Kiosk check-in on. On by default.'))
                             ->required(),
                         Toggle::make('kiosk_show_code_enabled')
                             ->label('Show codes on the kiosk')

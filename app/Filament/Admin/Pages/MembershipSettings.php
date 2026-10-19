@@ -68,6 +68,7 @@ class MembershipSettings extends Page
             'event_window_buffer_minutes',
             'checkin_close_minutes_overnight',
             'checkin_close_minutes_same_day',
+            'first_visit_after_close_enabled',
             'week_starts_on',
             'age_of_majority',
             'alcohol_flag_age',
@@ -158,6 +159,10 @@ class MembershipSettings extends Page
                     ->integer()
                     ->minValue(0)
                     ->maxValue(1440)
+                    ->required(),
+                Toggle::make('first_visit_after_close_enabled')
+                    ->label('Let a first visit check in after close')
+                    ->helperText(__('Lets the Check-In Desk still check in someone on their first visit (e.g. a new member finishing paperwork) after an event\'s check-in has closed. Off, check-in closes for everyone. The kiosk is always closed after close. On by default.'))
                     ->required(),
                 Select::make('week_starts_on')
                     ->label('Week starts on')
