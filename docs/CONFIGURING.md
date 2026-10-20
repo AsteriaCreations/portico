@@ -87,27 +87,40 @@ rarely need to touch most of them.
 | Probation period (days) | `90` | Never blocks admission or changes pricing. A member on probation can't register a guest, unless the next setting allows it. |
 | Allow guests during probation | off | Lets a member still on probation register a guest at the Check-In Desk. |
 | Max guests per member per night | *(blank — no limit)* | How many new guests one member may register in a night, counted from when they checked in (a late event doesn't reset it at midnight). Returning guests who check in under them don't count. |
+| Move a guest on when their follow-up is sent | on | When a guest is marked "follow-up sent" on the Members list, moves them out of Guest into the category below. Off, they stay a Guest and only the follow-up is recorded. |
+| Category after follow-up | *(blank — Irregular)* | Where a guest goes once their follow-up is sent. If the chosen category is later deleted, Irregular is used. |
 | Venue capacity | *(blank)* | Building-wide occupancy cap across concurrent events. **Blank = not enforced.** |
 | Default cash drawer opening float | *(blank)* | Pre-fills the opening count when a shift is opened. |
 | Event window buffer (minutes) | `15` | Slack around an event's start/end for the check-in picker (also handles an event running past midnight). |
+| Check-in closes before the end: overnight / same-day events (minutes) | `60` / `30` | The default check-in close time for a new event, this many minutes before it ends; "overnight" is an event that runs past midnight. Each event can override it. After the close, the desk and kiosk take no new check-ins; marking prepaid arrivals still works. Changing this doesn't move events already saved. |
+| Let a first visit check in after close | on | The desk can still check in someone on their first visit (e.g. a new member finishing paperwork) after check-in has closed. Off, check-in closes for everyone. The kiosk is always closed after close. |
+| Kiosk "Show on kiosk" time (seconds) | `60` | How long the kiosk tablet shows a member's code sent with "Show on kiosk" (10–300). Only matters while "Show codes on the kiosk" is on. |
+| Kiosk "checked in" message time (seconds) | `4` | How long the kiosk shows "checked in" / "already checked in" before it's ready for the next person. |
+| Kiosk problem message time (seconds) | `7` | How long the kiosk shows any other result, such as "see staff" or "code not recognized". |
+| Kiosk ignores a repeated code for (seconds) | `8` | So a code still held up to the camera isn't scanned twice. A different code scans right away. |
+| Kiosk scans allowed per minute | `30` | The kiosk's rate limit; past it, the tablet asks the member to wait. It stops anyone guessing codes. Can't go below 30. |
+| Kiosk codes emailed per click | `50` | How many subscribers one click of "Email kiosk codes" (Subscriptions) sends to. Lower it if a slow mail server times the page out. |
 | Week starts on | *(blank — follows the language; Monday in English)* | First day of the club's week, for the "this week" figures on Analytics and when the Cleaning Checklist resets. Changing it mid-week re-opens this week's checklist tasks. |
 | Age of majority | `18` | `AdmissionPolicy` blocks a member below this age outright. Jurisdiction-specific. |
 | Check-ID / no-alcohol flag age | `21` | A member below this age (but at or above "Age of majority") is admitted but flagged. Set equal to "Age of majority" to disable the flag. |
 | Watchlist: who staff notify | *(blank — uses `WATCHLIST_NOTIFY_LABEL`)* | Where staff post a heads-up before admitting a watchlisted member; the desk shows "Notify …" and asks staff to confirm. Blank falls back to the `.env` value (default "the staff channel"). |
+| Watchlist probation | Same as new-member probation | When an Owner takes a member off the watchlist, they can start a probation, and staff see "Recently off watchlist" at the desk and on Active Patrons. "Same as new-member probation" uses the probation period and guest rule above; **Custom** sets its own length in days and whether it blocks guests (off by default: informational only); **Off** disables it. |
 | Currency code | `USD` | A 3-letter ISO 4217 code, used everywhere a money figure is shown — the check-in desk's live totals, every Analytics widget, and every money column in the admin panel. |
 | Language | *(blank — server default, English)* | The admin panel's language for everyone on this install. Lists only languages that have a `lang/{code}.json` translation file; with none installed, English is the only choice. Names you enter yourself (categories, comp reasons, plans, …) are never translated. |
 | Displayed organization name | *(blank)* | Panel brand override — see "Name & branding". |
 | Searchable member fields | `Username` | Which fields the member search boxes match on, and what shows in member dropdown labels. |
+| Check-in desk display name | Preferred name | What the desk shows once a member is selected (greeting line, checked-in roster, voucher labels, sponsor note): preferred name, full name or username. Falls back to username when the chosen field is blank. |
 | Require email at sign-up | on | Whether the Check-In Desk requires an email when a Prospective finishes sign-up or a guest is registered. Name is always required. |
 | Hide personal info by default on the Members list | on | Whether the Members table masks name/DOB/email until "Show personal info". |
+| Show staff roles on Active Patrons | on | Active Patrons notes which staff are signed in ("Also in the building"). Off lists their names without each person's role. |
 | Upstream remote / branch | *(blank)* / `main` | A git remote already added on the server (this app never runs `git remote add` itself) that this fork tracks for updates. |
 | Deploy Scheduled Task name | *(blank)* | The exact name of a Windows Scheduled Task, already registered on the server, that "Run update now" fires — see [`docs/DEPLOYMENT.md`](DEPLOYMENT.md) §7 "Web-triggered updates". |
 
 ## Feature Flags
 
 `/admin/feature-flags` (Manager+). Every flag defaults **on** except the ones marked *(default off)* below: an
-opt-in desk behavior, or the upstream-update pair, which has nothing to do on a fresh install
-with no upstream remote configured. **A flag stops *new* writes
+opt-in desk behavior, the kiosk (it needs a tablet set up first), or the upstream-update pair,
+which has nothing to do on a fresh install with no upstream remote configured. **A flag stops *new* writes
 — it never hides data already collected**, so turning one off after use leaves existing
 records intact and reviewable.
 
@@ -126,6 +139,8 @@ Turning a feature **on** sends whoever saved it a notification (the bell) for ea
 | Door-ahead prepay | No per-event "Allow prepay ahead of the door" toggle or Prepay List tab. |
 | Register shift tracking | No cash-drawer section at check-in and no Register Shifts / Registers resources. |
 | Cash envelope reminder | *(default off)* Closing a box shows only the variance. When on and cash was collected, the confirmation stays up and tells staff to envelope the night's cash with its Entry / Other amounts and the event(s) or date, with subscription cash and each event's prepaid cash in envelopes of their own. Reminder only, nothing saved. |
+| Subscription cash in its own envelope | The envelope reminder puts subscription cash in the night's envelope, listed as its own amount, instead of a separate envelope labelled with the date. Only changes what the reminder says; no effect while the reminder is off. |
+| Hold desk prepay cash for its event | Cash the desk takes for a later event stays in tonight's box and is counted with it. When on, it goes in that event's prepay envelope and the box's expected count leaves it out. Only affects payments taken from then on. Cash recorded on an event's Prepay List is always held for the event. |
 | Showrunner door commission | No Showrunner Payout Tiers resource or commission breakdown on events. |
 | Instructor per-head pay | No Instructor Pay Rates tab on Event Types or instructor payout breakdown. |
 | Patron visit notes | No visit-note column on Active Patrons. |
@@ -134,6 +149,9 @@ Turning a feature **on** sends whoever saved it a notification (the bell) for ea
 | Day passes for later events | *(default off)* The Check-In Desk sells a day pass (e.g. Pool) only for tonight's events. When on, it also offers any upcoming event; that money goes into tonight's box, not held for the event. |
 | Door can rename usernames | *(default off)* Only Manager+ can rename a username, from the member's page. When on, Door gets a "Rename username" button on the Check-In Desk, and each Door rename notifies every active Manager+. |
 | Door can change preferred names | *(default off)* Only Manager+ can change a preferred name (member page, or the desk button). When on, Door gets a "Change preferred name" button on the Check-In Desk too. Not logged. |
+| Kiosk check-in | *(default off)* No kiosk: no "Kiosk QR code" button at the desk or on the member page, and the kiosk page answers "not found". When on, a member scans their code at a tablet and is let in only when they owe nothing; anyone else is sent to the desk. With it on, Admin+ gets a **Set up a kiosk tablet** button on this page, which makes the link to open on the tablet; making a new one stops a tablet already set up until it opens the new link. Setting up the tablet: [`docs/DEPLOYMENT.md`](DEPLOYMENT.md) "A kiosk tablet". |
+| Kiosk admits subscribers only | The kiosk also lets in anyone else who owes nothing tonight, such as a comped category or the event's host. When on, only a member with an active subscription for the event's month. Anyone with something to pay, a watchlist or ID check is always sent to the desk. Needs Kiosk check-in. |
+| Show codes on the kiosk | *(default off)* No "Show on kiosk" button. When on, staff can put a member's code on the tablet for them to photograph (time set on Membership Settings); anyone at the tablet can see it while it's up. Needs Kiosk check-in. |
 | Upstream update checking | *(default off)* No Upstream Updates page and no scheduled git fetch. Only useful if this fork tracks an upstream remote. |
 | Web-triggered deploy | *(default off)* No "Run update now" button on Upstream Updates. Also needs a Deploy Scheduled Task name configured and a Scheduled Task registered on the server — see [`docs/DEPLOYMENT.md`](DEPLOYMENT.md) §7 "Web-triggered updates". |
 
