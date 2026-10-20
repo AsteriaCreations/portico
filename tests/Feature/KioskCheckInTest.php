@@ -285,3 +285,18 @@ test('with subscribers only turned off, a member who owes money is still sent to
 
     expect(Attendance::count())->toBe(0);
 });
+
+test('the kiosk rate limit comes from Membership Settings', function () {
+    foreach (range(1, 30) as $attempt) {
+        scanAtKiosk($this, 'not-a-real-code')->assertOk();
+    }
+    scanAtKiosk($this, 'not-a-real-code')->assertTooManyRequests();
+
+    MembershipSetting::current()->update(['kiosk_requests_per_minute' => 40]);
+    $this->travel(2)->minutes();
+
+    foreach (range(1, 40) as $attempt) {
+        scanAtKiosk($this, 'not-a-real-code')->assertOk();
+    }
+    scanAtKiosk($this, 'not-a-real-code')->assertTooManyRequests();
+});

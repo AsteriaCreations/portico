@@ -214,3 +214,14 @@ test('the bulk action sends nothing while email is not set up', function () {
 
     Mail::assertNothingSent();
 });
+
+test('a batch with no size given sends the Membership Settings batch size', function () {
+    withRealMail();
+    MembershipSetting::current()->update(['kiosk_code_email_batch_size' => 2]);
+    foreach (range(1, 3) as $ignored) {
+        kioskEmailSubscriber($this->entry);
+    }
+
+    expect(KioskCodeMailer::batchSize())->toBe(2)
+        ->and(app(KioskCodeMailer::class)->sendBatch())->toMatchArray(['sent' => 2, 'remaining' => 1]);
+});

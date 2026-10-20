@@ -45,6 +45,9 @@ class KioskCheckInController extends Controller
             'badSetupLink' => $key !== null,
             'isOpen' => Event::anyCurrentlyActive(),
             'showsCodes' => $settings->kiosk_show_code_enabled,
+            'resultSeconds' => $settings->kiosk_result_seconds,
+            'problemResultSeconds' => $settings->kiosk_problem_result_seconds,
+            'sameCodeCooldownSeconds' => $settings->kiosk_same_code_cooldown_seconds,
             'isBuilt' => ViteBuild::has(self::SCRIPT),
             'script' => self::SCRIPT,
         ]);

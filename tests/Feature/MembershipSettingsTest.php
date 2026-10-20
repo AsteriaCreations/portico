@@ -309,3 +309,62 @@ test('the separate subscription envelope setting defaults on and saves on Featur
 
     expect(MembershipSetting::current()->fresh()->separate_subscription_envelope)->toBeFalse();
 });
+
+test('the kiosk screen times default to what the kiosk always used, and save', function () {
+    $setting = MembershipSetting::current();
+    expect($setting->kiosk_result_seconds)->toBe(4)
+        ->and($setting->kiosk_problem_result_seconds)->toBe(7)
+        ->and($setting->kiosk_same_code_cooldown_seconds)->toBe(8);
+
+    $this->actingAs(userWithRoleForSettings(Role::Manager));
+
+    Livewire::test(MembershipSettings::class)
+        ->assertSchemaStateSet(['kiosk_result_seconds' => 4, 'kiosk_problem_result_seconds' => 7, 'kiosk_same_code_cooldown_seconds' => 8])
+        ->fillForm(['kiosk_result_seconds' => 0])
+        ->callAction('save')
+        ->assertHasFormErrors(['kiosk_result_seconds']);
+
+    Livewire::test(MembershipSettings::class)
+        ->fillForm(['kiosk_result_seconds' => 3, 'kiosk_problem_result_seconds' => 10, 'kiosk_same_code_cooldown_seconds' => 12])
+        ->callAction('save')
+        ->assertHasNoErrors();
+
+    $setting = MembershipSetting::current()->fresh();
+    expect($setting->kiosk_result_seconds)->toBe(3)
+        ->and($setting->kiosk_problem_result_seconds)->toBe(10)
+        ->and($setting->kiosk_same_code_cooldown_seconds)->toBe(12);
+});
+
+test('the kiosk rate limit defaults to 30 a minute and can only be raised', function () {
+    expect(MembershipSetting::current()->kiosk_requests_per_minute)->toBe(30);
+    $this->actingAs(userWithRoleForSettings(Role::Manager));
+
+    Livewire::test(MembershipSettings::class)
+        ->fillForm(['kiosk_requests_per_minute' => 20])
+        ->callAction('save')
+        ->assertHasFormErrors(['kiosk_requests_per_minute']);
+
+    Livewire::test(MembershipSettings::class)
+        ->fillForm(['kiosk_requests_per_minute' => 60])
+        ->callAction('save')
+        ->assertHasNoErrors();
+
+    expect(MembershipSetting::current()->fresh()->kiosk_requests_per_minute)->toBe(60);
+});
+
+test('the kiosk code email batch defaults to 50 and saves', function () {
+    expect(MembershipSetting::current()->kiosk_code_email_batch_size)->toBe(50);
+    $this->actingAs(userWithRoleForSettings(Role::Manager));
+
+    Livewire::test(MembershipSettings::class)
+        ->fillForm(['kiosk_code_email_batch_size' => 0])
+        ->callAction('save')
+        ->assertHasFormErrors(['kiosk_code_email_batch_size']);
+
+    Livewire::test(MembershipSettings::class)
+        ->fillForm(['kiosk_code_email_batch_size' => 20])
+        ->callAction('save')
+        ->assertHasNoErrors();
+
+    expect(MembershipSetting::current()->fresh()->kiosk_code_email_batch_size)->toBe(20);
+});
