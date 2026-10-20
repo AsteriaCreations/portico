@@ -127,7 +127,7 @@ test('the Due line includes the price of a subscription bought in this check-in,
         ->and($component->instance()->getLiveDueTotal())->toBe(75.0);
     $component->assertSee('Due: $75.00');
 
-    $component->callAction('checkIn', data: ['checked_in_at' => now()])->assertHasNoActionErrors();
+    $component->callAction('checkIn', data: ['payment_method' => 'comp', 'checked_in_at' => now()])->assertHasNoActionErrors();
 
     $charged = Attendance::where('member_id', $member->id)->sum('amount_paid')
         + Subscription::where('member_id', $member->id)->sum('amount_paid');
@@ -249,7 +249,7 @@ test('pricingData resets after a successful check-in', function () {
     $component = Livewire::test(CheckIn::class)
         ->fillForm(['event_id' => $event->id, 'member_id' => $member->id])
         ->fillForm(['apply_voucher' => true, 'voucher_amount' => 10, 'voucher_reason' => 'test'], 'pricingForm')
-        ->callAction('checkIn', data: ['checked_in_at' => now()])
+        ->callAction('checkIn', data: ['payment_method' => 'comp', 'checked_in_at' => now()])
         ->assertHasNoActionErrors();
 
     // Not a bare [] -- add_on_ids must always reset as a real array, never
@@ -589,7 +589,7 @@ test('a forged pool subscription selection at check-in is silently ignored once 
     Livewire::test(CheckIn::class)
         ->fillForm(['event_id' => $event->id, 'member_id' => $member->id])
         ->set("pricingData.subscription_addon_{$this->pool->id}_duration", '1')
-        ->callAction('checkIn', data: ['checked_in_at' => now()])
+        ->callAction('checkIn', data: ['payment_method' => 'comp', 'checked_in_at' => now()])
         ->assertHasNoActionErrors();
 
     expect(Subscription::where('member_id', $member->id)->where('add_on_id', $this->pool->id)->exists())->toBeFalse();
@@ -615,7 +615,7 @@ test('a member with a real, pre-existing pool subscription still gets pool cover
 
     Livewire::test(CheckIn::class)
         ->fillForm(['event_id' => $event->id, 'member_id' => $member->id])
-        ->callAction('checkIn', data: ['checked_in_at' => now()])
+        ->callAction('checkIn', data: ['payment_method' => 'comp', 'checked_in_at' => now()])
         ->assertHasNoActionErrors();
 
     $attendance = Attendance::where('member_id', $member->id)->where('event_id', $event->id)->firstOrFail();
@@ -641,7 +641,7 @@ test('buying a subscription standalone, then checking in that night, shows the e
 
     expect($component->instance()->getPriceBreakdown()->amountPaidCents)->toBe(1500);
 
-    $component->callAction('checkIn', data: ['checked_in_at' => now()])
+    $component->callAction('checkIn', data: ['payment_method' => 'comp', 'checked_in_at' => now()])
         ->assertHasNoActionErrors();
 
     expect(Subscription::where('member_id', $member->id)->count())->toBe(1);
@@ -666,7 +666,7 @@ test('a 1-month subscription purchase at check-in is priced as of today, not the
     Livewire::test(CheckIn::class)
         ->fillForm(['event_id' => $event->id, 'member_id' => $member->id])
         ->fillForm(['subscription_regular_duration' => '1'], 'pricingForm')
-        ->callAction('checkIn', data: ['checked_in_at' => now()])
+        ->callAction('checkIn', data: ['payment_method' => 'comp', 'checked_in_at' => now()])
         ->assertHasNoActionErrors();
 
     $subscription = Subscription::where('member_id', $member->id)->where('add_on_id', $this->entry->id)->firstOrFail();
@@ -727,6 +727,7 @@ test('a banned member with a granted exception can check in after acknowledging 
     Livewire::test(CheckIn::class)
         ->fillForm(['event_id' => $event->id, 'member_id' => $member->id])
         ->callAction('checkIn', data: [
+            'payment_method' => 'comp',
             'checked_in_at' => now(),
         ])
         ->assertHasActionErrors(['acknowledged']);
@@ -736,6 +737,7 @@ test('a banned member with a granted exception can check in after acknowledging 
     Livewire::test(CheckIn::class)
         ->fillForm(['event_id' => $event->id, 'member_id' => $member->id])
         ->callAction('checkIn', data: [
+            'payment_method' => 'comp',
             'acknowledged' => true,
             'checked_in_at' => now(),
         ])
@@ -764,6 +766,7 @@ test('a watchlisted member requires acknowledgement before checking in, and the 
     Livewire::test(CheckIn::class)
         ->fillForm(['event_id' => $event->id, 'member_id' => $member->id])
         ->callAction('checkIn', data: [
+            'payment_method' => 'comp',
             'checked_in_at' => now(),
         ])
         ->assertHasActionErrors(['acknowledged']);
@@ -773,6 +776,7 @@ test('a watchlisted member requires acknowledgement before checking in, and the 
     Livewire::test(CheckIn::class)
         ->fillForm(['event_id' => $event->id, 'member_id' => $member->id])
         ->callAction('checkIn', data: [
+            'payment_method' => 'comp',
             'acknowledged' => true,
             'checked_in_at' => now(),
         ])
@@ -814,6 +818,7 @@ test('a prospective member with incomplete identity must be captured before chec
         ->assertHasNoActionErrors()
         ->assertActionVisible('checkIn')
         ->callAction('checkIn', data: [
+            'payment_method' => 'comp',
             'checked_in_at' => now(),
         ])
         ->assertHasNoActionErrors();
@@ -837,6 +842,7 @@ test('a member missing paperwork must be captured before checking in', function 
         ->assertHasNoActionErrors()
         ->assertActionVisible('checkIn')
         ->callAction('checkIn', data: [
+            'payment_method' => 'comp',
             'checked_in_at' => now(),
         ])
         ->assertHasNoActionErrors();
@@ -869,7 +875,7 @@ test('the desk identity forms record bulk-email consent', function () {
         ->callMountedAction()
         ->assertHasNoActionErrors()
         ->fillForm(['member_id' => $sponsor->id])
-        ->callAction('checkIn', data: ['checked_in_at' => now()])
+        ->callAction('checkIn', data: ['payment_method' => 'comp', 'checked_in_at' => now()])
         ->callAction('registerGuest', data: [
             'username' => 'optinguest',
             'preferred_name' => 'Opt',
@@ -1021,7 +1027,7 @@ test('registering a guest needs no email when the club turns that off', function
 
     Livewire::test(CheckIn::class)
         ->fillForm(['event_id' => $event->id, 'member_id' => $member->id])
-        ->callAction('checkIn', data: ['checked_in_at' => now()])
+        ->callAction('checkIn', data: ['payment_method' => 'comp', 'checked_in_at' => now()])
         ->callAction('registerGuest', data: [
             'username' => 'noemailguest',
             'preferred_name' => 'Sam',
@@ -1059,7 +1065,7 @@ test('a check-in raced by another register is rejected without duplicating the r
 
     Attendance::factory()->for($member)->for($event)->create(['checked_in_at' => now()]);
 
-    $livewire->setActionData(['checked_in_at' => now()])
+    $livewire->setActionData(['checked_in_at' => now(), 'payment_method' => 'comp'])
         ->callMountedAction()
         ->assertHasNoActionErrors();
 
@@ -1090,7 +1096,7 @@ test('a non-attendance integrity violation is not reported as "already checked i
         ]);
     });
 
-    $livewire->setActionData(['checked_in_at' => now()])
+    $livewire->setActionData(['checked_in_at' => now(), 'payment_method' => 'comp'])
         ->callMountedAction()
         ->assertNotified(__('Check-in not saved — another register changed this member\'s record at the same moment.'));
 
@@ -1104,6 +1110,7 @@ test('checking in for a future event without a check-in time records a prepaymen
     Livewire::test(CheckIn::class)
         ->fillForm(['event_id' => $event->id, 'member_id' => $member->id])
         ->callAction('checkIn', data: [
+            'payment_method' => 'comp',
             'checked_in_at' => null,
         ])
         ->assertHasNoActionErrors();
@@ -1122,6 +1129,7 @@ test('a forged check-in time for a future prepay event is ignored server-side, s
     Livewire::test(CheckIn::class)
         ->fillForm(['event_id' => $event->id, 'member_id' => $member->id])
         ->callAction('checkIn', data: [
+            'payment_method' => 'comp',
             // The field itself is hidden for a non-live event -- this forges
             // a value as if it had been submitted anyway.
             'checked_in_at' => now(),
@@ -1172,6 +1180,7 @@ test('paying regular subscription at check-in creates the subscription and appli
         ->fillForm(['event_id' => $event->id, 'member_id' => $member->id])
         ->fillForm(['subscription_regular_duration' => '1'], 'pricingForm')
         ->callAction('checkIn', data: [
+            'payment_method' => 'comp',
             'checked_in_at' => now(),
         ])
         ->assertHasNoActionErrors();
@@ -1195,6 +1204,7 @@ test('paying pool subscription at check-in creates the subscription and covers t
         ->fillForm(['event_id' => $event->id, 'member_id' => $member->id])
         ->fillForm(["subscription_addon_{$this->pool->id}_duration" => '1'], 'pricingForm')
         ->callAction('checkIn', data: [
+            'payment_method' => 'comp',
             'checked_in_at' => now(),
         ])
         ->assertHasNoActionErrors();
@@ -1222,6 +1232,7 @@ test('the subscription checkbox is not offered once the member already has an ac
         ->fillForm(['event_id' => $event->id, 'member_id' => $member->id])
         ->fillForm(['subscription_regular_duration' => '1'], 'pricingForm')
         ->callAction('checkIn', data: [
+            'payment_method' => 'comp',
             'checked_in_at' => now(),
         ])
         ->assertHasNoActionErrors();
@@ -1237,6 +1248,7 @@ test('the subscription checkbox is not offered for a member who is not yet eligi
         ->fillForm(['event_id' => $event->id, 'member_id' => $member->id])
         ->fillForm(['subscription_regular_duration' => '1'], 'pricingForm')
         ->callAction('checkIn', data: [
+            'payment_method' => 'comp',
             'checked_in_at' => now(),
         ])
         ->assertHasNoActionErrors();
@@ -1260,6 +1272,7 @@ test('a member becomes subscription-eligible purely from live attendance count',
         ->fillForm(['event_id' => $event->id, 'member_id' => $member->id])
         ->fillForm(['subscription_regular_duration' => '1'], 'pricingForm')
         ->callAction('checkIn', data: [
+            'payment_method' => 'comp',
             'checked_in_at' => now(),
         ])
         ->assertHasNoActionErrors();
@@ -1278,6 +1291,7 @@ test('a door volunteer can also collect a subscription payment at check-in', fun
         ->fillForm(['event_id' => $event->id, 'member_id' => $member->id])
         ->fillForm(['subscription_regular_duration' => '1'], 'pricingForm')
         ->callAction('checkIn', data: [
+            'payment_method' => 'comp',
             'checked_in_at' => now(),
         ])
         ->assertHasNoActionErrors();
@@ -1299,6 +1313,7 @@ test('applying voucher credit at check-in reduces amount due and writes a ledger
             'voucher_reason' => 'earned voucher redeemed',
         ], 'pricingForm')
         ->callAction('checkIn', data: [
+            'payment_method' => 'comp',
             'checked_in_at' => now(),
         ])
         ->assertHasNoActionErrors();
@@ -1328,6 +1343,7 @@ test('applying voucher credit is capped at the balance available, never overspen
             'voucher_reason' => 'trying to overspend',
         ], 'pricingForm')
         ->callAction('checkIn', data: [
+            'payment_method' => 'comp',
             'checked_in_at' => now(),
         ])
         ->assertHasNoActionErrors();
@@ -1354,6 +1370,7 @@ test('applying voucher credit does nothing when vouchers are disabled, even via 
             'voucher_reason' => 'should be ignored',
         ], 'pricingForm')
         ->callAction('checkIn', data: [
+            'payment_method' => 'comp',
             'checked_in_at' => now(),
         ])
         ->assertHasNoActionErrors();
@@ -1381,6 +1398,7 @@ test('a voucher can be redeemed on behalf of a different member than the one che
             'voucher_reason' => "covering {$attendee->username}'s entry",
         ], 'pricingForm')
         ->callAction('checkIn', data: [
+            'payment_method' => 'comp',
             'checked_in_at' => now(),
         ])
         ->assertHasNoActionErrors();
@@ -1413,7 +1431,7 @@ test("picking another member's balance suggests the amount from that member's ba
     expect($page->instance()->getLiveDueTotal())->toEqual(0.0);
 
     $page->set('pricingData.voucher_reason', 'covering attendee1')
-        ->callAction('checkIn', data: ['checked_in_at' => now()])
+        ->callAction('checkIn', data: ['payment_method' => 'comp', 'checked_in_at' => now()])
         ->assertHasNoActionErrors();
 
     $attendance = Attendance::where('member_id', $attendee->id)->where('event_id', $event->id)->firstOrFail();
@@ -1447,7 +1465,7 @@ test('not applying a voucher at check-in leaves the balance untouched', function
 
     Livewire::test(CheckIn::class)
         ->fillForm(['event_id' => $event->id, 'member_id' => $member->id])
-        ->callAction('checkIn', data: ['checked_in_at' => now()])
+        ->callAction('checkIn', data: ['payment_method' => 'comp', 'checked_in_at' => now()])
         ->assertHasNoActionErrors();
 
     $attendance = Attendance::where('member_id', $member->id)->where('event_id', $event->id)->firstOrFail();
@@ -1462,7 +1480,7 @@ test('not paying a subscription at check-in leaves subscription behavior unaffec
 
     Livewire::test(CheckIn::class)
         ->fillForm(['event_id' => $event->id, 'member_id' => $member->id])
-        ->callAction('checkIn', data: ['checked_in_at' => now()])
+        ->callAction('checkIn', data: ['payment_method' => 'comp', 'checked_in_at' => now()])
         ->assertHasNoActionErrors();
 
     expect(Subscription::where('member_id', $member->id)->exists())->toBeFalse();
@@ -1483,6 +1501,7 @@ test('a manager can comp an entry, waiving the fee and recording the reason', fu
             'comp_reason_id' => $reason->id,
         ], 'pricingForm')
         ->callAction('checkIn', data: [
+            'payment_method' => 'comp',
             'checked_in_at' => now(),
         ])
         ->assertHasNoActionErrors();
@@ -1509,6 +1528,7 @@ test('a door volunteer cannot comp an entry even via a forged payload', function
             'comp_reason_id' => $reason->id,
         ], 'pricingForm')
         ->callAction('checkIn', data: [
+            'payment_method' => 'comp',
             'checked_in_at' => now(),
         ])
         ->assertHasNoActionErrors();
@@ -1527,6 +1547,7 @@ test('comping an entry without picking a reason is rejected', function () {
         ->fillForm(['event_id' => $event->id, 'member_id' => $member->id])
         ->fillForm(['comp_entry' => true], 'pricingForm')
         ->callAction('checkIn', data: [
+            'payment_method' => 'comp',
             'checked_in_at' => now(),
         ])
         ->assertHasErrors(['pricingData.comp_reason_id' => 'required']);
@@ -1544,6 +1565,7 @@ test('selecting an add-on adds its price to amount_paid and records a snapshotte
         ->fillForm(['event_id' => $event->id, 'member_id' => $member->id])
         ->fillForm(['add_on_ids' => [$addOn->id]], 'pricingForm')
         ->callAction('checkIn', data: [
+            'payment_method' => 'comp',
             'checked_in_at' => now(),
         ])
         ->assertHasNoActionErrors();
@@ -1568,6 +1590,7 @@ test('an add-on not bound to the selected event is neither offered nor charged, 
         ->assertDontSee('Sleepover')
         ->set('pricingData.add_on_ids', [$addOn->id])
         ->callAction('checkIn', data: [
+            'payment_method' => 'comp',
             'checked_in_at' => now(),
         ])
         ->assertHasErrors(['pricingData.add_on_ids.0']);
@@ -1598,6 +1621,7 @@ test('selecting an add-on does nothing when add-ons are disabled, even via a for
         ->fillForm(['event_id' => $event->id, 'member_id' => $member->id])
         ->fillForm(['add_on_ids' => [$addOn->id]], 'pricingForm')
         ->callAction('checkIn', data: [
+            'payment_method' => 'comp',
             'checked_in_at' => now(),
         ])
         ->assertHasNoActionErrors();
@@ -1622,6 +1646,7 @@ test('comping an entry does not comp an add-on charge', function () {
             'add_on_ids' => [$addOn->id],
         ], 'pricingForm')
         ->callAction('checkIn', data: [
+            'payment_method' => 'comp',
             'checked_in_at' => now(),
         ])
         ->assertHasNoActionErrors();
@@ -1645,6 +1670,7 @@ test('a door volunteer can select an add-on at check-in, unlike per-event comp',
         ->fillForm(['event_id' => $event->id, 'member_id' => $member->id])
         ->fillForm(['add_on_ids' => [$addOn->id]], 'pricingForm')
         ->callAction('checkIn', data: [
+            'payment_method' => 'comp',
             'checked_in_at' => now(),
         ])
         ->assertHasNoActionErrors();
@@ -1662,6 +1688,7 @@ test('forcing an inactive add-on id is rejected by pricingForm validation, creat
         ->fillForm(['event_id' => $event->id, 'member_id' => $member->id])
         ->set('pricingData.add_on_ids', [$addOn->id])
         ->callAction('checkIn', data: [
+            'payment_method' => 'comp',
             'checked_in_at' => now(),
         ])
         ->assertHasErrors(['pricingData.add_on_ids.0']);
@@ -1679,7 +1706,7 @@ test('a non-array add_on_ids state (observed live as a bare true) is treated as 
 
     expect($livewire->instance()->getLiveAddOnTotal())->toEqual(0.0);
 
-    $livewire->callAction('checkIn', data: ['checked_in_at' => now()])
+    $livewire->callAction('checkIn', data: ['payment_method' => 'comp', 'checked_in_at' => now()])
         ->assertHasNoActionErrors();
 
     $attendance = Attendance::where('member_id', $member->id)->where('event_id', $event->id)->firstOrFail();
@@ -1700,6 +1727,7 @@ test('forcing an add-on past its nightly cap is rejected by pricingForm validati
         ->fillForm(['event_id' => $event->id, 'member_id' => $member->id])
         ->set('pricingData.add_on_ids', [$addOn->id])
         ->callAction('checkIn', data: [
+            'payment_method' => 'comp',
             'checked_in_at' => now(),
         ])
         ->assertHasErrors(['pricingData.add_on_ids.0']);
@@ -1926,7 +1954,7 @@ test('the register-guest action becomes visible once the host is checked in', fu
 
     Livewire::test(CheckIn::class)
         ->fillForm(['event_id' => $event->id, 'member_id' => $member->id])
-        ->callAction('checkIn', data: ['checked_in_at' => now()])
+        ->callAction('checkIn', data: ['payment_method' => 'comp', 'checked_in_at' => now()])
         ->assertHasNoActionErrors()
         ->assertActionVisible('registerGuest');
 });
@@ -1938,7 +1966,7 @@ test('the register-guest action is hidden when the checked-in host is on probati
 
     Livewire::test(CheckIn::class)
         ->fillForm(['event_id' => $event->id, 'member_id' => $member->id])
-        ->callAction('checkIn', data: ['checked_in_at' => now()])
+        ->callAction('checkIn', data: ['payment_method' => 'comp', 'checked_in_at' => now()])
         ->assertHasNoActionErrors()
         ->assertActionHidden('registerGuest')
         ->assertSee('On probation — cannot bring a guest yet.');
@@ -1951,7 +1979,7 @@ test('a host on probation can register a guest when the club allows guests durin
 
     Livewire::test(CheckIn::class)
         ->fillForm(['event_id' => $event->id, 'member_id' => $member->id])
-        ->callAction('checkIn', data: ['checked_in_at' => now()])
+        ->callAction('checkIn', data: ['payment_method' => 'comp', 'checked_in_at' => now()])
         ->assertHasNoActionErrors()
         ->assertActionVisible('registerGuest')
         ->assertDontSee('On probation — cannot bring a guest yet.');
@@ -1964,7 +1992,7 @@ test('with guests switched off, the register-guest action is hidden with no prob
 
     Livewire::test(CheckIn::class)
         ->fillForm(['event_id' => $event->id, 'member_id' => $member->id])
-        ->callAction('checkIn', data: ['checked_in_at' => now()])
+        ->callAction('checkIn', data: ['payment_method' => 'comp', 'checked_in_at' => now()])
         ->assertHasNoActionErrors()
         ->assertActionHidden('registerGuest')
         ->assertDontSee('On probation — cannot bring a guest yet.');
@@ -1979,7 +2007,7 @@ test('registering a guest creates a Guest-category member linked to the sponsor'
 
     Livewire::test(CheckIn::class)
         ->fillForm(['event_id' => $event->id, 'member_id' => $member->id])
-        ->callAction('checkIn', data: ['checked_in_at' => now()])
+        ->callAction('checkIn', data: ['payment_method' => 'comp', 'checked_in_at' => now()])
         ->assertHasNoActionErrors()
         ->callAction('registerGuest', data: [
             'username' => 'jamieguestly',
@@ -2005,7 +2033,7 @@ test('registering a guest requires username, preferred name, first/last name, an
 
     Livewire::test(CheckIn::class)
         ->fillForm(['event_id' => $event->id, 'member_id' => $member->id])
-        ->callAction('checkIn', data: ['checked_in_at' => now()])
+        ->callAction('checkIn', data: ['payment_method' => 'comp', 'checked_in_at' => now()])
         ->assertHasNoActionErrors()
         ->callAction('registerGuest', data: [
             'username' => '',
@@ -2023,7 +2051,7 @@ test('registering a guest requires dob once "appears to be under 21" is checked'
 
     Livewire::test(CheckIn::class)
         ->fillForm(['event_id' => $event->id, 'member_id' => $member->id])
-        ->callAction('checkIn', data: ['checked_in_at' => now()])
+        ->callAction('checkIn', data: ['payment_method' => 'comp', 'checked_in_at' => now()])
         ->assertHasNoActionErrors()
         ->callAction('registerGuest', data: [
             'username' => 'jamieguestly',
@@ -2044,7 +2072,7 @@ test('registering a guest captures dob when "appears to be under 21" is checked 
 
     Livewire::test(CheckIn::class)
         ->fillForm(['event_id' => $event->id, 'member_id' => $member->id])
-        ->callAction('checkIn', data: ['checked_in_at' => now()])
+        ->callAction('checkIn', data: ['payment_method' => 'comp', 'checked_in_at' => now()])
         ->assertHasNoActionErrors()
         ->callAction('registerGuest', data: [
             'username' => 'jamieguestly',
@@ -2068,7 +2096,7 @@ test('registering a guest with a username already taken by another member is rej
 
     Livewire::test(CheckIn::class)
         ->fillForm(['event_id' => $event->id, 'member_id' => $member->id])
-        ->callAction('checkIn', data: ['checked_in_at' => now()])
+        ->callAction('checkIn', data: ['payment_method' => 'comp', 'checked_in_at' => now()])
         ->assertHasNoActionErrors()
         ->callAction('registerGuest', data: [
             'username' => 'jamieguestly',
@@ -2086,7 +2114,7 @@ test('a registered guest is auto-assigned the next member_number, same as any ot
 
     Livewire::test(CheckIn::class)
         ->fillForm(['event_id' => $event->id, 'member_id' => $member->id])
-        ->callAction('checkIn', data: ['checked_in_at' => now()])
+        ->callAction('checkIn', data: ['payment_method' => 'comp', 'checked_in_at' => now()])
         ->assertHasNoActionErrors()
         ->callAction('registerGuest', data: [
             'username' => 'jamieguestly',
@@ -2107,7 +2135,7 @@ test('the newly registered guest is auto-selected and can be checked in for the 
 
     Livewire::test(CheckIn::class)
         ->fillForm(['event_id' => $event->id, 'member_id' => $member->id])
-        ->callAction('checkIn', data: ['checked_in_at' => now()])
+        ->callAction('checkIn', data: ['payment_method' => 'comp', 'checked_in_at' => now()])
         ->assertHasNoActionErrors()
         ->callAction('registerGuest', data: [
             'username' => 'jamieguestly',
@@ -2118,7 +2146,7 @@ test('the newly registered guest is auto-selected and can be checked in for the 
         ])
         ->assertHasNoActionErrors()
         ->assertActionVisible('checkIn')
-        ->callAction('checkIn', data: ['checked_in_at' => now()])
+        ->callAction('checkIn', data: ['payment_method' => 'comp', 'checked_in_at' => now()])
         ->assertHasNoActionErrors();
 
     $guest = Member::where('first_name', 'Jamie')->firstOrFail();
@@ -2134,7 +2162,7 @@ test('a door volunteer can register a guest once their host is checked in and no
 
     Livewire::test(CheckIn::class)
         ->fillForm(['event_id' => $event->id, 'member_id' => $member->id])
-        ->callAction('checkIn', data: ['checked_in_at' => now()])
+        ->callAction('checkIn', data: ['payment_method' => 'comp', 'checked_in_at' => now()])
         ->assertHasNoActionErrors()
         ->callAction('registerGuest', data: [
             'username' => 'jamieguestly',
@@ -2201,7 +2229,7 @@ test('a forged event_id for a future door-prepay event is rejected once prepay_e
     // state is what actually proves the fix.
     Livewire::test(CheckIn::class)
         ->fillForm(['event_id' => $futureEvent->id, 'member_id' => $member->id])
-        ->callAction('checkIn', data: ['checked_in_at' => now()]);
+        ->callAction('checkIn', data: ['payment_method' => 'comp', 'checked_in_at' => now()]);
 
     expect(Attendance::where('member_id', $member->id)->where('event_id', $futureEvent->id)->exists())->toBeFalse();
 });
@@ -2220,7 +2248,7 @@ test('a forged event_id for a future event that never opted into door prepay is 
     // global setting is on here, so only the event's own opt-in stops it.
     Livewire::test(CheckIn::class)
         ->fillForm(['event_id' => $futureEvent->id, 'member_id' => $member->id])
-        ->callAction('checkIn', data: ['checked_in_at' => now()]);
+        ->callAction('checkIn', data: ['payment_method' => 'comp', 'checked_in_at' => now()]);
 
     expect(Attendance::where('member_id', $member->id)->where('event_id', $futureEvent->id)->exists())->toBeFalse();
 });
@@ -2360,6 +2388,7 @@ test('a prepay for a future-month event creates a subscription covering that eve
         ->fillForm(['event_id' => $event->id, 'member_id' => $member->id])
         ->fillForm(['subscription_regular_duration' => '1'], 'pricingForm')
         ->callAction('checkIn', data: [
+            'payment_method' => 'comp',
             'checked_in_at' => null,
         ])
         ->assertHasNoActionErrors();
@@ -2510,7 +2539,7 @@ test('two guests registered with the same name but different usernames both regi
 
     $livewire = Livewire::test(CheckIn::class)
         ->fillForm(['event_id' => $event->id, 'member_id' => $member->id])
-        ->callAction('checkIn', data: ['checked_in_at' => now()])
+        ->callAction('checkIn', data: ['payment_method' => 'comp', 'checked_in_at' => now()])
         ->assertHasNoActionErrors();
 
     $livewire->callAction('registerGuest', data: [
@@ -2544,7 +2573,7 @@ test('once a member reaches the guest limit for the night, the action is replace
 
     $livewire = Livewire::test(CheckIn::class)
         ->fillForm(['event_id' => $event->id, 'member_id' => $member->id])
-        ->callAction('checkIn', data: ['checked_in_at' => now()->subMinute()])
+        ->callAction('checkIn', data: ['payment_method' => 'comp', 'checked_in_at' => now()->subMinute()])
         ->assertHasNoActionErrors()
         ->assertDontSee('Guest limit reached')
         ->callAction('registerGuest', data: [
@@ -2576,7 +2605,7 @@ test('guests registered on an earlier visit do not count toward tonight\'s guest
 
     Livewire::test(CheckIn::class)
         ->fillForm(['event_id' => $event->id, 'member_id' => $member->id])
-        ->callAction('checkIn', data: ['checked_in_at' => now()->subMinute()])
+        ->callAction('checkIn', data: ['payment_method' => 'comp', 'checked_in_at' => now()->subMinute()])
         ->assertHasNoActionErrors()
         ->assertActionVisible('registerGuest')
         ->assertDontSee('Guest limit reached');
@@ -2682,7 +2711,7 @@ test('voucher credit stays available, and pays toward it, when a subscription co
 
     expect($page->instance()->getLiveDueTotal())->toEqual(0.0);
 
-    $page->callAction('checkIn', data: ['checked_in_at' => now()])->assertHasNoActionErrors();
+    $page->callAction('checkIn', data: ['payment_method' => 'comp', 'checked_in_at' => now()])->assertHasNoActionErrors();
 
     $subscription = Subscription::where('member_id', $member->id)->sole();
     expect($subscription->amount_paid)->toEqual(0)

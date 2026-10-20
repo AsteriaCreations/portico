@@ -6,6 +6,7 @@ use App\Filament\Admin\Resources\Subscriptions\Pages\CreateSubscription;
 use App\Filament\Admin\Resources\Subscriptions\Pages\ListSubscriptions;
 use App\Models\AddOn;
 use App\Models\Member;
+use App\Models\MembershipSetting;
 use App\Models\Plan;
 use App\Models\Subscription;
 use App\Models\User;
@@ -82,6 +83,33 @@ test('the bulk-purchase action creates a correctly-split bundle', function () {
     expect($rows)->toHaveCount(3)
         ->and($rows->pluck('covered_month')->map->toDateString()->all())->toBe(['2026-07-01', '2026-08-01', '2026-09-01'])
         ->and((float) $rows->sum('amount_paid'))->toEqual(175.0);
+});
+
+test('the bulk-purchase action offers no cash while the club tracks register boxes', function () {
+    Plan::create(['add_on_id' => $this->entry->id, 'duration_months' => 1, 'price' => 60, 'effective_from' => '2026-01-01']);
+    $member = Member::factory()->create(['subscription_eligible' => true]);
+    $data = [
+        'member_id' => $member->id,
+        'add_on_id' => $this->entry->id,
+        'desired_start' => '2026-07-01',
+        'duration_months' => 1,
+        'payment_method' => 'cash',
+        'paid_on' => '2026-07-01',
+    ];
+
+    Livewire::test(ListSubscriptions::class)
+        ->callAction('bulkPurchase', data: $data)
+        ->assertHasActionErrors(['payment_method']);
+
+    expect(Subscription::where('member_id', $member->id)->exists())->toBeFalse();
+
+    MembershipSetting::current()->update(['register_shifts_enabled' => false]);
+
+    Livewire::test(ListSubscriptions::class)
+        ->callAction('bulkPurchase', data: $data)
+        ->assertHasNoActionErrors();
+
+    expect(Subscription::where('member_id', $member->id)->value('payment_method'))->toBe('cash');
 });
 
 test('the bulk-purchase action records the entered paid_on date, not today', function () {

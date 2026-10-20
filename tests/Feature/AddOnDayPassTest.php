@@ -214,7 +214,7 @@ test('checking in after buying a pool day pass records covered_by as DayPass, no
         ->assertHasNoActionErrors();
 
     $component->fillForm(['event_id' => $event->id])
-        ->callAction('checkIn', data: ['checked_in_at' => now()])
+        ->callAction('checkIn', data: ['payment_method' => 'comp', 'checked_in_at' => now()])
         ->assertHasNoActionErrors();
 
     $attendance = Attendance::where('member_id', $member->id)->where('event_id', $event->id)->firstOrFail();

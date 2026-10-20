@@ -178,7 +178,7 @@ test('a Prospective finishing paperwork after the close can still be checked in 
         ->assertHasNoActionErrors()
         ->assertActionVisible('checkIn')
         ->assertSee('this is their first visit')
-        ->callAction('checkIn', data: ['checked_in_at' => now()])
+        ->callAction('checkIn', data: ['payment_method' => 'comp', 'checked_in_at' => now()])
         ->assertHasNoActionErrors();
 
     expect(Attendance::where('member_id', $newcomer->id)->where('event_id', $event->id)->exists())->toBeTrue();

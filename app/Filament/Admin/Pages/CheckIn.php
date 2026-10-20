@@ -866,6 +866,20 @@ class CheckIn extends Page implements HasTable
             ->all();
     }
 
+    // The fee note, plus why Cash is missing while no box is open -- the desk
+    // must pick a method whenever money changes hands, so without this a
+    // cash payment had nowhere to go but a blank method outside every box.
+    private function paymentMethodHelperText(?RegisterShift $openShift, ?string $code): ?string
+    {
+        $noBoxNote = ! $openShift
+            && MembershipSetting::current()->register_shifts_enabled
+            && collect(PaymentMethod::deskOptions())->keys()->intersect(PaymentMethod::cashCodes())->isNotEmpty()
+                ? __('No box is open on this register, so cash isn\'t offered. Open the box to take cash, or pick another method.')
+                : null;
+
+        return collect([$noBoxNote, PaymentMethod::feeHelperText($code)])->filter()->implode(' ') ?: null;
+    }
+
     // Lets the desk fix a username on the spot (a typo at sign-up, a
     // member who changed theirs) without fetching a Manager. Hidden unless
     // the rename-member-username gate allows it -- for Door that means the
@@ -1011,7 +1025,10 @@ class CheckIn extends Page implements HasTable
                         ->map(fn (string $label, string $code) => in_array($code, $lockedOneTimeCodes, true) ? "{$label} (cannot use — already used)" : $label)
                         ->all())
                     ->disableOptionWhen(fn (string $value): bool => in_array($value, $lockedOneTimeCodes, true))
-                    ->helperText(fn (Get $get): ?string => PaymentMethod::feeHelperText($get('payment_method')))
+                    ->helperText(fn (Get $get): ?string => $this->paymentMethodHelperText($openShift, $get('payment_method')))
+                    // Required whenever money changes hands, or cash taken
+                    // with no box open lands outside every box's count.
+                    ->required()
                     // Nothing changes hands on a $0 visit, so there's no
                     // method to ask for; CheckInService records none.
                     ->visible(fn (): bool => $this->getLiveDueTotal() > 0),

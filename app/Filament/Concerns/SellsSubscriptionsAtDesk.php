@@ -101,7 +101,9 @@ trait SellsSubscriptionsAtDesk
                 Select::make('payment_method')
                     ->live()
                     ->options($this->paymentMethodOptions($openShift))
-                    ->helperText(fn (Get $get): ?string => PaymentMethod::feeHelperText($get('payment_method'))),
+                    // Optional only when a voucher may cover it all.
+                    ->required(fn (Get $get): bool => ! $get('apply_voucher'))
+                    ->helperText(fn (Get $get): ?string => $this->paymentMethodHelperText($openShift, $get('payment_method'))),
                 // Same voucher fields as Payment options at check-in, minus
                 // the live default: the price isn't known until a plan and
                 // duration are picked, and the amount is capped server-side.
@@ -220,7 +222,7 @@ trait SellsSubscriptionsAtDesk
                         ->all())
                     ->disableOptionWhen(fn (string $value): bool => in_array($value, $lockedOneTimeCodes, true))
                     ->required()
-                    ->helperText(fn (Get $get): ?string => PaymentMethod::feeHelperText($get('payment_method'))),
+                    ->helperText(fn (Get $get): ?string => $this->paymentMethodHelperText($openShift, $get('payment_method'))),
             ])
             ->action(function (array $data) use ($dayPasses): void {
                 if ($this->haltForTraining(__('Practice: day pass simulated.'))) {
