@@ -11,6 +11,14 @@ is fixes only.
 
 ### Added
 
+- **Reporting views for the limited read-only account.** Six `analyst_*` views (`members`,
+  `attendance`, `member_status_changes`, `comp_requests`, `users`, `membership_settings`) hold
+  only the columns that account may see, so an analyst can `SELECT *` from them; the old
+  column-level grants refused `SELECT *` on those tables. `DEPLOYMENT.md` §4a now grants the
+  views instead. **Migration:** creates the views; the app's database user needs `CREATE VIEW`
+  (included in `GRANT ALL`). An existing limited account keeps working; recreate it with the
+  new script to switch.
+
 - **Kiosk timings and the kiosk-code email batch are club settings, each defaulting to what
   Portico already did.** **Migration:** five `membership_settings` columns. **Needs `npm run
   build`** (the kiosk script reads its times from the page now).

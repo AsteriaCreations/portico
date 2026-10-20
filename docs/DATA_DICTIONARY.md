@@ -369,5 +369,19 @@ Keep these out of shared exports and dashboards unless there's a reason and the 
   `sessions.*`, `membership_settings.kiosk_device_secret_hash`.
 
 `docs/DEPLOYMENT.md` §4a gives two read-only accounts. The *full* one can see everything above.
-The *limited* one can't see the personal or secret columns at all (MySQL column-level grants),
-so it's the one to hand to an outside analyst.
+The *limited* one can't see the personal or secret columns at all, so it's the one to hand to an
+outside analyst. Six tables hold personal or free-text columns, and that account reads them
+only through a view of their safe columns, where `SELECT *` works:
+
+| Instead of | Query |
+|---|---|
+| `members` | `analyst_members` |
+| `attendance` | `analyst_attendance` |
+| `member_status_changes` | `analyst_member_status_changes` |
+| `comp_requests` | `analyst_comp_requests` |
+| `users` | `analyst_users` |
+| `membership_settings` | `analyst_membership_settings` |
+
+The columns each view keeps are listed in `docs/DEPLOYMENT.md` §4a. Join the views exactly as
+you would the tables (`analyst_attendance.member_id = analyst_members.id`). Most other tables
+are open to that account whole; §4a lists the few it can't see at all.
