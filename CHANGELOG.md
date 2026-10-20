@@ -9,6 +9,19 @@ is fixes only.
 
 ## [Unreleased]
 
+## [0.4.0] — 2026-10-19
+
+**Upgrading from 0.3.0:** run `composer install` (new package `endroid/qr-code`), `npm install &&
+npm run build` (new front-end package `jsqr`; the panel theme and the kiosk screen changed), and
+`php artisan migrate` (36 new migrations; the app's database user now needs `CREATE VIEW`, which
+`GRANT ALL` includes). `scripts/deploy.ps1` does all three; don't pass `-SkipNpm` or
+`-SkipMigrate`. New settings default to the old behavior, except where an entry below says
+otherwise: day passes are sold only for tonight's events, "Other" is no longer offered at the
+desk, probation starts on the first entry, and marking a guest's follow-up sent moves them to
+Irregular. If your club set its own showrunner commission tiers, re-check them (see Changed).
+Kiosk check-in stays off until turned on at Feature Flags; the tablet needs HTTPS for its camera,
+and emailing kiosk codes needs real mail (see `docs/DEPLOYMENT.md`).
+
 ### Added
 
 - **Reporting views for the limited read-only account.** Six `analyst_*` views (`members`,
@@ -123,29 +136,6 @@ is fixes only.
   carries both fields. **Migration:** adds `events.workday_voucher_amount` and
   `events.workday_min_hours` (nullable; existing events are unchanged).
 
-### Fixed
-
-- **Cash can no longer be taken outside every box.** With no box open, the desk hid Cash but
-  let a paid check-in or subscription sale go through with no payment method, so cash taken
-  that way was counted in no box. The desk now requires a method whenever money changes hands
-  (a desk subscription paid by voucher excepted), and the field says why Cash is missing until
-  the box is opened. While register shifts are on, the Subscriptions list's **Bulk subscription
-  purchase** no longer offers Cash either: that sale belongs to no box. No migration.
-- **Instructor payout waits for the class to start.** The desk's **Pay instructor** button and
-  "instructor payout so far" line counted any event dated today, so from midnight on, a class
-  later that day showed up during the night before's overnight event. An event with a start time
-  now appears only once it has started (less the event window buffer); one with no start time
-  keeps the whole-day rule.
-- **Member pickers no longer show every search field in every result.** Turning on more
-  "Searchable member fields" (e.g. name and email) used to add each one to every result's label.
-  Now a label shows one identifier, the first enabled field the member has (usually the
-  username). At the Check-In Desk a search result also shows whichever other enabled field matched
-  what was typed, so staff can see why it came up. Email only ever shows to Manager and up, even
-  when it's what matched. This also shortens the checked-in roster, the event/subscription/voucher
-  pickers and the Showrunner Payouts list. No migration.
-- **Comp-reward vouchers:** a comped attendee who spent a voucher at that visit now still gets
-  their reward. The "already rewarded" check used to count the spent (negative) voucher.
-
 - **Events: a Staff entry fee.** Leave it blank and comped categories (Owner, Manager, Emeritus,
   Staff) get in free as before. Set it and they pay that amount for entry at that event instead
   (never more than the entry fee); Pool and other add-ons stay comped. Duplicating an event
@@ -155,56 +145,6 @@ is fixes only.
 
 - **Showrunner Payouts: a Payout filter.** "Commission only" leaves out nights that fell in the
   flat voucher tier; "Voucher only" shows just those. The total follows the filter.
-
-### Changed
-
-- **Active Patrons: sort by arrival time.** The list now shows the newest arrivals first, like the
-  desk's checked-in roster; it used to follow no set order. **Sort by** above the list switches to
-  oldest first, and the choice is remembered for the rest of the sign-in. No migration.
-- **The showrunner commission now works like tax brackets.** Each percentage tier pays its rate
-  on the event's listed entry fee for each attendee numbered inside it, instead of one tier's
-  rate on the whole door. With the default tiers (a $25 voucher up to 35 attendees, 36–100 at
-  10%, 101+ at 15%), 150 paying attendees at a $20 event pay 65 × $20 × 10% + 50 × $20 × 15% =
-  $280. Who counts is unchanged: paid-at-door entries, plus subscription-covered ones when the
-  fee is above the subscription credit; comped entries (staff categories, per-event comps, the
-  host) never count. Subscription visits imported from an old spreadsheet (`legacy_import`) now
-  count the same as live ones; before, they never counted. Pool and add-on money no longer play any part, so the two "Showrunner
-  commission includes pool / add-on revenue" settings are gone. **Migration:** an install still
-  on the original default tiers has them moved from 0–34 / 35–100 / 101+ to 0–35 / 36–100 /
-  101+ automatically. If your club set its own tiers, re-check them: a tier's range is now the
-  attendee numbers it covers, both ends included.
-
-### Security
-
-- `symfony/yaml` updated to 8.1.9 (CVE-2026-109413: a deeply nested YAML document could crash the
-  process through unbounded recursion; fixed in 8.1.6). It's a dev-only package (via
-  `laravel/boost`), and production installs use `--no-dev`, so nothing deployed was exposed.
-  `composer audit` reported it; Dependabot didn't.
-- Filament updated to 5.8.3. Before 5.8.2, managing app-based multi-factor authentication didn't
-  ask for the password again (medium-severity advisory). Portico doesn't turn on Filament's MFA,
-  so nothing was exposed, but the update clears the Dependabot alert.
-
-### Fixed
-
-- Ticking **Apply voucher credit** on the Check-In Desk fills in the suggested amount the first
-  time. Right after picking a member or event, the first tick left **Voucher amount to apply**
-  empty; only unticking and ticking again filled it.
-- The Check-In Desk's **Prepaid, awaiting arrival** list now follows the event picker. It lagged
-  one pick behind: switching from a future prepay event to tonight's showed the future event's
-  prepays under tonight, and switching back showed tonight's (usually no one).
-- Managers can now manage an event's Prepay list and Comp list. Editing an event is Admin-only,
-  and the edit page was the only way to reach those tabs, so in practice only Admins could fill
-  them. Events now have a **View** page: Managers open it from the Events list (row click or
-  **View**), see the event's fields read-only, and use the Attendance, Prepay list and Comp list
-  tabs as before. Archived events stay read-only there too. Admins still get **Edit**.
-- An event's View page no longer shows the edit page's warning that "changing the fees won't
-  change what they paid": nothing can be changed there.
-- After **Save & promote to Irregular** at the Check-In Desk, the member card now shows
-  **Irregular** straight away. It kept saying Prospective until the page was reloaded.
-- Several behavior notes on one visit now show one per line on Active Patrons, newest first.
-  They used to run together into a single line, with nothing showing where one note ended.
-
-### Added
 
 - **Showrunner Payouts** report (Records, Manager+, behind `showrunner_payouts_enabled`): every
   past event's commission with its headcount and how the amount adds up, plus a total for the
@@ -381,7 +321,52 @@ is fixes only.
   is open (the refund comes out of that drawer); once it has closed, only an Owner can, and the
   closed shift's expected cash and variance don't change.
 
+- **Change preferred name** at the Check-In Desk, next to **Rename username**: opens pre-filled
+  with the member's preferred name; blank clears it. Managers and up always get it; Door only
+  with **Door can change preferred names** on Feature Flags (off by default). Not logged, the
+  same as editing it on the member's page; training mode saves nothing. **Migration:** adds
+  `membership_settings.door_preferred_name_change_enabled`.
+- **Active Patrons: Depart (already counted).** For someone already counted out by an anonymous
+  departure on the Dashboard, this takes them off the list without lowering the count a second
+  time (it records a +1 occupancy adjustment naming the member). It shows only while that night
+  has an anonymous departure not yet matched to a person.
+- **Register Shifts: the math behind a variance.** Clicking a shift's **Variance** opens the
+  figures it came from: opening count, event / subscription / other cash, drops, instructor
+  payouts, expected, counted and the difference, plus what was taken on the shift but isn't in the
+  box (held prepay cash, electronic payments). An open shift shows the expected-so-far.
+- **Showrunner Payouts: Export (CSV)** of everything the current filters and sort match, across
+  all pages, with the same figures as the table. Amounts are plain numbers for a spreadsheet.
+- **Bulk upload vouchers** and **Download voucher template** on Vouchers (Admin+), like the other
+  bulk uploads: each row names a member (number or username), an amount and a reason; bad rows are
+  skipped and listed. A row matching a voucher already on file is skipped, so re-uploading a file
+  never credits anyone twice.
+- **Reset member & event data**: `php artisan data:reset` and an Owner-only action on Technical,
+  each requiring `RESET` to be typed. It takes a database backup first and deletes nothing if that
+  fails, then clears members, events, attendance, subscriptions, vouchers, register shifts and the
+  ledgers in one transaction. User accounts, configuration, settings and job history are kept.
+- **Last check-in in the bell.** Each check-in leaves an entry in the notification bell for the
+  staff user who took it, with the amount due, how it was paid and the event, so it can be checked
+  after the toast fades. The next check-in replaces it; training mode writes nothing.
+- **Unsaved changes warning.** Leaving a create or edit page, or closing an action modal, with
+  changes not yet saved asks first. Membership Settings, Feature Flags and Role Labels do the same.
+
 ### Changed
+
+- **Active Patrons: sort by arrival time.** The list now shows the newest arrivals first, like the
+  desk's checked-in roster; it used to follow no set order. **Sort by** above the list switches to
+  oldest first, and the choice is remembered for the rest of the sign-in. No migration.
+- **The showrunner commission now works like tax brackets.** Each percentage tier pays its rate
+  on the event's listed entry fee for each attendee numbered inside it, instead of one tier's
+  rate on the whole door. With the default tiers (a $25 voucher up to 35 attendees, 36–100 at
+  10%, 101+ at 15%), 150 paying attendees at a $20 event pay 65 × $20 × 10% + 50 × $20 × 15% =
+  $280. Who counts is unchanged: paid-at-door entries, plus subscription-covered ones when the
+  fee is above the subscription credit; comped entries (staff categories, per-event comps, the
+  host) never count. Subscription visits imported from an old spreadsheet (`legacy_import`) now
+  count the same as live ones; before, they never counted. Pool and add-on money no longer play any part, so the two "Showrunner
+  commission includes pool / add-on revenue" settings are gone. **Migration:** an install still
+  on the original default tiers has them moved from 0–34 / 35–100 / 101+ to 0–35 / 36–100 /
+  101+ automatically. If your club set its own tiers, re-check them: a tier's range is now the
+  attendee numbers it covers, both ends included.
 
 - The Check-In desk reference card now explains the close-out envelopes (tonight's, subscriptions,
   and each future event's prepaid cash) and that day passes are for tonight's events only.
@@ -435,7 +420,73 @@ is fixes only.
   Bunny Fonts and the "optimized font fallbacks require fontaine" warning. The panel is
   unaffected: Filament ships its own font.
 
+- **Voucher as the payment method.** When voucher credit leaves nothing to pay on a check-in, the
+  visit is recorded with a new **Voucher** payment method instead of whatever the desk had picked,
+  so a visit with no money taken can't read as Cash. A partly vouchered visit keeps the desk's
+  method. **Migration:** adds the `voucher` payment method (inactive, never offered at the desk),
+  skipped if the club already has one coded or labelled "Voucher".
+- **Active Patrons on a phone** shows a compact card per person: Watchlist / Overnight as badges
+  beside the name, one line for the event and arrival time, and **Visit note**, **Behavior note**
+  and **Depart** as buttons. The list shows 25 per page instead of 5.
+- The Check-In Desk's "not yet subscription-eligible" line and the pool day-pass waiver note now
+  sit above the **Sell a subscription or day pass** fold, which is left out when there's nothing
+  to sell. Actions that don't apply (**Record a waiver signature**, **Convert entry to
+  subscription**, **Mark as returned**) are hidden instead of showing as disabled buttons.
+- **Accessibility and locale pass.** The desk's status text meets WCAG AA contrast in light and
+  dark mode. Upstream Updates announces only a new deploy result (with absolute times), and the
+  Dashboard's Record Departures count is announced when it changes. Numbers in the payout widgets
+  and the checked-in roster line up, and those tables flip for right-to-left languages. Dates and
+  times follow the install's locale (e.g. day-month order and a 24-hour clock in French); English
+  is unchanged. The panel footer is translated, and the event-ended email sets its `lang`.
+- **Fewer database queries.** The settings row, the desk's selected member and event, and the
+  desk's live price are each read once per request or render; the Members list loads probation
+  dates with the page; the polling register box (35 → 28 queries) and Active Patrons (18 → 14)
+  drop repeats. No behavior change.
+- **Internal:** the Check-In Desk's subscription sales, day passes and guest registration go
+  through services (`SubscriptionBundleService::sell()`, `AddOnDayPassService::sell()`,
+  `GuestRegistrationService::register()`), and its cash-box, member, sales and arrival actions
+  move into traits. No behavior change.
+
 ### Fixed
+
+- **Cash can no longer be taken outside every box.** With no box open, the desk hid Cash but
+  let a paid check-in or subscription sale go through with no payment method, so cash taken
+  that way was counted in no box. The desk now requires a method whenever money changes hands
+  (a desk subscription paid by voucher excepted), and the field says why Cash is missing until
+  the box is opened. While register shifts are on, the Subscriptions list's **Bulk subscription
+  purchase** no longer offers Cash either: that sale belongs to no box. No migration.
+- **Instructor payout waits for the class to start.** The desk's **Pay instructor** button and
+  "instructor payout so far" line counted any event dated today, so from midnight on, a class
+  later that day showed up during the night before's overnight event. An event with a start time
+  now appears only once it has started (less the event window buffer); one with no start time
+  keeps the whole-day rule.
+- **Member pickers no longer show every search field in every result.** Turning on more
+  "Searchable member fields" (e.g. name and email) used to add each one to every result's label.
+  Now a label shows one identifier, the first enabled field the member has (usually the
+  username). At the Check-In Desk a search result also shows whichever other enabled field matched
+  what was typed, so staff can see why it came up. Email only ever shows to Manager and up, even
+  when it's what matched. This also shortens the checked-in roster, the event/subscription/voucher
+  pickers and the Showrunner Payouts list. No migration.
+- **Comp-reward vouchers:** a comped attendee who spent a voucher at that visit now still gets
+  their reward. The "already rewarded" check used to count the spent (negative) voucher.
+
+- Ticking **Apply voucher credit** on the Check-In Desk fills in the suggested amount the first
+  time. Right after picking a member or event, the first tick left **Voucher amount to apply**
+  empty; only unticking and ticking again filled it.
+- The Check-In Desk's **Prepaid, awaiting arrival** list now follows the event picker. It lagged
+  one pick behind: switching from a future prepay event to tonight's showed the future event's
+  prepays under tonight, and switching back showed tonight's (usually no one).
+- Managers can now manage an event's Prepay list and Comp list. Editing an event is Admin-only,
+  and the edit page was the only way to reach those tabs, so in practice only Admins could fill
+  them. Events now have a **View** page: Managers open it from the Events list (row click or
+  **View**), see the event's fields read-only, and use the Attendance, Prepay list and Comp list
+  tabs as before. Archived events stay read-only there too. Admins still get **Edit**.
+- An event's View page no longer shows the edit page's warning that "changing the fees won't
+  change what they paid": nothing can be changed there.
+- After **Save & promote to Irregular** at the Check-In Desk, the member card now shows
+  **Irregular** straight away. It kept saying Prospective until the page was reloaded.
+- Several behavior notes on one visit now show one per line on Active Patrons, newest first.
+  They used to run together into a single line, with nothing showing where one note ended.
 
 - "Run backup now" and "Reset member & event data" on Technical no longer show a bare "error"
   page when the backup folder can't be created or written. They now say "Backup failed" or
@@ -449,6 +500,23 @@ is fixes only.
   runs. The update stops the web server, so the page's automatic refresh fails until the server is
   back. The page now says the server is restarting and that it will reconnect on its own. The
   update itself was never affected.
+
+- Paying a check-in from **another member's voucher balance**: the suggested amount now comes from
+  that member's balance (capped at what's due) and follows a change of payer. Before, it used only
+  the attendee's own balance, so an attendee with none couldn't check in that way and one with a
+  small balance had the rest charged as cash or card.
+
+### Security
+
+- `symfony/yaml` updated to 8.1.9 (CVE-2026-109413: a deeply nested YAML document could crash the
+  process through unbounded recursion; fixed in 8.1.6). It's a dev-only package (via
+  `laravel/boost`), and production installs use `--no-dev`, so nothing deployed was exposed.
+  `composer audit` reported it; Dependabot didn't.
+- Filament updated to 5.8.3. Before 5.8.2, managing app-based multi-factor authentication didn't
+  ask for the password again (medium-severity advisory). Portico doesn't turn on Filament's MFA,
+  so nothing was exposed, but the update clears the Dependabot alert.
+- `laravel/framework` updated to 13.34.0 (Dependabot alert: XSS in the debug page, low severity,
+  fixed in 13.30.0). It applies only with `APP_DEBUG=true`, which production shouldn't use.
 
 ## [0.3.0] — 2026-09-26
 
@@ -864,6 +932,7 @@ transaction fee with nothing due (see Fixed).
 - CI runs the full Pest suite on SQLite plus a `migrate:fresh --seed` smoke on MariaDB,
   the production target.
 
+[0.4.0]: https://github.com/AsteriaCreations/portico/releases/tag/v0.4.0
 [0.3.0]: https://github.com/AsteriaCreations/portico/releases/tag/v0.3.0
 [0.2.0]: https://github.com/AsteriaCreations/portico/releases/tag/v0.2.0
 [0.1.0]: https://github.com/AsteriaCreations/portico/releases/tag/v0.1.0
