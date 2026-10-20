@@ -49,10 +49,13 @@ test('each analyst view exposes exactly its safe columns and can be read', funct
 });
 
 test('the analyst views are views, not tables, so a data reset never has to classify them', function () {
-    $views = collect(Schema::getViews())->pluck('name')->all();
+    // Scoped to this connection's database: unscoped, MariaDB lists the
+    // views of every database on the server, and CI's can hold two copies.
+    $schema = Schema::getCurrentSchemaName();
+    $views = collect(Schema::getViews($schema))->pluck('name')->all();
 
     expect($views)->toEqualCanonicalizing(array_keys(analystViewColumns()))
-        ->and(array_intersect(Schema::getTableListing(schemaQualified: false), $views))->toBe([]);
+        ->and(array_intersect(Schema::getTableListing($schema, schemaQualified: false), $views))->toBe([]);
 });
 
 test('a member read through analyst_members has no name, email or birth date', function () {
