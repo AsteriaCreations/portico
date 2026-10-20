@@ -41,6 +41,9 @@ below cover only what happens on the tablet itself. --}}
         id="kiosk"
         data-scan-url="{{ route('kiosk.scan') }}"
         data-open="{{ $isOpen && $isLinked ? '1' : '0' }}"
+        data-result-seconds="{{ $resultSeconds }}"
+        data-problem-result-seconds="{{ $problemResultSeconds }}"
+        data-same-code-cooldown-seconds="{{ $sameCodeCooldownSeconds }}"
         @if ($showsCodes)
             data-show-code-url="{{ route('kiosk.show-code') }}"
             data-show-code-seconds="{{ \App\Services\KioskCodeDisplay::seconds() }}"
