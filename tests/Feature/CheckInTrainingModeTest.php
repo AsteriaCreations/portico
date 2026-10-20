@@ -84,7 +84,7 @@ test('a check-in in training mode writes no attendance row', function () {
     Livewire::test(CheckIn::class)
         ->set('trainingMode', true)
         ->fillForm(['event_id' => $event->id, 'member_id' => $member->id])
-        ->callAction('checkIn', data: ['checked_in_at' => now()])
+        ->callAction('checkIn', data: ['payment_method' => 'comp', 'checked_in_at' => now()])
         ->assertHasNoActionErrors();
 
     expect(Attendance::count())->toBe(0);
@@ -96,7 +96,7 @@ test('with training mode off the same check-in still writes exactly one row', fu
 
     Livewire::test(CheckIn::class)
         ->fillForm(['event_id' => $event->id, 'member_id' => $member->id])
-        ->callAction('checkIn', data: ['checked_in_at' => now()])
+        ->callAction('checkIn', data: ['payment_method' => 'comp', 'checked_in_at' => now()])
         ->assertHasNoActionErrors();
 
     expect(Attendance::count())->toBe(1);
@@ -113,7 +113,7 @@ test('a standalone subscription purchase in training mode writes no subscription
             'add_on_id' => $this->entry->id,
             'desired_start' => now()->startOfMonth()->toDateString(),
             'duration_months' => 1,
-            'payment_method' => null,
+            'payment_method' => 'comp',
         ])
         ->assertHasNoActionErrors();
 

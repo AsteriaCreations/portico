@@ -49,6 +49,7 @@ test('buying a 3-month bundle at check-in creates 3 rows split correctly', funct
         ->fillForm(['event_id' => $event->id, 'member_id' => $member->id])
         ->fillForm(['subscription_regular_duration' => '3'], 'pricingForm')
         ->callAction('checkIn', data: [
+            'payment_method' => 'comp',
             'checked_in_at' => now(),
         ])
         ->assertHasNoActionErrors();
@@ -78,6 +79,7 @@ test('a bundle purchase whose window collides with existing coverage shifts forw
         ->fillForm(['event_id' => $event->id, 'member_id' => $member->id])
         ->fillForm(['subscription_regular_duration' => '3'], 'pricingForm')
         ->callAction('checkIn', data: [
+            'payment_method' => 'comp',
             'checked_in_at' => now(),
         ])
         ->assertHasNoActionErrors();
@@ -124,6 +126,7 @@ test('a forged 4-month selection with no such plan configured leaves subscriptio
         ->fillForm(['event_id' => $event->id, 'member_id' => $member->id])
         ->fillForm(['subscription_regular_duration' => '4'], 'pricingForm')
         ->callAction('checkIn', data: [
+            'payment_method' => 'comp',
             'checked_in_at' => now(),
         ])
         ->assertHasErrors(['pricingData.subscription_regular_duration']);

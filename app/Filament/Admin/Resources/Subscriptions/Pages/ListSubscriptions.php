@@ -164,10 +164,18 @@ class ListSubscriptions extends ListRecords
                 // a subscription/membership purchase is exempt from the
                 // Venmo/PayPal/electronic one-time gate, that rule only
                 // applies to entry (check-in) and day passes.
+                //
+                // No cash while the club tracks boxes: this sale belongs to no
+                // box, so cash taken here would be missing from every count.
                 Select::make('payment_method')
                     ->live()
-                    ->options(PaymentMethod::options())
-                    ->helperText(fn (Get $get): ?string => PaymentMethod::feeHelperText($get('payment_method'))),
+                    ->options(fn (): array => MembershipSetting::current()->register_shifts_enabled
+                        ? collect(PaymentMethod::options())->except(PaymentMethod::cashCodes())->all()
+                        : PaymentMethod::options())
+                    ->helperText(fn (Get $get): ?string => collect([
+                        MembershipSetting::current()->register_shifts_enabled ? __('Cash is taken at the Check-In Desk with the box open.') : null,
+                        PaymentMethod::feeHelperText($get('payment_method')),
+                    ])->filter()->implode(' ') ?: null),
                 DatePicker::make('paid_on')
                     ->default(now()),
             ])

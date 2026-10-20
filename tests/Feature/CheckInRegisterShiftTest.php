@@ -220,19 +220,69 @@ test('a forged cash payment method with no open shift is rejected by the field\'
     expect(Attendance::where('member_id', $member->id)->where('event_id', $event->id)->exists())->toBeFalse();
 });
 
-test('omitting a payment method with no open shift still checks the member in without one', function () {
+test('a paid check-in with no payment method is rejected, so cash taken with no box open cannot slip in blank', function () {
     $member = cashClearMember($this->irregular);
     $event = Event::factory()->create(['event_date' => now()->toDateString(), 'entry_fee' => 20, 'pool_fee' => 0]);
 
     Livewire::test(CheckIn::class)
         ->fillForm(['event_id' => $event->id, 'member_id' => $member->id])
         ->callAction('checkIn', data: ['checked_in_at' => now()])
+        ->assertHasActionErrors(['payment_method' => 'required']);
+
+    expect(Attendance::where('member_id', $member->id)->where('event_id', $event->id)->exists())->toBeFalse();
+});
+
+test('a non-cash method with no open shift still checks the member in, outside any box', function () {
+    $member = cashClearMember($this->irregular);
+    $event = Event::factory()->create(['event_date' => now()->toDateString(), 'entry_fee' => 20, 'pool_fee' => 0]);
+
+    Livewire::test(CheckIn::class)
+        ->fillForm(['event_id' => $event->id, 'member_id' => $member->id])
+        ->callAction('checkIn', data: ['payment_method' => 'comp', 'checked_in_at' => now()])
         ->assertHasNoActionErrors();
 
     $attendance = Attendance::where('member_id', $member->id)->where('event_id', $event->id)->firstOrFail();
 
-    expect($attendance->payment_method)->toBeNull()
+    expect($attendance->payment_method)->toBe('comp')
         ->and($attendance->register_shift_id)->toBeNull();
+});
+
+test('a $0 check-in still needs no payment method', function () {
+    $member = cashClearMember($this->irregular);
+    $event = Event::factory()->create(['event_date' => now()->toDateString(), 'entry_fee' => 0, 'pool_fee' => 0]);
+
+    Livewire::test(CheckIn::class)
+        ->fillForm(['event_id' => $event->id, 'member_id' => $member->id])
+        ->callAction('checkIn', data: ['checked_in_at' => now()])
+        ->assertHasNoActionErrors();
+
+    expect(Attendance::where('member_id', $member->id)->where('event_id', $event->id)->value('payment_method'))->toBeNull();
+});
+
+test('with no box open the payment field says why cash is missing, and the note goes once the box opens', function () {
+    $page = Livewire::test(CheckIn::class)->set('registerId', $this->register->id)->instance();
+    $helperText = fn (?RegisterShift $shift): ?string => (fn () => $this->paymentMethodHelperText($shift, null))->call($page);
+
+    expect($helperText(null))->toContain('No box is open on this register');
+
+    $shift = app(RegisterShiftService::class)->openShift($this->register, $this->user, 100);
+
+    expect($helperText($shift))->toBeNull();
+});
+
+test('a desk subscription sale needs a payment method unless a voucher is applied', function () {
+    $member = cashClearMember($this->irregular, ['subscription_eligible' => true]);
+
+    Livewire::test(CheckIn::class)
+        ->fillForm(['member_id' => $member->id])
+        ->callAction('purchaseSubscription', data: [
+            'add_on_id' => $this->entry->id,
+            'desired_start' => now()->startOfMonth(),
+            'duration_months' => '1',
+        ])
+        ->assertHasActionErrors(['payment_method' => 'required']);
+
+    expect(Subscription::where('member_id', $member->id)->exists())->toBeFalse();
 });
 
 test('a subscription paid at check-in also gets register_shift_id and payment_method stamped', function () {

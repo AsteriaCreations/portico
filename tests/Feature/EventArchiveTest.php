@@ -178,7 +178,7 @@ test('a forged check-in onto an archived door-prepay event is rejected at the de
 
     Livewire::test(CheckIn::class)
         ->fillForm(['event_id' => $event->id, 'member_id' => $member->id])
-        ->callAction('checkIn', data: ['checked_in_at' => null]);
+        ->callAction('checkIn', data: ['payment_method' => 'comp', 'checked_in_at' => null]);
 
     expect(Attendance::where('event_id', $event->id)->exists())->toBeFalse();
 });

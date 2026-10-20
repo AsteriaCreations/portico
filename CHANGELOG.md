@@ -104,6 +104,12 @@ is fixes only.
 
 ### Fixed
 
+- **Cash can no longer be taken outside every box.** With no box open, the desk hid Cash but
+  let a paid check-in or subscription sale go through with no payment method, so cash taken
+  that way was counted in no box. The desk now requires a method whenever money changes hands
+  (a desk subscription paid by voucher excepted), and the field says why Cash is missing until
+  the box is opened. While register shifts are on, the Subscriptions list's **Bulk subscription
+  purchase** no longer offers Cash either: that sale belongs to no box. No migration.
 - **Instructor payout waits for the class to start.** The desk's **Pay instructor** button and
   "instructor payout so far" line counted any event dated today, so from midnight on, a class
   later that day showed up during the night before's overnight event. An event with a start time
