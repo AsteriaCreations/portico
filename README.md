@@ -17,7 +17,7 @@ Where to look next:
 - [`docs/FEATURES.md`](docs/FEATURES.md) — a flat inventory of what's built, by area.
 - [`docs/CONFIGURING.md`](docs/CONFIGURING.md) — setting Portico up for your club.
 - [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md) — standing it up on a club LAN.
-- [`docs/DATA_DICTIONARY.md`](docs/DATA_DICTIONARY.md) — what the tables mean, for analysts querying the data.
+- [`docs/DATA_DICTIONARY.md`](docs/DATA_DICTIONARY.md) — what the tables mean, for analysts querying the data. Read-only database accounts for reporting (a full one, and a limited one that can't see personal data) are in [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md) §4a.
 - [`CHANGELOG.md`](CHANGELOG.md) — what changed, release by release.
 
 > **License note:** Portico is [AGPL-3.0-or-later](LICENSE). If you run a modified version
@@ -28,8 +28,8 @@ Where to look next:
 
 - Laravel 13, PHP 8.4+
 - Filament v5 (admin panel + a custom check-in page) — TALL stack
-- MariaDB / MySQL 8
-- Node (to build the admin panel's theme; see [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md))
+- MariaDB 10.6+ / MySQL 8
+- Node (to build the admin panel's theme and the kiosk screen; see [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md))
 - Pest for tests
 
 ## Setup
@@ -50,7 +50,7 @@ php artisan migrate:fresh --seed
 
 This seeds membership categories, a starter `event_types` list (Social, Pool Social, Class, Munch, Private Rental, Meeting, Special, Yoga), the Entry and Pool add-ons, example subscription plans (regular 60 / 25 credit, pool 15 / full coverage — all editable at runtime via the Plans and Membership Settings screens; the currency is a Membership Settings choice, `USD` by default), a starter `comp_reasons` list (Presenter, Volunteer, Guest of a staff member), paperwork types, and starter showrunner-payout and instructor pay-rate tiers, plus an inactive system user that exists only to attribute automated ledger entries. Every one of those is ordinary settings data you edit, rename, or deactivate to match your club. In `local`/`testing` the shipped `DatabaseSeeder` also creates an admin at `test@example.com` / `password`; outside those environments it instead requires `ADMIN_EMAIL` and `ADMIN_PASSWORD` in `.env` and refuses to seed a guessable credential.
 
-Visit `/admin` to log in. `/admin/check-in` is the primary door-facing screen; everything else (Members, Events, Subscriptions, Plans, Event Types, Users, reports) is gated to Manager/Admin per the roles table below.
+Visit `/admin` to log in (`/` redirects there). `/admin/check-in` is the primary door-facing screen, and `/kiosk` is the optional self check-in screen for a tablet by the door (off until **Kiosk check-in** is turned on at Feature Flags; see "A kiosk tablet" in [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md)); everything else (Members, Events, Subscriptions, Plans, Event Types, Users, reports) is gated to Manager/Admin per the roles table below.
 
 ### Sample data for local development
 
@@ -68,7 +68,8 @@ After `migrate:fresh --seed`, with the app served (see [Production / LAN deploym
 
 - `/admin/login` shows the sign-in page, styled. The panel works without `npm run build`, but the
   app's own screens (the Check-In Desk, Active Patrons, the help panels) then lose their spacing
-  and colours, so build once after install and after any update that changes a view.
+  and colours, so build once after install and after any update that changes a view. The kiosk
+  screen needs the build too; without it, `/kiosk` says so instead of scanning.
 - Log in: `test@example.com` / `password` in `local`, or your `ADMIN_EMAIL` / `ADMIN_PASSWORD` otherwise.
 - The **Dashboard** loads with an empty "in the building" widget.
 - **Check-In Desk** shows the member/event pickers; **Analytics**, **Members**, and **Feature Flags** all render (empty until you add data, or run `DemoDataSeeder`).
@@ -117,11 +118,16 @@ Seven nested tiers — `Showrunner ⊂ Volunteer ⊂ DM ⊂ Door ⊂ Manager ⊂
 | Collect a subscription payment *during check-in* (member must be subscription-eligible; fixed at the current plan price) | | | | ✓ | ✓ | ✓ | ✓ |
 | Redeem voucher credit at check-in (own or another member's balance; partial amounts allowed) | | | | ✓ | ✓ | ✓ | ✓ |
 | Open and close a register shift, record miscellaneous payments (register shifts are behind a feature flag) | | | | ✓ | ✓ | ✓ | ✓ |
+| Pay tonight's instructor from the register box (instructor payouts are behind a feature flag) | | | | ✓ | ✓ | ✓ | ✓ |
+| Show, print, or email a member's kiosk QR code (kiosk check-in is behind a feature flag) | | | | ✓ | ✓ | ✓ | ✓ |
+| Rename a username or change a preferred name at the desk (Door only when the matching feature flag is on) | | | | ✓ | ✓ | ✓ | ✓ |
 | See watchlist/ban reasons, notes, raw DOB | | | | | ✓ | ✓ | ✓ |
 | Edit members, browse/edit any subscription record, view events, manage plans/event types/comp reasons, reports | | | | | ✓ | ✓ | ✓ |
 | Use Analytics; edit Membership Settings, Feature Flags, and Role Labels | | | | | ✓ | ✓ | ✓ |
 | Browse the voucher ledger | | | | | ✓ | ✓ | ✓ |
 | Waive one visit's entry fee at check-in (per-event comp, e.g. a House Sub) | | | | | ✓ | ✓ | ✓ |
+| Convert tonight's paid entry into a subscription, or remove a paid visit while its register shift is open (each needs a reason and is logged) | | | | | ✓ | ✓ | ✓ |
+| Put a member on the watchlist and set its review date | | | | | ✓ | ✓ | ✓ |
 | Manage an event's admin-run Prepay List (single add or bulk upload) | | | | | ✓ | ✓ | ✓ |
 | Manage an event's admin-run Comp List | | | | | ✓ | ✓ | ✓ |
 | Grant the monthly free regular subscription (self or gift to a member) † | | | | | ✓ | | ✓ |
@@ -130,7 +136,10 @@ Seven nested tiers — `Showrunner ⊂ Volunteer ⊂ DM ⊂ Door ⊂ Manager ⊂
 | Associate a Skill with a member (a Manager can edit the Skills catalog itself, but not tag a member) | | | | | | ✓ | ✓ |
 | Grant a per-user capability such as Cleaning Crew § | | | | | | ✓ | ✓ |
 | Open the Technical page, and Upstream Updates when that flag is on — including "Run update now" once the deploy flag and task are configured | | | | | | ✓ | ✓ |
+| Bulk upload staff accounts or vouchers; set up the kiosk tablet | | | | | | ✓ | ✓ |
 | Change the club's displayed name (Membership Settings) | | | | | | | ✓ |
+| Take a member off the watchlist; remove a paid visit after its register shift has closed | | | | | | | ✓ |
+| Reset member & event data (Technical page; takes a backup first) | | | | | | | ✓ |
 
 † Deliberately not monotonic — Admin sits between Manager and Owner in rank but can't grant this perk. See `docs/BLUEPRINT.md` "Monthly Manager & Owner Subscription Perk".
 
@@ -208,7 +217,7 @@ Emails and in-app-notifies the Owner(s), plus the event's own assigned Showrunne
 php artisan events:notify-ended
 ```
 
-Idempotent — `events.ended_notification_sent_at` is set once an event's been processed, so re-running (or running hourly) never double-sends. Needs a real mail transport configured in `.env` (`MAIL_MAILER=log` by default, which just writes to the log instead of actually delivering anything).
+The email goes to each recipient's preferred contact email (set on **My account**; the sign-in email if blank), and is skipped for anyone who turned club email off there; the bell notification always arrives. Idempotent — `events.ended_notification_sent_at` is set once an event's been processed, so re-running (or running hourly) never double-sends. Needs a real mail transport configured in `.env` (`MAIL_MAILER=log` by default, which just writes to the log instead of actually delivering anything).
 
 **Register the hourly run in Windows Task Scheduler**, same as the nightly backup above:
 
@@ -221,7 +230,7 @@ Output is appended to `storage/logs/notify-event-ended.log`.
 
 ## Comp-reward vouchers
 
-`php artisan vouchers:grant-comp-rewards` grants a comp reason's configured voucher (`comp_reasons.grants_voucher_amount`) to every comped, arrived attendee once their event's `ends_at` has passed — e.g. a "Presenter" comp reason set to $25. Idempotent — never grants twice for the same attendance row.
+`php artisan vouchers:grant-comp-rewards` grants a comp reason's configured voucher (`comp_reasons.grants_voucher_amount`) to every comped, arrived attendee once their event's `ends_at` has passed — e.g. a "Presenter" comp reason set to $25. The same run grants an event's **workday voucher** (`events.workday_voucher_amount`) to everyone who stayed at least its minimum hours, from check-in to recorded departure. Idempotent — never grants twice for the same attendance row, and a visit earns one reward at most.
 
 ```bash
 php artisan vouchers:grant-comp-rewards
@@ -231,7 +240,7 @@ This app has no Laravel scheduler (same as backups above) — register it in Win
 
 ## Project status
 
-Current release: **`v0.3.0`** — see [`CHANGELOG.md`](CHANGELOG.md). Portico is `0.x`, so a
+Current release: **`v0.4.0`** — see [`CHANGELOG.md`](CHANGELOG.md). Portico is `0.x`, so a
 minor release may include a migration; see [`CONTRIBUTING.md`](CONTRIBUTING.md) "Versioning
 & releases".
 
@@ -245,9 +254,9 @@ Built through the blueprint's step-by-step build order:
 6. ✅ Role policies + reporting widgets
 7. ✅ Backups, README, `.env.example`
 
-The app has grown substantially since via many incremental slices — vouchers, guests, prepay / building-capacity, ban exceptions, per-event comp, feature flags, showrunner / instructor payouts, membership settings, member skill tracking, analytics, and more. The commit history is the detailed record; `CONTRIBUTING.md` covers the conventions and the architecture rules that hold across all of it.
+The app has grown substantially since via many incremental slices — vouchers, guests, prepay / building-capacity, ban exceptions, per-event comp, feature flags, showrunner / instructor payouts, membership settings, member skill tracking, analytics, kiosk self check-in for subscribers, register-box cash handling (close-out envelopes, prepaid cash held for its event, audited payment corrections and visit removals), event check-in close times, a per-user colorblind-friendly palette, and more. The commit history is the detailed record; `CONTRIBUTING.md` covers the conventions and the architecture rules that hold across all of it.
 
-Portico ships a **feature-flag mechanism** (`/admin/feature-flags`, Manager+) so a club can turn off the optional parts it doesn't use — vouchers, add-ons, the pool component, prepay, register shifts, the showrunner comp-request pipeline, showrunner and instructor payouts, the Manager/Owner perk, suspensions, visit and behavior notes, and guests — and opt in to the two operations features that are off by default: upstream update checking and the web-triggered deploy button. Flags stop new writes; they never hide data already collected. Turning one on sends a setup reminder to the notification bell for each step it still needs. [`docs/CONFIGURING.md`](docs/CONFIGURING.md) lists every flag and its default.
+Portico ships a **feature-flag mechanism** (`/admin/feature-flags`, Manager+) so a club can turn off the optional parts it doesn't use — vouchers, add-ons, the pool component, prepay, register shifts, the showrunner comp-request pipeline, showrunner and instructor payouts, the Manager/Owner perk, suspensions, visit and behavior notes, and guests — and opt in to the features that are off by default, such as kiosk check-in, letting Door rename usernames or change preferred names, the cash envelope reminder, upstream update checking, and the web-triggered deploy button. Flags stop new writes; they never hide data already collected. Turning one on sends a setup reminder to the notification bell for each step it still needs. [`docs/CONFIGURING.md`](docs/CONFIGURING.md) lists the flags and their defaults; the kiosk flags are covered in "A kiosk tablet" in [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md).
 
 ## License
 
