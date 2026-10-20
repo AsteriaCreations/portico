@@ -9,6 +9,14 @@ is fixes only.
 
 ## [Unreleased]
 
+### Changed
+
+- **`CONFIGURING.md` covers every setting again.** It now lists the three kiosk flags, the two
+  cash-hold/envelope flags, and the Membership Settings added since v0.3.0: guest follow-up
+  category, check-in close times and the first-visit exception, the six kiosk timings and
+  limits, watchlist probation, the desk display name and staff roles on Active Patrons. Docs
+  only.
+
 ## [0.4.0] — 2026-10-19
 
 **Upgrading from 0.3.0:** run `composer install` (new package `endroid/qr-code`), `npm install &&
