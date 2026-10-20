@@ -455,26 +455,37 @@ GRANT SELECT ON `<portico>`.subscriptions TO 'portico_analyst'@'localhost';
 GRANT SELECT ON `<portico>`.vouchers TO 'portico_analyst'@'localhost';
 GRANT SELECT ON `<portico>`.visit_removals TO 'portico_analyst'@'localhost';
 
--- Tables with personal or free-text columns: only the safe columns.
-GRANT SELECT (id, member_number, category_id, is_active, subscription_eligible, on_watchlist,
-  is_banned, banned_until, missing_paperwork, is_deceased, sponsor_id, email_opt_in,
-  probation_override_start, date_vetted, created_at, updated_at)
-  ON `<portico>`.members TO 'portico_analyst'@'localhost';
-GRANT SELECT (id, member_id, event_id, checked_in_by, checked_in_at, departed_at, entry_fee,
-  entry_coverage, entry_covered_by, voucher_coverage, amount_paid, payment_method,
-  comp_reason_id, register_shift_id, prepaid_ahead, created_at, updated_at)
-  ON `<portico>`.attendance TO 'portico_analyst'@'localhost';
-GRANT SELECT (id, member_id, status, value, changed_by, created_at)
-  ON `<portico>`.member_status_changes TO 'portico_analyst'@'localhost';
-GRANT SELECT (id, event_id, member_id, comp_reason_id, requested_by, status, reviewed_by,
-  reviewed_at, attendance_id, created_at, updated_at)
-  ON `<portico>`.comp_requests TO 'portico_analyst'@'localhost';
-GRANT SELECT (id, role, active, member_id, created_at)
-  ON `<portico>`.users TO 'portico_analyst'@'localhost';
-GRANT SELECT (id, subscription_eligibility_threshold, subscription_eligibility_window_months,
-  probation_period_days, venue_capacity, currency, week_starts_on)
-  ON `<portico>`.membership_settings TO 'portico_analyst'@'localhost';
+-- Tables with personal or free-text columns: a view of only the safe columns.
+GRANT SELECT ON `<portico>`.analyst_members TO 'portico_analyst'@'localhost';
+GRANT SELECT ON `<portico>`.analyst_attendance TO 'portico_analyst'@'localhost';
+GRANT SELECT ON `<portico>`.analyst_member_status_changes TO 'portico_analyst'@'localhost';
+GRANT SELECT ON `<portico>`.analyst_comp_requests TO 'portico_analyst'@'localhost';
+GRANT SELECT ON `<portico>`.analyst_users TO 'portico_analyst'@'localhost';
+GRANT SELECT ON `<portico>`.analyst_membership_settings TO 'portico_analyst'@'localhost';
 ```
+
+The six `analyst_*` views come with the app (a migration creates them). The analyst queries
+them in place of those six tables, which the account can't read at all, and `SELECT *` works
+on them. Each view keeps only these columns:
+
+| View | Columns |
+|---|---|
+| `analyst_members` | `id, member_number, category_id, is_active, subscription_eligible, on_watchlist, is_banned, banned_until, missing_paperwork, is_deceased, sponsor_id, email_opt_in, probation_override_start, date_vetted, created_at, updated_at` |
+| `analyst_attendance` | `id, member_id, event_id, checked_in_by, checked_in_at, departed_at, entry_fee, entry_coverage, entry_covered_by, voucher_coverage, amount_paid, payment_method, comp_reason_id, register_shift_id, prepaid_ahead, created_at, updated_at` |
+| `analyst_member_status_changes` | `id, member_id, status, value, changed_by, created_at` |
+| `analyst_comp_requests` | `id, event_id, member_id, comp_reason_id, requested_by, status, reviewed_by, reviewed_at, attendance_id, created_at, updated_at` |
+| `analyst_users` | `id, role, active, member_id, created_at` |
+| `analyst_membership_settings` | `id, subscription_eligibility_threshold, subscription_eligibility_window_months, probation_period_days, venue_capacity, currency, week_starts_on` |
+
+A view reads its table with the rights of whoever created it: the app's own database user
+(`DB_USERNAME`), when `php artisan migrate` ran. So that user needs the `CREATE VIEW` right
+(`GRANT ALL` on the database includes it), and on a backup restored to another machine the
+views only open once a user of that same name exists there too. On a restored copy you can
+also just use the full account.
+
+Made the limited account with this page's older column-by-column grants? Those still work, but
+`SELECT *` on those six tables is refused. Drop the account and create it again with the
+script above.
 
 Left out entirely: behavior notes, watchlist reviews, ban exceptions, username history, guest
 follow-ups and the framework tables (sessions, cache, jobs, password resets). A future update
