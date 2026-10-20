@@ -128,7 +128,7 @@ test('two registers admitting different members for the last spot admit only one
 
     // Without the admission lock this counted occupancy while the other
     // register's row was still uncommitted, saw 0 of 1, and admitted too.
-    $livewire->setActionData(['checked_in_at' => now()])
+    $livewire->setActionData(['checked_in_at' => now(), 'payment_method' => 'comp'])
         ->callMountedAction()
         ->assertNotified(__('Building at capacity — check-in not saved.'));
 
@@ -149,7 +149,7 @@ test('with room to spare, a register waits out another admission instead of fail
 
     $other = admitOnAnotherRegister($first, $event);
 
-    $livewire->setActionData(['checked_in_at' => now()])
+    $livewire->setActionData(['checked_in_at' => now(), 'payment_method' => 'comp'])
         ->callMountedAction()
         ->assertHasNoActionErrors();
 
@@ -182,7 +182,7 @@ test('two registers selling the last unit of a capped add-on sell it only once',
 
     // Without the re-check this counted the room's sales while the other
     // register's row was still uncommitted, saw 0 of 1, and sold it too.
-    $livewire->setActionData(['checked_in_at' => now()])
+    $livewire->setActionData(['checked_in_at' => now(), 'payment_method' => 'comp'])
         ->callMountedAction()
         ->assertNotified(__(':add_on sold out for tonight — check-in not saved.', ['add_on' => 'Private room rental']));
 
