@@ -9,6 +9,14 @@ is fixes only.
 
 ## [Unreleased]
 
+### Security
+
+- **PHP 8.4.27 is now the minimum for production.** Earlier PHP 8.4 builds are open to
+  unauthenticated remote code execution in PHP itself (CVE-2026-109618 and CVE-2026-109619,
+  "php2shell"), whatever the app code does. Upgrade PHP on the server and restart Apache. The
+  shipped Apache configs now also turn off `session.upload_progress`, which Laravel never uses.
+  Re-copy `scripts/apache/portico.conf` (or rerun `setup-apache.ps1`) to pick it up.
+
 ### Added
 
 - **Portico logo.** Browser tabs now show the Portico wheel (`public/favicon.ico` was an empty
