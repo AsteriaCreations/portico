@@ -62,6 +62,9 @@ class AdminPanelProvider extends PanelProvider
             // gate); null org_name falls back to the existing config('app.name')
             // behavior, so an upgrade never changes what's displayed.
             ->brandName(fn (): string => MembershipSetting::current()->org_name ?: config('app.name'))
+            // Same page and gate; null shows brandName as text, as before.
+            ->brandLogo(fn (): ?string => MembershipSetting::current()->orgLogoUrl())
+            ->brandLogoHeight('2.5rem')
             // A closure, read when the panel boots -- once per request under
             // Apache/PHP-FPM, after the session has started -- so a user with
             // "Colorblind-friendly colors" on (My account) gets

@@ -10,6 +10,7 @@ use BackedEnum;
 use Closure;
 use Filament\Actions\Action;
 use Filament\Forms\Components\CheckboxList;
+use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
@@ -20,6 +21,7 @@ use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Storage;
 use UnitEnum;
 
 /**
@@ -88,6 +90,7 @@ class MembershipSettings extends Page
             'currency',
             'locale',
             'org_name',
+            'org_logo_path',
             'member_search_fields',
             'checkin_display_name_field',
             'member_email_required',
@@ -320,6 +323,17 @@ class MembershipSettings extends Page
                     ->helperText(__('Shown across the admin panel (header, browser tab, login page) in place of ":name". Leave blank to use that default. Owner only.', ['name' => config('app.name')]))
                     ->maxLength(255)
                     ->visible(fn (): bool => Gate::allows('manage-org-name')),
+                // No SVG: an uploaded SVG served from this origin can carry script.
+                FileUpload::make('org_logo_path')
+                    ->label('Organization logo')
+                    ->helperText(__('Shown in place of the organization name in the admin panel header, on the login page, and on the kiosk screen. Pick one that reads on both light and dark backgrounds. PNG, JPG or WebP, up to 1 MB. Leave empty to show the name as text. Owner only.'))
+                    ->image()
+                    ->acceptedFileTypes(['image/png', 'image/jpeg', 'image/webp'])
+                    ->maxSize(1024)
+                    ->disk('public')
+                    ->directory('branding')
+                    ->visibility('public')
+                    ->visible(fn (): bool => Gate::allows('manage-org-name')),
                 CheckboxList::make('member_search_fields')
                     ->label('Searchable member fields')
                     ->helperText(__('Which fields staff can search on in every member picker — the check-in desk, the Showrunner/Host selects, subscriptions, vouchers, and the rest. Username is the desk\'s primary lookup; add others only if staff actually need them. Each result shows the first of these fields the member has, plus, at the desk, whichever other field matched what was typed. Email only ever shows to Manager and up.'))
@@ -390,10 +404,19 @@ class MembershipSettings extends Page
                 // than trust visibility, same convention as grant-event-comp
                 // and the other Door+-open forgeable fields on CheckIn.
                 if (! Gate::allows('manage-org-name')) {
-                    unset($state['org_name']);
+                    unset($state['org_name'], $state['org_logo_path']);
                 }
 
-                MembershipSetting::current()->update($state);
+                $settings = MembershipSetting::current();
+                $replacedLogo = array_key_exists('org_logo_path', $state) && $state['org_logo_path'] !== $settings->org_logo_path
+                    ? $settings->org_logo_path
+                    : null;
+
+                $settings->update($state);
+
+                if (filled($replacedLogo)) {
+                    Storage::disk('public')->delete($replacedLogo);
+                }
                 $this->rememberData();
 
                 Notification::make()->title(__('Settings saved'))->success()->send();
