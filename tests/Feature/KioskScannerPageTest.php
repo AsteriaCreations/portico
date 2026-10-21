@@ -68,7 +68,7 @@ test('the kiosk page needs no sign-in and starts no session', function () {
 test('the kiosk screen shows the Portico wheel above the heading, even before the tablet is linked', function () {
     $this->get('/kiosk')
         ->assertOk()
-        ->assertSee('<img class="mark" src="'.asset('images/portico-wheel-white.png').'" alt="">', false);
+        ->assertSee('<img class="mark" src="'.asset('images/portico-wheel-white.svg').'" alt="">', false);
 });
 
 test('opening the setup link links the tablet with an http-only same-site cookie and drops the key from the address', function () {

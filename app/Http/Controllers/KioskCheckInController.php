@@ -41,7 +41,7 @@ class KioskCheckInController extends Controller
 
         return view('kiosk.scanner', [
             'orgName' => $settings->org_name,
-            'logoUrl' => $settings->orgLogoUrl() ?? asset('images/portico-wheel-white.png'),
+            'logoUrl' => $settings->orgLogoUrl() ?? asset('images/portico-wheel-white.svg'),
             'isLinked' => $settings->kioskDeviceSecretMatches($request->cookie(VerifyKioskDevice::COOKIE)),
             'badSetupLink' => $key !== null,
             'isOpen' => Event::anyCurrentlyActive(),

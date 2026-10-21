@@ -112,7 +112,9 @@ class AdminPanelProvider extends PanelProvider
             ->favicon(fn (): string => asset('favicon.ico'))
             ->renderHook(
                 PanelsRenderHook::HEAD_END,
-                fn (): string => '<link rel="apple-touch-icon" href="'.e(asset('apple-touch-icon.png')).'">',
+                // favicon.ico stays as the fallback for browsers without SVG icons.
+                fn (): string => '<link rel="icon" type="image/svg+xml" href="'.e(asset('favicon.svg')).'">'
+                    .'<link rel="apple-touch-icon" href="'.e(asset('apple-touch-icon.png')).'">',
             )
             ->renderHook(
                 PanelsRenderHook::FOOTER,

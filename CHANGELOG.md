@@ -21,6 +21,10 @@ is fixes only.
   on the login page, and the Portico wheel on the kiosk screen; replacing it deletes the old
   file. Empty by default, so nothing changes until one is uploaded. Needs `php artisan migrate`
   and `storage:link` (the deploy script runs both).
+- **Vector Portico logo.** The Portico logo and wheel now ship as SVG files
+  (`public/images/portico-*.svg`), so the footer, kiosk and README logos stay sharp at any size.
+  Browsers that support it get an SVG favicon (`public/favicon.svg`), and `favicon.ico` and the
+  home-screen icon were redrawn from the new artwork.
 
 ### Changed
 

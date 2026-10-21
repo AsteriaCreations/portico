@@ -112,5 +112,5 @@ test('the kiosk screen shows the club logo instead of the Portico wheel once set
     $this->get('/kiosk')
         ->assertOk()
         ->assertSee('<img class="mark" src="'.Storage::disk('public')->url('branding/club.png').'" alt="">', false)
-        ->assertDontSee('portico-wheel-white.png');
+        ->assertDontSee('portico-wheel-white.svg');
 });
