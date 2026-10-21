@@ -1,7 +1,7 @@
 <h1>
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="public/images/portico-logo-white.png">
-    <img alt="Portico" src="public/images/portico-logo.png" height="60">
+    <source media="(prefers-color-scheme: dark)" srcset="public/images/portico-logo-white.svg">
+    <img alt="Portico" src="public/images/portico-logo.svg" height="60">
   </picture>
 </h1>
 
