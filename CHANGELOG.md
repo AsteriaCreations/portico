@@ -26,6 +26,10 @@ is fixes only.
 
 - **The kiosk screen shows the Portico wheel** above the club name and "Self check-in". It is
   decorative (empty `alt`), so screen readers skip it. No build or migration needed.
+- **Membership Settings is grouped into sections** — Organization, Admission & membership,
+  Guests, Watchlist, Events & check-in, Check-In Desk, Members list & Active Patrons, Kiosk and
+  Updates & deploy — instead of one long list. The last two start collapsed. Same fields, same
+  permissions, one Save button; `docs/CONFIGURING.md` follows the same order.
 
 - **`CONFIGURING.md` covers every setting again.** It now lists the three kiosk flags, the two
   cash-hold/envelope flags, and the Membership Settings added since v0.3.0: guest follow-up
