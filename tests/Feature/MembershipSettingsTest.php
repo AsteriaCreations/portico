@@ -36,6 +36,28 @@ test('manager and above can access the membership settings page', function () {
     }
 });
 
+test('the settings are grouped into sections in setup order, with the set-once ones collapsed', function () {
+    $this->actingAs(userWithRoleForSettings(Role::Owner));
+
+    $sections = collect(Livewire::test(MembershipSettings::class)->instance()->form->getComponents())
+        ->mapWithKeys(fn ($section): array => [$section->getHeading() => $section->isCollapsed()]);
+
+    expect($sections->all())->toBe([
+        'Organization' => false,
+        'Admission & membership' => false,
+        'Guests' => false,
+        'Watchlist' => false,
+        'Events & check-in' => false,
+        'Check-In Desk' => false,
+        'Members list & Active Patrons' => false,
+        'Kiosk' => true,
+        'Updates & deploy' => true,
+    ]);
+
+    $this->get('/admin/membership-settings')
+        ->assertSeeInOrder(['Displayed organization name', 'Age of majority', 'Allow guests during probation', 'Watchlist: who staff notify', 'Venue capacity', 'Searchable member fields', 'Show staff roles on Active Patrons', 'Kiosk scans allowed per minute', 'Deploy Scheduled Task name']);
+});
+
 test('mount fills the form from the current singleton row', function () {
     MembershipSetting::current()->update([
         'subscription_eligibility_threshold' => 7,
