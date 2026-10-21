@@ -16,6 +16,7 @@ below cover only what happens on the tablet itself. --}}
         * { box-sizing: border-box; }
         body { margin: 0; min-height: 100vh; background: #111827; color: #f9fafb; font-family: system-ui, sans-serif; }
         main { display: flex; min-height: 100vh; flex-direction: column; align-items: center; justify-content: center; gap: 24px; padding: 24px 16px; text-align: center; }
+        .mark { display: block; width: clamp(64px, 12vw, 112px); height: auto; margin: 0 auto 12px; opacity: .9; }
         h1 { margin: 0; font-size: clamp(28px, 5vw, 48px); font-weight: 700; }
         .org { margin: 0; font-size: 18px; color: #d1d5db; }
         .panel { width: 100%; max-width: 640px; }
@@ -59,6 +60,7 @@ below cover only what happens on the tablet itself. --}}
         ]) }}"
     >
         <div>
+            <img class="mark" src="{{ asset('images/portico-wheel-white.png') }}" alt="">
             @if (filled($orgName))
                 <p class="org">{{ $orgName }}</p>
             @endif
