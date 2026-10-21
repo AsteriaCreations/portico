@@ -13,6 +13,7 @@ test('the shipped icon and logo files exist and are not empty', function (string
     'apple-touch-icon.png',
     'images/portico-logo.png',
     'images/portico-logo-white.png',
+    'images/portico-wheel-white.png',
 ]);
 
 test('the login page links the favicon and touch icon and shows the Portico footer', function () {

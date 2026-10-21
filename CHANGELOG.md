@@ -19,6 +19,9 @@ is fixes only.
 
 ### Changed
 
+- **The kiosk screen shows the Portico wheel** above the club name and "Self check-in". It is
+  decorative (empty `alt`), so screen readers skip it. No build or migration needed.
+
 - **`CONFIGURING.md` covers every setting again.** It now lists the three kiosk flags, the two
   cash-hold/envelope flags, and the Membership Settings added since v0.3.0: guest follow-up
   category, check-in close times and the first-visit exception, the six kiosk timings and
