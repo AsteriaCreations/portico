@@ -19,6 +19,11 @@ deployment), [`docs/BLUEPRINT.md`](BLUEPRINT.md) (the domain rules), and
 - **Displayed organization name** on `/admin/membership-settings` (`org_name`, Owner only)
   — overrides the panel brand shown in the sidebar without touching `APP_NAME`. Leave it
   blank to fall back to `APP_NAME`.
+- **Organization logo** on the same page (`org_logo_path`, Owner only) — PNG, JPG or WebP up
+  to 1 MB, shown instead of the name in the panel header and on the login page, and in place
+  of the Portico wheel on the kiosk screen. Pick one that reads on both light and dark
+  backgrounds. Stored on the `public` disk under `storage/app/public/branding`, so it needs
+  `php artisan storage:link` (the deploy script runs it). Leave empty to show the name.
 - The admin footer links to the canonical Portico repository. If you deploy a **modified**
   version, the AGPL requires you to offer that source to your users — point the link at
   your own fork (`resources/views/filament/admin/footer.blade.php`).

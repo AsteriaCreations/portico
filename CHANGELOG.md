@@ -16,6 +16,11 @@ is fixes only.
   The panel and login footer show a small Portico logo linking to the source code, with a white
   version in dark mode, and the README opens with it. The club's own name in the panel header is
   unchanged. Needs `npm run build`.
+- **Organization logo.** An Owner can upload the club's logo (PNG, JPG or WebP, up to 1 MB) on
+  Membership Settings, next to the displayed name. It replaces the name in the panel header and
+  on the login page, and the Portico wheel on the kiosk screen; replacing it deletes the old
+  file. Empty by default, so nothing changes until one is uploaded. Needs `php artisan migrate`
+  and `storage:link` (the deploy script runs both).
 
 ### Changed
 
