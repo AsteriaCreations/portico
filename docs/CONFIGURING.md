@@ -85,39 +85,82 @@ rarely need to touch most of them.
 
 ![Membership Settings](screenshots/membership-settings.jpg)
 
+### Organization
+
 | Setting | Default | Notes |
 |---|---|---|
+| Displayed organization name | *(blank)* | Panel brand override — see "Name & branding". |
+| Organization logo | *(none)* | Owner only. Replaces the name in the panel header, the login page and the kiosk — see "Name & branding". |
+| Language | *(blank — server default, English)* | The admin panel's language for everyone on this install. Lists only languages that have a `lang/{code}.json` translation file; with none installed, English is the only choice. Names you enter yourself (categories, comp reasons, plans, …) are never translated. |
+| Currency code | `USD` | A 3-letter ISO 4217 code, used everywhere a money figure is shown — the check-in desk's live totals, every Analytics widget, and every money column in the admin panel. |
+| Week starts on | *(blank — follows the language; Monday in English)* | First day of the club's week, for the "this week" figures on Analytics and when the Cleaning Checklist resets. Changing it mid-week re-opens this week's checklist tasks. |
+
+### Admission & membership
+
+| Setting | Default | Notes |
+|---|---|---|
+| Age of majority | `18` | `AdmissionPolicy` blocks a member below this age outright. Jurisdiction-specific. |
+| Check-ID / no-alcohol flag age | `21` | A member below this age (but at or above "Age of majority") is admitted but flagged. Set equal to "Age of majority" to disable the flag. |
 | Subscription eligibility threshold | `5` | Attended-events count that unlocks a subscription. |
 | Count attended events from the last (months) | *(blank — all-time)* | Only events attended within this many months count toward the threshold. A member flagged "Subscription eligible" by hand stays eligible. |
-| Probation period (days) | `90` | Never blocks admission or changes pricing. A member on probation can't register a guest, unless the next setting allows it. |
+| Probation period (days) | `90` | Never blocks admission or changes pricing. A member on probation can't register a guest, unless "Allow guests during probation" (Guests) allows it. |
+| Require email at sign-up | on | Whether the Check-In Desk requires an email when a Prospective finishes sign-up or a guest is registered. Name is always required. |
+
+### Guests
+
+| Setting | Default | Notes |
+|---|---|---|
 | Allow guests during probation | off | Lets a member still on probation register a guest at the Check-In Desk. |
 | Max guests per member per night | *(blank — no limit)* | How many new guests one member may register in a night, counted from when they checked in (a late event doesn't reset it at midnight). Returning guests who check in under them don't count. |
 | Move a guest on when their follow-up is sent | on | When a guest is marked "follow-up sent" on the Members list, moves them out of Guest into the category below. Off, they stay a Guest and only the follow-up is recorded. |
 | Category after follow-up | *(blank — Irregular)* | Where a guest goes once their follow-up is sent. If the chosen category is later deleted, Irregular is used. |
+
+### Watchlist
+
+| Setting | Default | Notes |
+|---|---|---|
+| Watchlist: who staff notify | *(blank — uses `WATCHLIST_NOTIFY_LABEL`)* | Where staff post a heads-up before admitting a watchlisted member; the desk shows "Notify …" and asks staff to confirm. Blank falls back to the `.env` value (default "the staff channel"). |
+| Watchlist probation | Same as new-member probation | When an Owner takes a member off the watchlist, they can start a probation, and staff see "Recently off watchlist" at the desk and on Active Patrons. "Same as new-member probation" uses the probation period and guest rule above; **Custom** sets its own length in days and whether it blocks guests (off by default: informational only); **Off** disables it. |
+
+### Events & check-in
+
+| Setting | Default | Notes |
+|---|---|---|
 | Venue capacity | *(blank)* | Building-wide occupancy cap across concurrent events. **Blank = not enforced.** |
-| Default cash drawer opening float | *(blank)* | Pre-fills the opening count when a shift is opened. |
 | Event window buffer (minutes) | `15` | Slack around an event's start/end for the check-in picker (also handles an event running past midnight). |
 | Check-in closes before the end: overnight / same-day events (minutes) | `60` / `30` | The default check-in close time for a new event, this many minutes before it ends; "overnight" is an event that runs past midnight. Each event can override it. After the close, the desk and kiosk take no new check-ins; marking prepaid arrivals still works. Changing this doesn't move events already saved. |
 | Let a first visit check in after close | on | The desk can still check in someone on their first visit (e.g. a new member finishing paperwork) after check-in has closed. Off, check-in closes for everyone. The kiosk is always closed after close. |
+
+### Check-In Desk
+
+| Setting | Default | Notes |
+|---|---|---|
+| Searchable member fields | `Username` | Which fields the member search boxes match on, and what shows in member dropdown labels. |
+| Check-in desk display name | Preferred name | What the desk shows once a member is selected (greeting line, checked-in roster, voucher labels, sponsor note): preferred name, full name or username. Falls back to username when the chosen field is blank. |
+| Default cash drawer opening float | *(blank)* | Pre-fills the opening count when a shift is opened. |
+
+### Members list & Active Patrons
+
+| Setting | Default | Notes |
+|---|---|---|
+| Hide personal info by default on the Members list | on | Whether the Members table masks name/DOB/email until "Show personal info". |
+| Show staff roles on Active Patrons | on | Active Patrons notes which staff are signed in ("Also in the building"). Off lists their names without each person's role. |
+
+### Kiosk (collapsed)
+
+| Setting | Default | Notes |
+|---|---|---|
 | Kiosk "Show on kiosk" time (seconds) | `60` | How long the kiosk tablet shows a member's code sent with "Show on kiosk" (10–300). Only matters while "Show codes on the kiosk" is on. |
 | Kiosk "checked in" message time (seconds) | `4` | How long the kiosk shows "checked in" / "already checked in" before it's ready for the next person. |
 | Kiosk problem message time (seconds) | `7` | How long the kiosk shows any other result, such as "see staff" or "code not recognized". |
 | Kiosk ignores a repeated code for (seconds) | `8` | So a code still held up to the camera isn't scanned twice. A different code scans right away. |
 | Kiosk scans allowed per minute | `30` | The kiosk's rate limit; past it, the tablet asks the member to wait. It stops anyone guessing codes. Can't go below 30. |
 | Kiosk codes emailed per click | `50` | How many subscribers one click of "Email kiosk codes" (Subscriptions) sends to. Lower it if a slow mail server times the page out. |
-| Week starts on | *(blank — follows the language; Monday in English)* | First day of the club's week, for the "this week" figures on Analytics and when the Cleaning Checklist resets. Changing it mid-week re-opens this week's checklist tasks. |
-| Age of majority | `18` | `AdmissionPolicy` blocks a member below this age outright. Jurisdiction-specific. |
-| Check-ID / no-alcohol flag age | `21` | A member below this age (but at or above "Age of majority") is admitted but flagged. Set equal to "Age of majority" to disable the flag. |
-| Watchlist: who staff notify | *(blank — uses `WATCHLIST_NOTIFY_LABEL`)* | Where staff post a heads-up before admitting a watchlisted member; the desk shows "Notify …" and asks staff to confirm. Blank falls back to the `.env` value (default "the staff channel"). |
-| Watchlist probation | Same as new-member probation | When an Owner takes a member off the watchlist, they can start a probation, and staff see "Recently off watchlist" at the desk and on Active Patrons. "Same as new-member probation" uses the probation period and guest rule above; **Custom** sets its own length in days and whether it blocks guests (off by default: informational only); **Off** disables it. |
-| Currency code | `USD` | A 3-letter ISO 4217 code, used everywhere a money figure is shown — the check-in desk's live totals, every Analytics widget, and every money column in the admin panel. |
-| Language | *(blank — server default, English)* | The admin panel's language for everyone on this install. Lists only languages that have a `lang/{code}.json` translation file; with none installed, English is the only choice. Names you enter yourself (categories, comp reasons, plans, …) are never translated. |
-| Displayed organization name | *(blank)* | Panel brand override — see "Name & branding". |
-| Searchable member fields | `Username` | Which fields the member search boxes match on, and what shows in member dropdown labels. |
-| Check-in desk display name | Preferred name | What the desk shows once a member is selected (greeting line, checked-in roster, voucher labels, sponsor note): preferred name, full name or username. Falls back to username when the chosen field is blank. |
-| Require email at sign-up | on | Whether the Check-In Desk requires an email when a Prospective finishes sign-up or a guest is registered. Name is always required. |
-| Hide personal info by default on the Members list | on | Whether the Members table masks name/DOB/email until "Show personal info". |
-| Show staff roles on Active Patrons | on | Active Patrons notes which staff are signed in ("Also in the building"). Off lists their names without each person's role. |
+
+### Updates & deploy (collapsed)
+
+| Setting | Default | Notes |
+|---|---|---|
 | Upstream remote / branch | *(blank)* / `main` | A git remote already added on the server (this app never runs `git remote add` itself) that this fork tracks for updates. |
 | Deploy Scheduled Task name | *(blank)* | The exact name of a Windows Scheduled Task, already registered on the server, that "Run update now" fires — see [`docs/DEPLOYMENT.md`](DEPLOYMENT.md) §7 "Web-triggered updates". |
 
