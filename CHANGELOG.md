@@ -9,6 +9,14 @@ is fixes only.
 
 ## [Unreleased]
 
+### Added
+
+- **Portico logo.** Browser tabs now show the Portico wheel (`public/favicon.ico` was an empty
+  file), and iPhones and iPads use it as the home-screen icon (`public/apple-touch-icon.png`).
+  The panel and login footer show a small Portico logo linking to the source code, with a white
+  version in dark mode, and the README opens with it. The club's own name in the panel header is
+  unchanged. Needs `npm run build`.
+
 ### Changed
 
 - **`CONFIGURING.md` covers every setting again.** It now lists the three kiosk flags, the two

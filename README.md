@@ -1,4 +1,9 @@
-# Portico
+<h1>
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="public/images/portico-logo-white.png">
+    <img alt="Portico" src="public/images/portico-logo.png" height="60">
+  </picture>
+</h1>
 
 A standalone member check-in and membership-management app for member clubs (built for a
 club of ~1,000 members), replacing a single shared spreadsheet. It solves one core problem:

@@ -106,6 +106,11 @@ class AdminPanelProvider extends PanelProvider
             // modal) with unsaved changes. Custom settings pages opt in with
             // Filament's HasUnsavedDataChangesAlert trait.
             ->unsavedChangesAlerts()
+            ->favicon(fn (): string => asset('favicon.ico'))
+            ->renderHook(
+                PanelsRenderHook::HEAD_END,
+                fn (): string => '<link rel="apple-touch-icon" href="'.e(asset('apple-touch-icon.png')).'">',
+            )
             ->renderHook(
                 PanelsRenderHook::FOOTER,
                 fn (): string => view('filament.admin.footer')->render(),
