@@ -114,6 +114,11 @@ server. Apache as a Windows service (§2) has none of those constraints.
 - The download page serves the newest stable release. If that's newer than the version the
   project's CI runs on, get the one CI uses from the `releases/archives/` section instead —
   a fresh go-live isn't the place to be the first to run the app on a newer PHP.
+- **Run PHP 8.4.27 or later.** Earlier 8.4 builds are open to unauthenticated remote code
+  execution through the request parser (CVE-2026-109618 and CVE-2026-109619, "php2shell",
+  fixed 2026-10-21). Check with `php -v`. To upgrade, extract the new zip over `C:\php`,
+  keep your `php.ini`, then restart the Apache service. The shipped Apache configs also
+  set `session.upload_progress.enabled Off`, which Laravel doesn't use.
 - `copy C:\php\php.ini-production C:\php\php.ini`, then edit it:
   - `extension_dir = "C:\php\ext"` — use the **absolute** path, not the template's
     relative `"ext"`. A relative value resolves against the *current working directory*,
