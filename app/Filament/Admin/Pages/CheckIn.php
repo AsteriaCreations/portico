@@ -708,11 +708,13 @@ class CheckIn extends Page implements HasTable
                     ->required(fn (Get $get): bool => (bool) $get('apply_voucher'))
                     ->helperText(__('Capped automatically at the balance available and what\'s still due — a partial amount is fine.'))
                     ->visible(fn (Get $get): bool => $canPreviewPricing && (bool) $get('apply_voucher')),
+                // Only another member's balance needs a reason; a member
+                // spending their own gets Voucher::redemptionReason()'s default.
                 TextInput::make('voucher_reason')
                     ->label(__('Reason (required — kept on the ledger)'))
                     ->maxLength(255)
-                    ->required(fn (Get $get): bool => (bool) $get('apply_voucher'))
-                    ->visible(fn (Get $get): bool => $canPreviewPricing && (bool) $get('apply_voucher')),
+                    ->required($usesAnotherBalance = fn (Get $get): bool => (bool) $get('apply_voucher') && filled($get('voucher_payer_id')) && (int) $get('voucher_payer_id') !== $member?->id)
+                    ->visible(fn (Get $get): bool => $canPreviewPricing && $usesAnotherBalance($get)),
             ]);
     }
 

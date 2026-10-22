@@ -113,6 +113,7 @@ trait SellsSubscriptionsAtDesk
                     ->visible(fn (): bool => MembershipSetting::current()->vouchers_enabled),
                 Select::make('voucher_payer_id')
                     ->label(__("Apply from a different member's balance (optional)"))
+                    ->live()
                     ->searchable()
                     ->getSearchResultsUsing(fn (string $search) => static::searchMembers($search)
                         ->mapWithKeys(fn (Member $payer) => [$payer->id => static::memberLabel($payer, $search).' — '.$this->formatCurrency($payer->voucherBalance()).' available'])
@@ -128,11 +129,13 @@ trait SellsSubscriptionsAtDesk
                     ->required(fn (Get $get): bool => (bool) $get('apply_voucher'))
                     ->helperText(__('Capped automatically at the balance available and what\'s still due — a partial amount is fine.'))
                     ->visible(fn (Get $get): bool => (bool) $get('apply_voucher')),
+                // Only another member's balance needs a reason; a member
+                // spending their own gets Voucher::redemptionReason()'s default.
                 TextInput::make('voucher_reason')
                     ->label(__('Reason (required — kept on the ledger)'))
                     ->maxLength(255)
-                    ->required(fn (Get $get): bool => (bool) $get('apply_voucher'))
-                    ->visible(fn (Get $get): bool => (bool) $get('apply_voucher')),
+                    ->required($usesAnotherBalance = fn (Get $get): bool => (bool) $get('apply_voucher') && filled($get('voucher_payer_id')) && (int) $get('voucher_payer_id') !== $member?->id)
+                    ->visible($usesAnotherBalance),
             ])
             ->action(function (array $data): void {
                 if ($this->haltForTraining(__('Practice: subscription purchase simulated.'))) {

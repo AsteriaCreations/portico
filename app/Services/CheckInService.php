@@ -315,7 +315,7 @@ class CheckInService
                 Voucher::create([
                     'member_id' => $voucherPayer->id,
                     'amount' => Cents::toDecimal(-$voucherApplied),
-                    'reason' => $request->voucherReason,
+                    'reason' => Voucher::redemptionReason($request->voucherReason),
                     'attendance_id' => $attendance->id,
                     'recorded_by' => $staff->id,
                 ]);

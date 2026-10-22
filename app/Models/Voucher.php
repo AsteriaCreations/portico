@@ -24,6 +24,16 @@ class Voucher extends Model
         ];
     }
 
+    /**
+     * The ledger reason for spending a balance. Staff only type one when
+     * the credit comes from another member's balance; a member spending
+     * their own gets this default.
+     */
+    public static function redemptionReason(string $reason): string
+    {
+        return trim($reason) !== '' ? trim($reason) : __('Redeemed at the desk');
+    }
+
     public function member(): BelongsTo
     {
         return $this->belongsTo(Member::class);
