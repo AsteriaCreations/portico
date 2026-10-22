@@ -36,6 +36,9 @@ is fixes only.
 
 ### Changed
 
+- **No reason needed to spend your own voucher balance.** At the desk (check-in and the
+  subscription sale), the Reason box now appears only when the credit comes from another
+  member's balance. A member spending their own gets "Redeemed at the desk" on the ledger.
 - **The kiosk screen shows the Portico wheel** above the club name and "Self check-in". It is
   decorative (empty `alt`), so screen readers skip it. No build or migration needed.
 - **Membership Settings is grouped into sections** — Organization, Admission & membership,

@@ -142,6 +142,15 @@ test('sell folds the transaction fee onto the first month and returns the range 
         ->and($sale->rangeLabel())->toBe('July 2026 – September 2026');
 });
 
+test('a voucher spent on a subscription with no reason gets the default ledger reason', function () {
+    Voucher::factory()->create(['member_id' => $this->member->id, 'amount' => 70]);
+
+    $this->service->sell($this->member, $this->entry, 1, now()->parse('2026-07-01'), $this->user,
+        paymentMethod: 'venmo', applyVoucher: true, voucherCents: 2000);
+
+    expect(Voucher::where('amount', '<', 0)->value('reason'))->toBe('Redeemed at the desk');
+});
+
 test('sell folds the fee onto the first month still owing after a voucher', function () {
     Voucher::factory()->create(['member_id' => $this->member->id, 'amount' => 70]);
 

@@ -1412,6 +1412,38 @@ test('a voucher can be redeemed on behalf of a different member than the one che
         ->and($attendee->voucherBalance())->toEqual(0.0);
 });
 
+test('spending their own voucher balance needs no reason, and the ledger gets a default one', function () {
+    $member = clearMember($this->irregular);
+    $event = Event::factory()->create(['event_date' => now()->toDateString(), 'entry_fee' => 20, 'pool_fee' => 0]);
+    Voucher::factory()->for($member)->create(['amount' => 20, 'recorded_by' => $this->user->id]);
+
+    Livewire::test(CheckIn::class)
+        ->fillForm(['event_id' => $event->id, 'member_id' => $member->id])
+        ->fillForm(['apply_voucher' => true, 'voucher_amount' => 20], 'pricingForm')
+        ->assertFormFieldHidden('voucher_reason', 'pricingForm')
+        ->callAction('checkIn', data: ['checked_in_at' => now()])
+        ->assertHasNoActionErrors();
+
+    $attendance = Attendance::where('member_id', $member->id)->where('event_id', $event->id)->firstOrFail();
+    expect(Voucher::where('attendance_id', $attendance->id)->value('reason'))->toBe('Redeemed at the desk');
+});
+
+test("spending another member's voucher balance still requires a reason", function () {
+    $payer = clearMember($this->irregular, ['username' => 'payer1']);
+    $attendee = clearMember($this->irregular, ['username' => 'attendee1']);
+    $event = Event::factory()->create(['event_date' => now()->toDateString(), 'entry_fee' => 20, 'pool_fee' => 0]);
+    Voucher::factory()->for($payer)->create(['amount' => 50, 'recorded_by' => $this->user->id]);
+
+    Livewire::test(CheckIn::class)
+        ->fillForm(['event_id' => $event->id, 'member_id' => $attendee->id])
+        ->fillForm(['apply_voucher' => true, 'voucher_payer_id' => $payer->id, 'voucher_amount' => 20], 'pricingForm')
+        ->assertFormFieldVisible('voucher_reason', 'pricingForm')
+        ->callAction('checkIn', data: ['payment_method' => 'comp', 'checked_in_at' => now()]);
+
+    expect(Attendance::where('member_id', $attendee->id)->exists())->toBeFalse()
+        ->and($payer->voucherBalance())->toEqual(50.0);
+});
+
 test("picking another member's balance suggests the amount from that member's balance, not the attendee's", function () {
     // Regression: the amount was only ever seeded from the attendee's own
     // balance, so with $0 of their own it stayed blank (Check in failed on

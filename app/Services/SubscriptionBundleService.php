@@ -219,7 +219,7 @@ class SubscriptionBundleService
             Voucher::create([
                 'member_id' => $payer->id,
                 'amount' => Cents::toDecimal(-$take),
-                'reason' => $reason,
+                'reason' => Voucher::redemptionReason($reason),
                 'attendance_id' => $attendance?->id,
                 'subscription_id' => $row->id,
                 'recorded_by' => $staff->id,

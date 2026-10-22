@@ -371,7 +371,7 @@ CREATE TABLE vouchers (
   id            INT AUTO_INCREMENT PRIMARY KEY,
   member_id     INT NOT NULL,                         -- whose balance this row affects
   amount        DECIMAL(8,2) NOT NULL,                 -- positive = issued, negative = redeemed
-  reason        VARCHAR(255) NOT NULL,                 -- required on every row — see Vouchers below
+  reason        VARCHAR(255) NOT NULL,                 -- never blank — see Vouchers below
   attendance_id INT,                                    -- set on redemption rows: the visit this covered
   subscription_id INT,                                  -- set on redemption rows that paid toward a subscription month
   recorded_by   INT NOT NULL,                            -- who performed the transaction
@@ -623,7 +623,7 @@ An append-only ledger of account credit per member — not a stored balance, to 
 - **Issued** by Admin only: a positive-amount row, with a required `reason`. There are many ways to earn one (referral, promo, manual goodwill), so this is free text, not an enum.
 - **Redeemed** by any role at the desk, as a negative-amount row linked to what it covered: the `attendance` row via `attendance_id`, or a subscription month bought at the desk via `subscription_id` (see "Paying for a subscription with credit" below).
 - **Stackable, no expiry** — typically $25, credit accumulates and lasts until spent.
-- **On-behalf-of redemption.** The balance drawn from doesn't have to belong to the member checking in — anyone with redemption rights (Door included) can apply a *different* member's credit to cover this visit (e.g. a manager spending their own balance on someone else's entry). `reason` is mandatory on redemption rows for exactly this case — it's the only record of who a transfer was for.
+- **On-behalf-of redemption.** The balance drawn from doesn't have to belong to the member checking in — anyone with redemption rights (Door included) can apply a *different* member's credit to cover this visit (e.g. a manager spending their own balance on someone else's entry). Staff must type a `reason` for exactly this case — it's the only record of who a transfer was for. A member spending their own balance needs none; the row gets the default "Redeemed at the desk" (`Voucher::redemptionReason()`).
 - **Corrections are new rows, never edits.** A wrongly-issued voucher is never updated or deleted; Admin adds an offsetting negative row with a `reason` explaining the correction. `vouchers` has no update/delete path — Manager can view the ledger, only Admin can issue or correct it (redemption at check-in is the one exception, open to every role — see Roles & permissions).
 
 **Applying credit at check-in** is a separate, explicit step from the fee pipeline above — opt-in and partial amounts are allowed, not automatic:
@@ -634,7 +634,7 @@ after due is computed by price(member, event):
         available = SUM(vouchers.amount) for the paying member (self or someone else)
         voucherApplied = door-entered amount, capped at min(available, due)   # partial allowed
         amount_paid = due - voucherApplied
-        write vouchers row: amount = -voucherApplied, attendance_id = this visit, reason = required
+        write vouchers row: amount = -voucherApplied, attendance_id = this visit, reason = required only when drawing on someone else's balance
 ```
 
 `attendance.voucher_coverage` stores `voucherApplied` as the price snapshot — same rule as `entry_coverage` and each add-on line's own `coverage`: never recomputed later.
