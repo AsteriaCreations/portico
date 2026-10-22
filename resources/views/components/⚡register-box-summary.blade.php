@@ -67,6 +67,20 @@ new class extends Component
         return $this->closingSummary['payouts'] ?? 0;
     }
 
+    // Cash handed out for electronic payments -- also off expected(), shown
+    // with what came in for it, which isn't in breakdown().
+    #[Computed]
+    public function exchangedCents(): int
+    {
+        return $this->closingSummary['exchanged'] ?? 0;
+    }
+
+    #[Computed]
+    public function exchangeReceived(): array
+    {
+        return $this->shift && $this->exchangedCents !== 0 ? app(RegisterShiftService::class)->cashExchangesByMethodCents($this->shift) : [];
+    }
+
     // Prepaid cash for later events taken on this shift -- also off
     // expected(), since it goes in each event's own envelope.
     #[Computed]
@@ -118,6 +132,16 @@ re-find these lines after every refresh. --}}
         @if ($this->prepaidAheadCents !== 0)
             <p role="status" class="text-sm text-gray-500">
                 {{ __('Prepaid cash for later events :amount — in each event\'s prepay envelope, not this box', ['amount' => \App\Models\MembershipSetting::formatMoney(\App\Support\Cents::toFloat($this->prepaidAheadCents))]) }}
+            </p>
+        @endif
+        @if ($this->exchangedCents !== 0)
+            <p role="status" class="text-sm text-gray-500">
+                {{ __('Cash given for electronic payments :amount (received :methods, not included above)', [
+                    'amount' => \App\Models\MembershipSetting::formatMoney(\App\Support\Cents::toFloat($this->exchangedCents)),
+                    'methods' => collect($this->exchangeReceived)
+                        ->map(fn (int $cents, string $label) => $label.' '.\App\Models\MembershipSetting::formatMoney(\App\Support\Cents::toFloat($cents)))
+                        ->implode(' · '),
+                ]) }}
             </p>
         @endif
         @if ($this->paidOutCents !== 0)

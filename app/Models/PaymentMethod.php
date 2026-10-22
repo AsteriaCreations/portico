@@ -106,6 +106,20 @@ class PaymentMethod extends Model
     }
 
     /**
+     * The desk methods someone can pay with to get cash out of the box
+     * (RegisterShiftService::recordCashExchange()): deskOptions() without
+     * the cash methods themselves or the seeded Comp, which moves no money.
+     *
+     * @return array<string, string> code => label, for Select options.
+     */
+    public static function cashExchangeOptions(): array
+    {
+        return collect(static::deskOptions())
+            ->except([...static::cashCodes()->all(), 'comp'])
+            ->all();
+    }
+
+    /**
      * The codes for methods a member may select only once, ever — using one
      * appends a dated note to their hospitality_note and disables all such
      * methods for them thereafter (Member::hasUsedOneTimeMethod()). E.g.

@@ -31,7 +31,7 @@ use Illuminate\Support\Facades\DB;
 
 /**
  * The Check-In Desk's cash-box actions: open the box, record a drop or a
- * miscellaneous payment, pay (or correct) an event's instructor, and close
+ * miscellaneous payment, hand out cash for an electronic payment, pay (or correct) an event's instructor, and close
  * the box with its envelope reminder. Pulled out of CheckIn so the page
  * file holds the check-in flow; behaviour is unchanged.
  *
@@ -144,6 +144,100 @@ trait ManagesCashBox
 
                 Notification::make()->title(__('Payment recorded'))->success()->send();
             });
+    }
+
+    // Someone pays electronically (e.g. Venmo) and gets the same amount in
+    // cash from the box -- change, not a sale, so it's its own ledger
+    // (CashExchange) rather than an "other payment". The method's fee is
+    // paid on top. A Manager+ may enter a negative amount, with a reason,
+    // to undo one recorded by mistake; still only while this box is open,
+    // so a closed shift's expected cash never moves.
+    public function recordCashExchangeAction(): Action
+    {
+        $isManager = fn (): bool => auth()->user()->role->atLeast(Role::Manager);
+
+        return Action::make('recordCashExchange')
+            ->label(__('Cash for an electronic payment'))
+            ->icon(Heroicon::OutlinedArrowsRightLeft)
+            ->modalDescription(__('Someone pays electronically and gets the same amount in cash from this box, e.g. for change. It is not revenue: the cash comes off what the box should hold.'))
+            ->fillForm(fn (): array => ['payment_method' => array_key_first(PaymentMethod::cashExchangeOptions())])
+            ->schema([
+                Select::make('payment_method')
+                    ->label(__('Paid with'))
+                    ->options(fn (): array => PaymentMethod::cashExchangeOptions())
+                    ->required()
+                    ->live(),
+                TextInput::make('amount')
+                    ->label(__('Cash handed out'))
+                    ->numeric()
+                    ->minValue(fn (): ?float => $isManager() ? null : 0.01)
+                    ->step(0.01)
+                    ->rule(fn (): Closure => function (string $attribute, mixed $value, Closure $fail): void {
+                        if (Cents::of($value) === 0) {
+                            $fail(__('Enter a non-zero amount.'));
+                        }
+                    })
+                    ->required()
+                    ->live(onBlur: true)
+                    ->helperText(fn (Get $get): ?string => $this->cashExchangeHelperText($get('payment_method'), $get('amount'))),
+                Textarea::make('notes')
+                    ->label(fn (Get $get): string => Cents::of($get('amount')) < 0 ? __('Reason') : __('Notes'))
+                    ->required(fn (Get $get): bool => Cents::of($get('amount')) < 0)
+                    ->maxLength(255),
+            ])
+            ->visible(fn (): bool => $this->getOpenShift()
+                && MembershipSetting::current()->cash_exchanges_enabled
+                && PaymentMethod::cashExchangeOptions() !== [])
+            ->action(function (array $data) use ($isManager): void {
+                if ($this->haltForTraining(__('Practice: cash-box action simulated.'))) {
+                    return;
+                }
+
+                abort_unless(MembershipSetting::current()->register_shifts_enabled, 403);
+                abort_unless(MembershipSetting::current()->cash_exchanges_enabled, 403);
+                abort_unless(array_key_exists($data['payment_method'], PaymentMethod::cashExchangeOptions()), 403);
+
+                $correction = Cents::of($data['amount']) < 0;
+                abort_if($correction && ! $isManager(), 403);
+                abort_if($correction && blank($data['notes'] ?? null), 422);
+                abort_if(Cents::of($data['amount']) === 0, 422);
+
+                $shift = $this->getOpenShift();
+                abort_unless($shift, 404);
+
+                app(RegisterShiftService::class)->recordCashExchange(
+                    $shift,
+                    auth()->user(),
+                    (float) $data['amount'],
+                    $data['payment_method'],
+                    filled($data['notes'] ?? null) ? $data['notes'] : null,
+                    correction: $correction,
+                );
+
+                Notification::make()->title($correction ? __('Correction recorded') : __('Cash exchange recorded'))->success()->send();
+            });
+    }
+
+    /**
+     * What to ask the person to send, fee included, once an amount is in.
+     * A negative (Manager+ correction) amount carries no fee.
+     */
+    private function cashExchangeHelperText(?string $paymentMethod, mixed $amount): ?string
+    {
+        $cents = Cents::of($amount);
+
+        if ($cents < 0) {
+            return __('A negative amount undoes a cash exchange recorded by mistake. A reason is required.');
+        }
+
+        if ($cents === 0 || ! $paymentMethod) {
+            return PaymentMethod::feeHelperText($paymentMethod);
+        }
+
+        return __('Ask them to send :total, then hand over :cash.', [
+            'total' => $this->formatCurrency(Cents::toFloat($cents + Cents::of(PaymentMethod::feeFor($paymentMethod)))),
+            'cash' => $this->formatCurrency(Cents::toFloat($cents)),
+        ]);
     }
 
     /**
@@ -407,6 +501,17 @@ trait ManagesCashBox
                     ]);
                 }
 
+                // Not takings, but it lands in the same apps, so it's needed
+                // to match their totals.
+                $exchanges = $service->cashExchangesByMethodCents($closed);
+                if ($exchanges !== []) {
+                    $body[] = __('Also received electronically in exchange for cash from the box (not takings): :methods.', [
+                        'methods' => collect($exchanges)
+                            ->map(fn (int $cents, string $label) => $label.' '.$this->formatCurrency(Cents::toFloat($cents)))
+                            ->implode(' · '),
+                    ]);
+                }
+
                 if ($body !== []) {
                     $notification->body(implode(' ', $body))->persistent();
                 }
@@ -418,7 +523,8 @@ trait ManagesCashBox
     /**
      * The cash that would go into envelopes if the box closed now, with no
      * drop recorded yet: everything taken in over the opening float, after
-     * instructor payouts and prepay cash held for later events. Zero once
+     * instructor payouts, cash exchanges and prepay cash held for later
+     * events. Zero once
      * any drop exists, since a drop is how the envelopes leave the box.
      */
     private function undroppedCashCents(): int
@@ -485,6 +591,13 @@ trait ManagesCashBox
 
         if ($paidOutCents !== 0) {
             $lines[] = __('Also write: paid out to instructor :amount.', ['amount' => $this->formatCurrency(Cents::toFloat($paidOutCents))]);
+        }
+
+        // Same for cash handed out for electronic payments.
+        $exchangedCents = $service->totalCashExchangedCents($shift);
+
+        if ($exchangedCents !== 0) {
+            $lines[] = __('Also write: cash given for electronic payments :amount.', ['amount' => $this->formatCurrency(Cents::toFloat($exchangedCents))]);
         }
 
         if ($separateSubscriptions && $breakdown['subscription'] !== 0) {

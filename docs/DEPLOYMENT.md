@@ -437,6 +437,7 @@ GRANT SELECT ON `<portico>`.add_on_day_passes TO 'portico_analyst'@'localhost';
 GRANT SELECT ON `<portico>`.add_on_event TO 'portico_analyst'@'localhost';
 GRANT SELECT ON `<portico>`.add_ons TO 'portico_analyst'@'localhost';
 GRANT SELECT ON `<portico>`.attendance_add_ons TO 'portico_analyst'@'localhost';
+GRANT SELECT ON `<portico>`.cash_exchanges TO 'portico_analyst'@'localhost';
 GRANT SELECT ON `<portico>`.categories TO 'portico_analyst'@'localhost';
 GRANT SELECT ON `<portico>`.comp_reasons TO 'portico_analyst'@'localhost';
 GRANT SELECT ON `<portico>`.event_types TO 'portico_analyst'@'localhost';

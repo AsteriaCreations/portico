@@ -4,6 +4,7 @@ namespace App\Filament\Admin\Resources\RegisterShifts;
 
 use App\Filament\Admin\Resources\RegisterShifts\Pages\ListRegisterShifts;
 use App\Filament\Admin\Resources\RegisterShifts\Pages\ViewRegisterShift;
+use App\Filament\Admin\Resources\RegisterShifts\RelationManagers\CashExchangesRelationManager;
 use App\Filament\Admin\Resources\RegisterShifts\RelationManagers\MiscellaneousPaymentsRelationManager;
 use App\Filament\Admin\Resources\RegisterShifts\Tables\RegisterShiftsTable;
 use App\Filament\Concerns\TranslatesResourceLabels;
@@ -17,8 +18,9 @@ use UnitEnum;
 // List + view only: a shift is opened/closed only through CheckIn's page
 // actions via RegisterShiftService, never a generic Filament form (see
 // RegisterShiftPolicy — create/update/delete are hard-false for everyone).
-// The view page exists purely to host MiscellaneousPaymentsRelationManager's
-// itemized ledger, same shape as VoucherResource otherwise.
+// The view page exists purely to host the MiscellaneousPayments and
+// CashExchanges relation managers' itemized ledgers, same shape as
+// VoucherResource otherwise.
 class RegisterShiftResource extends Resource
 {
     use TranslatesResourceLabels;
@@ -42,6 +44,7 @@ class RegisterShiftResource extends Resource
     {
         return [
             MiscellaneousPaymentsRelationManager::class,
+            CashExchangesRelationManager::class,
         ];
     }
 
