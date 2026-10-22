@@ -135,6 +135,9 @@
                     <div class="flex flex-wrap gap-2">
                         {{ $this->recordDropAction }}
                         {{ $this->recordMiscPaymentAction }}
+                        @if ($this->recordCashExchangeAction->isVisible())
+                            {{ $this->recordCashExchangeAction }}
+                        @endif
                         @if ($this->payInstructorAction->isVisible())
                             {{ $this->payInstructorAction }}
                         @endif

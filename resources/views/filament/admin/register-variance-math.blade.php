@@ -8,6 +8,7 @@
         [__('Other cash'), '+', $math['other']],
         [__('Drops'), '−', $math['drops']],
         [__('Paid out to instructors'), '−', $math['payouts']],
+        ...($math['exchanged'] !== 0 ? [[__('Cash given for electronic payments'), '−', $math['exchanged']]] : []),
     ];
 @endphp
 
@@ -48,7 +49,7 @@
         <p class="text-gray-600 dark:text-gray-300">{{ __('This shift is still open, so there is no count or variance yet.') }}</p>
     @endif
 
-    @if ($math['prepay'] !== 0 || $math['electronic'] !== [])
+    @if ($math['prepay'] !== 0 || $math['electronic'] !== [] || $math['exchangeReceived'] !== [])
         <div class="space-y-1 text-gray-600 dark:text-gray-300">
             <p class="font-medium">{{ __('Taken on this shift but not in the box') }}</p>
             <ul class="list-disc space-y-1 ps-5">
@@ -57,6 +58,9 @@
                 @endif
                 @foreach ($math['electronic'] as $label => $cents)
                     <li>{{ __(':method :amount, paid electronically', ['method' => $label, 'amount' => $money($cents)]) }}</li>
+                @endforeach
+                @foreach ($math['exchangeReceived'] as $label => $cents)
+                    <li>{{ __(':method :amount, received in exchange for cash (not takings)', ['method' => $label, 'amount' => $money($cents)]) }}</li>
                 @endforeach
             </ul>
         </div>

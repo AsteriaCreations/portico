@@ -75,6 +75,7 @@ class FeatureFlags extends Page
             'prepay_enabled',
             'register_shifts_enabled',
             'cash_envelope_reminder_enabled',
+            'cash_exchanges_enabled',
             'showrunner_payouts_enabled',
             'instructor_payouts_enabled',
             'visit_notes_enabled',
@@ -116,6 +117,10 @@ class FeatureFlags extends Page
                         Toggle::make('cash_envelope_reminder_enabled')
                             ->label('Cash envelope reminder on closing the box')
                             ->helperText(__('When a box closes with cash collected, the confirmation stays on screen until it is dismissed and tells staff to seal the cash in an envelope labelled with the Entry / Other amounts and the event(s) or date it covers, with each event\'s prepaid cash (and, by default, subscription cash) in envelopes of their own. Only cash payment methods count. It\'s a reminder only: nothing extra is saved. Has no effect while register shift tracking is off. Off by default.'))
+                            ->required(),
+                        Toggle::make('cash_exchanges_enabled')
+                            ->label('Cash for electronic payments')
+                            ->helperText(__('Adds "Cash for an electronic payment" to the desk\'s cash box: someone pays by Venmo (or another non-cash method) and gets the same amount in cash, e.g. for change. The cash comes off the box\'s expected count and the electronic money is listed apart from tonight\'s takings; it is not revenue. A method with a transaction fee adds it to what they pay. Has no effect while register shift tracking is off. Off by default.'))
                             ->required(),
                         Toggle::make('separate_subscription_envelope')
                             ->label('Subscription cash in its own envelope')

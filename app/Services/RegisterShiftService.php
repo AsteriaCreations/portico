@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\AddOnDayPass;
 use App\Models\Attendance;
+use App\Models\CashExchange;
 use App\Models\Event;
 use App\Models\InstructorPayout;
 use App\Models\MiscellaneousPayment;
@@ -25,7 +26,7 @@ use Illuminate\Support\Facades\DB;
  * miscellaneous_payments, and add_on_day_passes -- the latter two for cash
  * taken outside the normal event/subscription flow, e.g. a vendor payment,
  * donation, or a one-time add-on day pass) minus the append-only
- * register_drops and instructor_payouts ledgers, the same "derived, never
+ * register_drops, instructor_payouts and cash_exchanges ledgers, the same "derived, never
  * stored" shape as CapacityService::occupancy(). Cash for a visit paid ahead
  * of its event's night (attendance.prepaid_ahead) is received here but comes
  * back out at close -- it's held for that event, not kept in the box -- see
@@ -117,6 +118,66 @@ class RegisterShiftService
                 'recorded_by' => $user->id,
             ]);
         });
+    }
+
+    /**
+     * Cash handed out of this box to someone who paid the same amount
+     * electronically (e.g. Venmo for change). The method's transaction fee
+     * is snapshotted and paid on top, so the club isn't out the fee. Not
+     * revenue. $correction (Manager+, enforced by the caller) allows a
+     * negative row with no fee, e.g. a swap recorded by mistake.
+     */
+    public function recordCashExchange(RegisterShift $shift, User $user, float $amount, string $paymentMethod, ?string $notes = null, bool $correction = false): CashExchange
+    {
+        abort_if(PaymentMethod::cashCodes()->contains($paymentMethod), 422, 'Cash can\'t be swapped for cash.');
+        abort_unless(PaymentMethod::where('code', $paymentMethod)->exists(), 422);
+        abort_if(! $correction && Cents::of($amount) <= 0, 422);
+
+        return DB::transaction(function () use ($shift, $user, $amount, $paymentMethod, $notes, $correction) {
+            $locked = $this->lockShift($shift);
+
+            return CashExchange::create([
+                'register_shift_id' => $locked->id,
+                'payment_method' => $paymentMethod,
+                'amount' => Cents::toDecimal(Cents::of($amount)),
+                'fee' => Cents::toDecimal($correction ? 0 : Cents::of(PaymentMethod::feeFor($paymentMethod))),
+                'notes' => $notes,
+                'recorded_by' => $user->id,
+            ]);
+        });
+    }
+
+    public function totalCashExchangedCents(RegisterShift $shift): int
+    {
+        return Cents::of(CashExchange::where('register_shift_id', $shift->id)->sum('amount'));
+    }
+
+    /**
+     * What came in electronically for this shift's cash exchanges, per
+     * method: the cash handed out plus the fees paid on top. Kept apart
+     * from electronicByMethodCents(), which is takings.
+     *
+     * @return array<string, int> method label => cents, in sort order
+     */
+    public function cashExchangesByMethodCents(RegisterShift $shift): array
+    {
+        $totals = [];
+
+        foreach (CashExchange::where('register_shift_id', $shift->id)->get(['payment_method', 'amount', 'fee']) as $exchange) {
+            $totals[$exchange->payment_method] = ($totals[$exchange->payment_method] ?? 0) + Cents::of($exchange->amount) + Cents::of($exchange->fee);
+        }
+
+        if ($totals === []) {
+            return [];
+        }
+
+        return PaymentMethod::whereIn('code', array_keys($totals))
+            ->orderBy('sort_order')
+            ->orderBy('label')
+            ->get(['code', 'label'])
+            ->mapWithKeys(fn (PaymentMethod $method) => [$method->label => $totals[$method->code]])
+            ->filter(fn (int $cents) => $cents !== 0)
+            ->all();
     }
 
     public function totalInstructorPayoutsCents(RegisterShift $shift): int
@@ -360,22 +421,24 @@ class RegisterShiftService
     }
 
     /**
-     * expectedClosingCountCents() together with two of the figures it takes
-     * off, so a caller that also shows them (the desk's register box
+     * expectedClosingCountCents() together with three of the figures it
+     * takes off, so a caller that also shows them (the desk's register box
      * summary, polled every 10s) doesn't sum them a second time.
      *
-     * @return array{expected: int, payouts: int, prepaidAhead: int}
+     * @return array{expected: int, payouts: int, prepaidAhead: int, exchanged: int}
      */
     public function closingSummaryCents(RegisterShift $shift): array
     {
         $payouts = $this->totalInstructorPayoutsCents($shift);
         $prepaidAhead = $this->heldPrepayCashCents($shift);
+        $exchanged = $this->totalCashExchangedCents($shift);
 
         return [
             'expected' => Cents::of($shift->opening_count) + $this->cashReceivedCents($shift) - $this->totalDropsCents($shift)
-                - $payouts - $prepaidAhead,
+                - $payouts - $prepaidAhead - $exchanged,
             'payouts' => $payouts,
             'prepaidAhead' => $prepaidAhead,
+            'exchanged' => $exchanged,
         ];
     }
 
@@ -384,9 +447,10 @@ class RegisterShiftService
      * for showing how a variance was reached. Prepaid cash for later events
      * is received and held back out in the same breath, so it nets to zero
      * and is listed beside the math, as is electronic money, which never
-     * enters the box. counted and variance are null while the shift is open.
+     * enters the box -- takings and cash exchanges each on their own. counted
+     * and variance are null while the shift is open.
      *
-     * @return array{opening: int, event: int, subscription: int, other: int, drops: int, payouts: int, expected: int, counted: ?int, variance: ?int, prepay: int, electronic: array<string, int>}
+     * @return array{opening: int, event: int, subscription: int, other: int, drops: int, payouts: int, exchanged: int, expected: int, counted: ?int, variance: ?int, prepay: int, electronic: array<string, int>, exchangeReceived: array<string, int>}
      */
     public function varianceMathCents(RegisterShift $shift): array
     {
@@ -399,11 +463,13 @@ class RegisterShiftService
             'other' => $cash['other'],
             'drops' => $this->totalDropsCents($shift),
             'payouts' => $this->totalInstructorPayoutsCents($shift),
+            'exchanged' => $this->totalCashExchangedCents($shift),
             'expected' => $this->expectedClosingCountCents($shift),
             'counted' => is_null($shift->closing_count) ? null : Cents::of($shift->closing_count),
             'variance' => $this->varianceCents($shift),
             'prepay' => $cash['prepay'],
             'electronic' => $this->electronicByMethodCents($shift),
+            'exchangeReceived' => $this->cashExchangesByMethodCents($shift),
         ];
     }
 

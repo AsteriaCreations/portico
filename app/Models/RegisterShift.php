@@ -53,4 +53,9 @@ class RegisterShift extends Model
     {
         return $this->hasMany(InstructorPayout::class);
     }
+
+    public function cashExchanges(): HasMany
+    {
+        return $this->hasMany(CashExchange::class);
+    }
 }

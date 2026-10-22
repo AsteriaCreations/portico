@@ -42,6 +42,7 @@ class OperationalDataReset
         'subscriptions',
         'miscellaneous_payments',
         'instructor_payouts',
+        'cash_exchanges',
         'register_drops',
         'register_shifts',
         'add_on_event',

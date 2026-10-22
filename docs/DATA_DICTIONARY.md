@@ -26,7 +26,7 @@ disagree, the migration wins, and this page needs fixing.
    `ban_exceptions`, `member_status_changes`, `member_username_changes`,
    `attendance_behavior_notes`, `miscellaneous_payments`, `add_on_day_passes`,
    `attendance_add_ons`, `member_paperwork`, `watchlist_reviews`, `payment_corrections`,
-   `visit_removals`, `instructor_payouts`, `register_drops`.
+   `visit_removals`, `instructor_payouts`, `register_drops`, `cash_exchanges`.
 5. **Attendance rows are price snapshots.** Each row stores what was charged that night.
    Changing an event's fee or a plan's price later never rewrites old rows. Report from the row,
    not from today's prices.
@@ -181,6 +181,7 @@ automatically after an event to comp-listed members who arrived (`comp_reasons.g
 | `visit_removals` | A deleted visit, a copy of what it had paid | `amount_paid` |
 | `instructor_payouts` | Cash paid to an event's instructor out of the drawer (signed; corrections are further rows) | `amount` (`calculated_amount` = what the rule suggested) |
 | `register_drops` | Cash taken out of the drawer mid-shift | `amount` |
+| `cash_exchanges` | Cash handed out of the drawer to someone who paid the same electronically (e.g. Venmo for change). Not revenue (signed; corrections are further rows) | `amount` = cash out; `amount + fee` = received by `payment_method` |
 
 **Payment corrections** are the one case where a visit's `amount_paid` is changed after the
 fact. The visit is re-priced (`old_amount_paid` → `new_amount_paid`), a new `subscriptions` row

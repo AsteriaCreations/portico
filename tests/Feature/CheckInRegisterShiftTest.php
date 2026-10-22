@@ -645,6 +645,7 @@ test('the box summary sums payouts and prepaid cash once per poll and matches th
         'expected' => $service->expectedClosingCountCents($shift),
         'payouts' => $service->totalInstructorPayoutsCents($shift),
         'prepaidAhead' => $service->heldPrepayCashCents($shift),
+        'exchanged' => $service->totalCashExchangedCents($shift),
     ])->and($service->closingSummaryCents($shift)['expected'])->toBe(9500);
 
     $summary = Livewire::test('register-box-summary', ['registerId' => $this->register->id]);

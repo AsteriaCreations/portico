@@ -19,6 +19,14 @@ is fixes only.
 
 ### Added
 
+- **Cash for an electronic payment.** The desk's Cash box can record someone paying by Venmo
+  (or another non-cash method) and getting the same amount in cash, e.g. for change. The cash
+  comes off the box's expected count; the electronic money is listed apart from the night's
+  takings on the box summary, the close message and the Register Shifts variance math, and is
+  not revenue. A method with a transaction fee adds it to what they send. Door+ records one; a
+  Manager+ undoes a mistake with a negative amount and a reason. Append-only `cash_exchanges`
+  ledger, shown on each register shift. Behind the `cash_exchanges_enabled` flag, off by
+  default. Needs `php artisan migrate`.
 - **Portico logo.** Browser tabs now show the Portico wheel (`public/favicon.ico` was an empty
   file), and iPhones and iPads use it as the home-screen icon (`public/apple-touch-icon.png`).
   The panel and login footer show a small Portico logo linking to the source code, with a white
