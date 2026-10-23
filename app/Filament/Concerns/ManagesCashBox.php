@@ -180,6 +180,14 @@ trait ManagesCashBox
                     ->required()
                     ->live(onBlur: true)
                     ->helperText(fn (Get $get): ?string => $this->cashExchangeHelperText($get('payment_method'), $get('amount'))),
+                Checkbox::make('reverse_fee')
+                    ->label(__('Reverse the fee too'))
+                    ->helperText(fn (Get $get): string => __('Tick when undoing a swap recorded twice: takes back its :fee fee as well. Leave it off when only fixing the amount.', [
+                        'fee' => $this->formatCurrency(Cents::toFloat($this->reversibleCashExchangeFee($get('payment_method')))),
+                    ]))
+                    ->visible(fn (Get $get): bool => $isManager()
+                        && Cents::of($get('amount')) < 0
+                        && $this->reversibleCashExchangeFee($get('payment_method')) > 0),
                 Textarea::make('notes')
                     ->label(fn (Get $get): string => Cents::of($get('amount')) < 0 ? __('Reason') : __('Notes'))
                     ->required(fn (Get $get): bool => Cents::of($get('amount')) < 0)
@@ -212,15 +220,27 @@ trait ManagesCashBox
                     $data['payment_method'],
                     filled($data['notes'] ?? null) ? $data['notes'] : null,
                     correction: $correction,
+                    reverseFee: $correction && (bool) ($data['reverse_fee'] ?? false),
                 );
 
                 Notification::make()->title($correction ? __('Correction recorded') : __('Cash exchange recorded'))->success()->send();
             });
     }
 
+    /** In cents; 0 with no box open or no method picked. */
+    private function reversibleCashExchangeFee(?string $paymentMethod): int
+    {
+        $shift = $this->getOpenShift();
+
+        return $shift && $paymentMethod
+            ? app(RegisterShiftService::class)->reversibleCashExchangeFeeCents($shift, $paymentMethod)
+            : 0;
+    }
+
     /**
      * What to ask the person to send, fee included, once an amount is in.
-     * A negative (Manager+ correction) amount carries no fee.
+     * A negative (Manager+ correction) amount carries no fee unless
+     * "Reverse the fee too" is ticked.
      */
     private function cashExchangeHelperText(?string $paymentMethod, mixed $amount): ?string
     {

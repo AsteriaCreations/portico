@@ -136,6 +136,48 @@ test('Door cannot enter a negative amount; a Manager can, with a reason, and it 
         ->and($this->service->expectedClosingCountCents($this->shift))->toBe(10000);
 });
 
+test('a Manager undoing a duplicate can reverse its fee too, so the received total matches what was sent', function () {
+    PaymentMethod::where('code', 'venmo')->update(['transaction_fee' => 2]);
+    $this->service->recordCashExchange($this->shift, $this->door, 40, 'venmo');
+    $this->service->recordCashExchange($this->shift, $this->door, 40, 'venmo');
+
+    $this->actingAs(User::factory()->create(['active' => true, 'role' => Role::Manager]));
+
+    deskWithBox($this->register)
+        ->mountAction('recordCashExchange')
+        ->assertActionDataSet(['payment_method' => 'venmo'])
+        ->fillForm(['amount' => -40])
+        ->assertFormFieldVisible('reverse_fee')
+        ->fillForm(['reverse_fee' => true, 'notes' => 'Recorded twice'])
+        ->callMountedAction()
+        ->assertHasNoActionErrors();
+
+    expect((float) CashExchange::latest('id')->first()->fee)->toEqual(-2.0)
+        ->and($this->service->cashExchangesByMethodCents($this->shift))->toBe(['Venmo' => 4200])
+        ->and($this->service->expectedClosingCountCents($this->shift))->toBe(6000)
+        // Only one swap's fee is left to take back.
+        ->and($this->service->reversibleCashExchangeFeeCents($this->shift, 'venmo'))->toBe(200);
+});
+
+test('reversing a fee never takes back more than was received, and Door cannot forge it', function () {
+    PaymentMethod::where('code', 'venmo')->update(['transaction_fee' => 2]);
+    $this->service->recordCashExchange($this->shift, $this->door, 40, 'venmo');
+
+    $manager = User::factory()->create(['active' => true, 'role' => Role::Manager]);
+    $this->service->recordCashExchange($this->shift, $manager, -40, 'venmo', 'twice', correction: true, reverseFee: true);
+    $this->service->recordCashExchange($this->shift, $manager, -40, 'venmo', 'again', correction: true, reverseFee: true);
+
+    expect(CashExchange::pluck('fee')->map(fn ($fee) => (float) $fee)->all())->toBe([2.0, -2.0, 0.0])
+        ->and(fn () => $this->service->recordCashExchange($this->shift, $this->door, 40, 'venmo', reverseFee: true))
+        ->toThrow(HttpException::class);
+
+    // A Door correction is refused outright, so its forged tick-box writes nothing.
+    deskWithBox($this->register)
+        ->callAction('recordCashExchange', data: ['payment_method' => 'venmo', 'amount' => -40, 'reverse_fee' => true, 'notes' => 'x']);
+
+    expect(CashExchange::count())->toBe(3);
+});
+
 test('a swap cannot be recorded on a closed shift', function () {
     $this->service->closeShift($this->shift, $this->door, 100);
 

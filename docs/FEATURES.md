@@ -27,7 +27,7 @@ CHECK-IN DESK
 - Back check-in / "mark arrived" roster for prepaid and comped attendees
 - Auto-derived arrival time based on event's live/prepay status
 - Register/cash box shift tracking (open/close, drops, misc. payments)
-- Cash for an electronic payment — someone pays by Venmo (or another non-cash method, plus its fee) and gets the same amount in cash from the box; comes off the expected close, listed apart from takings, not revenue; Manager+ undoes a mistake with a negative row; append-only `cash_exchanges` ledger (cash_exchanges_enabled, default off)
+- Cash for an electronic payment — someone pays by Venmo (or another non-cash method, plus its fee) and gets the same amount in cash from the box; comes off the expected close, listed apart from takings, not revenue; Manager+ undoes a mistake with a negative row, optionally reversing the duplicate's fee; append-only `cash_exchanges` ledger (cash_exchanges_enabled, default off)
 - Miscellaneous (off-book) payment recording
 - Confirm-paperwork flow for missing-paperwork members
 - Mark-as-returned (undoes an accidental or premature "Depart" without a new attendance row)
