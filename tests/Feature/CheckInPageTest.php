@@ -357,6 +357,16 @@ test('the status line reflects a club-configured alcohol flag age, not a hardcod
         ->assertSee('Check ID — under 25, no alcohol, mark hand');
 });
 
+test('the "Check ID" line says it once, without the same flag listed under it', function () {
+    $member = clearMember($this->irregular, ['dob' => now()->subYears(19)->toDateString()]);
+    $event = Event::factory()->create(['event_date' => now()->toDateString(), 'entry_fee' => 20, 'pool_fee' => 0]);
+
+    Livewire::test(CheckIn::class)
+        ->fillForm(['member_id' => $member->id, 'event_id' => $event->id])
+        ->assertSee('Check ID — under 21, no alcohol, mark hand')
+        ->assertDontSee('Under 21 — no alcohol, mark hand');
+});
+
 test('the under-21 flag is listed even when a watchlist outcome outranks it', function () {
     $member = clearMember($this->irregular, ['dob' => now()->subYears(19)->toDateString(), 'on_watchlist' => true, 'watchlist_reason' => 'x']);
     $event = Event::factory()->create(['event_date' => now()->toDateString(), 'entry_fee' => 20, 'pool_fee' => 0]);

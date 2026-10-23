@@ -785,8 +785,9 @@ class CheckIn extends Page implements HasTable
 
         // Listed regardless of the headline, so it isn't hidden when a
         // watchlist/sign-up/paperwork outcome outranks it in decide().
+        $underAgeFlag = __('Under :age — no alcohol, mark hand', ['age' => MembershipSetting::current()->alcohol_flag_age]);
         if ($policy->isUnderAlcoholFlagAge($member, $event)) {
-            $flags[] = __('Under :age — no alcohol, mark hand', ['age' => MembershipSetting::current()->alcohol_flag_age]);
+            $flags[] = $underAgeFlag;
         }
 
         if (! $event) {
@@ -812,7 +813,8 @@ class CheckIn extends Page implements HasTable
             // Capture has two causes; a Prospective's sign-up outranks
             // missing paperwork in decide(), so the headline follows suit.
             AdmissionOutcome::Capture => ['tone' => 'check', 'headline' => $policy->needsCapture($member) ? __('Finish sign-up to admit') : __('Record new paperwork to admit'), 'detail' => $decision->message, 'flags' => $flags],
-            AdmissionOutcome::Flag => ['tone' => 'check', 'headline' => __('Check ID — under :age, no alcohol, mark hand', ['age' => MembershipSetting::current()->alcohol_flag_age]), 'detail' => null, 'flags' => $flags],
+            // The headline already says it, so the flag isn't repeated under it.
+            AdmissionOutcome::Flag => ['tone' => 'check', 'headline' => __('Check ID — under :age, no alcohol, mark hand', ['age' => MembershipSetting::current()->alcohol_flag_age]), 'detail' => null, 'flags' => array_values(array_diff($flags, [$underAgeFlag]))],
             AdmissionOutcome::Ok => ['tone' => 'go', 'headline' => __('Ready to admit'), 'detail' => null, 'flags' => $flags],
         };
     }
