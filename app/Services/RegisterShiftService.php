@@ -125,26 +125,53 @@ class RegisterShiftService
      * electronically (e.g. Venmo for change). The method's transaction fee
      * is snapshotted and paid on top, so the club isn't out the fee. Not
      * revenue. $correction (Manager+, enforced by the caller) allows a
-     * negative row with no fee, e.g. a swap recorded by mistake.
+     * negative row with no fee, e.g. a swap recorded by mistake;
+     * $reverseFee also takes back the fee of that method's latest swap on
+     * this shift (reversibleCashExchangeFeeCents()), for a duplicate.
      */
-    public function recordCashExchange(RegisterShift $shift, User $user, float $amount, string $paymentMethod, ?string $notes = null, bool $correction = false): CashExchange
+    public function recordCashExchange(RegisterShift $shift, User $user, float $amount, string $paymentMethod, ?string $notes = null, bool $correction = false, bool $reverseFee = false): CashExchange
     {
         abort_if(PaymentMethod::cashCodes()->contains($paymentMethod), 422, 'Cash can\'t be swapped for cash.');
         abort_unless(PaymentMethod::where('code', $paymentMethod)->exists(), 422);
         abort_if(! $correction && Cents::of($amount) <= 0, 422);
+        abort_if($reverseFee && ! $correction, 422);
 
-        return DB::transaction(function () use ($shift, $user, $amount, $paymentMethod, $notes, $correction) {
+        return DB::transaction(function () use ($shift, $user, $amount, $paymentMethod, $notes, $correction, $reverseFee) {
             $locked = $this->lockShift($shift);
+
+            $feeCents = match (true) {
+                $reverseFee => -$this->reversibleCashExchangeFeeCents($locked, $paymentMethod),
+                $correction => 0,
+                default => Cents::of(PaymentMethod::feeFor($paymentMethod)),
+            };
 
             return CashExchange::create([
                 'register_shift_id' => $locked->id,
                 'payment_method' => $paymentMethod,
                 'amount' => Cents::toDecimal(Cents::of($amount)),
-                'fee' => Cents::toDecimal($correction ? 0 : Cents::of(PaymentMethod::feeFor($paymentMethod))),
+                'fee' => Cents::toDecimal($feeCents),
                 'notes' => $notes,
                 'recorded_by' => $user->id,
             ]);
         });
+    }
+
+    /**
+     * The fee a correction can take back for $paymentMethod: the one
+     * snapshotted on that method's latest swap on this shift, capped at the
+     * fees still standing so the fee received never goes below zero.
+     */
+    public function reversibleCashExchangeFeeCents(RegisterShift $shift, string $paymentMethod): int
+    {
+        $exchanges = CashExchange::where('register_shift_id', $shift->id)
+            ->where('payment_method', $paymentMethod)
+            ->orderBy('id')
+            ->get(['amount', 'fee']);
+
+        $latest = $exchanges->last(fn (CashExchange $exchange): bool => Cents::of($exchange->amount) > 0);
+        $standing = $exchanges->sum(fn (CashExchange $exchange): int => Cents::of($exchange->fee));
+
+        return max(0, min($latest ? Cents::of($latest->fee) : 0, $standing));
     }
 
     public function totalCashExchangedCents(RegisterShift $shift): int
