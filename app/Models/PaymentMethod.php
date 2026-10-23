@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Collection;
 
-#[Fillable(['label', 'code', 'requires_register_shift', 'one_time_only', 'available_at_desk', 'transaction_fee', 'sort_order', 'active'])]
+#[Fillable(['label', 'icon', 'code', 'requires_register_shift', 'one_time_only', 'available_at_desk', 'transaction_fee', 'sort_order', 'active'])]
 class PaymentMethod extends Model
 {
     /** @use HasFactory<PaymentMethodFactory> */
@@ -26,7 +26,41 @@ class PaymentMethod extends Model
      */
     public const VOUCHER = 'voucher';
 
+    /**
+     * The icons a method can show beside what someone paid (the desk's
+     * Checked in tonight list), as Heroicon names. A short list on purpose:
+     * shapes staff can tell apart at a glance, no brand logos.
+     */
+    public const ICONS = [
+        'banknotes', 'device-phone-mobile', 'credit-card', 'globe-alt', 'building-library',
+        'wallet', 'gift', 'qr-code', 'currency-dollar', 'envelope', 'ellipsis-horizontal-circle',
+    ];
+
     private const CASH_CODES_INSTANCE = 'payment-methods.cash-codes';
+
+    /**
+     * ICONS with a plain name each, for the Payment Methods picker.
+     *
+     * @return array<string, string>
+     */
+    public static function iconOptions(): array
+    {
+        $names = [
+            'banknotes' => __('Banknotes'),
+            'device-phone-mobile' => __('Phone'),
+            'credit-card' => __('Card'),
+            'globe-alt' => __('Globe'),
+            'building-library' => __('Bank'),
+            'wallet' => __('Wallet'),
+            'gift' => __('Gift'),
+            'qr-code' => __('QR code'),
+            'currency-dollar' => __('Dollar sign'),
+            'envelope' => __('Envelope'),
+            'ellipsis-horizontal-circle' => __('Other'),
+        ];
+
+        return array_intersect_key($names, array_flip(self::ICONS));
+    }
 
     public $timestamps = false;
 

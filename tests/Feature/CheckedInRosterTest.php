@@ -76,7 +76,7 @@ test('the roster table uses tabular digits and end-aligns the Paid column', func
     expect(Livewire::test('checked-in-roster', ['eventId' => $event->id])->html())
         ->toContain('class="fi-ta-table w-full text-start tabular-nums"')
         ->toContain('class="px-3 py-2 text-end text-xs font-medium text-gray-500 dark:text-gray-400">Paid</th>')
-        ->toContain('<td class="px-3 py-2 text-end text-sm">$20.00</td>');
+        ->toContain('<td class="px-3 py-2 text-end text-sm" style="white-space: nowrap">$20.00');
 });
 
 test('the roster reads the settings row once per render, not once per money cell', function () {

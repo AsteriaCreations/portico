@@ -2,6 +2,7 @@
 
 namespace App\Filament\Admin\Resources\PaymentMethods\Tables;
 
+use App\Models\PaymentMethod;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
@@ -16,6 +17,9 @@ class PaymentMethodsTable
         return $table
             ->defaultSort('sort_order')
             ->columns([
+                IconColumn::make('icon')
+                    ->icon(fn (?string $state): ?string => $state ? "heroicon-m-{$state}" : null)
+                    ->tooltip(fn (?string $state): ?string => $state ? PaymentMethod::iconOptions()[$state] ?? null : null),
                 TextColumn::make('label')
                     ->searchable(),
                 TextColumn::make('code')
