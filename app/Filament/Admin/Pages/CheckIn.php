@@ -737,11 +737,13 @@ class CheckIn extends Page implements HasTable
 
     /**
      * Presentation-only: one colour-coded verdict line for the desk, so a
-     * volunteer reads a decision ("Ready to admit" / "Check ID" / "Do not
-     * admit") rather than parsing raw flags. No policy logic lives here --
-     * member-only mode mirrors AdmissionPolicy::decide()'s own priority
-     * order minus the age checks (which need the event), and member+event
-     * mode just relabels getDecision()'s existing outcome. AdmissionPolicy
+     * volunteer reads a decision ("Ready to admit" / "Under 21 — mark hand"
+     * / "Do not admit") rather than parsing raw flags. No policy logic lives
+     * here -- member-only mode mirrors AdmissionPolicy::decide()'s own
+     * priority order (ages as of today), and member+event mode just relabels
+     * getDecision()'s existing outcome. The banned, watchlist and two age
+     * situations use the club's House Policy wording where set
+     * (MembershipSetting::housePolicy()). AdmissionPolicy
      * / AdmissionDecision are untouched, so the decision->message copy
      * consumed by markArrivedAction's notifications and by ActivePatrons is
      * unaffected. `flags` keeps the underlying labels visible as supporting
@@ -783,38 +785,58 @@ class CheckIn extends Page implements HasTable
 
         $event = $this->getSelectedEvent();
 
+        // The club's House Policy wording (Membership Settings), where set;
+        // each part falls back to the shipped wording below.
+        $banned = MembershipSetting::housePolicy('banned');
+        $watchlist = MembershipSetting::housePolicy('watchlist');
+        $underMajority = MembershipSetting::housePolicy('under_majority');
+        $underAlcoholAge = MembershipSetting::housePolicy('under_alcohol_age');
+
         // Listed regardless of the headline, so it isn't hidden when a
-        // watchlist/sign-up/paperwork outcome outranks it in decide().
-        $underAgeFlag = __('Under :age — no alcohol, mark hand', ['age' => MembershipSetting::current()->alcohol_flag_age]);
+        // watchlist/sign-up/paperwork outcome outranks it in decide(), but
+        // not repeated under its own headline.
+        $underAgeFlag = $underAlcoholAge['headline'] ?? __('Under :age — mark hand, no alcohol', ['age' => MembershipSetting::current()->alcohol_flag_age]);
         if ($policy->isUnderAlcoholFlagAge($member, $event)) {
             $flags[] = $underAgeFlag;
         }
+        $flagsWithoutUnderAge = array_values(array_diff($flags, [$underAgeFlag]));
 
         if (! $event) {
             $provisional = match (true) {
-                $member->is_deceased, $member->isCurrentlyBanned() => ['stop', __('Do not admit')],
-                $member->on_watchlist => ['check', __('Watchlist — notify :label, then confirm at check-in', ['label' => MembershipSetting::watchlistNotifyLabel()])],
-                $policy->needsCapture($member) => ['check', __('Prospective — finish sign-up to admit')],
-                $policy->needsPaperworkCapture($member) => ['check', __('Missing paperwork — record new paperwork to admit')],
-                default => ['go', __("No flags yet — pick tonight's event")],
+                $member->is_deceased => ['stop', __('Do not admit'), null, $flags],
+                $member->isCurrentlyBanned() => ['stop', $banned['headline'] ?? __('Do not admit'), $banned['instructions'], $flags],
+                $policy->isUnderAgeOfMajority($member) => ['stop', $underMajority['headline'] ?? __('Do not admit'), $underMajority['instructions'], $flags],
+                $member->on_watchlist => ['check', $watchlist['headline'] ?? __('Watchlist — notify :label, then confirm at check-in', ['label' => MembershipSetting::watchlistNotifyLabel()]), $watchlist['instructions'], $flags],
+                $policy->needsCapture($member) => ['check', __('Prospective — finish sign-up to admit'), null, $flags],
+                $policy->needsPaperworkCapture($member) => ['check', __('Missing paperwork — record new paperwork to admit'), null, $flags],
+                $policy->isUnderAlcoholFlagAge($member) => ['check', $underAgeFlag, $underAlcoholAge['instructions'], $flagsWithoutUnderAge],
+                default => ['go', __("No flags yet — pick tonight's event"), null, $flags],
             };
 
-            return ['tone' => $provisional[0], 'headline' => $provisional[1], 'detail' => null, 'flags' => $flags];
+            return ['tone' => $provisional[0], 'headline' => $provisional[1], 'detail' => $provisional[2], 'flags' => $provisional[3]];
         }
 
         $decision = $this->getDecision();
+        // Which House Policy a Block falls under; deceased keeps the shipped wording.
+        $blockPolicy = match (true) {
+            $member->is_deceased => ['headline' => null, 'instructions' => null],
+            $member->isCurrentlyBanned() => $banned,
+            default => $underMajority,
+        };
 
         // detail carries the actionable instruction only; the ban/watchlist
         // reason already appears in $flags below (reason-gated), so it's not
         // re-appended here.
         return match ($decision->outcome) {
-            AdmissionOutcome::Block => ['tone' => 'stop', 'headline' => __('Do not admit'), 'detail' => null, 'flags' => $flags],
-            AdmissionOutcome::Warn => ['tone' => 'check', 'headline' => __('Acknowledge before admitting'), 'detail' => $decision->message, 'flags' => $flags],
+            AdmissionOutcome::Block => ['tone' => 'stop', 'headline' => $blockPolicy['headline'] ?? __('Do not admit'), 'detail' => $blockPolicy['instructions'], 'flags' => $flags],
+            // A banned member's one-night exception keeps the shipped wording.
+            AdmissionOutcome::Warn => $member->isCurrentlyBanned()
+                ? ['tone' => 'check', 'headline' => __('Acknowledge before admitting'), 'detail' => $decision->message, 'flags' => $flags]
+                : ['tone' => 'check', 'headline' => $watchlist['headline'] ?? __('Acknowledge before admitting'), 'detail' => $watchlist['instructions'] ?? $decision->message, 'flags' => $flags],
             // Capture has two causes; a Prospective's sign-up outranks
             // missing paperwork in decide(), so the headline follows suit.
             AdmissionOutcome::Capture => ['tone' => 'check', 'headline' => $policy->needsCapture($member) ? __('Finish sign-up to admit') : __('Record new paperwork to admit'), 'detail' => $decision->message, 'flags' => $flags],
-            // The headline already says it, so the flag isn't repeated under it.
-            AdmissionOutcome::Flag => ['tone' => 'check', 'headline' => __('Check ID — under :age, no alcohol, mark hand', ['age' => MembershipSetting::current()->alcohol_flag_age]), 'detail' => null, 'flags' => array_values(array_diff($flags, [$underAgeFlag]))],
+            AdmissionOutcome::Flag => ['tone' => 'check', 'headline' => $underAgeFlag, 'detail' => $underAlcoholAge['instructions'], 'flags' => $flagsWithoutUnderAge],
             AdmissionOutcome::Ok => ['tone' => 'go', 'headline' => __('Ready to admit'), 'detail' => null, 'flags' => $flags],
         };
     }

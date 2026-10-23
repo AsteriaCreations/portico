@@ -17,6 +17,7 @@ use Filament\Forms\Components\Toggle;
 use Filament\Notifications\Notification;
 use Filament\Pages\Concerns\HasUnsavedDataChangesAlert;
 use Filament\Pages\Page;
+use Filament\Schemas\Components\Fieldset;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
@@ -88,6 +89,14 @@ class MembershipSettings extends Page
             'watchlist_probation_mode',
             'watchlist_probation_days',
             'watchlist_probation_blocks_guests',
+            'house_policy_banned_headline',
+            'house_policy_banned_instructions',
+            'house_policy_watchlist_headline',
+            'house_policy_watchlist_instructions',
+            'house_policy_under_majority_headline',
+            'house_policy_under_majority_instructions',
+            'house_policy_under_alcohol_age_headline',
+            'house_policy_under_alcohol_age_instructions',
             'currency',
             'locale',
             'org_name',
@@ -186,8 +195,8 @@ class MembershipSettings extends Page
                             ->minValue(0)
                             ->required(),
                         TextInput::make('alcohol_flag_age')
-                            ->label('Check-ID / no-alcohol flag age')
-                            ->helperText(__('A member below this age (but at or above "Age of majority") is admitted but flagged to check ID / mark their hand. Set equal to "Age of majority" to disable the flag entirely.'))
+                            ->label('No-alcohol / mark-hand age')
+                            ->helperText(__('A member below this age (but at or above "Age of majority") is admitted but flagged to mark their hand, no alcohol. Set equal to "Age of majority" to disable the flag entirely.'))
                             ->numeric()
                             ->minValue(0)
                             ->required(),
@@ -269,6 +278,10 @@ class MembershipSettings extends Page
                             ->helperText(__('A member on watchlist probation can\'t register a guest at the Check-In Desk. Off: the probation is informational only.'))
                             ->visible(fn (Get $get): bool => $get('watchlist_probation_mode') === 'custom'),
                     ]),
+                Section::make(__('House Policy'))
+                    ->description(__('What the Check-In Desk\'s status bar says in each situation, in your own words. Leave a line blank to use the wording shown in it. :age fills in that situation\'s age from above and :label the watchlist\'s "who staff notify". Everyone at the desk sees this text, so don\'t put names or reasons in it. Wording only: who gets in doesn\'t change. Admin and Owner can change it.'))
+                    ->collapsible()
+                    ->components(static::housePolicyFieldsets()),
                 Section::make(__('Events & check-in'))
                     ->components([
                         TextInput::make('venue_capacity')
@@ -427,6 +440,40 @@ class MembershipSettings extends Page
             ]);
     }
 
+    /**
+     * One headline + instructions pair per House Policy situation, each
+     * placeholder showing the wording the desk uses when it's left blank.
+     *
+     * @return list<Fieldset>
+     */
+    protected static function housePolicyFieldsets(): array
+    {
+        $shipped = [
+            'banned' => [__('Banned'), __('Do not admit'), __('e.g. Take no money. Get a Manager.')],
+            'watchlist' => [__('On the watchlist'), __('Acknowledge before admitting'), __('Notify :label')],
+            'under_majority' => [__('Under the age of majority'), __('Do not admit'), __('e.g. Under :age: we can\'t admit them.')],
+            'under_alcohol_age' => [__('Under the no-alcohol age'), __('Under :age — mark hand, no alcohol'), __('e.g. Mark their hand before you check them in.')],
+        ];
+
+        return collect($shipped)
+            ->map(fn (array $text, string $situation): Fieldset => Fieldset::make($text[0])
+                ->columns(1)
+                ->components([
+                    TextInput::make("house_policy_{$situation}_headline")
+                        ->label(__('Headline'))
+                        ->placeholder($text[1])
+                        ->maxLength(120)
+                        ->disabled(fn (): bool => ! Gate::allows('manage-house-policy')),
+                    TextInput::make("house_policy_{$situation}_instructions")
+                        ->label(__('What to do'))
+                        ->placeholder($text[2])
+                        ->maxLength(255)
+                        ->disabled(fn (): bool => ! Gate::allows('manage-house-policy')),
+                ]))
+            ->values()
+            ->all();
+    }
+
     public function saveAction(): Action
     {
         return Action::make('save')
@@ -440,6 +487,12 @@ class MembershipSettings extends Page
                 // and the other Door+-open forgeable fields on CheckIn.
                 if (! Gate::allows('manage-org-name')) {
                     unset($state['org_name'], $state['org_logo_path']);
+                }
+                // Read-only for a Manager; same server-side re-check.
+                if (! Gate::allows('manage-house-policy')) {
+                    foreach (MembershipSetting::HOUSE_POLICY_SITUATIONS as $situation) {
+                        unset($state["house_policy_{$situation}_headline"], $state["house_policy_{$situation}_instructions"]);
+                    }
                 }
 
                 $settings = MembershipSetting::current();

@@ -47,6 +47,7 @@ test('the settings are grouped into sections in setup order, with the set-once o
         'Admission & membership' => false,
         'Guests' => false,
         'Watchlist' => false,
+        'House Policy' => false,
         'Events & check-in' => false,
         'Check-In Desk' => false,
         'Members list & Active Patrons' => false,

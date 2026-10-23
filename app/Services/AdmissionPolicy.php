@@ -20,7 +20,6 @@ class AdmissionPolicy
 {
     public function decide(Member $member, Event $event): AdmissionDecision
     {
-        $age = $member->dob?->diffInYears($event->event_date);
         $settings = MembershipSetting::current();
 
         if ($member->is_deceased) {
@@ -35,7 +34,7 @@ class AdmissionPolicy
             return new AdmissionDecision(AdmissionOutcome::Block, __('Do not admit'), $member->ban_reason);
         }
 
-        if ($age !== null && $age < $settings->age_of_majority) {
+        if ($this->isUnderAgeOfMajority($member, $event)) {
             return new AdmissionDecision(AdmissionOutcome::Block, __('Under :age — no admittance', ['age' => $settings->age_of_majority]));
         }
 
@@ -56,6 +55,16 @@ class AdmissionPolicy
         }
 
         return new AdmissionDecision(AdmissionOutcome::Ok, __('Cleared'));
+    }
+
+    /**
+     * Whether the member is under the club's age of majority, as of the
+     * event's date (or today with no event picked). False with no DOB on file.
+     */
+    public function isUnderAgeOfMajority(Member $member, ?Event $event = null): bool
+    {
+        return $member->dob !== null
+            && $member->dob->diffInYears($event?->event_date ?? today()) < MembershipSetting::current()->age_of_majority;
     }
 
     /**
