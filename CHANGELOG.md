@@ -45,6 +45,9 @@ is fixes only.
 
 ### Changed
 
+- **Buy Day Pass starts on the desk's event.** The day pass form's Event now starts on the
+  event picked on the Check-In Desk, when a pass can be sold for it, instead of blank. It can
+  still be changed to another night. No migration.
 - **Payment method icons on the desk.** The Check-In Desk's Checked in tonight list shows an
   icon beside what each person paid, for the method they used (banknotes for Cash, a phone for
   Venmo, a gift for Comp and so on), named for screen readers and on hover. Each method's icon

@@ -254,3 +254,25 @@ test('a day pass with no payment method is a form error, not a misleading "alrea
 
     expect(AddOnDayPass::count())->toBe(0);
 });
+
+test('the day pass form starts on the event picked on the desk', function () {
+    $member = clearMemberForPoolDayPass($this->irregular);
+    Event::factory()->create(['event_date' => now()->toDateString(), 'pool_fee' => 10]);
+    $picked = Event::factory()->create(['event_date' => now()->toDateString(), 'pool_fee' => 15]);
+
+    Livewire::test(CheckIn::class)
+        ->fillForm(['member_id' => $member->id, 'event_id' => $picked->id])
+        ->mountAction('purchaseAddOnDayPass')
+        ->assertActionDataSet(['add_on_id' => $this->pool->id, 'event_id' => $picked->id]);
+});
+
+test('the day pass form leaves Event blank when no pass can be sold for the desk\'s event', function () {
+    $member = clearMemberForPoolDayPass($this->irregular);
+    Event::factory()->create(['event_date' => now()->toDateString(), 'pool_fee' => 15]);
+    $noPool = Event::factory()->create(['event_date' => now()->toDateString(), 'pool_fee' => 0]);
+
+    Livewire::test(CheckIn::class)
+        ->fillForm(['member_id' => $member->id, 'event_id' => $noPool->id])
+        ->mountAction('purchaseAddOnDayPass')
+        ->assertActionDataSet(['event_id' => null]);
+});
