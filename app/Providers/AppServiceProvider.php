@@ -97,6 +97,10 @@ class AppServiceProvider extends ServiceProvider
         // everyone), unlike grant-manager-subscription-perk's allow-list.
         Gate::define('manage-org-name', fn (User $user): bool => $user->role->atLeast(Role::Owner));
 
+        // The House Policy wording on the desk's status bar is a club-level
+        // call, so Managers can read it on Membership Settings but not change it.
+        Gate::define('manage-house-policy', fn (User $user): bool => $user->role->atLeast(Role::Admin));
+
         // Taking anyone off the watchlist is the Owner's call -- Manager+ can
         // still put someone on it and set/change its review date. Enforced on
         // every save path by MemberObserver, and re-checked by EditMember's

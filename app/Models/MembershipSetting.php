@@ -21,7 +21,7 @@ use Illuminate\Support\Str;
  * supplies the initial defaults for a fresh install — it's just no longer
  * read anywhere else in the app afterward.
  */
-#[Fillable(['subscription_eligibility_threshold', 'subscription_eligibility_window_months', 'probation_period_days', 'guests_allowed_during_probation', 'max_guests_per_night', 'guest_followup_moves_category', 'guest_followup_category_id', 'venue_capacity', 'default_opening_float', 'event_window_buffer_minutes', 'checkin_close_minutes_overnight', 'checkin_close_minutes_same_day', 'first_visit_after_close_enabled', 'week_starts_on', 'age_of_majority', 'alcohol_flag_age', 'watchlist_notify_label', 'watchlist_probation_mode', 'watchlist_probation_days', 'watchlist_probation_blocks_guests', 'currency', 'locale', 'org_name', 'org_logo_path', 'role_labels', 'member_search_fields', 'checkin_display_name_field', 'member_email_required', 'hide_member_pii_by_default', 'active_patrons_show_staff_roles', 'vouchers_enabled', 'add_ons_enabled', 'showrunner_comp_requests_enabled', 'manager_perk_enabled', 'suspensions_enabled', 'pool_enabled', 'day_pass_future_events_enabled', 'prepay_enabled', 'register_shifts_enabled', 'cash_envelope_reminder_enabled', 'cash_exchanges_enabled', 'hold_desk_prepay_cash', 'separate_subscription_envelope', 'showrunner_payouts_enabled', 'instructor_payouts_enabled', 'visit_notes_enabled', 'behavior_notes_enabled', 'guests_enabled', 'door_username_rename_enabled', 'door_preferred_name_change_enabled', 'reset_desk_event_on_member_change', 'kiosk_checkin_enabled', 'kiosk_show_code_enabled', 'kiosk_show_code_seconds', 'kiosk_subscribers_only', 'kiosk_result_seconds', 'kiosk_problem_result_seconds', 'kiosk_same_code_cooldown_seconds', 'kiosk_requests_per_minute', 'kiosk_code_email_batch_size', 'upstream_check_enabled', 'upstream_remote', 'upstream_branch', 'deploy_trigger_enabled', 'deploy_task_name'])]
+#[Fillable(['subscription_eligibility_threshold', 'subscription_eligibility_window_months', 'probation_period_days', 'guests_allowed_during_probation', 'max_guests_per_night', 'guest_followup_moves_category', 'guest_followup_category_id', 'venue_capacity', 'default_opening_float', 'event_window_buffer_minutes', 'checkin_close_minutes_overnight', 'checkin_close_minutes_same_day', 'first_visit_after_close_enabled', 'week_starts_on', 'age_of_majority', 'alcohol_flag_age', 'watchlist_notify_label', 'watchlist_probation_mode', 'watchlist_probation_days', 'watchlist_probation_blocks_guests', 'house_policy_banned_headline', 'house_policy_banned_instructions', 'house_policy_watchlist_headline', 'house_policy_watchlist_instructions', 'house_policy_under_majority_headline', 'house_policy_under_majority_instructions', 'house_policy_under_alcohol_age_headline', 'house_policy_under_alcohol_age_instructions', 'currency', 'locale', 'org_name', 'org_logo_path', 'role_labels', 'member_search_fields', 'checkin_display_name_field', 'member_email_required', 'hide_member_pii_by_default', 'active_patrons_show_staff_roles', 'vouchers_enabled', 'add_ons_enabled', 'showrunner_comp_requests_enabled', 'manager_perk_enabled', 'suspensions_enabled', 'pool_enabled', 'day_pass_future_events_enabled', 'prepay_enabled', 'register_shifts_enabled', 'cash_envelope_reminder_enabled', 'cash_exchanges_enabled', 'hold_desk_prepay_cash', 'separate_subscription_envelope', 'showrunner_payouts_enabled', 'instructor_payouts_enabled', 'visit_notes_enabled', 'behavior_notes_enabled', 'guests_enabled', 'door_username_rename_enabled', 'door_preferred_name_change_enabled', 'reset_desk_event_on_member_change', 'kiosk_checkin_enabled', 'kiosk_show_code_enabled', 'kiosk_show_code_seconds', 'kiosk_subscribers_only', 'kiosk_result_seconds', 'kiosk_problem_result_seconds', 'kiosk_same_code_cooldown_seconds', 'kiosk_requests_per_minute', 'kiosk_code_email_batch_size', 'upstream_check_enabled', 'upstream_remote', 'upstream_branch', 'deploy_trigger_enabled', 'deploy_task_name'])]
 class MembershipSetting extends Model
 {
     /**
@@ -337,6 +337,35 @@ class MembershipSetting extends Model
     public static function watchlistNotifyLabel(): string
     {
         return static::current()->watchlist_notify_label ?: (string) config('membership.watchlist_notify_label');
+    }
+
+    /**
+     * The situations whose Check-In Desk wording a club can set under House
+     * Policy on Membership Settings.
+     */
+    public const HOUSE_POLICY_SITUATIONS = ['banned', 'watchlist', 'under_majority', 'under_alcohol_age'];
+
+    /**
+     * The club's own wording for one situation on the desk's status bar, with
+     * :age (that situation's configured age) and :label (watchlist notify
+     * label) filled in. Null for a part left blank, meaning the shipped
+     * wording. Text only: it never changes the admission decision.
+     *
+     * @return array{headline: string|null, instructions: string|null}
+     */
+    public static function housePolicy(string $situation): array
+    {
+        $settings = static::current();
+        $replace = [
+            ':age' => (string) ($situation === 'under_majority' ? $settings->age_of_majority : $settings->alcohol_flag_age),
+            ':label' => static::watchlistNotifyLabel(),
+        ];
+        $text = fn (?string $value): ?string => filled($value) ? strtr(trim($value), $replace) : null;
+
+        return [
+            'headline' => $text($settings->{"house_policy_{$situation}_headline"}),
+            'instructions' => $text($settings->{"house_policy_{$situation}_instructions"}),
+        ];
     }
 
     /**

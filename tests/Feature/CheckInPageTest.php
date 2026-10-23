@@ -338,13 +338,14 @@ test('the status line reads "Ready to admit" for a clear member at an event', fu
         ->assertSee('Ready to admit');
 });
 
-test('the status line reads "Check ID" for an under-21 member at an event', function () {
+test('the status line reads "Under 21 — mark hand, no alcohol" for an under-21 member at an event', function () {
     $member = clearMember($this->irregular, ['dob' => now()->subYears(19)->toDateString()]);
     $event = Event::factory()->create(['event_date' => now()->toDateString(), 'entry_fee' => 20, 'pool_fee' => 0]);
 
     Livewire::test(CheckIn::class)
         ->fillForm(['member_id' => $member->id, 'event_id' => $event->id])
-        ->assertSee('Check ID');
+        ->assertSee('Under 21 — mark hand, no alcohol')
+        ->assertDontSee('Check ID');
 });
 
 test('the status line reflects a club-configured alcohol flag age, not a hardcoded 21', function () {
@@ -354,17 +355,18 @@ test('the status line reflects a club-configured alcohol flag age, not a hardcod
 
     Livewire::test(CheckIn::class)
         ->fillForm(['member_id' => $member->id, 'event_id' => $event->id])
-        ->assertSee('Check ID — under 25, no alcohol, mark hand');
+        ->assertSee('Under 25 — mark hand, no alcohol');
 });
 
-test('the "Check ID" line says it once, without the same flag listed under it', function () {
+test('the under-21 headline says it once, without the same flag listed under it', function () {
     $member = clearMember($this->irregular, ['dob' => now()->subYears(19)->toDateString()]);
     $event = Event::factory()->create(['event_date' => now()->toDateString(), 'entry_fee' => 20, 'pool_fee' => 0]);
 
-    Livewire::test(CheckIn::class)
+    expect(Livewire::test(CheckIn::class)
         ->fillForm(['member_id' => $member->id, 'event_id' => $event->id])
-        ->assertSee('Check ID — under 21, no alcohol, mark hand')
-        ->assertDontSee('Under 21 — no alcohol, mark hand');
+        ->instance()->statusStrip())
+        ->headline->toBe('Under 21 — mark hand, no alcohol')
+        ->flags->toBe([]);
 });
 
 test('the under-21 flag is listed even when a watchlist outcome outranks it', function () {
@@ -374,16 +376,28 @@ test('the under-21 flag is listed even when a watchlist outcome outranks it', fu
     Livewire::test(CheckIn::class)
         ->fillForm(['member_id' => $member->id, 'event_id' => $event->id])
         ->assertSee('Acknowledge before admitting')
-        ->assertSee('Under 21 — no alcohol, mark hand');
+        ->assertSee('Under 21 — mark hand, no alcohol');
 });
 
-test('the under-21 flag is listed before an event is picked', function () {
+test('before an event is picked, an under-21 member gets the amber under-21 bar, not "No flags yet"', function () {
     $member = clearMember($this->irregular, ['dob' => now()->subYears(19)->toDateString()]);
 
-    Livewire::test(CheckIn::class)
+    expect(Livewire::test(CheckIn::class)
         ->fillForm(['member_id' => $member->id])
-        ->assertSee('No flags yet')
-        ->assertSee('Under 21 — no alcohol, mark hand');
+        ->instance()->statusStrip())
+        ->tone->toBe('check')
+        ->headline->toBe('Under 21 — mark hand, no alcohol')
+        ->flags->toBe([]);
+});
+
+test('before an event is picked, a member under the age of majority gets the red bar', function () {
+    $member = clearMember($this->irregular, ['dob' => now()->subYears(16)->toDateString()]);
+
+    expect(Livewire::test(CheckIn::class)
+        ->fillForm(['member_id' => $member->id])
+        ->instance()->statusStrip())
+        ->tone->toBe('stop')
+        ->headline->toBe('Do not admit');
 });
 
 test('the under-21 flag is absent for a member over 21 or with no dob on file', function (?int $years) {
@@ -391,7 +405,7 @@ test('the under-21 flag is absent for a member over 21 or with no dob on file', 
 
     Livewire::test(CheckIn::class)
         ->fillForm(['member_id' => $member->id])
-        ->assertDontSee('no alcohol, mark hand');
+        ->assertDontSee('mark hand, no alcohol');
 })->with([30, null]);
 
 test('the status line refreshes when the selected member changes, without any other action', function () {

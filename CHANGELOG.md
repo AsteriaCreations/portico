@@ -9,6 +9,16 @@ is fixes only.
 
 ## [Unreleased]
 
+### Added
+
+- **House Policy wording for the desk's status bar.** A new House Policy section on
+  Membership Settings lets a club set its own headline and "what to do" line for four
+  situations: banned, on the watchlist, under the age of majority and under the no-alcohol
+  age. `:age` and `:label` fill in the configured age and the watchlist's notify label. Blank
+  keeps the shipped wording, so nothing changes on upgrade. Wording only: who gets in is
+  still `AdmissionPolicy`'s decision. Admin and Owner can change it; Managers see it
+  read-only. Needs `php artisan migrate`.
+
 ### Security
 
 - **PHP 8.4.27 is now the minimum for production.** Earlier PHP 8.4 builds are open to
@@ -45,10 +55,13 @@ is fixes only.
 
 ### Changed
 
-- **The desk's "Check ID" bar says it once.** For an under-21 member (or under the club's
-  alcohol flag age), the amber bar's headline already reads "Check ID — under 21, no alcohol,
-  mark hand", so the same words are no longer listed again underneath. The flag still shows
-  under any other headline (a watchlist warning, say) and before an event is picked.
+- **The desk's under-21 bar says "Under 21 — mark hand, no alcohol", once.** It used to read
+  "Check ID — under 21, no alcohol, mark hand", with the same words listed again underneath.
+  ID is checked once, when the date of birth goes in; after that the bar's job is the hand
+  mark. The flag is still listed under any other headline (a watchlist warning, say). Before an
+  event is picked, an under-21 member now gets this amber bar instead of a green "No flags
+  yet", and a member under the age of majority gets the red "Do not admit". The Membership
+  Settings field is now labelled "No-alcohol / mark-hand age".
 - **Buy Day Pass starts on the desk's event.** The day pass form's Event now starts on the
   event picked on the Check-In Desk, when a pass can be sold for it, instead of blank. It can
   still be changed to another night. No migration.

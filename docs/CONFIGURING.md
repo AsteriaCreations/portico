@@ -100,7 +100,7 @@ rarely need to touch most of them.
 | Setting | Default | Notes |
 |---|---|---|
 | Age of majority | `18` | `AdmissionPolicy` blocks a member below this age outright. Jurisdiction-specific. |
-| Check-ID / no-alcohol flag age | `21` | A member below this age (but at or above "Age of majority") is admitted but flagged. Set equal to "Age of majority" to disable the flag. |
+| No-alcohol / mark-hand age | `21` | A member below this age (but at or above "Age of majority") is admitted but flagged. Set equal to "Age of majority" to disable the flag. |
 | Subscription eligibility threshold | `5` | Attended-events count that unlocks a subscription. |
 | Count attended events from the last (months) | *(blank — all-time)* | Only events attended within this many months count toward the threshold. A member flagged "Subscription eligible" by hand stays eligible. |
 | Probation period (days) | `90` | Never blocks admission or changes pricing. A member on probation can't register a guest, unless "Allow guests during probation" (Guests) allows it. |
@@ -121,6 +121,12 @@ rarely need to touch most of them.
 |---|---|---|
 | Watchlist: who staff notify | *(blank — uses `WATCHLIST_NOTIFY_LABEL`)* | Where staff post a heads-up before admitting a watchlisted member; the desk shows "Notify …" and asks staff to confirm. Blank falls back to the `.env` value (default "the staff channel"). |
 | Watchlist probation | Same as new-member probation | When an Owner takes a member off the watchlist, they can start a probation, and staff see "Recently off watchlist" at the desk and on Active Patrons. "Same as new-member probation" uses the probation period and guest rule above; **Custom** sets its own length in days and whether it blocks guests (off by default: informational only); **Off** disables it. |
+
+### House Policy
+
+What the Check-In Desk's status bar says, in the club's own words, for four situations: **banned**, **on the watchlist**, **under the age of majority** and **under the no-alcohol age**. Each has a **Headline** (the bar's big line, up to 120 characters) and a **What to do** line under it (up to 255). Every field starts blank, which keeps the shipped wording (shown as the field's placeholder), so upgrading changes nothing. `:age` fills in that situation's age from Admission & membership, and `:label` the watchlist's "who staff notify".
+
+It's wording only. Who gets in, the bar's colour and the watchlist's "I have notified" tick-box don't change. A deceased member and a banned member's one-night exception keep the shipped wording. Everyone at the desk sees this text, so don't put names or ban/watchlist reasons in it; those stay Manager+ as before. **Admin and Owner** can change it; a Manager sees it read-only.
 
 ### Events & check-in
 
