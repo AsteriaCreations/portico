@@ -238,9 +238,21 @@ class CheckIn extends Page implements HasTable
         auth()->user()->update(['default_register_id' => $value]);
     }
 
+    // A different member also puts Event back to the page's default (unless
+    // the reset_desk_event_on_member_change flag is off), so a pick made for
+    // one person -- one of two overlapping events, or a later event for a
+    // prepayment -- never carries over to the next. Only on a desk pick:
+    // registerGuestAction() fills member and event together, which fires no
+    // updated* hook, so a new guest keeps the sponsor's event.
     public function updatedDataMemberId(): void
     {
         $this->pricingData = self::EMPTY_PRICING_DATA;
+
+        $memberId = $this->data['member_id'] ?? null;
+
+        if (filled($memberId) && MembershipSetting::current()->reset_desk_event_on_member_change) {
+            $this->data['event_id'] = static::tonightsEventIdFor((int) $memberId) ?? static::defaultEventId();
+        }
     }
 
     public function updatedDataEventId(): void
@@ -1006,7 +1018,8 @@ class CheckIn extends Page implements HasTable
         $lockedOneTimeCodes = $member?->hasUsedOneTimeMethod() ? PaymentMethod::oneTimeCodes()->all() : [];
 
         return Action::make('checkIn')
-            ->label(__('Check in'))
+            // Named, so a wrong pick between overlapping events shows at the click.
+            ->label($event ? __('Check in to :event', ['event' => $event->name]) : __('Check in'))
             ->schema([
                 ...($requiresAcknowledgement ? [
                     Checkbox::make('acknowledged')
@@ -1148,7 +1161,7 @@ class CheckIn extends Page implements HasTable
                 // inherits this one's comp/voucher/subscription choices.
                 $this->pricingData = self::EMPTY_PRICING_DATA;
 
-                $title = __('Checked in — :amount due', ['amount' => $this->formatCurrency(Cents::toFloat($result->breakdown->amountPaidCents + $result->addOnTotalCents))]);
+                $title = __('Checked in to :event — :amount due', ['event' => $event->name, 'amount' => $this->formatCurrency(Cents::toFloat($result->breakdown->amountPaidCents + $result->addOnTotalCents))]);
                 if ($result->subscriptionTotalCents > 0) {
                     $title .= ' + '.__(':amount Subscription', ['amount' => $this->formatCurrency(Cents::toFloat($result->subscriptionTotalCents))]);
                 }
@@ -1293,6 +1306,21 @@ class CheckIn extends Page implements HasTable
         $currentEventIds = static::currentEventQuery()->pluck('id');
 
         return $currentEventIds->count() === 1 ? $currentEventIds->first() : null;
+    }
+
+    /**
+     * The one event running now that $memberId already has a row for
+     * (prepaid, on the comp list, or checked in); null for none or several.
+     */
+    protected static function tonightsEventIdFor(int $memberId): ?int
+    {
+        $eventIds = Attendance::query()
+            ->where('member_id', $memberId)
+            ->whereIn('event_id', static::currentEventQuery()->select('id'))
+            ->distinct()
+            ->pluck('event_id');
+
+        return $eventIds->count() === 1 ? $eventIds->first() : null;
     }
 
     /**

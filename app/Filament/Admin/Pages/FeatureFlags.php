@@ -150,6 +150,10 @@ class FeatureFlags extends Page
                             ->label('Door can change preferred names')
                             ->helperText(__('Adds a "Change preferred name" button for the selected member on the Check-In Desk, so Door staff can update what a member goes by without a Manager. Changes aren\'t logged, same as editing it on the member\'s page. Managers and above see the button either way. Off by default.'))
                             ->required(),
+                        Toggle::make('reset_desk_event_on_member_change')
+                            ->label('Pick the event again for each member')
+                            ->helperText(__('On the Check-In Desk, picking a different member puts Event back to what a fresh page shows: tonight\'s event, or blank when several events overlap, so the desk has to choose. If the member is already on exactly one of tonight\'s events (prepaid, on the comp list or checked in), that one is chosen for them. Off, Event stays on whatever was last picked. On by default.'))
+                            ->required(),
                         Toggle::make('kiosk_checkin_enabled')
                             ->label('Kiosk check-in')
                             ->helperText(__('Adds a "Kiosk QR code" button for the selected member on the Check-In Desk and on the member\'s page, showing a code to print or photograph. The code only identifies the member: the kiosk lets them in only when they owe nothing (and, by default, have an active subscription), and sends anyone else to the desk. Off by default.'))

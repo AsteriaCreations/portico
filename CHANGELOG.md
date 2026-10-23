@@ -45,6 +45,14 @@ is fixes only.
 
 ### Changed
 
+- **The desk asks for the event again for each member.** Picking a different member on the
+  Check-In Desk puts Event back to what a fresh page shows: tonight's event, or blank when
+  several events overlap. If the member is already on exactly one of tonight's events
+  (prepaid, comp list or checked in), that one is picked for them. A pick made for one person,
+  one of two overlapping events or a later event for a prepayment, no longer carries over to
+  the next. The Check in button and its toast now name the event ("Check in to Social").
+  Behind the new `reset_desk_event_on_member_change` flag, on by default. Needs
+  `php artisan migrate`.
 - **No reason needed to spend your own voucher balance.** At the desk (check-in and the
   subscription sale), the Reason box now appears only when the credit comes from another
   member's balance. A member spending their own gets "Redeemed at the desk" on the ledger.
