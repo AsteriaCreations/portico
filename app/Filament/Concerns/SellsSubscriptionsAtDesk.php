@@ -23,6 +23,7 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Schemas\Components\Utilities\Get;
+use Filament\Schemas\Components\Utilities\Set;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Support\Facades\Gate;
 
@@ -180,10 +181,10 @@ trait SellsSubscriptionsAtDesk
     // event -- distinct from a subscription (a whole calendar month)
     // purchasable above via purchaseSubscriptionAction(). The rules (which
     // add-ons and events qualify, the fee, the one-time method) live in
-    // AddOnDayPassService; this is only the form. Its own event Select, not
-    // coupled to whatever event is currently selected on the page, so staff
-    // can sell a pass for a different night while mid-transaction on
-    // tonight's. See docs/BLUEPRINT.md "Fee pipeline".
+    // AddOnDayPassService; this is only the form. Its own event Select starts
+    // on the event picked on the page (when a pass can be sold for it) but
+    // stays editable, so staff can sell a pass for a different night while
+    // mid-transaction on tonight's. See docs/BLUEPRINT.md "Fee pipeline".
     public function purchaseAddOnDayPassAction(): Action
     {
         $member = $this->getSelectedMember();
@@ -202,7 +203,8 @@ trait SellsSubscriptionsAtDesk
                     ->options($dayPassableAddOns->pluck('name', 'id')->all())
                     ->default($defaultAddOnId)
                     ->required()
-                    ->live(),
+                    ->live()
+                    ->afterStateUpdated(fn (Set $set, $state) => $set('event_id', $this->deskEventForDayPass($state))),
                 Select::make('event_id')
                     ->label(__('Event'))
                     ->options(function (Get $get) use ($dayPasses) {
@@ -216,6 +218,7 @@ trait SellsSubscriptionsAtDesk
                             ->get()
                             ->mapWithKeys(fn (Event $event) => [$event->id => "{$event->name} — {$event->event_date->isoFormat('ll')} ({$this->formatCurrency((float) $addOn->priceFor($event))})"]);
                     })
+                    ->default(fn (): ?int => $this->deskEventForDayPass($defaultAddOnId))
                     ->required()
                     ->searchable(),
                 Select::make('payment_method')
@@ -262,6 +265,23 @@ trait SellsSubscriptionsAtDesk
                     ->success()
                     ->send();
             });
+    }
+
+    /**
+     * The event picked on the page, when a day pass for this add-on can be
+     * sold for it; otherwise null, leaving the pass's Event blank. Read
+     * when the form opens, not when the action is built, so it follows the
+     * page's current pick.
+     */
+    private function deskEventForDayPass(mixed $addOnId): ?int
+    {
+        $eventId = $this->data['event_id'] ?? null;
+        $addOn = filled($addOnId) ? AddOn::find($addOnId) : null;
+        if (blank($eventId) || ! $addOn) {
+            return null;
+        }
+
+        return app(AddOnDayPassService::class)->eventOptionsQuery($addOn)->whereKey($eventId)->exists() ? (int) $eventId : null;
     }
 
     /**
