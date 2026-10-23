@@ -51,7 +51,7 @@ All are Manager+ unless noted. They're grouped in the left nav exactly as listed
 | Screen | What it's for |
 |---|---|
 | **Subscription Plans** | Regular / Pool plan price and per-visit credit, effective-dated — edit the price and a new row takes effect without rewriting history. |
-| **Payment Methods** | The tender types offered at check-in. `code` is immutable once created (historical rows store it). `requires_register_shift` marks a method that needs an open cash drawer and counts toward reconciliation. `one_time_only` marks a method usable once per member ever (e.g. a promo). |
+| **Payment Methods** | The tender types offered at check-in. `code` is immutable once created (historical rows store it). `requires_register_shift` marks a method that needs an open cash drawer and counts toward reconciliation. `one_time_only` marks a method usable once per member ever (e.g. a promo). `icon` (picked from a short list) shows beside what someone paid in the desk's Checked in tonight list; blank shows none. |
 | **Add-Ons** | Priced extras sold at check-in (room rental, sleepover, …). `subscribable` gives an add-on a monthly plan + day pass (this is how Pool works). `is_overnight` keeps a guest visible on Active Patrons past their event. An add-on can be waiver-gated via Paperwork Types. |
 | **Comp Reasons** | The reasons a Manager can waive one visit's entry fee. Ships with Presenter, Volunteer, and Guest of a staff member. A `grants_voucher_amount` auto-issues a reward voucher once that event ends (run `vouchers:grant-comp-rewards`). |
 | **Registers** | The physical cash drawers/tills. Only relevant if `register_shifts_enabled`. |

@@ -3,6 +3,7 @@
 namespace App\Filament\Admin\Resources\PaymentMethods\Schemas;
 
 use App\Models\PaymentMethod;
+use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Schema;
@@ -16,6 +17,10 @@ class PaymentMethodForm
                 TextInput::make('label')
                     ->required()
                     ->maxLength(60),
+                Select::make('icon')
+                    ->options(PaymentMethod::iconOptions())
+                    ->in(PaymentMethod::ICONS)
+                    ->helperText(__('Shown beside what someone paid in the Check-In Desk\'s Checked in tonight list. Leave blank for none.')),
                 TextInput::make('code')
                     ->required()
                     ->maxLength(30)

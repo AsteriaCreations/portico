@@ -2,6 +2,7 @@
 
 use App\Models\Attendance;
 use App\Models\Event;
+use App\Models\PaymentMethod;
 use Illuminate\Support\Collection;
 use Livewire\Attributes\Computed;
 use Livewire\Component;
@@ -45,6 +46,33 @@ new class extends Component
             ->filter(fn (Attendance $attendance): bool => $attendance->isSubscriptionPurchaseVisit())
             ->mapWithKeys(fn (Attendance $attendance): array => [$attendance->id => true])
             ->all();
+    }
+
+    /**
+     * Each payment method's icon and label, keyed by code: one query per
+     * render, whatever the list's length.
+     *
+     * @return array<string, array{icon: string, label: string}>
+     */
+    #[Computed]
+    public function paymentMethodIcons(): array
+    {
+        return PaymentMethod::query()
+            ->whereNotNull('icon')
+            ->get(['code', 'icon', 'label'])
+            ->mapWithKeys(fn (PaymentMethod $method): array => [$method->code => ['icon' => "heroicon-m-{$method->icon}", 'label' => $method->label]])
+            ->all();
+    }
+
+    /**
+     * The icon beside what someone paid; null for a $0 visit with no
+     * method, or a method with no icon picked (Payment Methods).
+     *
+     * @return array{icon: string, label: string}|null
+     */
+    public function paymentIcon(Attendance $attendance): ?array
+    {
+        return $this->paymentMethodIcons[$attendance->payment_method ?? ''] ?? null;
     }
 
     /**
@@ -152,7 +180,7 @@ new class extends Component
                             <p class="text-gray-500 dark:text-gray-400">{{ $checkedInAttendance->member->displayName() }}</p>
                         @endif
                         <p class="text-gray-500 dark:text-gray-400">{{ $this->event->name }} &middot; {{ $this->event->event_date->isoFormat('ll') }}</p>
-                        <p class="text-gray-500 dark:text-gray-400">{{ $checkedInAttendance->checked_in_at->isoFormat('LT') }} &middot; {{ \App\Models\MembershipSetting::formatMoney($checkedInAttendance->amount_paid) }}</p>
+                        <p class="text-gray-500 dark:text-gray-400">{{ $checkedInAttendance->checked_in_at->isoFormat('LT') }} &middot; {{ \App\Models\MembershipSetting::formatMoney($checkedInAttendance->amount_paid) }} @if ($paymentIcon = $this->paymentIcon($checkedInAttendance)) <span role="img" aria-label="{{ $paymentIcon['label'] }}" title="{{ $paymentIcon['label'] }}" class="text-gray-400 dark:text-gray-500" style="display: inline-block; vertical-align: middle"><x-filament::icon :icon="$paymentIcon['icon']" /></span>@endif</p>
                     </div>
                 @endforeach
             </div>
@@ -183,7 +211,7 @@ new class extends Component
                                 <td class="px-3 py-2 text-sm">{{ $this->event->name }}</td>
                                 <td class="px-3 py-2 text-sm">{{ $this->event->event_date->isoFormat('ll') }}</td>
                                 <td class="px-3 py-2 text-sm">{{ $checkedInAttendance->checked_in_at->isoFormat('LT') }}</td>
-                                <td class="px-3 py-2 text-end text-sm">{{ \App\Models\MembershipSetting::formatMoney($checkedInAttendance->amount_paid) }}</td>
+                                <td class="px-3 py-2 text-end text-sm" style="white-space: nowrap">{{ \App\Models\MembershipSetting::formatMoney($checkedInAttendance->amount_paid) }} @if ($paymentIcon = $this->paymentIcon($checkedInAttendance)) <span role="img" aria-label="{{ $paymentIcon['label'] }}" title="{{ $paymentIcon['label'] }}" class="text-gray-400 dark:text-gray-500" style="display: inline-block; vertical-align: middle"><x-filament::icon :icon="$paymentIcon['icon']" /></span>@endif</td>
                             </tr>
                         @endforeach
                     </tbody>

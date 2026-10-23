@@ -25,6 +25,7 @@ CHECK-IN DESK
 - Prepay events (pay ahead of the event date)
 - Prepaid cash held for the event, outside the register: it comes off the box's expected close, gets its own envelope per event at close-out, and the event's Prepay List tab and the desk on the night show how much is held
 - Back check-in / "mark arrived" roster for prepaid and comped attendees
+- Payment method icons — each method's icon (Payment Methods, picked from a short list; shipped methods get a starting one) shows beside the amount paid in the desk's Checked in tonight list, named for screen readers and on hover
 - Auto-derived arrival time based on event's live/prepay status
 - Register/cash box shift tracking (open/close, drops, misc. payments)
 - Cash for an electronic payment — someone pays by Venmo (or another non-cash method, plus its fee) and gets the same amount in cash from the box; comes off the expected close, listed apart from takings, not revenue; Manager+ undoes a mistake with a negative row, optionally reversing the duplicate's fee; append-only `cash_exchanges` ledger (cash_exchanges_enabled, default off)

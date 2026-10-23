@@ -45,6 +45,11 @@ is fixes only.
 
 ### Changed
 
+- **Payment method icons on the desk.** The Check-In Desk's Checked in tonight list shows an
+  icon beside what each person paid, for the method they used (banknotes for Cash, a phone for
+  Venmo, a gift for Comp and so on), named for screen readers and on hover. Each method's icon
+  is picked from a short list on Payment Methods; the migration gives the shipped methods a
+  starting one. Needs `php artisan migrate`; no npm build.
 - **The desk asks for the event again for each member.** Picking a different member on the
   Check-In Desk puts Event back to what a fresh page shows: tonight's event, or blank when
   several events overlap. If the member is already on exactly one of tonight's events
