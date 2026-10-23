@@ -45,6 +45,10 @@ is fixes only.
 
 ### Changed
 
+- **The desk's "Check ID" bar says it once.** For an under-21 member (or under the club's
+  alcohol flag age), the amber bar's headline already reads "Check ID — under 21, no alcohol,
+  mark hand", so the same words are no longer listed again underneath. The flag still shows
+  under any other headline (a watchlist warning, say) and before an event is picked.
 - **Buy Day Pass starts on the desk's event.** The day pass form's Event now starts on the
   event picked on the Check-In Desk, when a pass can be sold for it, instead of blank. It can
   still be changed to another night. No migration.
