@@ -659,6 +659,18 @@ class Member extends Model
      * this with a not-banned filter). Filament relationship selects use
      * ->searchable(Member::searchableColumns()) directly instead.
      */
+    /**
+     * Members a user may link to their own login from My account: not
+     * already linked to another login, and not any event's showrunner --
+     * ShowrunnerCompRequests scopes by users.member_id, so a self-link must
+     * never hand someone an event to request comps for.
+     */
+    public function scopeSelfLinkable(Builder $query): void
+    {
+        $query->whereDoesntHave('user')
+            ->whereNotIn('id', Event::query()->whereNotNull('showrunner_id')->select('showrunner_id'));
+    }
+
     public function scopeMatchingSearch(Builder $query, string $search): void
     {
         $columns = static::searchableColumns();

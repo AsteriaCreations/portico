@@ -4,6 +4,7 @@ use App\Enums\Role;
 use App\Filament\Admin\Pages\MyAccount;
 use App\Mail\EventEndedSummary;
 use App\Models\Event;
+use App\Models\Member;
 use App\Models\User;
 use App\Providers\Filament\AdminPanelProvider;
 use Filament\Support\Colors\Color;
@@ -233,4 +234,76 @@ test('a user without it keeps the standard green and red', function () {
     $this->actingAs($user)->get('/admin/my-account')
         ->assertDontSee(AdminPanelProvider::colorblindPalette()['success'][500], false)
         ->assertSee('--success-500:'.Color::Green[500], false);
+});
+
+test('an unlinked user can link their own member record', function () {
+    $user = User::factory()->create(['role' => Role::Volunteer, 'active' => true]);
+    $member = Member::factory()->create(['username' => 'selflinker']);
+
+    $this->actingAs($user);
+
+    Livewire::test(MyAccount::class)
+        ->fillForm(['member_id' => $member->id])
+        ->callAction('save')
+        ->assertHasNoFormErrors();
+
+    expect($user->refresh()->member_id)->toBe($member->id);
+});
+
+test('the member search lists only members free to self-link', function () {
+    $user = User::factory()->create(['role' => Role::Door, 'active' => true]);
+    $free = Member::factory()->create(['username' => 'linkfree']);
+    $taken = Member::factory()->create(['username' => 'linktaken']);
+    User::factory()->create(['member_id' => $taken->id]);
+    $showrunner = Member::factory()->create(['username' => 'linkshowrunner']);
+    Event::factory()->create(['showrunner_id' => $showrunner->id]);
+
+    expect(Member::query()->selfLinkable()->where('username', 'like', 'link%')->pluck('id')->all())
+        ->toBe([$free->id]);
+});
+
+test('a member already linked to another login cannot be self-linked, even by a forged payload', function () {
+    $user = User::factory()->create(['role' => Role::Door, 'active' => true]);
+    $member = Member::factory()->create();
+    $other = User::factory()->create(['member_id' => $member->id]);
+
+    $this->actingAs($user);
+
+    Livewire::test(MyAccount::class)
+        ->set('data.member_id', $member->id)
+        ->callAction('save')
+        ->assertHasFormErrors(['member_id']);
+
+    expect($user->refresh()->member_id)->toBeNull()
+        ->and($other->refresh()->member_id)->toBe($member->id);
+});
+
+test('an event showrunner cannot be self-linked, so a self-link never grants comp requests', function () {
+    $user = User::factory()->create(['role' => Role::Showrunner, 'active' => true]);
+    $member = Member::factory()->create();
+    Event::factory()->create(['showrunner_id' => $member->id]);
+
+    $this->actingAs($user);
+
+    Livewire::test(MyAccount::class)
+        ->set('data.member_id', $member->id)
+        ->callAction('save')
+        ->assertHasFormErrors(['member_id']);
+
+    expect($user->refresh()->member_id)->toBeNull();
+});
+
+test('a linked user cannot change their own link', function () {
+    $linked = Member::factory()->create();
+    $user = User::factory()->create(['role' => Role::Manager, 'active' => true, 'member_id' => $linked->id]);
+    $other = Member::factory()->create();
+
+    $this->actingAs($user);
+
+    Livewire::test(MyAccount::class)
+        ->assertFormFieldIsDisabled('member_id')
+        ->set('data.member_id', $other->id)
+        ->callAction('save');
+
+    expect($user->refresh()->member_id)->toBe($linked->id);
 });
