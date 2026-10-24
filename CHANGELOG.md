@@ -11,6 +11,11 @@ is fixes only.
 
 ### Added
 
+- **Link your own member record from My account.** A login with no linked member can type
+  its member username, pick it and Save. Members already linked to another login are not
+  offered, and neither is any event's showrunner, so a self-link can never open Showrunner
+  comp requests. Once linked, the field is read-only; only an Admin changes it (Users).
+  No migration.
 - **House Policy wording for the desk's status bar.** A new House Policy section on
   Membership Settings lets a club set its own headline and "what to do" line for four
   situations: banned, on the watchlist, under the age of majority and under the no-alcohol

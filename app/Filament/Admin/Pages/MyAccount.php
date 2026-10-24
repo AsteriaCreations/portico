@@ -3,17 +3,21 @@
 namespace App\Filament\Admin\Pages;
 
 use App\Filament\Concerns\TranslatesPageLabels;
+use App\Models\Member;
 use Filament\Actions\Action;
+use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
+use Illuminate\Validation\ValidationException;
 
 /**
- * The signed-in user's own settings: where club email reaches them, plus a
- * way to the Change password page. Reached from the user menu (see
+ * The signed-in user's own settings: where club email reaches them, their
+ * own member record if they aren't linked yet, plus a way to the Change
+ * password page. Reached from the user menu (see
  * AdminPanelProvider::userMenuItems()), not the nav rail. Like
  * ChangePassword, canAccess() stays at its default so every role can reach
  * it -- it only ever edits auth()->user().
@@ -45,6 +49,7 @@ class MyAccount extends Page
             'contact_email' => auth()->user()->contact_email,
             'email_opt_in' => auth()->user()->email_opt_in,
             'colorblind_palette' => auth()->user()->colorblind_palette,
+            'member_id' => auth()->user()->member_id,
         ]);
     }
 
@@ -77,6 +82,25 @@ class MyAccount extends Page
                     ->visible(fn (Get $get): bool => self::contactEmailChanged($get('contact_email')))
                     ->dehydrated(false)
                     ->helperText(__('Needed to change your preferred email.')),
+                // Self-service only while unlinked: once set, only an Admin
+                // (Users resource) can change it, so an account can't hop
+                // between member records. Options come from
+                // Member::scopeSelfLinkable() and save() re-checks it.
+                Select::make('member_id')
+                    ->label('Your member record')
+                    ->searchable()
+                    ->getSearchResultsUsing(fn (string $search): array => Member::query()
+                        ->selfLinkable()
+                        ->where('username', 'like', $search.'%')
+                        ->orderBy('username')
+                        ->limit(10)
+                        ->pluck('username', 'id')
+                        ->all())
+                    ->getOptionLabelUsing(fn ($value): ?string => Member::find($value)?->username)
+                    ->disabled(fn (): bool => auth()->user()->member_id !== null)
+                    ->helperText(fn (): string => auth()->user()->member_id !== null
+                        ? __('Linked to your account. Ask an Admin if this is wrong.')
+                        : __('Optional. Type your member username to link it to this login. A member already linked to another login is not listed.')),
                 Toggle::make('email_opt_in')
                     ->label('Email me club communications')
                     ->helperText(__('Turn off to stop club email, such as event summaries. You still get notifications in the app (the bell).')),
@@ -92,8 +116,19 @@ class MyAccount extends Page
             ->label('Save')
             ->action(function (): void {
                 $data = $this->form->getState();
+                $user = auth()->user();
 
-                auth()->user()->update([
+                if ($user->member_id === null && filled($data['member_id'] ?? null)) {
+                    if (! Member::query()->selfLinkable()->whereKey($data['member_id'])->exists()) {
+                        throw ValidationException::withMessages([
+                            'data.member_id' => __('That member can no longer be linked. Pick another or ask an Admin.'),
+                        ]);
+                    }
+
+                    $user->member_id = (int) $data['member_id'];
+                }
+
+                $user->update([
                     'contact_email' => self::normalize($data['contact_email'] ?? null),
                     'email_opt_in' => (bool) ($data['email_opt_in'] ?? true),
                     'colorblind_palette' => (bool) ($data['colorblind_palette'] ?? false),
