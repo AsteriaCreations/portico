@@ -250,6 +250,48 @@ test('an unlinked user can link their own member record', function () {
     expect($user->refresh()->member_id)->toBe($member->id);
 });
 
+test('a self-link notifies every other active Manager+, and nobody else', function () {
+    $user = User::factory()->create(['role' => Role::Manager, 'active' => true, 'name' => 'Pat Staff']);
+    $member = Member::factory()->create(['username' => 'patmember']);
+    $manager = User::factory()->create(['role' => Role::Manager, 'active' => true]);
+    $admin = User::factory()->create(['role' => Role::Admin, 'active' => true]);
+    $owner = User::factory()->create(['role' => Role::Owner, 'active' => true]);
+    $inactiveManager = User::factory()->create(['role' => Role::Manager, 'active' => false]);
+    $door = User::factory()->create(['role' => Role::Door, 'active' => true]);
+
+    $this->actingAs($user);
+
+    Livewire::test(MyAccount::class)
+        ->fillForm(['member_id' => $member->id])
+        ->callAction('save')
+        ->assertHasNoFormErrors();
+
+    foreach ([$manager, $admin, $owner] as $recipient) {
+        expect($recipient->notifications()->count())->toBe(1);
+    }
+
+    expect($manager->notifications()->first()->data['title'])->toContain('Pat Staff')->toContain('patmember')
+        ->and($user->notifications()->count())->toBe(0)
+        ->and($inactiveManager->notifications()->count())->toBe(0)
+        ->and($door->notifications()->count())->toBe(0);
+});
+
+test('saving My account without a new link notifies nobody', function () {
+    $manager = User::factory()->create(['role' => Role::Manager, 'active' => true]);
+    $linked = User::factory()->create(['role' => Role::Door, 'active' => true, 'member_id' => Member::factory()->create()->id]);
+    $unlinked = User::factory()->create(['role' => Role::Door, 'active' => true]);
+
+    foreach ([$linked, $unlinked] as $user) {
+        $this->actingAs($user);
+
+        Livewire::test(MyAccount::class)
+            ->callAction('save')
+            ->assertHasNoFormErrors();
+    }
+
+    expect($manager->notifications()->count())->toBe(0);
+});
+
 test('the member search lists only members free to self-link', function () {
     $user = User::factory()->create(['role' => Role::Door, 'active' => true]);
     $free = Member::factory()->create(['username' => 'linkfree']);
