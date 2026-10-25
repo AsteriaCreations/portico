@@ -11,6 +11,12 @@ is fixes only.
 
 ### Added
 
+- **Check in staff when they sign in** (Feature Flags, off by default). Signing in with a login
+  linked to a member checks that member in to tonight's event when they owe nothing: a
+  subscription, a comped category, the host or a free event. Recorded as that login, with no
+  payment method. Money due, two events at once, check-in closed or full, a prepay not yet
+  marked arrived, or a watchlist or ID check tells them to go to the desk (a notice and the
+  bell, never the reason) and notifies the Door staff signed in. Needs `php artisan migrate`.
 - **Link your own member record from My account.** A login with no linked member can type
   its member username, pick it and Save. Members already linked to another login are not
   offered, and neither is any event's showrunner, so a self-link can never open Showrunner

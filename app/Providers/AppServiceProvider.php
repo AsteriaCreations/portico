@@ -9,17 +9,21 @@ use App\Models\MembershipSetting;
 use App\Models\User;
 use App\Observers\MemberObserver;
 use App\Observers\UserObserver;
+use App\Services\StaffLoginCheckInService;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Field;
 use Filament\Tables\Columns\Column;
 use Filament\Tables\Filters\BaseFilter;
 use Filament\Tables\Table;
+use Illuminate\Auth\Events\Login;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Validation\Rules\Password;
+use Throwable;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -50,6 +54,21 @@ class AppServiceProvider extends ServiceProvider
         // membership_settings.kiosk_requests_per_minute (default 30, never
         // below 30, so the poll's 20 a minute always fits).
         RateLimiter::for('kiosk', fn (Request $request): Limit => Limit::perMinute(MembershipSetting::current()->kiosk_requests_per_minute)->by($request->ip().'|'.$request->path()));
+
+        // A linked login checks its member in on sign-in when
+        // staff_login_checkin_enabled is on. A failure there must never stop
+        // the sign-in, so it is reported and the sign-in goes on.
+        Event::listen(Login::class, function (Login $event): void {
+            if (! $event->user instanceof User) {
+                return;
+            }
+
+            try {
+                app(StaffLoginCheckInService::class)->handle($event->user);
+            } catch (Throwable $exception) {
+                report($exception);
+            }
+        });
 
         Gate::define('view-sensitive-member-fields', fn (User $user): bool => $user->role->atLeast(Role::Manager));
 
