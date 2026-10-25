@@ -24,6 +24,13 @@ is fixes only.
   still `AdmissionPolicy`'s decision. Admin and Owner can change it; Managers see it
   read-only. Needs `php artisan migrate`.
 
+### Changed
+
+- **A subscriber with nothing due checks in on one click.** When a Regular subscription
+  covers entry and the Due total is $0, the desk's Check in button records the visit at once
+  (arrival time now, no payment method, no notes) instead of opening the dialog. Anything
+  still owed, any other $0 visit, or a watchlist acknowledgement still opens it.
+
 ### Security
 
 - **PHP 8.4.27 is now the minimum for production.** Earlier PHP 8.4 builds are open to

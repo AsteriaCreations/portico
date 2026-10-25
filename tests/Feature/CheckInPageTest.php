@@ -153,6 +153,59 @@ test('the Due line adds nothing for a month the member already has covered', fun
     expect($component->instance()->getLiveSubscriptionTotalCents())->toBe(0);
 });
 
+test('a subscriber with nothing due is checked in on the click, with no dialog', function () {
+    $member = clearMember($this->irregular, ['subscription_eligible' => true]);
+    $event = Event::factory()->create(['event_date' => now()->toDateString(), 'entry_fee' => 20, 'pool_fee' => 0]);
+    Subscription::create([
+        'member_id' => $member->id,
+        'add_on_id' => AddOn::entry()->id,
+        'covered_month' => now()->startOfMonth()->toDateString(),
+        'amount_paid' => 60,
+        'paid_on' => now(),
+    ]);
+
+    Livewire::test(CheckIn::class)
+        ->fillForm(['event_id' => $event->id, 'member_id' => $member->id])
+        ->mountAction('checkIn');
+
+    $attendance = Attendance::where('member_id', $member->id)->where('event_id', $event->id)->firstOrFail();
+    expect($attendance->entry_covered_by)->toBe(EntryCoverageSource::RegularSubscription)
+        ->and($attendance->amount_paid)->toEqual(0)
+        ->and($attendance->payment_method)->toBeNull()
+        ->and($attendance->checked_in_at)->not->toBeNull();
+});
+
+test('a subscriber who still owes something gets the dialog', function () {
+    $member = clearMember($this->irregular, ['subscription_eligible' => true]);
+    $event = Event::factory()->create(['event_date' => now()->toDateString(), 'entry_fee' => 40, 'pool_fee' => 0]);
+    Subscription::create([
+        'member_id' => $member->id,
+        'add_on_id' => AddOn::entry()->id,
+        'covered_month' => now()->startOfMonth()->toDateString(),
+        'amount_paid' => 60,
+        'paid_on' => now(),
+    ]);
+
+    Livewire::test(CheckIn::class)
+        ->fillForm(['event_id' => $event->id, 'member_id' => $member->id])
+        ->mountAction('checkIn')
+        ->assertActionMounted('checkIn');
+
+    expect(Attendance::where('member_id', $member->id)->exists())->toBeFalse();
+});
+
+test('a $0 visit that is not a subscription still gets the dialog', function () {
+    $member = clearMember($this->irregular);
+    $event = Event::factory()->create(['event_date' => now()->toDateString(), 'entry_fee' => 0, 'pool_fee' => 0]);
+
+    Livewire::test(CheckIn::class)
+        ->fillForm(['event_id' => $event->id, 'member_id' => $member->id])
+        ->mountAction('checkIn')
+        ->assertActionMounted('checkIn');
+
+    expect(Attendance::where('member_id', $member->id)->exists())->toBeFalse();
+});
+
 test('an eligible member gets one Regular subscription picker, not a duplicate Entry one', function () {
     $member = clearMember($this->irregular, ['subscription_eligible' => true]);
     $event = Event::factory()->create(['event_date' => now()->toDateString(), 'entry_fee' => 40, 'pool_fee' => 10]);

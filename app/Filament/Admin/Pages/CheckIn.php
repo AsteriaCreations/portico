@@ -3,6 +3,7 @@
 namespace App\Filament\Admin\Pages;
 
 use App\Enums\AdmissionOutcome;
+use App\Enums\EntryCoverageSource;
 use App\Enums\Role;
 use App\Exceptions\CheckInRefused;
 use App\Filament\Concerns\CapturesMemberIdentity;
@@ -1082,6 +1083,12 @@ class CheckIn extends Page implements HasTable
                 && $this->getDecision()?->outcome !== AdmissionOutcome::Capture
                 && ! $this->isCheckInClosed()
                 && ($event === null || app(CapacityService::class)->hasRoom($event->event_date)))
+            // A subscriber with nothing due has no payment method to pick, so
+            // the click checks them straight in at now() with no notes. A
+            // watchlist acknowledgement still opens the dialog.
+            ->modalHidden(fn (): bool => ! $requiresAcknowledgement
+                && $this->getLivePriceBreakdown()?->entryCoveredBy === EntryCoverageSource::RegularSubscription
+                && $this->getLiveDueTotal() <= 0)
             ->action(function (array $data): void {
                 if ($this->haltForTraining(__('Practice check-in complete — :amount would have been charged. Nothing was saved.', ['amount' => $this->formatCurrency($this->getLiveDueTotal())]))) {
                     return;
