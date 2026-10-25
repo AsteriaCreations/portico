@@ -84,6 +84,7 @@ class FeatureFlags extends Page
             'door_username_rename_enabled',
             'door_preferred_name_change_enabled',
             'kiosk_checkin_enabled',
+            'staff_login_checkin_enabled',
             'kiosk_show_code_enabled',
             'kiosk_subscribers_only',
             'hold_desk_prepay_cash',
@@ -157,6 +158,10 @@ class FeatureFlags extends Page
                         Toggle::make('kiosk_checkin_enabled')
                             ->label('Kiosk check-in')
                             ->helperText(__('Adds a "Kiosk QR code" button for the selected member on the Check-In Desk and on the member\'s page, showing a code to print or photograph. The code only identifies the member: the kiosk lets them in only when they owe nothing (and, by default, have an active subscription), and sends anyone else to the desk. Off by default.'))
+                            ->required(),
+                        Toggle::make('staff_login_checkin_enabled')
+                            ->label('Check in staff when they sign in')
+                            ->helperText(__('Signing in with a login linked to a member (My account, or Users) checks that member in to tonight\'s event when they owe nothing: a subscription, a comped category, the host, or a free event. Anything else (money due, two events at once, check-in closed or full, a watchlist or ID check) tells them to check in at the desk and notifies the Door staff signed in. Signing in when no event is running does nothing. Off by default.'))
                             ->required(),
                         Toggle::make('kiosk_subscribers_only')
                             ->label('Kiosk admits subscribers only')
