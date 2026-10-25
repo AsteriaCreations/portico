@@ -4,6 +4,7 @@ namespace App\Filament\Admin\Pages;
 
 use App\Filament\Concerns\TranslatesPageLabels;
 use App\Models\Member;
+use App\Services\MemberSelfLinkNotifier;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
@@ -133,6 +134,10 @@ class MyAccount extends Page
                     'email_opt_in' => (bool) ($data['email_opt_in'] ?? true),
                     'colorblind_palette' => (bool) ($data['colorblind_palette'] ?? false),
                 ]);
+
+                if ($user->wasChanged('member_id')) {
+                    app(MemberSelfLinkNotifier::class)->notify($user, $user->member);
+                }
 
                 $this->data['current_password'] = null;
 
