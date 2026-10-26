@@ -38,6 +38,14 @@ is fixes only.
   (arrival time now, no payment method, no notes) instead of opening the dialog. Anything
   still owed, any other $0 visit, or a watchlist acknowledgement still opens it.
 
+### Fixed
+
+- **A member the door would turn away can't be put on the Prepay or Comp List.** Adding a
+  banned member (with no ban exception for that event), a deceased member, or one under the
+  age of majority on the event's date is now refused with the same reason the desk shows.
+  Before, they took a capacity slot (and, on the Prepay List, a payment) and were only
+  stopped when marked arrived. A bulk prepay upload skips and logs them. No migration.
+
 ### Security
 
 - **PHP 8.4.27 is now the minimum for production.** Earlier PHP 8.4 builds are open to

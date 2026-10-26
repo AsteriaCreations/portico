@@ -10,6 +10,7 @@ use App\Models\Event;
 use App\Models\Member;
 use App\Models\MembershipSetting;
 use App\Models\User;
+use App\Services\PrepayListImporter;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -47,7 +48,7 @@ function buildPrepayUploadFixture(array $rows): string
 }
 
 test('a manager can add a single member to the prepay list, priced via PricingService', function () {
-    $event = Event::factory()->create(['entry_fee' => 40, 'pool_fee' => 0]);
+    $event = Event::factory()->create(['event_date' => today()->toDateString(), 'entry_fee' => 40, 'pool_fee' => 0]);
     $member = Member::factory()->create();
 
     Livewire::test(PrepayListRelationManager::class, [
@@ -65,7 +66,7 @@ test('a manager can add a single member to the prepay list, priced via PricingSe
 
 test('the prepay list tab is hidden once prepay_enabled is off, restored once re-enabled', function () {
     MembershipSetting::current()->update(['prepay_enabled' => false]);
-    $event = Event::factory()->create();
+    $event = Event::factory()->create(['event_date' => today()->toDateString()]);
 
     expect(PrepayListRelationManager::canViewForRecord($event, EditEvent::class))->toBeFalse();
 
@@ -75,7 +76,7 @@ test('the prepay list tab is hidden once prepay_enabled is off, restored once re
 });
 
 test('an amount override replaces amount_paid only, leaving entry_fee/coverage computed normally', function () {
-    $event = Event::factory()->create(['entry_fee' => 40, 'pool_fee' => 0]);
+    $event = Event::factory()->create(['event_date' => today()->toDateString(), 'entry_fee' => 40, 'pool_fee' => 0]);
     $member = Member::factory()->create();
 
     Livewire::test(PrepayListRelationManager::class, [
@@ -94,7 +95,7 @@ test('an amount override replaces amount_paid only, leaving entry_fee/coverage c
 });
 
 test('the prepay list table excludes an already-arrived attendance row', function () {
-    $event = Event::factory()->create();
+    $event = Event::factory()->create(['event_date' => today()->toDateString()]);
     $arrived = Attendance::factory()->for($event)->create(['checked_in_at' => now()]);
     $prepaid = Attendance::factory()->for($event)->create(['checked_in_at' => null]);
 
@@ -123,8 +124,49 @@ test('adding to the prepay list is rejected once the building is at capacity', f
     expect(Attendance::where('event_id', $event->id)->where('member_id', $newMember->id)->exists())->toBeFalse();
 });
 
+test('a banned or under-age member cannot be added to the prepay list', function () {
+    $event = Event::factory()->create(['event_date' => today()->toDateString(), 'entry_fee' => 40]);
+    $banned = Member::factory()->create(['is_banned' => true]);
+    $minor = Member::factory()->create(['dob' => today()->subYears(16)->toDateString()]);
+
+    $relationManager = fn () => Livewire::test(PrepayListRelationManager::class, [
+        'ownerRecord' => $event,
+        'pageClass' => EditEvent::class,
+    ]);
+
+    $relationManager()
+        ->callTableAction('create', data: ['member_id' => $banned->id])
+        ->assertHasTableActionErrors(['member_id']);
+
+    $relationManager()
+        ->callTableAction('create', data: ['member_id' => $minor->id])
+        ->assertHasTableActionErrors(['member_id']);
+
+    expect(Attendance::where('event_id', $event->id)->count())->toBe(0);
+});
+
+test('bulk upload skips and logs a banned member', function () {
+    $event = Event::factory()->create(['event_date' => today()->toDateString(), 'entry_fee' => 40]);
+    $alice = Member::factory()->create(['username' => 'alice']);
+    $banned = Member::factory()->create(['username' => 'dave', 'is_banned' => true]);
+
+    $path = buildPrepayUploadFixture([['alice', null], ['dave', null]]);
+
+    try {
+        $result = app(PrepayListImporter::class)->import($event, $path, $this->manager);
+    } finally {
+        @unlink($path);
+    }
+
+    expect($result['created'])->toBe(1)
+        ->and($result['log'])->toHaveCount(1)
+        ->and($result['log'][0])->toContain('row 2: dave')
+        ->and(Attendance::where('event_id', $event->id)->where('member_id', $banned->id)->exists())->toBeFalse()
+        ->and(Attendance::where('event_id', $event->id)->where('member_id', $alice->id)->exists())->toBeTrue();
+});
+
 test('bulk upload creates rows, skips an unmatched identifier and a duplicate, and applies overrides', function () {
-    $event = Event::factory()->create(['entry_fee' => 40, 'pool_fee' => 0]);
+    $event = Event::factory()->create(['event_date' => today()->toDateString(), 'entry_fee' => 40, 'pool_fee' => 0]);
     $alice = Member::factory()->create(['username' => 'alice']);
     $bob = Member::factory()->create(['username' => 'bob', 'member_number' => 42]);
     $alreadyListed = Member::factory()->create(['username' => 'carol']);
@@ -159,7 +201,7 @@ test('bulk upload creates rows, skips an unmatched identifier and a duplicate, a
 });
 
 test('re-running the same bulk upload is idempotent', function () {
-    $event = Event::factory()->create(['entry_fee' => 40]);
+    $event = Event::factory()->create(['event_date' => today()->toDateString(), 'entry_fee' => 40]);
     $alice = Member::factory()->create(['username' => 'alice']);
 
     $path = buildPrepayUploadFixture([['alice', null]]);
@@ -177,7 +219,7 @@ test('re-running the same bulk upload is idempotent', function () {
 });
 
 test('bulk upload prunes the prepay-uploads directory to the last 4 files', function () {
-    $event = Event::factory()->create(['entry_fee' => 40]);
+    $event = Event::factory()->create(['event_date' => today()->toDateString(), 'entry_fee' => 40]);
     Member::factory()->create(['username' => 'alice']);
 
     $path = buildPrepayUploadFixture([['alice', null]]);
@@ -196,7 +238,7 @@ test('bulk upload prunes the prepay-uploads directory to the last 4 files', func
 
 test('a door volunteer has no access to the events resource at all', function () {
     $door = User::factory()->create(['active' => true, 'role' => Role::Door]);
-    $event = Event::factory()->create();
+    $event = Event::factory()->create(['event_date' => today()->toDateString()]);
     $this->actingAs($door);
 
     $this->get("/admin/events/{$event->id}/edit")->assertForbidden();

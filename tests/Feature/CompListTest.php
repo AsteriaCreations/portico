@@ -9,6 +9,7 @@ use App\Filament\Admin\Resources\Events\RelationManagers\CompListRelationManager
 use App\Filament\Admin\Resources\Events\RelationManagers\PrepayListRelationManager;
 use App\Models\AddOn;
 use App\Models\Attendance;
+use App\Models\BanException;
 use App\Models\CompReason;
 use App\Models\Event;
 use App\Models\Member;
@@ -31,7 +32,7 @@ beforeEach(function () {
 });
 
 test('adding a member to the comp list waives entry via applyEventComp, leaving pool priced independently', function () {
-    $event = Event::factory()->create(['entry_fee' => 40, 'pool_fee' => 5]);
+    $event = Event::factory()->create(['event_date' => today()->toDateString(), 'entry_fee' => 40, 'pool_fee' => 5]);
     $member = Member::factory()->create();
     $reason = CompReason::factory()->create(['name' => 'Presenter']);
 
@@ -75,7 +76,7 @@ test('adding to the comp list is rejected once the building is at capacity', fun
 });
 
 test('the comp list and prepay list stay disjoint', function () {
-    $event = Event::factory()->create(['entry_fee' => 40]);
+    $event = Event::factory()->create(['event_date' => today()->toDateString(), 'entry_fee' => 40]);
     $reason = CompReason::factory()->create();
     $compedMember = Member::factory()->create();
     $prepaidMember = Member::factory()->create();
@@ -99,7 +100,7 @@ test('the comp list and prepay list stay disjoint', function () {
 });
 
 test('a comp-listed member shows up in the check-in page back-check-in table', function () {
-    $event = Event::factory()->create();
+    $event = Event::factory()->create(['event_date' => today()->toDateString()]);
     $reason = CompReason::factory()->create();
     $member = Member::factory()->create();
     $attendance = Attendance::factory()->for($event)->for($member)->create([
@@ -110,4 +111,28 @@ test('a comp-listed member shows up in the check-in page back-check-in table', f
     Livewire::test(CheckIn::class)
         ->fillForm(['event_id' => $event->id])
         ->assertCanSeeTableRecords([$attendance]);
+});
+
+test('a banned member cannot be added to the comp list, unless they hold a ban exception for this event', function () {
+    $event = Event::factory()->create(['event_date' => today()->toDateString(), 'entry_fee' => 40]);
+    $reason = CompReason::factory()->create();
+    $banned = Member::factory()->create(['is_banned' => true]);
+    $excepted = Member::factory()->create(['is_banned' => true]);
+    BanException::factory()->for($excepted)->for($event)->create();
+
+    $relationManager = fn () => Livewire::test(CompListRelationManager::class, [
+        'ownerRecord' => $event,
+        'pageClass' => EditEvent::class,
+    ]);
+
+    $relationManager()
+        ->callTableAction('create', data: ['member_id' => $banned->id, 'comp_reason_id' => $reason->id])
+        ->assertHasTableActionErrors(['member_id']);
+
+    $relationManager()
+        ->callTableAction('create', data: ['member_id' => $excepted->id, 'comp_reason_id' => $reason->id])
+        ->assertHasNoTableActionErrors();
+
+    expect(Attendance::where('event_id', $event->id)->where('member_id', $banned->id)->exists())->toBeFalse()
+        ->and(Attendance::where('event_id', $event->id)->where('member_id', $excepted->id)->exists())->toBeTrue();
 });
