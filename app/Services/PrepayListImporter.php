@@ -13,8 +13,9 @@ use PhpOffice\PhpSpreadsheet\IOFactory;
  * Bulk-adds members to an event's prepay list from an uploaded file — for an
  * external-payment reconciliation process (Venmo/PayPal/etc. matched to a
  * member, then noted for the event). "Never guess, skip and log": an
- * unmatched identifier, a member already on the list, or a bad amount
- * override are all skipped and logged rather than assumed. See
+ * unmatched identifier, a member already on the list, a member
+ * AdmissionPolicy blocks, or a bad amount override are all skipped and
+ * logged rather than assumed. See
  * docs/BLUEPRINT.md "Prepay events".
  */
 class PrepayListImporter
@@ -56,6 +57,13 @@ class PrepayListImporter
 
             if ($event->attendance()->where('member_id', $member->id)->exists()) {
                 $log[] = "row {$row}: {$member->username} is already on this event's list, skipped";
+
+                continue;
+            }
+
+            $decision = app(AdmissionPolicy::class)->decide($member, $event);
+            if ($decision->blocksCheckIn()) {
+                $log[] = "row {$row}: {$member->username} can't be admitted ({$decision->message}), skipped";
 
                 continue;
             }

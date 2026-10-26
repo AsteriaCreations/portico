@@ -67,7 +67,7 @@ test('the events list gives a manager View and an admin Edit', function () {
 });
 
 test('a manager can add to the prepay list from the view page', function () {
-    $event = Event::factory()->create(['entry_fee' => 20, 'pool_fee' => 0]);
+    $event = Event::factory()->create(['event_date' => today()->toDateString(), 'entry_fee' => 20, 'pool_fee' => 0]);
     $member = Member::factory()->create();
 
     Livewire::test(PrepayListRelationManager::class, [
@@ -82,7 +82,7 @@ test('a manager can add to the prepay list from the view page', function () {
 });
 
 test('a manager can add to the comp list from the view page', function () {
-    $event = Event::factory()->create(['entry_fee' => 20, 'pool_fee' => 0]);
+    $event = Event::factory()->create(['event_date' => today()->toDateString(), 'entry_fee' => 20, 'pool_fee' => 0]);
     $member = Member::factory()->create();
     $reason = CompReason::factory()->create();
 

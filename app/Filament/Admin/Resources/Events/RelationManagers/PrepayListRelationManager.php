@@ -10,6 +10,7 @@ use App\Models\AttendanceAddOn;
 use App\Models\Member;
 use App\Models\MembershipSetting;
 use App\Models\PaymentMethod;
+use App\Services\AdmissionPolicy;
 use App\Services\CapacityService;
 use App\Services\Concerns\PrunesUploadedFiles;
 use App\Services\PrepayCashService;
@@ -129,6 +130,19 @@ class PrepayListRelationManager extends RelationManager
                                 return function (string $attribute, mixed $value, \Closure $fail): void {
                                     if (! app(CapacityService::class)->hasRoom($this->getOwnerRecord()->event_date)) {
                                         $fail(__('The building is at capacity.'));
+                                    }
+                                };
+                            })
+                            // A Block (banned without an exception for this
+                            // event, deceased, under age) would only be turned
+                            // away at the door, after paying and holding a
+                            // capacity slot.
+                            ->rule(function () {
+                                return function (string $attribute, mixed $value, \Closure $fail): void {
+                                    $decision = app(AdmissionPolicy::class)->decide(Member::findOrFail($value), $this->getOwnerRecord());
+
+                                    if ($decision->blocksCheckIn()) {
+                                        $fail($decision->message);
                                     }
                                 };
                             })
