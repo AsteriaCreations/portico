@@ -12,7 +12,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * A "Report a problem" snapshot, with personal details left out. Written
  * only by App\Services\IssueReportService; see IssueReportPolicy.
  */
-#[Fillable(['page', 'note', 'snapshot', 'reported_by'])]
+#[Fillable(['page', 'note', 'snapshot', 'reported_by', 'posted_url', 'posted_at', 'posted_by'])]
 class IssueReport extends Model
 {
     /** @use HasFactory<IssueReportFactory> */
@@ -25,11 +25,17 @@ class IssueReport extends Model
     {
         return [
             'snapshot' => 'array',
+            'posted_at' => 'datetime',
         ];
     }
 
     public function reportedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'reported_by');
+    }
+
+    public function postedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'posted_by');
     }
 }
