@@ -30,6 +30,7 @@ use App\Services\AdmissionPolicy;
 use App\Services\CapacityService;
 use App\Services\CheckInRequest;
 use App\Services\CheckInService;
+use App\Services\IssueReportService;
 use App\Services\PriceBreakdown;
 use App\Services\PricingService;
 use App\Services\RegisterShiftService;
@@ -42,6 +43,7 @@ use Filament\Forms\Components\Checkbox;
 use Filament\Forms\Components\CheckboxList;
 use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\Select;
+use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
@@ -202,7 +204,62 @@ class CheckIn extends Page implements HasTable
 
                     $notification->send();
                 }),
+            $this->reportProblemAction(),
         ];
+    }
+
+    /**
+     * Saves what the desk is showing right now, personal details left out,
+     * for Manager+ to troubleshoot from (IssueReportService). Works in
+     * training mode too: a practice run that goes wrong is worth a report,
+     * and the report says it was practice.
+     */
+    protected function reportProblemAction(): Action
+    {
+        return Action::make('reportProblem')
+            ->label(__('Report a problem'))
+            ->icon(Heroicon::OutlinedBugAnt)
+            ->color('gray')
+            ->visible(fn (): bool => MembershipSetting::current()->issue_reports_enabled)
+            ->modalHeading(__('Report a problem'))
+            ->modalDescription(__('Saves what this page is showing right now, without names, contact details, date of birth, notes or reasons, so a manager can work out what went wrong. Leave the page as it is until you have sent this.'))
+            ->modalSubmitActionLabel(__('Send report'))
+            ->schema([
+                Textarea::make('note')
+                    ->label(__('What went wrong?'))
+                    ->helperText(__('Describe what you expected and what happened instead. Please don\'t type anyone\'s name.'))
+                    ->required()
+                    ->maxLength(2000)
+                    ->rows(4),
+            ])
+            ->action(function (array $data): void {
+                abort_unless(MembershipSetting::current()->issue_reports_enabled, 403);
+
+                $report = app(IssueReportService::class)->reportFromDesk(
+                    staff: auth()->user(),
+                    note: $data['note'],
+                    member: $this->getSelectedMember(),
+                    event: $this->getSelectedEvent(),
+                    pricingData: $this->pricingData ?? [],
+                    livePrice: $this->getLivePriceBreakdown(),
+                    desk: [
+                        'training_mode' => $this->trainingMode,
+                        'register' => $this->getCurrentRegister()?->name,
+                        'register_shift_open' => $this->getOpenShift() !== null,
+                        'is_check_in_closed' => $this->isCheckInClosed(),
+                        'is_check_in_open_for_first_visit' => $this->isCheckInOpenForFirstVisit(),
+                        'due_total' => $this->getLiveDueTotal(),
+                        'live_subscription_total_cents' => $this->getLiveSubscriptionTotalCents(),
+                        'live_add_on_total' => $this->getLiveAddOnTotal(),
+                    ],
+                );
+
+                Notification::make()
+                    ->title(__('Report #:id sent', ['id' => $report->id]))
+                    ->body(__('Thank you. A manager can find it under Issue reports.'))
+                    ->success()
+                    ->send();
+            });
     }
 
     /**

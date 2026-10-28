@@ -11,6 +11,12 @@ is fixes only.
 
 ### Added
 
+- **Report a problem from the desk** (Feature Flags, off by default). A "Report a problem"
+  button on the Check-In Desk saves what the desk is showing (the event, the choices made, the
+  admission decision, the price, capacity, settings and the member's situation) with names,
+  contact details, date of birth, notes and ban/watchlist reasons left out. The member is a
+  keyed code that only an Owner can match back on that installation. Manager+ reads and copies
+  them under Records > Issue reports. Needs `php artisan migrate`.
 - **Check in staff when they sign in** (Feature Flags, off by default). Signing in with a login
   linked to a member checks that member in to tonight's event when they owe nothing: a
   subscription, a comped category, the host or a free event. Recorded as that login, with no
