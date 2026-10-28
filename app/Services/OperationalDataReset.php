@@ -29,6 +29,7 @@ class OperationalDataReset
         'attendance_behavior_notes',
         'payment_corrections',
         'visit_removals',
+        'issue_reports',
         'comp_requests',
         'vouchers',
         'add_on_day_passes',

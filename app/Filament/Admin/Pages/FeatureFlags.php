@@ -85,6 +85,7 @@ class FeatureFlags extends Page
             'door_preferred_name_change_enabled',
             'kiosk_checkin_enabled',
             'staff_login_checkin_enabled',
+            'issue_reports_enabled',
             'kiosk_show_code_enabled',
             'kiosk_subscribers_only',
             'hold_desk_prepay_cash',
@@ -162,6 +163,10 @@ class FeatureFlags extends Page
                         Toggle::make('staff_login_checkin_enabled')
                             ->label('Check in staff when they sign in')
                             ->helperText(__('Signing in with a login linked to a member (My account, or Users) checks that member in to tonight\'s event when they owe nothing: a subscription, a comped category, the host, or a free event. Anything else (money due, two events at once, check-in closed or full, a watchlist or ID check) tells them to check in at the desk and notifies the Door staff signed in. Signing in when no event is running does nothing. Off by default.'))
+                            ->required(),
+                        Toggle::make('issue_reports_enabled')
+                            ->label('Report a problem from the desk')
+                            ->helperText(__('Adds a "Report a problem" button to the Check-In Desk. It saves what the desk is showing (the event, the choices made, the admission decision, the price and the member\'s situation) with names, contact details, date of birth, notes and reasons left out, for Manager+ to review under Issue reports. Off by default.'))
                             ->required(),
                         Toggle::make('kiosk_subscribers_only')
                             ->label('Kiosk admits subscribers only')

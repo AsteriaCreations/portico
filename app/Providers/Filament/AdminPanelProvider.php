@@ -12,6 +12,7 @@ use App\Filament\Admin\Resources\CleaningTasks\CleaningTaskResource;
 use App\Filament\Admin\Resources\CompReasons\CompReasonResource;
 use App\Filament\Admin\Resources\Events\EventResource;
 use App\Filament\Admin\Resources\EventTypes\EventTypeResource;
+use App\Filament\Admin\Resources\IssueReports\IssueReportResource;
 use App\Filament\Admin\Resources\Members\MemberResource;
 use App\Filament\Admin\Resources\PaperworkTypes\PaperworkTypeResource;
 use App\Filament\Admin\Resources\PaymentCorrections\PaymentCorrectionResource;
@@ -163,6 +164,7 @@ class AdminPanelProvider extends PanelProvider
             CompReasonResource::class => 'comp-reasons',
             EventTypeResource::class => 'event-types',
             EventResource::class => 'events',
+            IssueReportResource::class => 'issue-reports',
             MemberResource::class => 'members',
             PaperworkTypeResource::class => 'paperwork-types',
             PaymentCorrectionResource::class => 'payment-corrections',
