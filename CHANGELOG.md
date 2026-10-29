@@ -17,13 +17,14 @@ releases below could carry small breaking changes in a minor release.
 
 **Upgrading from 0.4.0:** first upgrade PHP to **8.4.27 or later** (see Security) and re-copy
 `scripts/apache/portico.conf` (or rerun `setup-apache.ps1`). Then run `npm run build` (new logos
-and desk views) and `php artisan migrate` (10 new migrations), then `php artisan storage:link` for the club logo.
-No new Composer or npm packages. `scripts/deploy.ps1` does all three; don't pass `-SkipNpm` or `-SkipMigrate`.
-New settings and flags default to the old behavior, except: the desk now puts Event back to
-tonight's event for each new member (`reset_desk_event_on_member_change`, on by default), a
-subscriber with nothing due checks in on one click, and the under-21 bar's wording changed
-(see Changed). Posting issue reports to GitHub needs two new, optional `.env` keys
-(`.env.example`).
+and desk views) and `php artisan migrate` (10 new migrations), then `php artisan storage:link`
+for the club logo. Run `composer install --no-dev` too (security updates to Livewire,
+PhpSpreadsheet and symfony/mime; no new packages). `scripts/deploy.ps1` does all of this; don't
+pass `-SkipNpm` or `-SkipMigrate`. New settings and flags default to the old behavior, except:
+the desk now puts Event back to tonight's event for each new member
+(`reset_desk_event_on_member_change`, on by default), a subscriber with nothing due checks in on
+one click, and the under-21 bar's wording changed (see Changed). Posting issue reports to GitHub
+needs two new, optional `.env` keys (`.env.example`).
 
 ### Added
 
@@ -135,6 +136,13 @@ subscriber with nothing due checks in on one click, and the under-21 bar's wordi
 
 ### Security
 
+- **Livewire, PhpSpreadsheet and symfony/mime updated for security fixes** (lock file only:
+  Livewire 4.4.3 → 4.4.8, PhpSpreadsheet 5.9.0 → 5.10.0, symfony/mime 8.1.7 → 8.1.10).
+  PhpSpreadsheet reads the spreadsheets staff upload (prepay and voucher bulk uploads), and
+  its fixes close XXE and runaway-memory holes in that reader (CVE-2026-108357, -108358,
+  -108359) and an SSRF bypass (CVE-2026-108360). symfony/mime fixes email header injection
+  (CVE-2026-45070). The Livewire fix is for `#[Authorize]`/`#[Json]`, which Portico doesn't
+  use. Run `composer install --no-dev`; no migration or build.
 - **PHP 8.4.27 is now the minimum for production.** Earlier PHP 8.4 builds are open to
   unauthenticated remote code execution in PHP itself (CVE-2026-109618 and CVE-2026-109619,
   "php2shell"), whatever the app code does. Upgrade PHP on the server and restart Apache. The
