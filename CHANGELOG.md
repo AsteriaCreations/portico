@@ -3,11 +3,27 @@
 All notable changes to Portico are documented here. The format is loosely based on
 [Keep a Changelog](https://keepachangelog.com/).
 
-Versions are annotated git tags on `main` (`vMAJOR.MINOR.PATCH`). While Portico is `0.x`, a
-minor release may include a database migration and small breaking changes; a patch release
-is fixes only.
+Versions are annotated git tags on `main` (`vMAJOR.MINOR.PATCH`). Since 1.0.0 Portico follows
+semantic versioning: a major release may break an existing install, a minor release adds
+features (and may include a database migration), and a patch release is fixes only. The `0.x`
+releases below could carry small breaking changes in a minor release.
 
 ## [Unreleased]
+
+## [1.0.0] — 2026-10-29
+
+**The first stable release.** From here on Portico follows semantic versioning: see
+`CONTRIBUTING.md` "Versioning & releases" for what counts as breaking.
+
+**Upgrading from 0.4.0:** first upgrade PHP to **8.4.27 or later** (see Security) and re-copy
+`scripts/apache/portico.conf` (or rerun `setup-apache.ps1`). Then run `npm run build` (new logos
+and desk views) and `php artisan migrate` (10 new migrations), then `php artisan storage:link` for the club logo.
+No new Composer or npm packages. `scripts/deploy.ps1` does all three; don't pass `-SkipNpm` or `-SkipMigrate`.
+New settings and flags default to the old behavior, except: the desk now puts Event back to
+tonight's event for each new member (`reset_desk_event_on_member_change`, on by default), a
+subscriber with nothing due checks in on one click, and the under-21 bar's wording changed
+(see Changed). Posting issue reports to GitHub needs two new, optional `.env` keys
+(`.env.example`).
 
 ### Added
 
@@ -41,32 +57,6 @@ is fixes only.
   keeps the shipped wording, so nothing changes on upgrade. Wording only: who gets in is
   still `AdmissionPolicy`'s decision. Admin and Owner can change it; Managers see it
   read-only. Needs `php artisan migrate`.
-
-### Changed
-
-- **A subscriber with nothing due checks in on one click.** When a Regular subscription
-  covers entry and the Due total is $0, the desk's Check in button records the visit at once
-  (arrival time now, no payment method, no notes) instead of opening the dialog. Anything
-  still owed, any other $0 visit, or a watchlist acknowledgement still opens it.
-
-### Fixed
-
-- **A member the door would turn away can't be put on the Prepay or Comp List.** Adding a
-  banned member (with no ban exception for that event), a deceased member, or one under the
-  age of majority on the event's date is now refused with the same reason the desk shows.
-  Before, they took a capacity slot (and, on the Prepay List, a payment) and were only
-  stopped when marked arrived. A bulk prepay upload skips and logs them. No migration.
-
-### Security
-
-- **PHP 8.4.27 is now the minimum for production.** Earlier PHP 8.4 builds are open to
-  unauthenticated remote code execution in PHP itself (CVE-2026-109618 and CVE-2026-109619,
-  "php2shell"), whatever the app code does. Upgrade PHP on the server and restart Apache. The
-  shipped Apache configs now also turn off `session.upload_progress`, which Laravel never uses.
-  Re-copy `scripts/apache/portico.conf` (or rerun `setup-apache.ps1`) to pick it up.
-
-### Added
-
 - **Cash for an electronic payment.** The desk's Cash box can record someone paying by Venmo
   (or another non-cash method) and getting the same amount in cash, e.g. for change. The cash
   comes off the box's expected count; the electronic money is listed apart from the night's
@@ -93,6 +83,10 @@ is fixes only.
 
 ### Changed
 
+- **A subscriber with nothing due checks in on one click.** When a Regular subscription
+  covers entry and the Due total is $0, the desk's Check in button records the visit at once
+  (arrival time now, no payment method, no notes) instead of opening the dialog. Anything
+  still owed, any other $0 visit, or a watchlist acknowledgement still opens it.
 - **The desk's under-21 bar says "Under 21 — mark hand, no alcohol", once.** It used to read
   "Check ID — under 21, no alcohol, mark hand", with the same words listed again underneath.
   ID is checked once, when the date of birth goes in; after that the bar's job is the hand
@@ -125,12 +119,27 @@ is fixes only.
   Guests, Watchlist, Events & check-in, Check-In Desk, Members list & Active Patrons, Kiosk and
   Updates & deploy — instead of one long list. The last two start collapsed. Same fields, same
   permissions, one Save button; `docs/CONFIGURING.md` follows the same order.
-
 - **`CONFIGURING.md` covers every setting again.** It now lists the three kiosk flags, the two
   cash-hold/envelope flags, and the Membership Settings added since v0.3.0: guest follow-up
   category, check-in close times and the first-visit exception, the six kiosk timings and
   limits, watchlist probation, the desk display name and staff roles on Active Patrons. Docs
   only.
+
+### Fixed
+
+- **A member the door would turn away can't be put on the Prepay or Comp List.** Adding a
+  banned member (with no ban exception for that event), a deceased member, or one under the
+  age of majority on the event's date is now refused with the same reason the desk shows.
+  Before, they took a capacity slot (and, on the Prepay List, a payment) and were only
+  stopped when marked arrived. A bulk prepay upload skips and logs them. No migration.
+
+### Security
+
+- **PHP 8.4.27 is now the minimum for production.** Earlier PHP 8.4 builds are open to
+  unauthenticated remote code execution in PHP itself (CVE-2026-109618 and CVE-2026-109619,
+  "php2shell"), whatever the app code does. Upgrade PHP on the server and restart Apache. The
+  shipped Apache configs now also turn off `session.upload_progress`, which Laravel never uses.
+  Re-copy `scripts/apache/portico.conf` (or rerun `setup-apache.ps1`) to pick it up.
 
 ## [0.4.0] — 2026-10-19
 
@@ -1055,6 +1064,7 @@ transaction fee with nothing due (see Fixed).
 - CI runs the full Pest suite on SQLite plus a `migrate:fresh --seed` smoke on MariaDB,
   the production target.
 
+[1.0.0]: https://github.com/AsteriaCreations/portico/releases/tag/v1.0.0
 [0.4.0]: https://github.com/AsteriaCreations/portico/releases/tag/v0.4.0
 [0.3.0]: https://github.com/AsteriaCreations/portico/releases/tag/v0.3.0
 [0.2.0]: https://github.com/AsteriaCreations/portico/releases/tag/v0.2.0

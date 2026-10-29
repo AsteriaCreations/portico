@@ -235,8 +235,16 @@ DB_CONNECTION=mariadb DB_DATABASE=portico_test DB_USERNAME=... DB_PASSWORD=... p
 
 - Versions are **annotated git tags on `main`**, `vMAJOR.MINOR.PATCH`. There is no
   `version` field in `composer.json` — the tag is the source of truth.
-- Portico is **`0.x`**: a minor release may carry a database migration and small breaking
-  changes; a patch release is fixes only.
+- Since **`v1.0.0`** Portico follows [semantic versioning](https://semver.org/):
+  - **Major** (`2.0.0`): anything that can break an existing install or change what it does
+    without the club choosing to — removing or renaming a feature, setting, flag, `.env` key,
+    Artisan command or role capability; a migration that drops or rewrites data; raising the
+    minimum PHP or database version; or an update step beyond `scripts/deploy.ps1`.
+  - **Minor** (`1.1.0`): new features, which may carry a migration and an `npm run build`. A new
+    setting or flag defaults to the old behavior (a brand-new capability defaults off).
+  - **Patch** (`1.0.1`): fixes only, with a migration only when the fix needs one.
+  - One exception: raising the minimum PHP for a security fix in PHP itself can ship in a minor
+    or patch release, called out under Security in the changelog.
 - Keep [`CHANGELOG.md`](CHANGELOG.md) current **in the same PR as the change it
   documents** — new entries go under `## [Unreleased]`. Don't batch changelog edits for
   release time.

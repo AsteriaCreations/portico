@@ -245,9 +245,10 @@ This app has no Laravel scheduler (same as backups above) — register it in Win
 
 ## Project status
 
-Current release: **`v0.4.0`** — see [`CHANGELOG.md`](CHANGELOG.md). Portico is `0.x`, so a
-minor release may include a migration; see [`CONTRIBUTING.md`](CONTRIBUTING.md) "Versioning
-& releases".
+Current release: **`v1.0.0`** — see [`CHANGELOG.md`](CHANGELOG.md). Portico follows semantic
+versioning: a minor release may include a migration, and anything that can break an existing
+install waits for a major release; see [`CONTRIBUTING.md`](CONTRIBUTING.md) "Versioning &
+releases".
 
 Built through the blueprint's step-by-step build order:
 
