@@ -35,4 +35,11 @@ return [
         ],
     ],
 
+    // Where IssueReportService::postToGitHub() opens an issue. Unset = the
+    // "Post to GitHub" button never shows. See .env.example.
+    'github_issues' => [
+        'repo' => env('ISSUE_REPORTS_GITHUB_REPO'),
+        'token' => env('ISSUE_REPORTS_GITHUB_TOKEN'),
+    ],
+
 ];

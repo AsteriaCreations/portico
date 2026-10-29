@@ -15,6 +15,7 @@ use App\Models\Plan;
 use App\Models\User;
 use App\Services\IssueReportService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Http;
 use Livewire\Livewire;
 
 uses(RefreshDatabase::class);
@@ -153,4 +154,65 @@ test('only an Owner can match the pseudonym back to the member', function () {
 
     expect(app(IssueReportService::class)->findMemberByRef($report->snapshot['member']['ref'])?->id)->toBe($this->member->id)
         ->and(app(IssueReportService::class)->findMemberByRef('m_0000000000000000'))->toBeNull();
+});
+
+test('a new report bells every other active Manager+, not Door or the sender', function () {
+    $manager = User::factory()->create(['active' => true, 'role' => Role::Manager]);
+    $inactive = User::factory()->create(['active' => false, 'role' => Role::Owner]);
+    $otherDoor = User::factory()->create(['active' => true, 'role' => Role::Door]);
+
+    app(IssueReportService::class)->reportFromDesk($this->door, 'Wrong price', $this->member, $this->event, [], null, []);
+
+    expect($manager->notifications()->count())->toBe(1)
+        ->and($inactive->notifications()->count())->toBe(0)
+        ->and($otherDoor->notifications()->count())->toBe(0)
+        ->and($this->door->notifications()->count())->toBe(0);
+});
+
+describe('posting to GitHub', function () {
+    beforeEach(function () {
+        config(['services.github_issues.repo' => 'example/club', 'services.github_issues.token' => 'test-token']);
+        $this->report = app(IssueReportService::class)->reportFromDesk($this->door, 'Wrong price', $this->member, $this->event, [], null, []);
+        $this->manager = User::factory()->create(['active' => true, 'role' => Role::Manager]);
+    });
+
+    test('a Manager posts the note they edited and the snapshot, and it is stamped once', function () {
+        Http::fake(['api.github.com/*' => Http::response(['html_url' => 'https://github.com/example/club/issues/7'], 201)]);
+
+        $this->actingAs($this->manager);
+        Livewire::test(ViewIssueReport::class, ['record' => $this->report->getKey()])
+            ->callAction('postToGitHub', data: ['title' => 'Desk price', 'note' => 'Due was wrong'])
+            ->assertHasNoActionErrors();
+
+        $this->report->refresh();
+        expect($this->report->posted_url)->toBe('https://github.com/example/club/issues/7')
+            ->and($this->report->posted_by)->toBe($this->manager->id)
+            ->and($this->report->note)->toBe('Wrong price');
+
+        Http::assertSent(fn ($request): bool => $request->url() === 'https://api.github.com/repos/example/club/issues'
+            && $request->hasHeader('Authorization', 'Bearer test-token')
+            && $request['title'] === 'Desk price'
+            && str_contains($request['body'], 'Due was wrong')
+            && str_contains($request['body'], $this->report->snapshot['member']['ref'])
+            && ! str_contains($request['body'], 'velvetfox'));
+
+        Livewire::test(ViewIssueReport::class, ['record' => $this->report->getKey()])->assertActionHidden('postToGitHub');
+        Http::assertSentCount(1);
+    });
+
+    test('a GitHub refusal leaves the report unposted', function () {
+        Http::fake(['api.github.com/*' => Http::response(['message' => 'Bad credentials'], 401)]);
+
+        expect(fn () => app(IssueReportService::class)->postToGitHub($this->report, $this->manager, 't', 'n'))
+            ->toThrow(RuntimeException::class);
+
+        expect($this->report->refresh()->posted_url)->toBeNull();
+    });
+
+    test('no button without a repo and token', function () {
+        config(['services.github_issues.token' => null]);
+
+        $this->actingAs($this->manager);
+        Livewire::test(ViewIssueReport::class, ['record' => $this->report->getKey()])->assertActionHidden('postToGitHub');
+    });
 });

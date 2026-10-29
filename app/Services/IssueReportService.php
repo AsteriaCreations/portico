@@ -2,12 +2,21 @@
 
 namespace App\Services;
 
+use App\Enums\Role;
+use App\Filament\Admin\Resources\IssueReports\IssueReportResource;
 use App\Models\Event;
 use App\Models\IssueReport;
 use App\Models\Member;
 use App\Models\MembershipSetting;
 use App\Models\User;
+use Filament\Actions\Action;
+use Filament\Notifications\Notification;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Notification as LaravelNotification;
+use Illuminate\Support\Str;
+use RuntimeException;
 
 /**
  * "Report a problem": saves what the Check-In Desk is showing so a fault can
@@ -64,12 +73,113 @@ class IssueReportService
             'settings' => $this->settingsSnapshot(),
         ];
 
-        return IssueReport::create([
+        $report = IssueReport::create([
             'page' => 'check-in',
             'note' => $this->scrubNote($note, $member),
             'snapshot' => $snapshot,
             'reported_by' => $staff->id,
         ]);
+
+        $this->notifyManagers($report, $staff);
+
+        return $report;
+    }
+
+    /**
+     * Whether this installation has a repository and token to post to
+     * (config/services.php "github_issues"). Without both, there is no
+     * "Post to GitHub" button.
+     */
+    public function canPostToGitHub(): bool
+    {
+        return filled(config('services.github_issues.repo')) && filled(config('services.github_issues.token'));
+    }
+
+    /**
+     * Opens a GitHub issue for the report and stamps its URL, once. Only
+     * ever started by a Manager+ who has read the report (ViewIssueReport),
+     * so a name typed into the note never leaves the box unread; $note is
+     * the wording they chose to send, the stored note is left as it was.
+     *
+     * @throws RuntimeException when GitHub can't be reached or refuses it
+     */
+    public function postToGitHub(IssueReport $report, User $poster, string $title, string $note): string
+    {
+        if ($report->posted_url !== null) {
+            return $report->posted_url;
+        }
+
+        if (! $this->canPostToGitHub()) {
+            throw new RuntimeException(__('Posting to GitHub is not set up on this installation.'));
+        }
+
+        $json = (string) json_encode($report->snapshot, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+
+        // GitHub refuses an issue body over 65,536 characters.
+        if (mb_strlen($json) > 60000) {
+            $json = mb_substr($json, 0, 60000)."\n… (cut short; the full snapshot is issue report #{$report->id} on the box)";
+        }
+
+        $body = implode("\n\n", [
+            '**What went wrong:** '.$note,
+            "Issue report #{$report->id} from the {$report->page} page, {$report->created_at->toIso8601String()}, reported by a {$report->snapshot['staff_role']} login.",
+            "```json\n{$json}\n```",
+        ]);
+
+        try {
+            $response = Http::withToken((string) config('services.github_issues.token'))
+                ->acceptJson()
+                ->withHeaders(['X-GitHub-Api-Version' => '2022-11-28'])
+                ->timeout(15)
+                ->post('https://api.github.com/repos/'.config('services.github_issues.repo').'/issues', [
+                    'title' => $title,
+                    'body' => $body,
+                ]);
+        } catch (ConnectionException) {
+            throw new RuntimeException(__('Could not reach GitHub. Check the box is connected to the internet and try again.'));
+        }
+
+        if (! $response->successful() || blank($response->json('html_url'))) {
+            throw new RuntimeException(__('GitHub refused the issue (:status). Check the repository name and that the token can create issues on it.', ['status' => $response->status()]));
+        }
+
+        $report->update([
+            'posted_url' => $response->json('html_url'),
+            'posted_at' => now(),
+            'posted_by' => $poster->id,
+        ]);
+
+        return $report->posted_url;
+    }
+
+    /**
+     * A bell for every active Manager+ (the people who can read reports)
+     * except whoever sent it.
+     */
+    private function notifyManagers(IssueReport $report, User $staff): void
+    {
+        $managers = User::query()
+            ->where('active', true)
+            ->whereIn('role', [Role::Manager, Role::Admin, Role::Owner])
+            ->whereKeyNot($staff->id)
+            ->get();
+
+        if ($managers->isEmpty()) {
+            return;
+        }
+
+        $notification = Notification::make()
+            ->title(__('Problem reported from the desk (#:id)', ['id' => $report->id]))
+            ->body(Str::limit($report->note, 120))
+            ->actions([
+                Action::make('view')
+                    ->label('View report')
+                    ->url(IssueReportResource::getUrl('view', ['record' => $report]))
+                    ->markAsRead(),
+            ]);
+
+        // sendNow(), not ->sendToDatabase(): this app runs no queue worker.
+        LaravelNotification::sendNow($managers, $notification->toDatabase());
     }
 
     /**

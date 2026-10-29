@@ -29,6 +29,11 @@ class IssueReportInfolist
                         TextEntry::make('note')
                             ->label('What went wrong')
                             ->columnSpanFull(),
+                        TextEntry::make('posted_url')
+                            ->label('GitHub issue')
+                            ->url(fn (IssueReport $record): ?string => $record->posted_url, shouldOpenInNewTab: true)
+                            ->placeholder(__('Not posted'))
+                            ->columnSpanFull(),
                     ]),
                 Section::make(__('Snapshot'))
                     ->description(__('What the desk was showing, without names, contact details, date of birth, notes or reasons. Copy it to share for troubleshooting.'))

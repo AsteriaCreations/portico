@@ -11,6 +11,11 @@ is fixes only.
 
 ### Added
 
+- **Post an issue report to GitHub.** Each new desk report rings the bell for every active
+  Manager+. With `ISSUE_REPORTS_GITHUB_REPO` and `ISSUE_REPORTS_GITHUB_TOKEN` set in `.env`, a
+  Manager opening a report gets **Post to GitHub**: they check the title and note (sent as
+  written, so take out any name) and it opens an issue with the snapshot, linked from the
+  report. Never automatic. Needs `php artisan migrate`; the box needs internet to post.
 - **Report a problem from the desk** (Feature Flags, off by default). A "Report a problem"
   button on the Check-In Desk saves what the desk is showing (the event, the choices made, the
   admission decision, the price, capacity, settings and the member's situation) with names,
