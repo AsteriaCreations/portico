@@ -9,6 +9,16 @@ is fixes only.
 
 ## [Unreleased]
 
+### Security
+
+- **Livewire, PhpSpreadsheet and symfony/mime updated for security fixes** (lock file only:
+  Livewire 4.4.3 → 4.4.8, PhpSpreadsheet 5.9.0 → 5.10.0, symfony/mime 8.1.7 → 8.1.10).
+  PhpSpreadsheet reads the spreadsheets staff upload (prepay and voucher bulk uploads), and
+  its fixes close XXE and runaway-memory holes in that reader (CVE-2026-108357, -108358,
+  -108359) and an SSRF bypass (CVE-2026-108360). symfony/mime fixes email header injection
+  (CVE-2026-45070). The Livewire fix is for `#[Authorize]`/`#[Json]`, which Portico doesn't
+  use. Run `composer install --no-dev`; no migration or build.
+
 ### Added
 
 - **Post an issue report to GitHub.** Each new desk report rings the bell for every active
