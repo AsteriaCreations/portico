@@ -122,9 +122,12 @@ class CheckIn extends Page implements HasTable
     // first change as an update to the whole pricingData, not to
     // pricingData.apply_voucher, so Filament never ran the checkbox's
     // afterStateUpdated() and the first tick left the voucher amount empty.
+    // voucher_payer_id the same: unseeded, picking another member's balance
+    // never re-suggested the amount from it, so the Due line stayed at the
+    // full amount and Check in asked for a payment method.
     public ?array $pricingData = self::EMPTY_PRICING_DATA;
 
-    private const EMPTY_PRICING_DATA = ['add_on_ids' => [], 'apply_voucher' => false];
+    private const EMPTY_PRICING_DATA = ['add_on_ids' => [], 'apply_voucher' => false, 'voucher_payer_id' => null];
 
     // Training mode: a new volunteer can rehearse the whole desk flow —
     // search, status line, Due total, Check in, the folded subscription /

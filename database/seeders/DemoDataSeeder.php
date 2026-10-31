@@ -309,9 +309,9 @@ class DemoDataSeeder extends Seeder
                     Subscription::create([
                         'member_id' => $member->id,
                         'add_on_id' => AddOn::entry()->id,
-                        'covered_month' => today()->subMonths($monthsAgo)->startOfMonth(),
+                        'covered_month' => today()->startOfMonth()->subMonths($monthsAgo),
                         'amount_paid' => 60,
-                        'paid_on' => today()->subMonths($monthsAgo)->startOfMonth()->addDays(2),
+                        'paid_on' => today()->startOfMonth()->subMonths($monthsAgo)->addDays(2),
                         'recorded_by' => $users->random()->id,
                         'payment_method' => fake()->randomElement(['cash', 'venmo']),
                     ]);
