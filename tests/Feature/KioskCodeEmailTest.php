@@ -90,7 +90,7 @@ test('the batch goes only to active, opted-in subscribers this month with an ema
     $alreadySent = kioskEmailSubscriber($this->entry);
     $alreadySent->forceFill(['kiosk_token_emailed_at' => now()])->save();
     $lastMonthOnly = Member::factory()->create(['email' => 'old@example.com', 'email_opt_in' => true]);
-    Subscription::factory()->create(['member_id' => $lastMonthOnly->id, 'add_on_id' => $this->entry->id, 'covered_month' => now()->subMonth()->startOfMonth()->toDateString()]);
+    Subscription::factory()->create(['member_id' => $lastMonthOnly->id, 'add_on_id' => $this->entry->id, 'covered_month' => now()->startOfMonth()->subMonth()->toDateString()]);
 
     $result = app(KioskCodeMailer::class)->sendBatch();
 

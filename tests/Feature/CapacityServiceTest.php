@@ -73,3 +73,18 @@ test('hasRoom is false once occupancy reaches capacity', function () {
 
     expect($this->service->hasRoom(now()->parse('2026-07-19')))->toBeFalse();
 });
+
+test('in the building counts only arrivals, while occupancy still holds a spot for each prepay', function () {
+    $event = Event::factory()->create(['event_date' => '2026-07-19']);
+
+    Attendance::factory()->for($event)->count(3)->create(['checked_in_at' => null]);
+    Attendance::factory()->for($event)->count(2)->create();
+    Attendance::factory()->for($event)->create(['departed_at' => now()]);
+    OccupancyAdjustment::factory()->create(['for_date' => '2026-07-19', 'delta' => -1]);
+
+    $date = now()->parse('2026-07-19');
+
+    expect($this->service->inBuilding($date))->toBe(1)
+        ->and($this->service->awaitingArrival($date))->toBe(3)
+        ->and($this->service->occupancy($date))->toBe(4);
+});

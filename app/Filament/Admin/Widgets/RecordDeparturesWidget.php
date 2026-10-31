@@ -36,6 +36,16 @@ class RecordDeparturesWidget extends Widget implements HasActions, HasForms
         return app(CapacityService::class)->occupancy(today());
     }
 
+    public function getInBuilding(): int
+    {
+        return app(CapacityService::class)->inBuilding(today());
+    }
+
+    public function getAwaitingArrival(): int
+    {
+        return app(CapacityService::class)->awaitingArrival(today());
+    }
+
     public function getCapacity(): ?int
     {
         return app(CapacityService::class)->capacity();

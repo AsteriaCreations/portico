@@ -25,6 +25,12 @@ releases below could carry small breaking changes in a minor release.
   from an event's Attendance, Prepay List or Comp List tab, the Showrunner payout, Instructor
   payout and comp cost panels below kept counting it until the page was reloaded. They now
   redraw straight away. No migration.
+- **"In the building" counts only people who have arrived.** On the Dashboard and Active
+  Patrons, prepays still on their way were counted as in the building, so a night with 147
+  prepays read "147/200 in the building" before anyone walked in. While prepays are
+  outstanding the line now reads, for example, "0 in the building · 147 prepaid not yet
+  arrived · 147/200 spots taken". The capacity cap is unchanged: a prepay still holds its spot,
+  so walk-ins stop at the same number as before. No migration.
 
 ## [1.0.0] — 2026-10-29
 

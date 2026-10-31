@@ -29,6 +29,32 @@ class CapacityService
     }
 
     /**
+     * Who has actually arrived and not left: occupancy() without the
+     * prepays still on their way. This is the "in the building" headcount
+     * staff see; occupancy() stays the number the cap is enforced against,
+     * because a prepay holds its spot and arriving is never capacity-blocked.
+     */
+    public function inBuilding(CarbonInterface $date): int
+    {
+        $eventIds = Event::whereDate('event_date', $date)->pluck('id');
+        $arrived = Attendance::whereIn('event_id', $eventIds)->whereNotNull('checked_in_at')->whereNull('departed_at')->count();
+        $adjustment = (int) OccupancyAdjustment::whereDate('for_date', $date)->sum('delta');
+
+        return max(0, $arrived + $adjustment);
+    }
+
+    /**
+     * Prepays for $date's events that haven't arrived yet -- counted in
+     * occupancy() but not inBuilding().
+     */
+    public function awaitingArrival(CarbonInterface $date): int
+    {
+        $eventIds = Event::whereDate('event_date', $date)->pluck('id');
+
+        return Attendance::whereIn('event_id', $eventIds)->whereNull('checked_in_at')->whereNull('departed_at')->count();
+    }
+
+    /**
      * Anonymous departures (RecordDeparturesWidget) recorded for $date that
      * haven't yet been matched to a named patron -- the net negative of that
      * night's occupancy_adjustments, floored at zero.

@@ -86,3 +86,18 @@ test('the occupancy count is a live region, so recording a departure announces t
         ->callAction('recordDepartures', data: ['count' => 1])
         ->assertSee('0/5 in the building');
 });
+
+test('prepays that have not arrived are not shown as in the building, but still count toward spots taken', function () {
+    MembershipSetting::current()->update(['venue_capacity' => 200]);
+    $this->actingAs(User::factory()->create(['active' => true, 'role' => Role::Volunteer]));
+
+    $event = Event::factory()->create(['event_date' => today()->toDateString(), 'entry_fee' => 20]);
+    Attendance::factory()->for($event)->count(3)->create(['checked_in_at' => null]);
+    Attendance::factory()->for($event)->create(['checked_in_at' => now()]);
+
+    Livewire::test(RecordDeparturesWidget::class)
+        ->assertSee('1 in the building')
+        ->assertSee('3 prepaid not yet arrived')
+        ->assertSee('4/200 spots taken')
+        ->assertDontSee('4/200 in the building');
+});
