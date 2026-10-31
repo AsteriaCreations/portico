@@ -3,6 +3,7 @@
 namespace App\Filament\Admin\Widgets;
 
 use App\Enums\Role;
+use App\Filament\Concerns\RefreshesAfterVisitRemoval;
 use App\Models\Event;
 use App\Models\InstructorPayout;
 use App\Models\MembershipSetting;
@@ -17,6 +18,8 @@ use Filament\Widgets\Widget;
  */
 class InstructorPayoutWidget extends Widget
 {
+    use RefreshesAfterVisitRemoval;
+
     protected string $view = 'filament.admin.widgets.instructor-payout-widget';
 
     // Not lazy: see ShowrunnerPayoutWidget's own comment on why.

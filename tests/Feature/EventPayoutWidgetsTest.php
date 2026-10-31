@@ -5,6 +5,7 @@ use App\Enums\EntryCoverageSource;
 use App\Enums\PayoutType;
 use App\Enums\Role;
 use App\Filament\Admin\Widgets\EventCompCostWidget;
+use App\Filament\Admin\Widgets\ShowrunnerPayoutWidget;
 use App\Models\AddOn;
 use App\Models\Attendance;
 use App\Models\Category;
@@ -16,7 +17,9 @@ use App\Models\Member;
 use App\Models\Plan;
 use App\Models\ShowrunnerPayoutTier;
 use App\Models\User;
+use App\Services\VisitRemovalService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Livewire\Livewire;
 
 uses(RefreshDatabase::class);
 
@@ -61,6 +64,27 @@ test('the showrunner payout widget shows the commission breakdown once a showrun
         ->assertSuccessful()
         ->assertSee('Showrunner payout')
         ->assertSee('$5.00'); // 10% of $50 door
+});
+
+test('the showrunner payout widget stops counting a removed visit once it is told to redraw', function () {
+    $showrunner = Member::factory()->create(['category_id' => $this->category->id]);
+    $event = Event::factory()->create(['event_date' => '2026-07-19', 'entry_fee' => 10, 'showrunner_id' => $showrunner->id]);
+    [$removed] = Attendance::factory()->for($event)->recycle($this->category)->count(2)->create([
+        'checked_in_at' => now(),
+        'entry_covered_by' => EntryCoverageSource::None,
+        'entry_fee' => 10,
+        'entry_coverage' => 0,
+        'amount_paid' => 10,
+    ]);
+
+    $widget = Livewire::test(ShowrunnerPayoutWidget::class, ['record' => $event])
+        ->assertSee('$2.00'); // 10% of $20 door
+
+    app(VisitRemovalService::class)->remove($removed, auth()->user(), 'Rang up twice');
+
+    $widget->dispatch('visit-removed')
+        ->assertSee('$1.00')
+        ->assertDontSee('$2.00');
 });
 
 test('the instructor payout widget is absent when the event type has no configured rates', function () {

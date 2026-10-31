@@ -3,6 +3,7 @@
 use App\Enums\EntryCoverageSource;
 use App\Enums\Role;
 use App\Filament\Admin\Resources\Events\Pages\EditEvent;
+use App\Filament\Admin\Resources\Events\RelationManagers\AttendanceRelationManager as EventAttendanceRelationManager;
 use App\Filament\Admin\Resources\Events\RelationManagers\PrepayListRelationManager;
 use App\Filament\Admin\Resources\Members\Pages\EditMember;
 use App\Filament\Admin\Resources\Members\RelationManagers\AttendanceRelationManager;
@@ -228,4 +229,12 @@ test('the Visit removals list renders for a Manager', function () {
     Livewire::test(ListVisitRemovals::class)
         ->assertSuccessful()
         ->assertSee('Rang up twice');
+});
+
+test('removing a visit from an event\'s Attendance tab tells the page\'s widgets to redraw', function () {
+    $attendance = recordedVisit($this);
+
+    Livewire::test(EventAttendanceRelationManager::class, ['ownerRecord' => $this->event, 'pageClass' => EditEvent::class])
+        ->callTableAction('removeVisit', $attendance, data: ['reason' => 'Rang up twice'])
+        ->assertDispatched('visit-removed');
 });

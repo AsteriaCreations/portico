@@ -4,6 +4,7 @@ namespace App\Filament\Admin\Widgets;
 
 use App\Enums\EntryCoverageSource;
 use App\Enums\Role;
+use App\Filament\Concerns\RefreshesAfterVisitRemoval;
 use App\Models\Event;
 use Filament\Widgets\Widget;
 use Illuminate\Support\Collection;
@@ -22,6 +23,8 @@ use Illuminate\Support\Facades\DB;
  */
 class EventCompCostWidget extends Widget
 {
+    use RefreshesAfterVisitRemoval;
+
     protected string $view = 'filament.admin.widgets.event-comp-cost-widget';
 
     // Not lazy: see ShowrunnerPayoutWidget's own comment on why.
