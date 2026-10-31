@@ -16,6 +16,15 @@ releases below could carry small breaking changes in a minor release.
   "Apply from a different member's balance" now fills in the amount from that member's balance,
   as it already did in tests. In the browser it kept the attendee's own (often $0) amount, so
   the Due line didn't drop and Check in still asked for a payment method. No migration.
+- **No arriving at a prepay event before it starts.** The desk shows a door-prepay event ahead
+  of its date so prepayments can be taken, but "Mark arrived" (on the member card and in the
+  Prepaid, awaiting arrival table) also worked then, putting the member in the event's
+  headcount early. It is now disabled, with the reason in its label, until the event is
+  running: the same rule a walk-in check-in already follows. No migration.
+- **Removing a visit updates the Event page's payout figures.** After a visit was removed
+  from an event's Attendance, Prepay List or Comp List tab, the Showrunner payout, Instructor
+  payout and comp cost panels below kept counting it until the page was reloaded. They now
+  redraw straight away. No migration.
 
 ## [1.0.0] — 2026-10-29
 

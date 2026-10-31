@@ -3,6 +3,7 @@
 namespace App\Filament\Concerns;
 
 use App\Models\Attendance;
+use App\Models\Event;
 use App\Models\MembershipSetting;
 use App\Services\AdmissionPolicy;
 use Filament\Actions\Action;
@@ -24,12 +25,16 @@ trait MarksArrivals
     public function markArrivedAction(): Action
     {
         $attendance = $this->getExistingAttendance();
+        $blockedReason = $this->arrivalBlockedReason($this->getSelectedEvent());
         $requiresAcknowledgement = $attendance
             && is_null($attendance->checked_in_at)
             && $this->getDecision()?->requiresAcknowledgement();
 
         return Action::make('markArrived')
-            ->label(__('Mark arrived'))
+            // The reason is in the label, not a tooltip, so a screen reader
+            // hears why the button is disabled.
+            ->label($blockedReason ? __('Mark arrived (:reason)', ['reason' => $blockedReason]) : __('Mark arrived'))
+            ->disabled($blockedReason !== null)
             ->schema($requiresAcknowledgement ? [
                 Checkbox::make('acknowledged')
                     ->label(__('I have notified :label per the watchlist note.', ['label' => MembershipSetting::watchlistNotifyLabel()]))
@@ -46,6 +51,9 @@ trait MarksArrivals
                 $member = $this->getSelectedMember();
                 $event = $this->getSelectedEvent();
                 abort_unless($attendance && $member && $event, 404);
+                // Re-checked here, not just via ->disabled(): a forged call
+                // must not mark someone arrived at an event that isn't running.
+                abort_if($this->arrivalBlockedReason($event) !== null, 403);
 
                 $decision = app(AdmissionPolicy::class)->decide($member, $event);
 
@@ -101,7 +109,10 @@ trait MarksArrivals
     protected function markArrivedRowAction(): Action
     {
         return Action::make('markArrived')
-            ->label(__('Mark arrived'))
+            ->label(fn (Attendance $record): string => ($reason = $this->arrivalBlockedReason($record->event))
+                ? __('Mark arrived (:reason)', ['reason' => $reason])
+                : __('Mark arrived'))
+            ->disabled(fn (Attendance $record): bool => $this->arrivalBlockedReason($record->event) !== null)
             ->schema(function (Attendance $record) {
                 $decision = app(AdmissionPolicy::class)->decide($record->member, $record->event);
 
@@ -117,6 +128,8 @@ trait MarksArrivals
                     return;
                 }
 
+                abort_if($this->arrivalBlockedReason($record->event) !== null, 403);
+
                 $decision = app(AdmissionPolicy::class)->decide($record->member, $record->event);
 
                 if ($decision->blocksCheckIn()) {
@@ -129,5 +142,23 @@ trait MarksArrivals
 
                 Notification::make()->title(__('Marked arrived'))->success()->send();
             });
+    }
+
+    /**
+     * Why a prepaid or Comp List arrival can't be marked for this event, or
+     * null when it can. A door_prepay_enabled event is on the desk ahead of
+     * its date so prepayments can be taken, but nobody arrives at it until
+     * it's running: the same Event::isCurrentlyActive() rule a walk-in
+     * check-in uses.
+     */
+    protected function arrivalBlockedReason(?Event $event): ?string
+    {
+        if ($event === null || $event->isCurrentlyActive()) {
+            return null;
+        }
+
+        return $event->event_date->isFuture()
+            ? __('opens when the event starts')
+            : __('the event is over');
     }
 }

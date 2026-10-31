@@ -40,6 +40,8 @@ trait RemovesVisits
                 abort_if($this->isReadOnly(), 403);
 
                 app(VisitRemovalService::class)->remove($record, auth()->user(), $data['reason'] ?? null);
+                // Redraws the Event page's footer widgets: RefreshesAfterVisitRemoval.
+                $this->dispatch('visit-removed');
 
                 Notification::make()->title(__('Visit removed'))->success()->send();
             });
@@ -55,6 +57,7 @@ trait RemovesVisits
         return DeleteBulkAction::make()
             ->label('Delete unpaid')
             ->modalDescription(__('Deletes the selected visits that have nothing paid. Paid visits are skipped: remove those one at a time, with a reason.'))
-            ->authorizeIndividualRecords('delete');
+            ->authorizeIndividualRecords('delete')
+            ->after(fn () => $this->dispatch('visit-removed'));
     }
 }

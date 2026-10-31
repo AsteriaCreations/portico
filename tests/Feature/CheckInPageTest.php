@@ -2374,6 +2374,8 @@ test('a pre-existing prepay attendance row still works via markArrivedAction aft
     $attendance = Attendance::factory()->for($member)->for($futureEvent)->create(['checked_in_at' => null, 'amount_paid' => 20]);
 
     MembershipSetting::current()->update(['prepay_enabled' => false]);
+    // Arrival waits for the event itself.
+    $this->travelTo($futureEvent->event_date->copy()->setTime(21, 0));
 
     Livewire::test(CheckIn::class)
         ->fillForm(['event_id' => $futureEvent->id, 'member_id' => $member->id])
@@ -2595,6 +2597,43 @@ test('the back check-in table lists unarrived attendance for the selected event 
     Livewire::test(CheckIn::class)
         ->fillForm(['event_id' => $event->id])
         ->assertCanSeeTableRecords([$attendance])
+        ->callTableAction('markArrived', $attendance)
+        ->assertHasNoTableActionErrors();
+
+    expect($attendance->refresh()->checked_in_at)->not->toBeNull();
+});
+
+test('a prepaid member can\'t be marked arrived at a prepay event before it starts, from the card or the table', function () {
+    $member = clearMember($this->irregular);
+    $futureEvent = Event::factory()->create([
+        'event_date' => now()->addWeek()->toDateString(),
+        'door_prepay_enabled' => true,
+        'entry_fee' => 20,
+    ]);
+    $attendance = Attendance::factory()->for($member)->for($futureEvent)->create(['checked_in_at' => null, 'amount_paid' => 20]);
+
+    Livewire::test(CheckIn::class)
+        ->fillForm(['event_id' => $futureEvent->id, 'member_id' => $member->id])
+        ->assertActionDisabled('markArrived')
+        ->assertTableActionDisabled('markArrived', $attendance);
+
+    expect($attendance->refresh()->checked_in_at)->toBeNull();
+});
+
+test('a prepaid member can be marked arrived once the prepay event\'s day comes', function () {
+    $member = clearMember($this->irregular);
+    $futureEvent = Event::factory()->create([
+        'event_date' => now()->addWeek()->toDateString(),
+        'door_prepay_enabled' => true,
+        'entry_fee' => 20,
+    ]);
+    $attendance = Attendance::factory()->for($member)->for($futureEvent)->create(['checked_in_at' => null, 'amount_paid' => 20]);
+
+    $this->travelTo($futureEvent->event_date->copy()->setTime(21, 0));
+
+    Livewire::test(CheckIn::class)
+        ->fillForm(['event_id' => $futureEvent->id])
+        ->assertTableActionEnabled('markArrived', $attendance)
         ->callTableAction('markArrived', $attendance)
         ->assertHasNoTableActionErrors();
 

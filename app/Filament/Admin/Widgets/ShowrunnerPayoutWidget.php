@@ -3,6 +3,7 @@
 namespace App\Filament\Admin\Widgets;
 
 use App\Enums\Role;
+use App\Filament\Concerns\RefreshesAfterVisitRemoval;
 use App\Models\Event;
 use App\Models\MembershipSetting;
 use App\Services\ShowrunnerPayoutResult;
@@ -16,6 +17,8 @@ use Filament\Widgets\Widget;
  */
 class ShowrunnerPayoutWidget extends Widget
 {
+    use RefreshesAfterVisitRemoval;
+
     protected string $view = 'filament.admin.widgets.showrunner-payout-widget';
 
     // Not lazy: a Manager opening this event's edit page needs the figure
