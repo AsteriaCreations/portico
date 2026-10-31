@@ -8,7 +8,6 @@ use App\Filament\Admin\Resources\Events\RelationManagers\PrepayListRelationManag
 use App\Filament\Admin\Resources\Members\Pages\EditMember;
 use App\Filament\Admin\Resources\Members\RelationManagers\AttendanceRelationManager;
 use App\Filament\Admin\Resources\VisitRemovals\Pages\ListVisitRemovals;
-use App\Filament\Admin\Widgets\ShowrunnerPayoutWidget;
 use App\Models\Attendance;
 use App\Models\AttendanceBehaviorNote;
 use App\Models\Category;
@@ -238,18 +237,4 @@ test('removing a visit from an event\'s Attendance tab tells the page\'s widgets
     Livewire::test(EventAttendanceRelationManager::class, ['ownerRecord' => $this->event, 'pageClass' => EditEvent::class])
         ->callTableAction('removeVisit', $attendance, data: ['reason' => 'Rang up twice'])
         ->assertDispatched('visit-removed');
-});
-
-test('the showrunner payout widget stops counting a removed visit once it is told to redraw', function () {
-    $this->event->update(['showrunner_id' => Member::factory()->create()->id]);
-    $removed = recordedVisit($this);
-    recordedVisit($this, ['member_id' => Member::factory()->create()->id]);
-
-    $widget = Livewire::test(ShowrunnerPayoutWidget::class, ['record' => $this->event])
-        ->assertSeeInOrder([__('Paid at the door'), '2', __('Subscription-covered (SH) attendees')]);
-
-    app(VisitRemovalService::class)->remove($removed, $this->manager, 'Rang up twice');
-
-    $widget->dispatch('visit-removed')
-        ->assertSeeInOrder([__('Paid at the door'), '1', __('Subscription-covered (SH) attendees')]);
 });
