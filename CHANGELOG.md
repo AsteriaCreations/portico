@@ -10,6 +10,13 @@ releases below could carry small breaking changes in a minor release.
 
 ## [Unreleased]
 
+### Fixed
+
+- **Spending another member's voucher credit at the desk.** Picking a different member under
+  "Apply from a different member's balance" now fills in the amount from that member's balance,
+  as it already did in tests. In the browser it kept the attendee's own (often $0) amount, so
+  the Due line didn't drop and Check in still asked for a payment method. No migration.
+
 ## [1.0.0] — 2026-10-29
 
 **The first stable release.** From here on Portico follows semantic versioning: see

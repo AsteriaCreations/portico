@@ -242,8 +242,10 @@ test('add_on_ids is always seeded as a real array, never an absent key', functio
     // apply_voucher likewise: while it's absent, the browser sends the first
     // tick as an update to the whole pricingData, which skips the checkbox's
     // afterStateUpdated() and left the suggested voucher amount empty.
+    // voucher_payer_id too: unseeded, picking another member's balance never
+    // re-suggested the amount, so the visit still asked for a payment method.
     $freshComponent = Livewire::test(CheckIn::class);
-    expect($freshComponent->instance()->pricingData)->toBe(['add_on_ids' => [], 'apply_voucher' => false]);
+    expect($freshComponent->instance()->pricingData)->toBe(['add_on_ids' => [], 'apply_voucher' => false, 'voucher_payer_id' => null]);
 
     $member = clearMember($this->irregular);
     $event = Event::factory()->create(['event_date' => now()->toDateString(), 'entry_fee' => 20, 'pool_fee' => 0]);
@@ -251,7 +253,7 @@ test('add_on_ids is always seeded as a real array, never an absent key', functio
     $component = Livewire::test(CheckIn::class)
         ->fillForm(['event_id' => $event->id, 'member_id' => $member->id]);
 
-    expect($component->instance()->pricingData)->toBe(['add_on_ids' => [], 'apply_voucher' => false]);
+    expect($component->instance()->pricingData)->toBe(['add_on_ids' => [], 'apply_voucher' => false, 'voucher_payer_id' => null]);
 });
 
 test('pricingData resets when the member changes', function () {
@@ -271,7 +273,7 @@ test('pricingData resets when the member changes', function () {
     // an absent key, or the very next add-on click corrupts it to a scalar
     // via Alpine/Livewire's checkbox-group binding (see the property's own
     // comment in CheckIn.php).
-    expect($component->instance()->pricingData)->toBe(['add_on_ids' => [], 'apply_voucher' => false]);
+    expect($component->instance()->pricingData)->toBe(['add_on_ids' => [], 'apply_voucher' => false, 'voucher_payer_id' => null]);
 });
 
 test('pricingData resets when the event changes', function () {
@@ -291,7 +293,7 @@ test('pricingData resets when the event changes', function () {
     // an absent key, or the very next add-on click corrupts it to a scalar
     // via Alpine/Livewire's checkbox-group binding (see the property's own
     // comment in CheckIn.php).
-    expect($component->instance()->pricingData)->toBe(['add_on_ids' => [], 'apply_voucher' => false]);
+    expect($component->instance()->pricingData)->toBe(['add_on_ids' => [], 'apply_voucher' => false, 'voucher_payer_id' => null]);
 });
 
 test('pricingData resets after a successful check-in', function () {
@@ -309,7 +311,7 @@ test('pricingData resets after a successful check-in', function () {
     // an absent key, or the very next add-on click corrupts it to a scalar
     // via Alpine/Livewire's checkbox-group binding (see the property's own
     // comment in CheckIn.php).
-    expect($component->instance()->pricingData)->toBe(['add_on_ids' => [], 'apply_voucher' => false]);
+    expect($component->instance()->pricingData)->toBe(['add_on_ids' => [], 'apply_voucher' => false, 'voucher_payer_id' => null]);
 });
 
 test('the action-modals placeholder renders even with no event selected, so action clicks actually show a modal', function () {
