@@ -758,6 +758,12 @@ class CheckIn extends Page implements HasTable
                 ...$addOnSubscriptionSelects,
                 Checkbox::make('comp_entry')
                     ->label(__('Comp this entry (e.g. worked the event)'))
+                    // An already-covered entry keeps its coverage (see
+                    // PricingService::applyEventComp()); the reason is still
+                    // recorded, so a reason's voucher can still be granted.
+                    ->helperText(fn (): ?string => ($breakdown = $this->getPriceBreakdown()) && $breakdown->entryCoverageCents >= $breakdown->entryFeeCents
+                        ? __('Entry is already covered tonight, so nothing changes at the desk. The reason is still recorded, and any voucher it grants is issued after the event.')
+                        : null)
                     ->live()
                     ->visible($canPreviewPricing && $canGrantComp && $entryFee > 0),
                 Select::make('comp_reason_id')

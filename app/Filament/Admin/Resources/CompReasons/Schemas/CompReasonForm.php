@@ -25,6 +25,10 @@ class CompReasonForm
                     ->prefix('$')
                     ->default(null)
                     ->helperText(__('Leave blank for no automatic voucher. If set, a member comped for this reason gets a voucher of this amount once the event ends.')),
+                Toggle::make('voucher_only_if_already_covered')
+                    ->label(__('Voucher only if entry was already free'))
+                    ->default(false)
+                    ->helperText(__('Give the voucher only to members whose entry was already covered (subscription, comped category, host). Members who would have paid get free entry instead, with no voucher.')),
                 Toggle::make('door_allowed')
                     ->label(__('Door staff can comp with this reason'))
                     ->default(false)

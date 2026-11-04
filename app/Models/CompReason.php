@@ -11,7 +11,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-#[Fillable(['name', 'description', 'grants_voucher_amount', 'door_allowed', 'sort_order', 'active'])]
+#[Fillable(['name', 'description', 'grants_voucher_amount', 'voucher_only_if_already_covered', 'door_allowed', 'sort_order', 'active'])]
 class CompReason extends Model
 {
     /** @use HasFactory<CompReasonFactory> */
@@ -26,6 +26,7 @@ class CompReason extends Model
             'sort_order' => 'integer',
             'active' => 'boolean',
             'door_allowed' => 'boolean',
+            'voucher_only_if_already_covered' => 'boolean',
         ];
     }
 

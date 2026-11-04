@@ -112,6 +112,19 @@ test('door may comp only with an active door-allowed reason', function () {
         ->and($withNoReason->attendance->amount_paid)->toEqual(40);
 });
 
+test('comping a subscriber already covered tonight keeps the subscription coverage but records the reason', function () {
+    $cheapEvent = Event::factory()->create(['event_date' => today()->toDateString(), 'entry_fee' => 20, 'pool_fee' => 0]);
+    $subscriber = serviceMember($this->category, 'donor-sub');
+    Subscription::create(['member_id' => $subscriber->id, 'add_on_id' => $this->entry->id, 'covered_month' => today()->startOfMonth()->toDateString(), 'amount_paid' => 60]);
+    $reason = CompReason::factory()->create(['grants_voucher_amount' => 25, 'voucher_only_if_already_covered' => true]);
+
+    $result = recordCheckIn($subscriber, $cheapEvent, $this->manager, new CheckInRequest(compEntry: true, compReasonId: $reason->id));
+
+    expect($result->attendance->entry_covered_by)->toBe(EntryCoverageSource::RegularSubscription)
+        ->and($result->attendance->amount_paid)->toEqual(0)
+        ->and($result->attendance->comp_reason_id)->toBe($reason->id);
+});
+
 test('a door-allowed reason does not let anyone below Door comp', function () {
     $donation = CompReason::factory()->create(['door_allowed' => true]);
 

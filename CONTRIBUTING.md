@@ -186,7 +186,8 @@ At minimum, keep these covered:
   blocked ahead of a ban · a banned member with a granted per-event exception → warn.
 - **Pricing**: comp category → $0 · regular subscription on $20 → $0 · on $40 → $15 · on
   $100 → $75 · pool subscription on a pool event → $0 · no subscription → base fee · a
-  per-event comp waives entry regardless of prior coverage and leaves pool untouched · a
+  per-event comp waives entry over any partial coverage, leaves an already fully covered
+  entry's coverage alone, and leaves pool untouched · a
   Door submission cannot comp an entry even via a forged payload, except with an active
   door-allowed reason.
 - **Subscription eligibility**: fewer than 5 attended events and no manual flag → not
