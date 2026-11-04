@@ -378,6 +378,17 @@ class CheckIn extends Page implements HasTable
     /** @var array{string|false, ?PriceBreakdown}|null See getLivePriceBreakdownBeforeVoucher(). */
     private ?array $livePriceBeforeVoucherCache = null;
 
+    /**
+     * The comp reason picked in pricingForm, if any. The grant-event-comp
+     * gate needs it: Door may comp only with a door-allowed reason.
+     */
+    public function getSelectedCompReason(): ?CompReason
+    {
+        $id = $this->pricingData['comp_reason_id'] ?? null;
+
+        return filled($id) ? CompReason::find($id) : null;
+    }
+
     public function getSelectedEvent(): ?Event
     {
         $id = $this->data['event_id'] ?? null;
@@ -520,7 +531,7 @@ class CheckIn extends Page implements HasTable
             addOnSubscriptionIdsSelected: $addOnSubscriptionIdsSelected,
         );
 
-        if (($this->pricingData['comp_entry'] ?? false) && Gate::allows('grant-event-comp')) {
+        if (($this->pricingData['comp_entry'] ?? false) && Gate::allows('grant-event-comp', [$this->getSelectedCompReason()])) {
             $breakdown = app(PricingService::class)->applyEventComp($breakdown);
         }
 
@@ -685,7 +696,9 @@ class CheckIn extends Page implements HasTable
             })
             ->values()
             ->all();
-        $canGrantComp = Gate::allows('grant-event-comp');
+        // Door sees the comp checkbox only once an Admin has marked some
+        // reason door-allowed, and then only those reasons.
+        $canGrantComp = Gate::allows('grant-event-comp') || CompReason::grantableBy(auth()->user())->exists();
         $entryFee = $this->getPriceBreakdown()?->entryFeeCents ?? 0;
         $ownBalance = $member?->voucherBalance() ?? 0.0;
         // Entry/pool still owed plus any subscription picked above -- credit
@@ -745,11 +758,18 @@ class CheckIn extends Page implements HasTable
                 ...$addOnSubscriptionSelects,
                 Checkbox::make('comp_entry')
                     ->label(__('Comp this entry (e.g. worked the event)'))
+                    // An already-covered entry keeps its coverage (see
+                    // PricingService::applyEventComp()); the reason is still
+                    // recorded, so a reason's voucher can still be granted.
+                    ->helperText(fn (): ?string => ($breakdown = $this->getPriceBreakdown()) && $breakdown->entryCoverageCents >= $breakdown->entryFeeCents
+                        ? __('Entry is already covered tonight, so nothing changes at the desk. The reason is still recorded, and any voucher it grants is issued after the event.')
+                        : null)
                     ->live()
                     ->visible($canPreviewPricing && $canGrantComp && $entryFee > 0),
                 Select::make('comp_reason_id')
                     ->label(__('Reason'))
-                    ->options(fn () => CompReason::where('active', true)->orderBy('sort_order')->pluck('name', 'id')->all())
+                    ->options(fn () => CompReason::grantableBy(auth()->user())->orderBy('sort_order')->pluck('name', 'id')->all())
+                    ->live()
                     ->required(fn (Get $get): bool => (bool) $get('comp_entry'))
                     ->visible(fn (Get $get): bool => $canPreviewPricing && $canGrantComp && (bool) $get('comp_entry')),
                 Checkbox::make('apply_voucher')

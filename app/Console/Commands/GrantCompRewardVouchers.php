@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Enums\EntryCoverageSource;
 use App\Models\Attendance;
 use App\Models\CommandRun;
 use App\Models\User;
@@ -36,6 +37,12 @@ class GrantCompRewardVouchers extends Command
             ->whereNotNull('comp_reason_id')
             ->whereNotNull('checked_in_at') // must have actually attended, not just been listed
             ->whereHas('compReason', fn ($query) => $query->whereNotNull('grants_voucher_amount'))
+            // A reason set to reward only already-covered visits skips any
+            // visit the comp actually waived (e.g. a donor who'd have paid
+            // got free entry instead). See applyEventComp().
+            ->where(fn ($query) => $query
+                ->where('entry_covered_by', '!=', EntryCoverageSource::EventComp)
+                ->orWhereHas('compReason', fn ($reason) => $reason->where('voucher_only_if_already_covered', false)))
             ->whereHas('event', fn ($query) => $query->whereNotNull('ends_at')->where('ends_at', '<', now()))
             // Idempotent: never grant twice for the same attendance. A voucher
             // spent at this visit is a negative row, so it doesn't count.

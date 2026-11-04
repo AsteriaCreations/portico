@@ -396,6 +396,22 @@ test('applyEventComp overrides an existing regular subscription entry coverage',
         ->and($result->amountPaidCents)->toBe(0);
 });
 
+test('applyEventComp leaves an already fully covered entry with its own coverage', function () {
+    $category = Category::factory()->create(['is_comped' => false]);
+    $subscriber = Member::factory()->create(['category_id' => $category->id]);
+    $staff = Member::factory()->create(['category_id' => Category::factory()->create(['is_comped' => true])->id]);
+    $event = Event::factory()->create(['event_date' => '2026-07-19', 'entry_fee' => 20, 'pool_fee' => 0]);
+    subscribe($subscriber, $this->entry, '2026-07-19');
+
+    $subscriberResult = $this->pricing->applyEventComp($this->pricing->price($subscriber, $event)); // $20 fee, $25 credit
+    $staffResult = $this->pricing->applyEventComp($this->pricing->price($staff, $event));
+
+    expect($subscriberResult->entryCoveredBy)->toBe(EntryCoverageSource::RegularSubscription)
+        ->and($subscriberResult->amountPaidCents)->toBe(0)
+        ->and($staffResult->entryCoveredBy)->toBe(EntryCoverageSource::Comp)
+        ->and($staffResult->amountPaidCents)->toBe(0);
+});
+
 test('applyVoucher allows a partial amount, leaving the remainder due', function () {
     $category = Category::factory()->create(['is_comped' => false]);
     $member = Member::factory()->create(['category_id' => $category->id]);

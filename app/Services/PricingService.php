@@ -161,13 +161,20 @@ class PricingService
      * "House Sub" that night) — a per-visit override layered on top of
      * price(), the same shape as applyVoucher(), not baked into price()
      * itself: that's a property of member+event, this is a one-off
-     * decision. Fully overrides whatever price() already computed for entry
-     * (category comp, regular-subscription coverage, or nothing). Entry
-     * only — add-on lines stay priced independently. See
-     * docs/BLUEPRINT.md "Per-event comp".
+     * decision. Overrides whatever price() computed for an entry that still
+     * owes something (nothing, a partial subscription credit, a comped
+     * category's reduced fee). An entry already fully covered (subscription,
+     * comped category, host) is returned unchanged: the comp waives nothing,
+     * and the visit keeps its real coverage so showrunner headcount and comp
+     * cost stay true. Entry only — add-on lines stay priced independently.
+     * See docs/BLUEPRINT.md "Per-event comp".
      */
     public function applyEventComp(PriceBreakdown $breakdown): PriceBreakdown
     {
+        if ($breakdown->entryCoverageCents >= $breakdown->entryFeeCents) {
+            return $breakdown;
+        }
+
         return new PriceBreakdown(
             entryFeeCents: $breakdown->entryFeeCents,
             entryCoverageCents: $breakdown->entryFeeCents,

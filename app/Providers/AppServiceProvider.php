@@ -5,9 +5,11 @@ namespace App\Providers;
 use App\Enums\Capability;
 use App\Enums\Role;
 use App\Models\AttendanceBehaviorNote;
+use App\Models\CompReason;
 use App\Models\Member;
 use App\Models\MembershipSetting;
 use App\Models\User;
+use App\Observers\CompReasonObserver;
 use App\Observers\MemberObserver;
 use App\Observers\UserObserver;
 use App\Services\BehaviorNoteRetractionService;
@@ -81,7 +83,18 @@ class AppServiceProvider extends ServiceProvider
         Gate::define('grant-manager-subscription-perk', fn (User $user): bool => in_array($user->role, [Role::Manager, Role::Owner], true)
             && MembershipSetting::current()->manager_perk_enabled);
 
-        Gate::define('grant-event-comp', fn (User $user): bool => $user->role->atLeast(Role::Manager));
+        // Manager+ comps with any reason. Door may comp only with an active
+        // reason an Admin marked door_allowed (e.g. "Brought donation
+        // items"), so a forged payload naming any other reason -- or none --
+        // is still ignored. Callers pass the chosen reason: Gate::allows(
+        // 'grant-event-comp', [$reason]).
+        Gate::define('grant-event-comp', fn (User $user, ?CompReason $reason = null): bool => $user->role->atLeast(Role::Manager)
+            || ($user->role->atLeast(Role::Door) && $reason !== null && $reason->active && $reason->door_allowed));
+
+        // Who may mark a comp reason door_allowed, i.e. delegate a comp to
+        // Door. Above the Manager+ floor of the rest of the reason form,
+        // enforced on every save path by CompReasonObserver.
+        Gate::define('manage-door-comp-reasons', fn (User $user): bool => $user->role->atLeast(Role::Admin));
 
         // Same-night "convert entry to subscription" -- see
         // App\Services\EntryCorrectionService. Its own gate rather than a
@@ -222,6 +235,7 @@ class AppServiceProvider extends ServiceProvider
         BaseFilter::configureUsing(fn (BaseFilter $filter): BaseFilter => $filter->translateLabel());
         Action::configureUsing(fn (Action $action): Action => $action->translateLabel());
 
+        CompReason::observe(CompReasonObserver::class);
         Member::observe(MemberObserver::class);
         User::observe(UserObserver::class);
     }

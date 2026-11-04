@@ -90,7 +90,8 @@ hierarchy (`App\Filament\Admin\Pages\RoleLabels`, `Role::displayLabel()`).
 - **Manager** — everything Door + member editing, browsing/editing any subscription
   record, reports, fee/plan settings, `comp_reasons`/`categories`/`payment_methods`,
   the *reasons* behind flags (`watchlist_reason`, `ban_reason`, `notes`) + raw `dob`,
-  plus waiving one visit's entry fee at check-in (`grant-event-comp` gate).
+  plus waiving one visit's entry fee at check-in (`grant-event-comp` gate). Door passes
+  that gate only with a comp reason an Admin+ marked `door_allowed`.
 - **Admin** — everything Manager + create/edit/delete events (incl. their fees and the
   door-prepay flag) + manage user accounts + associate a Skill with a member
   (`assign-member-skills` gate). Event cost is fixed — Manager cannot adjust it.
@@ -185,8 +186,10 @@ At minimum, keep these covered:
   blocked ahead of a ban · a banned member with a granted per-event exception → warn.
 - **Pricing**: comp category → $0 · regular subscription on $20 → $0 · on $40 → $15 · on
   $100 → $75 · pool subscription on a pool event → $0 · no subscription → base fee · a
-  per-event comp waives entry regardless of prior coverage and leaves pool untouched · a
-  Door submission cannot comp an entry even via a forged payload.
+  per-event comp waives entry over any partial coverage, leaves an already fully covered
+  entry's coverage alone, and leaves pool untouched · a
+  Door submission cannot comp an entry even via a forged payload, except with an active
+  door-allowed reason.
 - **Subscription eligibility**: fewer than 5 attended events and no manual flag → not
   eligible · 5+ → eligible · `subscription_eligible = true` → eligible regardless.
 - **Vouchers**: redeeming more than the balance is capped · partial redemption leaves the
