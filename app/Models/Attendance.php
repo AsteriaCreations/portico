@@ -76,6 +76,15 @@ class Attendance extends Model
     }
 
     /**
+     * Behavior notes nobody has retracted: what Active Patrons shows.
+     * behaviorNotes() keeps every note for the audit trails.
+     */
+    public function activeBehaviorNotes(): HasMany
+    {
+        return $this->hasMany(AttendanceBehaviorNote::class)->whereDoesntHave('retraction');
+    }
+
+    /**
      * Append-only -- see App\Services\EntryCorrectionService.
      */
     public function paymentCorrections(): HasMany
