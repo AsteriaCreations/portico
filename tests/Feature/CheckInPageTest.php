@@ -737,10 +737,13 @@ test('a 1-month subscription purchase at check-in is priced as of today, not the
     // is explicitly always priced as of today since it's a payment happening
     // now regardless of which (possibly future, door-prepay) event is
     // selected.
+    // A later price takes effect before the event, so pricing off the
+    // event's date would charge 90, not today's 75.
     Plan::create(['add_on_id' => $this->entry->id, 'price' => 75, 'credit' => 25, 'effective_from' => now()->toDateString()]);
+    Plan::create(['add_on_id' => $this->entry->id, 'price' => 90, 'credit' => 25, 'effective_from' => now()->addMonth()->toDateString()]);
 
     $member = clearMember($this->irregular, ['subscription_eligible' => true]);
-    $event = Event::factory()->create(['event_date' => '2026-01-05', 'entry_fee' => 40, 'pool_fee' => 0, 'door_prepay_enabled' => true]);
+    $event = Event::factory()->create(['event_date' => now()->addMonths(2)->toDateString(), 'entry_fee' => 40, 'pool_fee' => 0, 'door_prepay_enabled' => true]);
 
     Livewire::test(CheckIn::class)
         ->fillForm(['event_id' => $event->id, 'member_id' => $member->id])
@@ -1864,7 +1867,7 @@ test('card is no longer offered as a check-in payment method', function () {
 test('venmo can be used once per member; a second attempt is rejected and the first is noted on hospitality_note', function () {
     $member = clearMember($this->irregular);
     $eventOne = Event::factory()->create(['event_date' => now()->toDateString(), 'entry_fee' => 20, 'pool_fee' => 0]);
-    $eventTwo = Event::factory()->create(['event_date' => '2026-07-26', 'entry_fee' => 20, 'pool_fee' => 0, 'door_prepay_enabled' => true]);
+    $eventTwo = Event::factory()->create(['event_date' => now()->addMonth()->toDateString(), 'entry_fee' => 20, 'pool_fee' => 0, 'door_prepay_enabled' => true]);
 
     Livewire::test(CheckIn::class)
         ->fillForm(['event_id' => $eventOne->id, 'member_id' => $member->id])
@@ -1892,7 +1895,7 @@ test('venmo can be used once per member; a second attempt is rejected and the fi
 test('using one one-time method (venmo) also locks out the others (paypal)', function () {
     $member = clearMember($this->irregular);
     $eventOne = Event::factory()->create(['event_date' => now()->toDateString(), 'entry_fee' => 20, 'pool_fee' => 0]);
-    $eventTwo = Event::factory()->create(['event_date' => '2026-07-26', 'entry_fee' => 20, 'pool_fee' => 0, 'door_prepay_enabled' => true]);
+    $eventTwo = Event::factory()->create(['event_date' => now()->addMonth()->toDateString(), 'entry_fee' => 20, 'pool_fee' => 0, 'door_prepay_enabled' => true]);
 
     Livewire::test(CheckIn::class)
         ->fillForm(['event_id' => $eventOne->id, 'member_id' => $member->id])
@@ -1916,7 +1919,7 @@ test('using one one-time method (venmo) also locks out the others (paypal)', fun
 test('a non-one-time method never locks anything out', function () {
     $member = clearMember($this->irregular);
     $eventOne = Event::factory()->create(['event_date' => now()->toDateString(), 'entry_fee' => 20, 'pool_fee' => 0]);
-    $eventTwo = Event::factory()->create(['event_date' => '2026-07-26', 'entry_fee' => 20, 'pool_fee' => 0, 'door_prepay_enabled' => true]);
+    $eventTwo = Event::factory()->create(['event_date' => now()->addMonth()->toDateString(), 'entry_fee' => 20, 'pool_fee' => 0, 'door_prepay_enabled' => true]);
 
     foreach ([$eventOne, $eventTwo] as $event) {
         Livewire::test(CheckIn::class)
@@ -2301,6 +2304,44 @@ test('the event picker only includes today\'s events and door-prepay-enabled eve
         ->not->toContain($futureUnflagged->id);
 });
 
+test('a door-prepay event that has already ended drops off the event picker', function () {
+    $pastFlagged = Event::factory()->create([
+        'event_date' => now()->subDays(3)->toDateString(),
+        'starts_at' => now()->subDays(3)->setTime(20, 0),
+        'ends_at' => now()->subDays(3)->setTime(23, 0),
+        'door_prepay_enabled' => true,
+    ]);
+    $futureFlagged = Event::factory()->create(['event_date' => now()->addMonth()->toDateString(), 'door_prepay_enabled' => true]);
+
+    $options = (new ReflectionClass(CheckIn::class))->getMethod('eventSelectQuery');
+    $options->setAccessible(true);
+    $ids = $options->invoke(null)->pluck('id');
+
+    expect($ids)->toContain($futureFlagged->id)
+        ->not->toContain($pastFlagged->id)
+        ->and($pastFlagged->isCurrentOrFuture())->toBeFalse()
+        ->and($futureFlagged->isCurrentOrFuture())->toBeTrue();
+});
+
+test('a forged event_id for an already-ended door-prepay event is rejected', function () {
+    $member = clearMember($this->irregular);
+    $pastEvent = Event::factory()->create([
+        'event_date' => now()->subDays(3)->toDateString(),
+        'starts_at' => now()->subDays(3)->setTime(20, 0)->toDateTimeString(),
+        'ends_at' => now()->subDays(3)->setTime(23, 0)->toDateTimeString(),
+        'door_prepay_enabled' => true,
+        'entry_fee' => 20,
+    ]);
+
+    // See the prepay_enabled-off forged-id test below: the abort_unless(403)
+    // leaves the harness unable to assert action state, so the DB is the proof.
+    Livewire::test(CheckIn::class)
+        ->fillForm(['event_id' => $pastEvent->id, 'member_id' => $member->id])
+        ->callAction('checkIn', data: ['payment_method' => 'comp', 'checked_in_at' => null]);
+
+    expect(Attendance::where('member_id', $member->id)->where('event_id', $pastEvent->id)->exists())->toBeFalse();
+});
+
 test('once prepay_enabled is off, the event picker stops including door-prepay-enabled future events, restores once re-enabled', function () {
     MembershipSetting::current()->update(['prepay_enabled' => false]);
     $today = Event::factory()->create(['event_date' => today()->toDateString(), 'door_prepay_enabled' => false]);
@@ -2495,7 +2536,8 @@ test('the event picker still works for a legacy event with no starts_at/ends_at 
 
 test('a prepay for a future-month event creates a subscription covering that event\'s month, not today\'s', function () {
     $member = clearMember($this->irregular, ['subscription_eligible' => true]);
-    $event = Event::factory()->create(['event_date' => '2026-09-19', 'entry_fee' => 40, 'door_prepay_enabled' => true]);
+    $eventDate = now()->addMonths(2)->day(19);
+    $event = Event::factory()->create(['event_date' => $eventDate->toDateString(), 'entry_fee' => 40, 'door_prepay_enabled' => true]);
 
     Livewire::test(CheckIn::class)
         ->fillForm(['event_id' => $event->id, 'member_id' => $member->id])
@@ -2507,7 +2549,7 @@ test('a prepay for a future-month event creates a subscription covering that eve
         ->assertHasNoActionErrors();
 
     $subscription = Subscription::where('member_id', $member->id)->where('add_on_id', $this->entry->id)->firstOrFail();
-    expect($subscription->covered_month->toDateString())->toBe('2026-09-01');
+    expect($subscription->covered_month->toDateString())->toBe($eventDate->copy()->startOfMonth()->toDateString());
 });
 
 test('checkIn is hidden once the building is at capacity, and a recorded departure restores it', function () {

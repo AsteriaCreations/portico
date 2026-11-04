@@ -482,19 +482,13 @@ function lastNotificationBody(): ?string
 
 test('closing a shift with cash collected includes an envelope reminder with the cash breakdown and event/date', function () {
     MembershipSetting::current()->update(['cash_envelope_reminder_enabled' => true]);
-    app(RegisterShiftService::class)->openShift($this->register, $this->user, 100);
+    $shift = app(RegisterShiftService::class)->openShift($this->register, $this->user, 100);
 
-    $member = cashClearMember($this->irregular, ['subscription_eligible' => true]);
-    // A fixed past date keeps the envelope label assertable; door prepay lets
-    // the desk accept it (since portico#81 the desk requires the event's own
-    // opt-in for anything not happening tonight).
-    $event = Event::factory()->create(['name' => 'Friday Social', 'event_date' => '2026-07-10', 'entry_fee' => 20, 'pool_fee' => 0, 'door_prepay_enabled' => true]);
-
-    Livewire::test(CheckIn::class)
-        ->set('registerId', $this->register->id)
-        ->fillForm(['event_id' => $event->id, 'member_id' => $member->id])
-        ->callAction('checkIn', data: ['checked_in_at' => now(), 'payment_method' => 'cash'])
-        ->assertHasNoActionErrors();
+    // A fixed past date keeps the envelope label assertable. The desk no
+    // longer takes a check-in for an ended event, so the visit is written
+    // straight onto the shift.
+    $event = Event::factory()->create(['name' => 'Friday Social', 'event_date' => '2026-07-10', 'entry_fee' => 20, 'pool_fee' => 0]);
+    Attendance::factory()->create(['event_id' => $event->id, 'register_shift_id' => $shift->id, 'payment_method' => 'cash', 'amount_paid' => 20]);
 
     Livewire::test(CheckIn::class)
         ->set('registerId', $this->register->id)

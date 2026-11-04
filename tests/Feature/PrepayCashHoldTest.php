@@ -223,22 +223,29 @@ test('a desk check-in for a future door-prepay event is recorded as prepaid ahea
         ->and($body)->toContain('$30.00');
 });
 
-test('tonight\'s check-in and a past door-prepay event\'s are not prepaid ahead, so their cash stays in the box', function () {
+test('tonight\'s check-in is not prepaid ahead, so its cash stays in the box; an ended door-prepay event takes no desk check-in at all', function () {
     $this->service->openShift($this->register, $this->manager, 100);
     $tonight = Event::factory()->create(['event_date' => today(), 'entry_fee' => 20, 'pool_fee' => 0]);
     $past = Event::factory()->create(['event_date' => today()->subDays(3), 'entry_fee' => 20, 'pool_fee' => 0, 'door_prepay_enabled' => true]);
     $first = prepayMember($this->irregular);
     $second = prepayMember($this->irregular);
 
-    foreach ([[$tonight, $first], [$past, $second]] as [$event, $member]) {
-        Livewire::test(CheckIn::class)
-            ->set('registerId', $this->register->id)
-            ->fillForm(['event_id' => $event->id, 'member_id' => $member->id])
-            ->callAction('checkIn', data: ['checked_in_at' => now(), 'payment_method' => 'cash'])
-            ->assertHasNoActionErrors();
-    }
+    Livewire::test(CheckIn::class)
+        ->set('registerId', $this->register->id)
+        ->fillForm(['event_id' => $tonight->id, 'member_id' => $first->id])
+        ->callAction('checkIn', data: ['checked_in_at' => now(), 'payment_method' => 'cash'])
+        ->assertHasNoActionErrors();
 
-    expect(Attendance::where('prepaid_ahead', true)->exists())->toBeFalse();
+    // abort_unless(403) leaves the harness unable to assert action state;
+    // the DB is the proof.
+    Livewire::test(CheckIn::class)
+        ->set('registerId', $this->register->id)
+        ->fillForm(['event_id' => $past->id, 'member_id' => $second->id])
+        ->callAction('checkIn', data: ['checked_in_at' => now(), 'payment_method' => 'cash']);
+
+    expect(Attendance::where('prepaid_ahead', true)->exists())->toBeFalse()
+        ->and(Attendance::where('member_id', $first->id)->exists())->toBeTrue()
+        ->and(Attendance::where('member_id', $second->id)->exists())->toBeFalse();
 });
 
 test('closing a box with prepaid cash names a separate envelope per event and leaves it out of tonight\'s total', function () {

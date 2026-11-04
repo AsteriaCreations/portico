@@ -1163,8 +1163,9 @@ class CheckIn extends Page implements HasTable
                 // event_id for a non-active event must be one the picker would
                 // offer: prepay switched on AND this event opted in. Checking
                 // the setting alone let a forged id prepay into any future
-                // event. A currently-active event is never affected.
-                abort_unless($event->isCurrentlyActive() || (MembershipSetting::current()->prepay_enabled && $event->door_prepay_enabled), 403);
+                // event. A currently-active event is never affected, and a
+                // prepay event that has already ended is no longer offered.
+                abort_unless($event->isCurrentlyActive() || (MembershipSetting::current()->prepay_enabled && $event->door_prepay_enabled && $event->isCurrentOrFuture()), 403);
                 abort_if($event->isArchived(), 403);
 
                 // pricingForm's own required-if rules (comp_reason_id when
@@ -1417,7 +1418,9 @@ class CheckIn extends Page implements HasTable
     /**
      * Normally only today's event(s) belong at the desk — an event flagged
      * for door_prepay_enabled is surfaced ahead of its own date too, so the
-     * desk can take a walk-in prepayment for it. Archived events never
+     * desk can take a walk-in prepayment for it — but only until it ends
+     * (Event::currentOrFutureQuery()); a finished prepay event drops off
+     * instead of lingering on the picker forever. Archived events never
      * appear: the prepay branch is grouped with the current-event one so
      * currentQuery()'s archived_at filter can't be sidestepped by an OR.
      */
@@ -1431,7 +1434,9 @@ class CheckIn extends Page implements HasTable
             ->whereNull('archived_at')
             ->where(fn (Builder $query) => $query
                 ->whereIn('id', static::currentEventQuery()->select('id'))
-                ->orWhere('door_prepay_enabled', true));
+                ->orWhere(fn (Builder $prepay) => $prepay
+                    ->where('door_prepay_enabled', true)
+                    ->whereIn('id', Event::currentOrFutureQuery()->select('id'))));
     }
 
     /**

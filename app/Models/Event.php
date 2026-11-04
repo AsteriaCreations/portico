@@ -280,6 +280,20 @@ class Event extends Model
     }
 
     /**
+     * Per-instance mirror of currentOrFutureQuery(): today or later by
+     * event_date, or still running per ends_at. Archived events are excluded.
+     */
+    public function isCurrentOrFuture(): bool
+    {
+        if ($this->isArchived()) {
+            return false;
+        }
+
+        return $this->event_date->gte(today())
+            || ($this->ends_at !== null && $this->ends_at->gte(now()));
+    }
+
+    /**
      * Whether any event is running right now: what opens the kiosk
      * (KioskCheckInController::show()), and what "Show on kiosk" checks
      * before telling staff the tablet will show the code.
