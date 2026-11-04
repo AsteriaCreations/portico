@@ -2301,6 +2301,44 @@ test('the event picker only includes today\'s events and door-prepay-enabled eve
         ->not->toContain($futureUnflagged->id);
 });
 
+test('a door-prepay event that has already ended drops off the event picker', function () {
+    $pastFlagged = Event::factory()->create([
+        'event_date' => now()->subDays(3)->toDateString(),
+        'starts_at' => now()->subDays(3)->setTime(20, 0),
+        'ends_at' => now()->subDays(3)->setTime(23, 0),
+        'door_prepay_enabled' => true,
+    ]);
+    $futureFlagged = Event::factory()->create(['event_date' => now()->addMonth()->toDateString(), 'door_prepay_enabled' => true]);
+
+    $options = (new ReflectionClass(CheckIn::class))->getMethod('eventSelectQuery');
+    $options->setAccessible(true);
+    $ids = $options->invoke(null)->pluck('id');
+
+    expect($ids)->toContain($futureFlagged->id)
+        ->not->toContain($pastFlagged->id)
+        ->and($pastFlagged->isCurrentOrFuture())->toBeFalse()
+        ->and($futureFlagged->isCurrentOrFuture())->toBeTrue();
+});
+
+test('a forged event_id for an already-ended door-prepay event is rejected', function () {
+    $member = clearMember($this->irregular);
+    $pastEvent = Event::factory()->create([
+        'event_date' => now()->subDays(3)->toDateString(),
+        'starts_at' => now()->subDays(3)->setTime(20, 0)->toDateTimeString(),
+        'ends_at' => now()->subDays(3)->setTime(23, 0)->toDateTimeString(),
+        'door_prepay_enabled' => true,
+        'entry_fee' => 20,
+    ]);
+
+    // See the prepay_enabled-off forged-id test below: the abort_unless(403)
+    // leaves the harness unable to assert action state, so the DB is the proof.
+    Livewire::test(CheckIn::class)
+        ->fillForm(['event_id' => $pastEvent->id, 'member_id' => $member->id])
+        ->callAction('checkIn', data: ['payment_method' => 'comp', 'checked_in_at' => null]);
+
+    expect(Attendance::where('member_id', $member->id)->where('event_id', $pastEvent->id)->exists())->toBeFalse();
+});
+
 test('once prepay_enabled is off, the event picker stops including door-prepay-enabled future events, restores once re-enabled', function () {
     MembershipSetting::current()->update(['prepay_enabled' => false]);
     $today = Event::factory()->create(['event_date' => today()->toDateString(), 'door_prepay_enabled' => false]);
