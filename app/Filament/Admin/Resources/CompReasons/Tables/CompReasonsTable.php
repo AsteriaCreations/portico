@@ -23,6 +23,10 @@ class CompReasonsTable
                 TextColumn::make('grants_voucher_amount')
                     ->label('Voucher')
                     ->money(),
+                IconColumn::make('door_allowed')
+                    ->label(__('Door can use'))
+                    ->boolean()
+                    ->tooltip(fn (bool $state): string => $state ? __('Door staff can comp with this reason') : __('Manager+ only')),
                 TextColumn::make('sort_order')
                     ->numeric()
                     ->sortable(),

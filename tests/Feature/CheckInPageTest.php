@@ -1653,6 +1653,61 @@ test('a door volunteer cannot comp an entry even via a forged payload', function
         ->and($attendance->amount_paid)->toEqual(40);
 });
 
+test('a door volunteer can comp an entry with a door-allowed reason, and is offered only those reasons', function () {
+    $door = User::factory()->create(['active' => true, 'role' => Role::Door]);
+    $this->actingAs($door);
+
+    $donation = CompReason::factory()->create(['name' => 'Brought donation items', 'door_allowed' => true]);
+    CompReason::factory()->create(['name' => 'House Sub']);
+    $member = clearMember($this->irregular);
+    $event = Event::factory()->create(['event_date' => now()->toDateString(), 'entry_fee' => 40, 'pool_fee' => 5]);
+
+    $component = Livewire::test(CheckIn::class)
+        ->fillForm(['event_id' => $event->id, 'member_id' => $member->id])
+        ->fillForm(['comp_entry' => true], 'pricingForm')
+        ->assertFormFieldVisible('comp_reason_id', 'pricingForm');
+
+    expect(array_values($component->instance()->pricingForm->getComponent('comp_reason_id')->getOptions()))->toBe(['Brought donation items']);
+
+    $component->fillForm(['comp_reason_id' => $donation->id], 'pricingForm')
+        ->callAction('checkIn', data: ['payment_method' => 'comp', 'checked_in_at' => now()])
+        ->assertHasNoActionErrors();
+
+    $attendance = Attendance::where('member_id', $member->id)->where('event_id', $event->id)->firstOrFail();
+    expect($attendance->entry_covered_by)->toBe(EntryCoverageSource::EventComp)
+        ->and($attendance->comp_reason_id)->toBe($donation->id)
+        ->and($attendance->amount_paid)->toEqual(5); // pool fee still owed — entry only
+});
+
+test('a door volunteer is not offered a comp at all until some reason is door-allowed', function () {
+    $this->actingAs(User::factory()->create(['active' => true, 'role' => Role::Door]));
+
+    CompReason::factory()->create(['name' => 'House Sub']);
+    CompReason::factory()->create(['name' => 'Retired donation drive', 'door_allowed' => true, 'active' => false]);
+    $member = clearMember($this->irregular);
+    $event = Event::factory()->create(['event_date' => now()->toDateString(), 'entry_fee' => 40, 'pool_fee' => 0]);
+
+    Livewire::test(CheckIn::class)
+        ->fillForm(['event_id' => $event->id, 'member_id' => $member->id])
+        ->assertFormFieldHidden('comp_entry', 'pricingForm');
+});
+
+test('a door volunteer cannot comp with a manager-only reason even via a forged payload', function () {
+    $this->actingAs(User::factory()->create(['active' => true, 'role' => Role::Door]));
+
+    CompReason::factory()->create(['name' => 'Brought donation items', 'door_allowed' => true]);
+    $houseSub = CompReason::factory()->create(['name' => 'House Sub']);
+    $member = clearMember($this->irregular);
+    $event = Event::factory()->create(['event_date' => now()->toDateString(), 'entry_fee' => 40, 'pool_fee' => 0]);
+
+    Livewire::test(CheckIn::class)
+        ->fillForm(['event_id' => $event->id, 'member_id' => $member->id])
+        ->fillForm(['comp_entry' => true, 'comp_reason_id' => $houseSub->id], 'pricingForm')
+        ->callAction('checkIn', data: ['payment_method' => 'comp', 'checked_in_at' => now()]);
+
+    expect(Attendance::where('member_id', $member->id)->where('comp_reason_id', '!=', null)->exists())->toBeFalse();
+});
+
 test('comping an entry without picking a reason is rejected', function () {
     $member = clearMember($this->irregular);
     $event = Event::factory()->create(['event_date' => now()->toDateString(), 'entry_fee' => 40, 'pool_fee' => 0]);

@@ -505,6 +505,8 @@ applyEventComp(breakdown):
 
 Fully overrides whatever `price()` already computed for entry — comp-by-category, regular-subscription coverage, or nothing — same as comp-by-category already overrides a subscription in the pipeline. `comp_reason_id` (optional) records why, from the extensible `comp_reasons` list — a manager can add a new reason as one comes up; it's editable settings data, not a hardcoded enum, same pattern as `event_types`/`plans`. Enforced server-side (not just a hidden checkbox): the check-in page only *applies* the comp if the submitting user passes the `grant-event-comp` gate (Manager+), regardless of what's in the submitted payload.
 
+**Door-allowed reasons.** An Admin+ can mark a comp reason `door_allowed` (e.g. "Brought donation items" for a donation-drive night). Door staff then see the comp checkbox at the desk, offered *only* those active reasons, and can comp with them without a Manager present. The gate takes the chosen reason (`Gate::allows('grant-event-comp', [$reason])`): Manager+ passes with any reason; Door passes only with an active, door-allowed one, so a forged payload naming any other reason, or none, is still ignored. Below Door never passes. Only Admin+ can change `door_allowed` (`manage-door-comp-reasons` gate, enforced on every save path by `CompReasonObserver`); it defaults off, so upgrading never widens who can comp.
+
 ---
 
 ## Payment corrections (same-night entry → subscription)
@@ -714,7 +716,8 @@ These are `App\Enums\Role`'s case names — the actual permission tier, gates, a
 | Show or print a member's **kiosk QR code** (from the Check-In Desk or the member's page; only once the club turns on "Kiosk check-in" at Feature Flags, off by default). Replacing a code, so a lost card stops working, is Manager+ from the member's page | ✓ | ✓ | ✓ | ✓ |
 | Browse the full voucher ledger (resource) | | ✓ | ✓ | ✓ |
 | Edit fees/credits (`plans`), manage `event_types`, `comp_reasons`, `categories`, `payment_methods`, run reports | | ✓ | ✓ | ✓ |
-| Waive one visit's entry fee (per-event comp), e.g. a House Sub | | ✓ | ✓ | ✓ |
+| Waive one visit's entry fee (per-event comp), e.g. a House Sub; Door only with a reason an Admin marked door-allowed | (✓) | ✓ | ✓ | ✓ |
+| Choose which comp reasons Door may use (`door_allowed`) | | | ✓ | ✓ |
 | Convert tonight's paid entry into a subscription (audited payment correction; collect or refund the difference) | | ✓ | ✓ | ✓ |
 | Remove a paid visit while its register shift is open (reason required, logged, Owner notified) | | ✓ | ✓ | ✓ |
 | Remove a paid visit after its register shift has closed | | | | ✓ |
@@ -812,7 +815,7 @@ Each case asserts the stored `entry_coverage` / the pool add-on line's `coverage
 
 **Historical attendance import**: re-running the same file is idempotent — no duplicate members, events, or attendance rows · a malformed fee-row header skips that entire event column · an unparseable per-cell amount skips just that cell without failing the row · `SH`/`VR` legend codes are recorded as `amount_paid = 0` with the coverage attributed to subscription/voucher respectively · the unrelated cash-reconciliation footer below the member rows is never read as member data · `--dry-run` writes nothing.
 
-**Per-event comp**: waives entry regardless of what coverage `price()` already computed (category comp, regular subscription, or nothing) · pool stays priced independently, untouched by the comp · a Door submission cannot comp an entry even with a forged payload — the check-in action only applies it if the submitting user passes the `grant-event-comp` gate.
+**Per-event comp**: waives entry regardless of what coverage `price()` already computed (category comp, regular subscription, or nothing) · pool stays priced independently, untouched by the comp · a Door submission cannot comp an entry even with a forged payload — the check-in action only applies it if the submitting user passes the `grant-event-comp` gate · Door can comp with an active door-allowed reason, but not with any other reason, an inactive one, or none · only Admin+ can mark a reason door-allowed.
 
 **Host**: the designated host owes nothing on entry at their own event, with no staff action required · pool is still priced independently (a subscription or the pool fee applies as normal) · being the host of one event doesn't comp entry at any other event · host coverage is reported (`entry_covered_by = host`) even when the host also holds an active Regular subscription that would otherwise have covered it.
 

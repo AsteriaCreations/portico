@@ -10,6 +10,14 @@ releases below could carry small breaking changes in a minor release.
 
 ## [Unreleased]
 
+### Added
+
+- **Door-allowed comp reasons.** An Admin can mark a comp reason "Door staff can comp with this
+  reason" (e.g. "Brought donation items" for a donation drive). Door staff then get the comp
+  checkbox at the desk, offered only those reasons, so a donation night doesn't need a Manager
+  at the door. Off for every existing reason; only Admins can turn it on. Migration: adds
+  `comp_reasons.door_allowed`.
+
 ### Fixed
 
 - **Spending another member's voucher credit at the desk.** Picking a different member under
