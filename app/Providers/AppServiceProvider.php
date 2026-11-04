@@ -4,11 +4,13 @@ namespace App\Providers;
 
 use App\Enums\Capability;
 use App\Enums\Role;
+use App\Models\AttendanceBehaviorNote;
 use App\Models\Member;
 use App\Models\MembershipSetting;
 use App\Models\User;
 use App\Observers\MemberObserver;
 use App\Observers\UserObserver;
+use App\Services\BehaviorNoteRetractionService;
 use App\Services\StaffLoginCheckInService;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Field;
@@ -109,6 +111,11 @@ class AppServiceProvider extends ServiceProvider
 
         Gate::define('manage-behavior-notes', fn (User $user): bool => $user->role->atLeast(Role::Volunteer)
             && MembershipSetting::current()->behavior_notes_enabled);
+
+        // Taking back one behavior note: Manager+ for any note, the author
+        // for their own. The rule (incl. the feature flag) lives in
+        // BehaviorNoteRetractionService so the gate and the write agree.
+        Gate::define('retract-behavior-note', fn (User $user, AttendanceBehaviorNote $note): bool => app(BehaviorNoteRetractionService::class)->refusalReason($note, $user) === null);
 
         // Owner-only, not Manager+ like the rest of MembershipSettings --
         // the panel's displayed name is club identity, not an operational

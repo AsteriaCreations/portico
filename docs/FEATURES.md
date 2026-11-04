@@ -44,6 +44,7 @@ ACTIVE PATRONS (LIVE FLOOR VIEW)
 - Visit notes — mutable, ephemeral (e.g. a clothing description), never surfaced once the patron drops off the live roster
 - Behavior notes — append-only, permanent, tiered visibility: the author always sees their own note in full; another Volunteer sees only a count; DM and Door see every note's full text but not who wrote it; Manager+ sees full text and authorship
 - Behavior-note history / oversight — Manager+ reviews every behavior note on a member (relation manager on Members), Admin+ reviews every behavior note written by a given user (relation manager on Users); a permanent audit trail that outlasts the live roster
+- Behavior-note retraction — Manager+ can retract any behavior note, and its author their own, with a required reason (member's Behavior notes tab, or "Retract behavior note" on Active Patrons). The note leaves Active Patrons but stays on the audit trails marked retracted; the retraction is its own append-only row
 - Member skill badges — skills assigned to a member render as chips on the live roster, visible to anyone who can see the page (Volunteer+)
 - Signed-in staff noted alongside checked-in patrons — Volunteer+ users currently signed into the system (session-based) are flagged as "in the building" even when they haven't generated a check-in of their own
 

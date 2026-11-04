@@ -390,7 +390,7 @@ CREATE INDEX ix_subs_lookup        ON subscriptions(member_id, add_on_id, covere
 CREATE INDEX ix_vouchers_member    ON vouchers(member_id);
 ```
 
-**This DDL covers the core domain plus a few early additions** (`ban_exceptions`, `member_status_changes`, `occupancy_adjustments`, `comp_reasons`). It is not kept in lockstep with every table added since — `payment_methods`, `comp_requests`, `add_on_day_passes`, `miscellaneous_payments`, `registers`/`register_shifts`, `membership_settings` (incl. its feature-flag columns), `member_username_changes`, `skills`/`member_skill`, `showrunner_payout_tiers`/`instructor_pay_rates`, `attendance_behavior_notes`, `paperwork_types`/`member_paperwork`, `payment_corrections`, and `visit_removals` are all real, in-use tables that this block doesn't define. **Migrations under `database/migrations/` are the source of truth for the schema** — read those for the current shape of any table.
+**This DDL covers the core domain plus a few early additions** (`ban_exceptions`, `member_status_changes`, `occupancy_adjustments`, `comp_reasons`). It is not kept in lockstep with every table added since — `payment_methods`, `comp_requests`, `add_on_day_passes`, `miscellaneous_payments`, `registers`/`register_shifts`, `membership_settings` (incl. its feature-flag columns), `member_username_changes`, `skills`/`member_skill`, `showrunner_payout_tiers`/`instructor_pay_rates`, `attendance_behavior_notes`/`behavior_note_retractions`, `paperwork_types`/`member_paperwork`, `payment_corrections`, and `visit_removals` are all real, in-use tables that this block doesn't define. **Migrations under `database/migrations/` are the source of truth for the schema** — read those for the current shape of any table.
 
 Note the **snapshot columns**: a check-in records how each component's price was reached *at that moment*, so later fee changes never rewrite history. Entry lives on `attendance` itself; every other chargeable a visit draws on (Pool, and any other subscribable add-on) is its own `attendance_add_ons` row — a single shared shape for "a charge that can be comped/subscribed/day-passed," rather than a second hardcoded pair of columns per new chargeable. `voucher_coverage` is a further, independent settlement line on `attendance` — it discounts the *combined* total still due after entry and every add-on line's own coverage, not a specific component (see Vouchers below).
 
@@ -725,6 +725,7 @@ These are `App\Enums\Role`'s case names — the actual permission tier, gates, a
 | Manage an event's admin-run Comp List | | ✓ | ✓ | ✓ |
 | Record known departures, adjusting tonight's building occupancy ‡ | ✓ | ✓ | ✓ | ✓ |
 | See a behavior note's full text, but not who wrote it § | ✓ | ✓ | ✓ | ✓ |
+| Retract any behavior note (reason required; the note stays on the audit trail, marked retracted) ¶ | | ✓ | ✓ | ✓ |
 | Grant the monthly free regular subscription (self or gift to a member) † | | ✓ | | ✓ |
 | Create, edit, or delete events (incl. concurrent), including their fees, start/end times, and door-prepay flag; manage volunteer accounts | | | ✓ | ✓ |
 | Issue voucher credit (positive-amount rows) / correct a wrongly-issued one | | | ✓ | ✓ |
@@ -732,6 +733,8 @@ These are `App\Enums\Role`'s case names — the actual permission tier, gates, a
 † Deliberately **not** monotonic — Admin is the one tier in this table without a capability that both a lower tier (Manager) and a higher tier (Owner) have. Owner's inclusion isn't rank — Owner qualifies for the same reason Manager does, not because Owner outranks Admin. See "Monthly Manager & Owner Subscription Perk" above.
 
 § The real floor is DM, one level below Door — Volunteer (and Showrunner) only sees their own behavior note's full text plus a bare count of everyone else's. Manager+ sees the same full text as DM/Door, plus who wrote each note (`ActivePatrons::behaviorNotesSummary()`).
+
+¶ The note's author (Volunteer and up) can also retract their own note, from Active Patrons. Notes are never edited or deleted: a retraction is its own append-only `behavior_note_retractions` row, and a retracted note drops off Active Patrons and its counts (`BehaviorNoteRetractionService`, `retract-behavior-note` gate, needs the behavior-notes flag on).
 
 ‡ Two surfaces, one gate: the admin Dashboard (`RecordDeparturesWidget`, anonymous headcount) and the Active Patrons page (`/admin/active-patrons`, departs one specific known person across every currently-active event at once). Neither lives on the check-in page, and the real floor for both is Volunteer, not Door — every tier from Volunteer up has it, same as every other row in this table, but this is the one capability Volunteer has that Showrunner doesn't.
 
