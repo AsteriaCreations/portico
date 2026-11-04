@@ -1657,7 +1657,7 @@ test('a door volunteer can comp an entry with a door-allowed reason, and is offe
     $door = User::factory()->create(['active' => true, 'role' => Role::Door]);
     $this->actingAs($door);
 
-    $donation = CompReason::factory()->create(['name' => 'Brought donation items', 'door_allowed' => true]);
+    $donation = CompReason::factory()->createQuietly(['name' => 'Brought donation items', 'door_allowed' => true]);
     CompReason::factory()->create(['name' => 'House Sub']);
     $member = clearMember($this->irregular);
     $event = Event::factory()->create(['event_date' => now()->toDateString(), 'entry_fee' => 40, 'pool_fee' => 5]);
@@ -1683,7 +1683,7 @@ test('a door volunteer is not offered a comp at all until some reason is door-al
     $this->actingAs(User::factory()->create(['active' => true, 'role' => Role::Door]));
 
     CompReason::factory()->create(['name' => 'House Sub']);
-    CompReason::factory()->create(['name' => 'Retired donation drive', 'door_allowed' => true, 'active' => false]);
+    CompReason::factory()->createQuietly(['name' => 'Retired donation drive', 'door_allowed' => true, 'active' => false]);
     $member = clearMember($this->irregular);
     $event = Event::factory()->create(['event_date' => now()->toDateString(), 'entry_fee' => 40, 'pool_fee' => 0]);
 
@@ -1695,7 +1695,7 @@ test('a door volunteer is not offered a comp at all until some reason is door-al
 test('a door volunteer cannot comp with a manager-only reason even via a forged payload', function () {
     $this->actingAs(User::factory()->create(['active' => true, 'role' => Role::Door]));
 
-    CompReason::factory()->create(['name' => 'Brought donation items', 'door_allowed' => true]);
+    CompReason::factory()->createQuietly(['name' => 'Brought donation items', 'door_allowed' => true]);
     $houseSub = CompReason::factory()->create(['name' => 'House Sub']);
     $member = clearMember($this->irregular);
     $event = Event::factory()->create(['event_date' => now()->toDateString(), 'entry_fee' => 40, 'pool_fee' => 0]);
