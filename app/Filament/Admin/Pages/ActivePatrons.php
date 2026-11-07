@@ -3,6 +3,7 @@
 namespace App\Filament\Admin\Pages;
 
 use App\Enums\Role;
+use App\Filament\Concerns\RetractsBehaviorNotes;
 use App\Filament\Concerns\TranslatesPageLabels;
 use App\Models\Attendance;
 use App\Models\AttendanceBehaviorNote;
@@ -44,6 +45,7 @@ use UnitEnum;
 class ActivePatrons extends Page implements HasTable
 {
     use InteractsWithTable;
+    use RetractsBehaviorNotes;
     use TranslatesPageLabels;
 
     protected string $view = 'filament.admin.pages.active-patrons';
@@ -137,7 +139,7 @@ class ActivePatrons extends Page implements HasTable
                 ->where(fn ($query) => $query
                     ->whereIn('event_id', $eventIds)
                     ->orWhereHas('addOns', fn ($addOns) => $addOns->where('is_overnight', true)))
-                ->with(['addOns', 'behaviorNotes.createdBy', 'event', 'member.category', 'member.paidEntrySubscriptions', 'member.skills', 'member.sponsor'])
+                ->with(['addOns', 'activeBehaviorNotes.createdBy', 'event', 'member.category', 'member.paidEntrySubscriptions', 'member.skills', 'member.sponsor'])
                 ->withFirstArrival())
             // Filament layout components (Split/Stack), not a flat column
             // list -- each patron renders as one card, so the page never
@@ -256,6 +258,7 @@ class ActivePatrons extends Page implements HasTable
                 $this->departAlreadyCountedAction(),
                 $this->editVisitNoteAction(),
                 $this->addBehaviorNoteAction(),
+                $this->retractBehaviorNoteFromVisitAction(),
             ])
             // 25, not the default 5: on a phone, paging through a busy night
             // five cards at a time makes it easy to miss someone leaving.
@@ -392,13 +395,14 @@ class ActivePatrons extends Page implements HasTable
      * notes' full text plus a bare count of what other staff wrote -- the
      * club's call on how these should be shared among volunteers.
      *
-     * Newest first, one entry per line of the cell.
+     * Newest first, one entry per line of the cell. Retracted notes are left
+     * out entirely, from the text and the counts alike.
      *
      * @return list<string>|null
      */
     public function behaviorNotesSummary(Attendance $record): ?array
     {
-        $notes = $record->behaviorNotes;
+        $notes = $record->activeBehaviorNotes;
 
         if ($notes->isEmpty()) {
             return null;

@@ -22,6 +22,7 @@ use App\Services\CheckInResult;
 use App\Services\CheckInService;
 use App\Services\RegisterShiftService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Gate;
 
 /*
  * CheckInService called directly, with no Livewire page and nobody logged
@@ -93,6 +94,48 @@ test('applies a comp only when the staff member passed in may grant one', functi
         ->and($byDoor->attendance->comp_reason_id)->toBeNull()
         ->and($byManager->attendance->amount_paid)->toEqual(0)
         ->and($byManager->attendance->comp_reason_id)->toBe($reason->id);
+});
+
+test('door may comp only with an active door-allowed reason', function () {
+    $door = User::factory()->create(['active' => true, 'role' => Role::Door]);
+    $donation = CompReason::factory()->create(['door_allowed' => true]);
+    $retired = CompReason::factory()->create(['door_allowed' => true, 'active' => false]);
+
+    $withDonation = recordCheckIn($this->member, $this->event, $door, new CheckInRequest(compEntry: true, compReasonId: $donation->id));
+    $withRetired = recordCheckIn(serviceMember($this->category, 'late-donor'), $this->event, $door, new CheckInRequest(compEntry: true, compReasonId: $retired->id));
+    $withNoReason = recordCheckIn(serviceMember($this->category, 'no-reason'), $this->event, $door, new CheckInRequest(compEntry: true));
+
+    expect($withDonation->attendance->amount_paid)->toEqual(0)
+        ->and($withDonation->attendance->comp_reason_id)->toBe($donation->id)
+        ->and($withRetired->attendance->amount_paid)->toEqual(40)
+        ->and($withRetired->attendance->comp_reason_id)->toBeNull()
+        ->and($withNoReason->attendance->amount_paid)->toEqual(40);
+});
+
+test('comping a subscriber already covered tonight keeps the subscription coverage but records the reason', function () {
+    $cheapEvent = Event::factory()->create(['event_date' => today()->toDateString(), 'entry_fee' => 20, 'pool_fee' => 0]);
+    $subscriber = serviceMember($this->category, 'donor-sub');
+    Subscription::create(['member_id' => $subscriber->id, 'add_on_id' => $this->entry->id, 'covered_month' => today()->startOfMonth()->toDateString(), 'amount_paid' => 60]);
+    $reason = CompReason::factory()->create(['grants_voucher_amount' => 25, 'voucher_only_if_already_covered' => true]);
+
+    $result = recordCheckIn($subscriber, $cheapEvent, $this->manager, new CheckInRequest(compEntry: true, compReasonId: $reason->id));
+
+    expect($result->attendance->entry_covered_by)->toBe(EntryCoverageSource::RegularSubscription)
+        ->and($result->attendance->amount_paid)->toEqual(0)
+        ->and($result->attendance->comp_reason_id)->toBe($reason->id);
+});
+
+test('a door-allowed reason does not let anyone below Door comp', function () {
+    $donation = CompReason::factory()->create(['door_allowed' => true]);
+
+    foreach ([Role::Showrunner, Role::Volunteer, Role::DM] as $role) {
+        $user = User::factory()->create(['active' => true, 'role' => $role]);
+        expect(Gate::forUser($user)->allows('grant-event-comp', [$donation]))->toBeFalse();
+    }
+
+    $door = User::factory()->create(['active' => true, 'role' => Role::Door]);
+    expect(Gate::forUser($door)->allows('grant-event-comp', [$donation]))->toBeTrue()
+        ->and(Gate::forUser($door)->allows('grant-event-comp'))->toBeFalse();
 });
 
 test('buys a one-month subscription that covers tonight, recorded by the staff member', function () {

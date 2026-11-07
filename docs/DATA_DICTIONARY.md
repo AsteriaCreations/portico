@@ -24,7 +24,7 @@ disagree, the migration wins, and this page needs fixing.
    correction is a new row with the opposite sign or a reversing meaning. Always aggregate the
    ledger; don't pick out "the" row. These are: `vouchers`, `occupancy_adjustments`,
    `ban_exceptions`, `member_status_changes`, `member_username_changes`,
-   `attendance_behavior_notes`, `miscellaneous_payments`, `add_on_day_passes`,
+   `attendance_behavior_notes`, `behavior_note_retractions`, `miscellaneous_payments`, `add_on_day_passes`,
    `attendance_add_ons`, `member_paperwork`, `watchlist_reviews`, `payment_corrections`,
    `visit_removals`, `instructor_payouts`, `register_drops`, `cash_exchanges`.
 5. **Attendance rows are price snapshots.** Each row stores what was charged that night.
@@ -227,7 +227,8 @@ drawer, add those rows back (see recipe).
 | `watchlist_reviews` | Owner decisions: `removed`, `extended`, `kept_indefinitely`. |
 | `ban_exceptions` | A banned member allowed into one specific event. |
 | `comp_requests` | Showrunner comp requests: `status` ∈ `pending`, `approved`, `rejected`; approved ones link the `attendance_id` created. |
-| `attendance_behavior_notes` | Staff notes on a visit (**sensitive**). |
+| `attendance_behavior_notes` | Staff notes on a visit (**sensitive**). A retracted note keeps its row; check `behavior_note_retractions`. |
+| `behavior_note_retractions` | One row per retracted behavior note: `reason`, `retracted_by`. A note with a row here is withdrawn. |
 | `occupancy_adjustments` | Anonymous "N people left" counts per night (`delta`, usually negative). |
 | `cleaning_tasks`, `cleaning_task_completions` | Weekly cleaning checklist. |
 

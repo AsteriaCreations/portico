@@ -130,7 +130,8 @@ Seven nested tiers — `Showrunner ⊂ Volunteer ⊂ DM ⊂ Door ⊂ Manager ⊂
 | Edit members, browse/edit any subscription record, view events, manage plans/event types/comp reasons, reports | | | | | ✓ | ✓ | ✓ |
 | Use Analytics; edit Membership Settings, Feature Flags, and Role Labels | | | | | ✓ | ✓ | ✓ |
 | Browse the voucher ledger | | | | | ✓ | ✓ | ✓ |
-| Waive one visit's entry fee at check-in (per-event comp, e.g. a House Sub) | | | | | ✓ | ✓ | ✓ |
+| Waive one visit's entry fee at check-in (per-event comp, e.g. a House Sub); Door only with a reason an Admin marked door-allowed | | | | (✓) | ✓ | ✓ | ✓ |
+| Choose which comp reasons Door may use | | | | | | ✓ | ✓ |
 | Convert tonight's paid entry into a subscription, or remove a paid visit while its register shift is open (each needs a reason and is logged) | | | | | ✓ | ✓ | ✓ |
 | Put a member on the watchlist and set its review date | | | | | ✓ | ✓ | ✓ |
 | Manage an event's admin-run Prepay List (single add or bulk upload) | | | | | ✓ | ✓ | ✓ |

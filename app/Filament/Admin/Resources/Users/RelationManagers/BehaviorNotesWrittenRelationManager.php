@@ -2,6 +2,7 @@
 
 namespace App\Filament\Admin\Resources\Users\RelationManagers;
 
+use App\Filament\Concerns\RetractsBehaviorNotes;
 use App\Filament\Concerns\TranslatesRelationManagerTitle;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Tables\Columns\TextColumn;
@@ -17,6 +18,7 @@ use Filament\Tables\Table;
  */
 class BehaviorNotesWrittenRelationManager extends RelationManager
 {
+    use RetractsBehaviorNotes;
     use TranslatesRelationManagerTitle;
 
     protected static string $relationship = 'writtenBehaviorNotes';
@@ -32,6 +34,7 @@ class BehaviorNotesWrittenRelationManager extends RelationManager
                 TextColumn::make('attendance.member.username')->label('Member'),
                 TextColumn::make('attendance.event.name')->label('Event'),
                 TextColumn::make('created_at')->dateTime()->sortable(),
+                $this->retractionColumn(),
             ])
             ->headerActions([])
             ->recordActions([])

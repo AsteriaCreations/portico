@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\EntryCoverageSource;
 use App\Enums\Role;
 use App\Models\Attendance;
 use App\Models\CommandRun;
@@ -235,4 +236,38 @@ test('a comped workday attendee gets one reward, not both', function () {
     $this->artisan('vouchers:grant-comp-rewards')->assertSuccessful();
 
     expect(Voucher::where('attendance_id', $attendance->id)->pluck('amount')->all())->toEqual(['25.00']);
+});
+
+test('a reason set to reward only already-free entries skips visits the comp actually waived', function () {
+    $reason = CompReason::factory()->create(['grants_voucher_amount' => 25, 'voucher_only_if_already_covered' => true]);
+    $event = Event::factory()->create(['ends_at' => now()->subHour()]);
+    $subscriberVisit = Attendance::factory()->for($event)->create([
+        'checked_in_at' => now()->subHours(2),
+        'comp_reason_id' => $reason->id,
+        'entry_covered_by' => EntryCoverageSource::RegularSubscription,
+    ]);
+    $waivedVisit = Attendance::factory()->for($event)->create([
+        'checked_in_at' => now()->subHours(2),
+        'comp_reason_id' => $reason->id,
+        'entry_covered_by' => EntryCoverageSource::EventComp,
+    ]);
+
+    $this->artisan('vouchers:grant-comp-rewards')->assertSuccessful();
+
+    expect(Voucher::where('attendance_id', $subscriberVisit->id)->value('amount'))->toEqual(25)
+        ->and(Voucher::where('attendance_id', $waivedVisit->id)->exists())->toBeFalse();
+});
+
+test('a reason rewarding every comp still grants for a visit the comp waived', function () {
+    $reason = CompReason::factory()->create(['grants_voucher_amount' => 25]);
+    $event = Event::factory()->create(['ends_at' => now()->subHour()]);
+    $waivedVisit = Attendance::factory()->for($event)->create([
+        'checked_in_at' => now()->subHours(2),
+        'comp_reason_id' => $reason->id,
+        'entry_covered_by' => EntryCoverageSource::EventComp,
+    ]);
+
+    $this->artisan('vouchers:grant-comp-rewards')->assertSuccessful();
+
+    expect(Voucher::where('attendance_id', $waivedVisit->id)->exists())->toBeTrue();
 });

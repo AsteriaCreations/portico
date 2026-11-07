@@ -10,6 +10,26 @@ releases below could carry small breaking changes in a minor release.
 
 ## [Unreleased]
 
+### Added
+
+- **Door-allowed comp reasons.** An Admin can mark a comp reason "Door staff can comp with this
+  reason" (e.g. "Brought donation items" for a donation drive). Door staff then get the comp
+  checkbox at the desk, offered only those reasons, so a donation night doesn't need a Manager
+  at the door. Off for every existing reason; only Admins can turn it on. Migration: adds
+  `comp_reasons.door_allowed`.
+- **Voucher only if entry was already free.** A comp reason with a voucher can now give it only
+  to members whose entry was already covered (subscription, comped category, host). With one
+  "Brought donation items" reason, members who would have paid get in free, and members already
+  at $0 get the voucher instead. Migration: adds `comp_reasons.voucher_only_if_already_covered`.
+
+### Changed
+
+- **A comp no longer rewrites an entry that was already free.** Comping a subscriber whose credit
+  already covers the fee (or a comped-category member, or the host) now keeps the visit's real
+  coverage and only records the reason. Before, the visit turned into a comp, which dropped it from
+  the showrunner's headcount and counted the full fee as comp cost. Partly covered entries are
+  comped as before.
+
 ### Fixed
 
 - **Spending another member's voucher credit at the desk.** Picking a different member under

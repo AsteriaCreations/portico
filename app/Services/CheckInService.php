@@ -6,6 +6,7 @@ use App\Exceptions\CheckInRefused;
 use App\Models\AddOn;
 use App\Models\Attendance;
 use App\Models\AttendanceAddOn;
+use App\Models\CompReason;
 use App\Models\Event;
 use App\Models\Member;
 use App\Models\MembershipSetting;
@@ -193,10 +194,13 @@ class CheckInService
                 );
             }
 
+            // The gate needs the reason itself: Door may comp only with a
+            // door-allowed one, so a forged id for any other is ignored.
             $compReasonId = null;
-            if ($request->compEntry && Gate::forUser($staff)->allows('grant-event-comp')) {
+            $compReason = $request->compEntry && $request->compReasonId ? CompReason::find($request->compReasonId) : null;
+            if ($request->compEntry && Gate::forUser($staff)->allows('grant-event-comp', [$compReason])) {
                 $breakdown = app(PricingService::class)->applyEventComp($breakdown);
-                $compReasonId = $request->compReasonId;
+                $compReasonId = $compReason?->id;
             }
 
             $voucherApplied = 0;
