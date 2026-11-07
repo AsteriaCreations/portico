@@ -78,6 +78,7 @@ One row per person who has ever been recorded: members, prospectives and guests.
 | `subscription_eligible` | Manual override that makes a member eligible regardless of visit count. |
 | `on_watchlist`, `watchlist_reason`, `watchlist_review_on`, `watchlist_probation_start` | Watchlist state (**the reason is sensitive**). |
 | `is_banned`, `ban_reason`, `banned_until` | Ban; `banned_until` set = a suspension that ends on that date. See ground rule 6. |
+| `rentals_blocked`, `rentals_blocked_reason` | Manager-set "No private rentals" flag (**the reason is sensitive**). |
 | `is_deceased`, `missing_paperwork` | Status flags. History of every flag change is in `member_status_changes`. |
 | `sponsor_id` | For a guest: the member who brought them. |
 | `probation_override_start` | Manager-set probation start that replaces the first visit. |
@@ -216,13 +217,14 @@ drawer, add those rows back (see recipe).
 | `paperwork_types` / `member_paperwork` | Forms and each signing (`signed_on`, ground rule 3). A type with `renewal_months` expires. |
 | `skills` / `member_skill` | Skills tagged on members. |
 | `instructor_pay_rates`, `showrunner_payout_tiers` | Payout rules. |
+| `rooms` | Rooms for private rentals: `hourly_rate`, `included_people` (covered by the room price), `overage_fee` per extra person, `overage_per_hour` (fee x hours, or once), `min_hours`, `max_hours`, `active`. |
 | `membership_settings` | The singleton (ground rule 7). |
 
 ### Audit and status history
 
 | Table | Records |
 |---|---|
-| `member_status_changes` | Every flag flip: `status` ∈ `banned`, `watchlist`, `deceased`, `missing_paperwork`, `active`; `value` = new state; `reason`; `changed_by`. |
+| `member_status_changes` | Every flag flip: `status` ∈ `banned`, `watchlist`, `deceased`, `missing_paperwork`, `active`, `rentals_blocked`; `value` = new state; `reason`; `changed_by`. |
 | `member_username_changes` | `old_username` → `new_username`. |
 | `watchlist_reviews` | Owner decisions: `removed`, `extended`, `kept_indefinitely`. |
 | `ban_exceptions` | A banned member allowed into one specific event. |
@@ -364,8 +366,8 @@ Keep these out of shared exports and dashboards unless there's a reason and the 
 
 - **Identity:** `members.first_name`, `last_name`, `email`, `preferred_name`, `dob`. Report by
   `member_number` or `members.id` instead.
-- **Sensitive (Manager+ in the app):** `members.dob`, `watchlist_reason`, `ban_reason`, `notes`,
-  `hospitality_note`; `attendance_behavior_notes.note`; `member_status_changes.reason`;
+- **Sensitive (Manager+ in the app):** `members.dob`, `watchlist_reason`, `ban_reason`, `rentals_blocked_reason`,
+  `notes`, `hospitality_note`; `attendance_behavior_notes.note`; `member_status_changes.reason`;
   `watchlist_reviews.notes`.
 - **Secrets, never export:** `members.kiosk_token`, `users.password`, `users.remember_token`,
   `sessions.*`, `membership_settings.kiosk_device_secret_hash`.

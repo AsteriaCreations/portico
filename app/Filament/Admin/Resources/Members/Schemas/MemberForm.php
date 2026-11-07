@@ -124,6 +124,18 @@ class MemberForm
                             ->required(),
                         Toggle::make('is_deceased')
                             ->required(),
+                        // Shown while private rentals are on, or whenever it's
+                        // already set: a flag never hides collected data.
+                        Toggle::make('rentals_blocked')
+                            ->label(__('No private rentals'))
+                            ->helperText(__('Stops the Check-In Desk booking a private room rental for this member.'))
+                            ->live()
+                            ->visible(fn (?Member $record): bool => MembershipSetting::current()->private_rentals_enabled || (bool) $record?->rentals_blocked),
+                        TextInput::make('rentals_blocked_reason')
+                            ->label(__('No private rentals reason'))
+                            ->required(fn (Get $get): bool => (bool) $get('rentals_blocked'))
+                            ->visible(fn (Get $get): bool => (bool) $get('rentals_blocked'))
+                            ->default(null),
                         TextInput::make('hospitality_note')
                             ->default(null),
                     ]),

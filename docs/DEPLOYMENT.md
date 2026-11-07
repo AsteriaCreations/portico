@@ -454,6 +454,7 @@ GRANT SELECT ON `<portico>`.plans TO 'portico_analyst'@'localhost';
 GRANT SELECT ON `<portico>`.register_drops TO 'portico_analyst'@'localhost';
 GRANT SELECT ON `<portico>`.register_shifts TO 'portico_analyst'@'localhost';
 GRANT SELECT ON `<portico>`.registers TO 'portico_analyst'@'localhost';
+GRANT SELECT ON `<portico>`.rooms TO 'portico_analyst'@'localhost';
 GRANT SELECT ON `<portico>`.showrunner_payout_tiers TO 'portico_analyst'@'localhost';
 GRANT SELECT ON `<portico>`.skills TO 'portico_analyst'@'localhost';
 GRANT SELECT ON `<portico>`.member_skill TO 'portico_analyst'@'localhost';

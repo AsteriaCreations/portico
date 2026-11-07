@@ -87,6 +87,7 @@ class OperationalDataReset
         'cleaning_tasks',
         'showrunner_payout_tiers',
         'instructor_pay_rates',
+        'rooms',
     ];
 
     /**
