@@ -105,6 +105,16 @@ class MemberObserver
             ]);
         }
 
+        if ($member->isDirty('rentals_blocked')) {
+            MemberStatusChange::create([
+                'member_id' => $member->id,
+                'status' => MemberStatusField::RentalsBlocked,
+                'value' => $member->rentals_blocked,
+                'reason' => $member->rentals_blocked_reason,
+                'changed_by' => auth()->id(),
+            ]);
+        }
+
         if ($member->isDirty('is_active')) {
             MemberStatusChange::create([
                 'member_id' => $member->id,
