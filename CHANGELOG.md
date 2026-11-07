@@ -12,6 +12,18 @@ releases below could carry small breaking changes in a minor release.
 
 ### Added
 
+- **Private room rentals, part 1: rooms.** A new Feature Flag, *Private room rentals* (off by
+  default), adds a Manager+ **Rooms** list under Desk & Money. Each room has an hourly rate, how
+  many people its price includes, a fee for each extra person (per hour or once), and the
+  minimum and maximum hours it can be booked for. Members get a Manager+ **No private rentals**
+  flag with a required reason, logged in their status history. A Membership Settings toggle,
+  *Private rentals can bring guests* (on by default), decides whether a rental group may include
+  non-members. Desk booking comes in the next part. Migration: adds `rooms`,
+  `members.rentals_blocked` and `rentals_blocked_reason`, `rentals_blocked` in
+  `member_status_changes.status`, and two `membership_settings` columns. An existing
+  `portico_analyst` account needs `GRANT SELECT ON <portico>.rooms` to read rooms
+  (`docs/DEPLOYMENT.md` §4a).
+
 - **Door-allowed comp reasons.** An Admin can mark a comp reason "Door staff can comp with this
   reason" (e.g. "Brought donation items" for a donation drive). Door staff then get the comp
   checkbox at the desk, offered only those reasons, so a donation night doesn't need a Manager

@@ -9,4 +9,5 @@ enum MemberStatusField: string
     case Deceased = 'deceased';
     case MissingPaperwork = 'missing_paperwork';
     case Active = 'active';
+    case RentalsBlocked = 'rentals_blocked';
 }

@@ -56,6 +56,7 @@ All are Manager+ unless noted. They're grouped in the left nav exactly as listed
 | **Comp Reasons** | The reasons a Manager can waive one visit's entry fee. Ships with Presenter, Volunteer, and Guest of a staff member. A `grants_voucher_amount` auto-issues a reward voucher once that event ends (run `vouchers:grant-comp-rewards`). |
 | **Registers** | The physical cash drawers/tills. Only relevant if `register_shifts_enabled`. |
 | **Cleaning Tasks** | The checklist items on the Cleaning Checklist page. |
+| **Rooms** | Rooms a member can book for a private rental at the Check-In Desk: an hourly rate, how many people the price includes, a fee for each extra person (per hour or once), and the minimum and maximum hours. Bookings keep the prices they were made at. Turn a room off rather than deleting it. Only shown while Private room rentals is on (Feature Flags). |
 
 ### Members & Events
 
@@ -114,6 +115,7 @@ rarely need to touch most of them.
 | Max guests per member per night | *(blank — no limit)* | How many new guests one member may register in a night, counted from when they checked in (a late event doesn't reset it at midnight). Returning guests who check in under them don't count. |
 | Move a guest on when their follow-up is sent | on | When a guest is marked "follow-up sent" on the Members list, moves them out of Guest into the category below. Off, they stay a Guest and only the follow-up is recorded. |
 | Category after follow-up | *(blank — Irregular)* | Where a guest goes once their follow-up is sent. If the chosen category is later deleted, Irregular is used. |
+| Private rentals can bring guests | on | Lets the people in a member's private rental include non-members, registered at the desk as the renter's guests. Off, everyone in the group must already be a member. Only matters while Private room rentals is on. |
 
 ### Watchlist
 
@@ -208,6 +210,7 @@ Turning a feature **on** sends whoever saved it a notification (the bell) for ea
 | Kiosk check-in | *(default off)* No kiosk: no "Kiosk QR code" button at the desk or on the member page, and the kiosk page answers "not found". When on, a member scans their code at a tablet and is let in only when they owe nothing; anyone else is sent to the desk. With it on, Admin+ gets a **Set up a kiosk tablet** button on this page, which makes the link to open on the tablet; making a new one stops a tablet already set up until it opens the new link. Setting up the tablet: [`docs/DEPLOYMENT.md`](DEPLOYMENT.md) "A kiosk tablet". |
 | Check in staff when they sign in | *(default off)* Signing in does nothing extra. When on, a login linked to a member (My account or Users) checks that member in to tonight's event when they owe nothing: a subscription, a comped category, the host or a free event. Money due, two events at once, check-in closed or full, or a watchlist or ID check tells them to go to the desk (a notice and the bell) and notifies the Door staff signed in. Signing in when no event is running does nothing. |
 | Report a problem from the desk | *(default off)* No button. When on, the Check-In Desk has **Report a problem**: staff describe what went wrong and it saves what the desk is showing, without names, contact details, date of birth, notes or reasons, under Records > Issue reports (Manager+). Reports already saved stay readable with it off. A new report rings the bell for every active Manager+. To let a Manager post a report as a GitHub issue, set `ISSUE_REPORTS_GITHUB_REPO` (`owner/name`) and `ISSUE_REPORTS_GITHUB_TOKEN` (a fine-grained token for that one repository with only Issues: Read and write) in `.env`, then `php artisan optimize`. |
+| Private room rentals | *(default off)* No Rooms list and no private rental booking. When on, Manager+ sets up rooms and their prices, and a "No private rentals" flag appears on members (Manager+, with a reason, logged). Desk booking arrives in a later release. |
 | Kiosk admits subscribers only | The kiosk also lets in anyone else who owes nothing tonight, such as a comped category or the event's host. When on, only a member with an active subscription for the event's month. Anyone with something to pay, a watchlist or ID check is always sent to the desk. Needs Kiosk check-in. |
 | Show codes on the kiosk | *(default off)* No "Show on kiosk" button. When on, staff can put a member's code on the tablet for them to photograph (time set on Membership Settings); anyone at the tablet can see it while it's up. Needs Kiosk check-in. |
 | Upstream update checking | *(default off)* No Upstream Updates page and no scheduled git fetch. Only useful if this fork tracks an upstream remote. |
