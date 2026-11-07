@@ -67,6 +67,7 @@ class MembershipSettings extends Page
             'subscription_eligibility_window_months',
             'probation_period_days',
             'guests_allowed_during_probation',
+            'private_rental_guests_allowed',
             'max_guests_per_night',
             'guest_followup_moves_category',
             'guest_followup_category_id',
@@ -229,6 +230,10 @@ class MembershipSettings extends Page
                         Toggle::make('guests_allowed_during_probation')
                             ->label('Allow guests during probation')
                             ->helperText(__('Lets a member still on probation register a guest at the Check-In Desk. Off by default. Turning guests off entirely is on Feature Flags.'))
+                            ->required(),
+                        Toggle::make('private_rental_guests_allowed')
+                            ->label('Private rentals can bring guests')
+                            ->helperText(__('Lets the people in a member\'s private rental include non-members, registered at the desk as the renter\'s guests. Off, everyone in the group must already be a member. Only matters while private room rentals are on (Feature Flags). On by default.'))
                             ->required(),
                         TextInput::make('max_guests_per_night')
                             ->label('Max guests per member per night')

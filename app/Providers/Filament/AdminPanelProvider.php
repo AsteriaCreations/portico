@@ -20,6 +20,7 @@ use App\Filament\Admin\Resources\PaymentMethods\PaymentMethodResource;
 use App\Filament\Admin\Resources\Plans\PlanResource;
 use App\Filament\Admin\Resources\Registers\RegisterResource;
 use App\Filament\Admin\Resources\RegisterShifts\RegisterShiftResource;
+use App\Filament\Admin\Resources\Rooms\RoomResource;
 use App\Filament\Admin\Resources\ShowrunnerPayoutTiers\ShowrunnerPayoutTierResource;
 use App\Filament\Admin\Resources\Skills\SkillResource;
 use App\Filament\Admin\Resources\Subscriptions\SubscriptionResource;
@@ -172,6 +173,7 @@ class AdminPanelProvider extends PanelProvider
             PlanResource::class => 'plans',
             RegisterShiftResource::class => 'register-shifts',
             RegisterResource::class => 'registers',
+            RoomResource::class => 'rooms',
             ShowrunnerPayoutTierResource::class => 'showrunner-payout-tiers',
             SkillResource::class => 'skills',
             SubscriptionResource::class => 'subscriptions',

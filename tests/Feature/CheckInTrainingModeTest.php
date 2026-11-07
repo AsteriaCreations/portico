@@ -14,6 +14,7 @@ use App\Models\Register;
 use App\Models\RegisterShift;
 use App\Models\Subscription;
 use App\Models\User;
+use App\Providers\Filament\AdminPanelProvider;
 use App\Services\RegisterShiftService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
@@ -75,6 +76,21 @@ test('the banner renders only while training mode is on', function () {
 
     expect(Livewire::test(CheckIn::class)->set('trainingMode', true)->html())
         ->toContain('Training mode — practice freely');
+});
+
+// The banner draws with var(--warning-600) rather than a fixed color, so a user
+// with colorblind-friendly colors on (My account) gets the Okabe-Ito orange.
+test('training mode follows the colorblind-friendly palette', function () {
+    $palette = AdminPanelProvider::colorblindPalette();
+    $user = User::factory()->create(['active' => true, 'role' => Role::Door, 'colorblind_palette' => true]);
+    session(['checkin.training_mode' => true]);
+
+    $this->actingAs($user)->get('/admin/check-in')
+        ->assertSuccessful()
+        ->assertSee('Training mode — practice freely')
+        ->assertSee('var(--warning-600', false)
+        ->assertSee('--warning-600:'.$palette['warning'][600], false)
+        ->assertSee('--success-500:'.$palette['success'][500], false);
 });
 
 test('a check-in in training mode writes no attendance row', function () {

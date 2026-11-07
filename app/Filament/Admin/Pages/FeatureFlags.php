@@ -86,6 +86,7 @@ class FeatureFlags extends Page
             'kiosk_checkin_enabled',
             'staff_login_checkin_enabled',
             'issue_reports_enabled',
+            'private_rentals_enabled',
             'kiosk_show_code_enabled',
             'kiosk_subscribers_only',
             'hold_desk_prepay_cash',
@@ -167,6 +168,10 @@ class FeatureFlags extends Page
                         Toggle::make('issue_reports_enabled')
                             ->label('Report a problem from the desk')
                             ->helperText(__('Adds a "Report a problem" button to the Check-In Desk. It saves what the desk is showing (the event, the choices made, the admission decision, the price and the member\'s situation) with names, contact details, date of birth, notes and reasons left out, for Manager+ to review under Issue reports. Off by default.'))
+                            ->required(),
+                        Toggle::make('private_rentals_enabled')
+                            ->label('Private room rentals')
+                            ->helperText(__('Lets the Check-In Desk book a room for a member\'s private rental, priced from the Rooms list (Manager+): an hourly rate, a number of people included, and a fee for each extra person. Members with "No private rentals" set, or who couldn\'t get in at all, can\'t book. Off by default.'))
                             ->required(),
                         Toggle::make('kiosk_subscribers_only')
                             ->label('Kiosk admits subscribers only')

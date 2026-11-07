@@ -3,6 +3,7 @@
 use App\Enums\AddOnKind;
 use App\Enums\Role;
 use App\Models\AddOn;
+use App\Models\MembershipSetting;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
@@ -14,6 +15,9 @@ beforeEach(function () {
     // builds its own minimal fixture rather than seeding the whole app. See
     // AnalyticsPageTest for the same requirement.
     AddOn::create(['name' => AddOn::ENTRY_NAME, 'kind' => AddOnKind::Entry, 'subscribable' => true]);
+
+    // Resources hidden behind a default-off flag answer 403 until it's on.
+    MembershipSetting::current()->update(['private_rentals_enabled' => true]);
 });
 
 // Covers both mechanisms: a hand-written page view with <x-screen-instructions/>

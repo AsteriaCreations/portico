@@ -24,7 +24,7 @@ use Illuminate\Support\Str;
     'member_number', 'username', 'preferred_name', 'first_name', 'last_name', 'email', 'email_opt_in',
     'category_id', 'sponsor_id', 'date_vetted', 'dob', 'is_active', 'subscription_eligible',
     'on_watchlist', 'watchlist_reason', 'watchlist_review_on', 'is_banned', 'ban_reason', 'banned_until', 'probation_override_start',
-    'missing_paperwork', 'is_deceased', 'hospitality_note', 'notes',
+    'missing_paperwork', 'is_deceased', 'rentals_blocked', 'rentals_blocked_reason', 'hospitality_note', 'notes',
 ])]
 class Member extends Model
 {
@@ -54,6 +54,7 @@ class Member extends Model
             'banned_until' => 'date',
             'probation_override_start' => 'date',
             'missing_paperwork' => 'boolean',
+            'rentals_blocked' => 'boolean',
             'is_deceased' => 'boolean',
             'guest_followup_sent_at' => 'datetime',
             'kiosk_token_generated_at' => 'datetime',
