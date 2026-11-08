@@ -5,6 +5,7 @@ namespace App\Filament\Concerns;
 use App\Exceptions\PrivateRentalRefused;
 use App\Models\Member;
 use App\Models\MembershipSetting;
+use App\Models\PrivateRental;
 use App\Models\Room;
 use App\Services\PrivateRentalService;
 use App\Support\Cents;
@@ -17,21 +18,23 @@ use Filament\Forms\Components\TimePicker;
 use Filament\Notifications\Notification;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Support\Icons\Heroicon;
-use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\HtmlString;
-use Throwable;
 
 /**
  * The desk's "Book a private rental" for the selected member: pick a room,
  * a date, a start time and whole hours, and how many people are coming,
- * see the total, then confirm. Door+ once the club turns private rentals on
+ * see the total, then confirm. Below it, the member's upcoming bookings,
+ * each with Change and Cancel. Door+ once the club turns private rentals on
  * (book-private-rental gate). Who may book, the price and the overlap check
  * are all PrivateRentalService's; this only gathers the choices and shows
  * its answers. Payment is taken separately, at the start of the rental.
  */
 trait BooksPrivateRentals
 {
+    use ManagesPrivateRentalBookings;
+
     public function bookPrivateRentalAction(): Action
     {
         return Action::make('bookPrivateRental')
@@ -130,9 +133,41 @@ trait BooksPrivateRentals
             });
     }
 
+    public function changePrivateRentalAction(): Action
+    {
+        return $this->makeChangePrivateRentalAction('changePrivateRental', fn (Action $action): ?PrivateRental => $this->deskPrivateRental($action), fn (string $message): bool => $this->haltForTraining($message));
+    }
+
+    public function cancelPrivateRentalAction(): Action
+    {
+        return $this->makeCancelPrivateRentalAction('cancelPrivateRental', fn (Action $action): ?PrivateRental => $this->deskPrivateRental($action), fn (string $message): bool => $this->haltForTraining($message));
+    }
+
+    /**
+     * The selected member's bookings that haven't ended or been cancelled,
+     * soonest first, for the member card.
+     *
+     * @return Collection<int, PrivateRental>
+     */
+    public function upcomingPrivateRentals(): Collection
+    {
+        $member = $this->getSelectedMember();
+
+        if (! $member || ! Gate::allows('book-private-rental')) {
+            return collect();
+        }
+
+        return PrivateRental::with('room')
+            ->notCancelled()
+            ->where('member_id', $member->id)
+            ->where('ends_at', '>', now())
+            ->orderBy('starts_at')
+            ->get();
+    }
+
     /**
      * The modal's running total, or what's still missing / why it can't be
-     * booked. A live region, so a screen reader hears the total change.
+     * booked.
      */
     protected function privateRentalQuoteSummary(mixed $roomId, mixed $date, mixed $startTime, mixed $hours, mixed $headcount): HtmlString
     {
@@ -145,15 +180,7 @@ trait BooksPrivateRentals
 
         $service = app(PrivateRentalService::class);
         $quote = $service->quote($room, (int) $hours, (int) $headcount);
-        $money = fn (int $cents): string => MembershipSetting::formatMoney(Cents::toFloat($cents));
-
-        $lines = [
-            __('Room: :rate × :hours h = :cost', ['rate' => $money(Cents::of($room->hourly_rate)), 'hours' => $quote->hours, 'cost' => $money($quote->roomCostCents)]),
-            $quote->extraPeople > 0
-                ? __('Extra people: :count × :each = :cost', ['count' => $quote->extraPeople, 'each' => $money($quote->perExtraPersonCents), 'cost' => $money($quote->extraPeopleCostCents)])
-                : __('Extra people: none (the room includes :count)', ['count' => $room->included_people]),
-            __('Total: :total, paid at the start of the rental', ['total' => $money($quote->totalCents)]),
-        ];
+        $lines = $this->privateRentalQuoteLines($quote);
 
         $startsAt = $this->privateRentalStart($date, $startTime);
         if ($startsAt) {
@@ -171,24 +198,15 @@ trait BooksPrivateRentals
     }
 
     /**
-     * @param  list<string>  $lines
+     * The booking a member-card button is for, only ever one of the
+     * selected member's, so a forged id can't reach anyone else's.
      */
-    private function privateRentalStatus(array $lines): HtmlString
+    private function deskPrivateRental(Action $action): ?PrivateRental
     {
-        return new HtmlString('<div role="status">'.collect($lines)->map(fn (string $line): string => '<p>'.e($line).'</p>')->implode('').'</div>');
-    }
+        $member = $this->getSelectedMember();
+        $id = $action->getArguments()['rental'] ?? null;
 
-    private function privateRentalStart(mixed $date, mixed $startTime): ?Carbon
-    {
-        if (blank($date) || blank($startTime)) {
-            return null;
-        }
-
-        try {
-            return Carbon::parse(Carbon::parse($date)->toDateString().' '.$startTime);
-        } catch (Throwable) {
-            return null;
-        }
+        return $member && $id ? PrivateRental::where('member_id', $member->id)->find($id) : null;
     }
 
     abstract public function getSelectedMember(): ?Member;

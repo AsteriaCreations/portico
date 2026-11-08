@@ -12,6 +12,13 @@ releases below could carry small breaking changes in a minor release.
 
 ### Added
 
+- **Private room rentals, part 3a: change and cancel.** A renter's upcoming bookings now list on
+  their member card at the desk, and a new Door+ **Private Rentals** page (Front of House) lists
+  every booking, upcoming by default, filterable by room. Both offer **Change** (move the date
+  or start time, or change the hours or headcount, with the same checks as booking and the
+  overlap re-checked, priced at the rates the booking was made at, its event following) and
+  **Cancel booking** (frees the room and archives the rental's event so it drops off the desk;
+  refused once anyone has checked in to it). Training mode saves neither. No migration.
 - **Private room rentals, part 2: booking at the desk.** With *Private room rentals* on, Door+
   gets **Book a private rental** on the Check-In Desk member card. Pick a room, a date (today
   or later), a start time, whole hours within the room's limits and how many people are coming;

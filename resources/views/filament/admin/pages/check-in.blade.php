@@ -56,7 +56,7 @@
         <p>{!! __('Practising? <strong>Enter training mode</strong> at the top of the screen — everything behaves as normal, but nothing is saved.') !!}</p>
         <p>{{ __('Everything folded away — selling a subscription or day pass, add-ons / vouchers / comps, the cash box — is still here, one click open, and never needed for a normal check-in.') }}</p>
         @if (\App\Models\MembershipSetting::current()->private_rentals_enabled)
-            <p>{!! __('Booking a room for a member\'s private rental? Pick the member, then <strong>Book a private rental</strong>. The dialog shows the total before you book; it\'s paid at the start of the rental.') !!}</p>
+            <p>{!! __('Booking a room for a member\'s private rental? Pick the member, then <strong>Book a private rental</strong>. The dialog shows the total before you book; it\'s paid at the start of the rental. Their upcoming bookings list on the card with <strong>Change</strong> and <strong>Cancel booking</strong>.') !!}</p>
         @endif
         @if (\App\Models\MembershipSetting::current()->hold_desk_prepay_cash)
             <p>{{ __('Cash taken for a future event (a prepay) doesn\'t stay in the box: put it in that event\'s prepay envelope. The box\'s expected count leaves it out.') }}</p>
@@ -260,6 +260,28 @@
                 <div class="mt-2 flex flex-wrap gap-2">
                     {{ $this->bookPrivateRentalAction }}
                 </div>
+
+                @php
+                    $upcomingRentals = $this->upcomingPrivateRentals();
+                @endphp
+                @if ($upcomingRentals->isNotEmpty())
+                    <p class="mt-4 text-sm font-medium">{{ __('Upcoming private rentals') }}</p>
+                    <ul class="mt-2 space-y-0.5 text-sm">
+                        @foreach ($upcomingRentals as $rental)
+                            <li wire:key="private-rental-{{ $rental->id }}" class="flex flex-wrap items-center gap-2">
+                                <span>{{ __(':room, :from–:to, :count people, :total', [
+                                    'room' => $rental->room->name,
+                                    'from' => $rental->starts_at->isoFormat('llll'),
+                                    'to' => $rental->ends_at->isoFormat('LT'),
+                                    'count' => $rental->headcount,
+                                    'total' => \App\Models\MembershipSetting::formatMoney((float) $rental->total),
+                                ]) }}</span>
+                                {{ ($this->changePrivateRentalAction)(['rental' => $rental->id]) }}
+                                {{ ($this->cancelPrivateRentalAction)(['rental' => $rental->id]) }}
+                            </li>
+                        @endforeach
+                    </ul>
+                @endif
             @endif
 
             @if (app(\App\Services\AdmissionPolicy::class)->needsCapture($member))
