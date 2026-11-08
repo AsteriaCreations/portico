@@ -83,6 +83,7 @@ class FeatureFlags extends Page
             'guests_enabled',
             'door_username_rename_enabled',
             'door_preferred_name_change_enabled',
+            'desk_refunds_enabled',
             'kiosk_checkin_enabled',
             'staff_login_checkin_enabled',
             'issue_reports_enabled',
@@ -152,6 +153,10 @@ class FeatureFlags extends Page
                         Toggle::make('door_preferred_name_change_enabled')
                             ->label('Door can change preferred names')
                             ->helperText(__('Adds a "Change preferred name" button for the selected member on the Check-In Desk, so Door staff can update what a member goes by without a Manager. Changes aren\'t logged, same as editing it on the member\'s page. Managers and above see the button either way. Off by default.'))
+                            ->required(),
+                        Toggle::make('desk_refunds_enabled')
+                            ->label('Door can refund a visit soon after check-in')
+                            ->helperText(__('Adds a "Refund visit" button on the Check-In Desk for someone who leaves straight after checking in: within 30 minutes by default (set on Membership Settings), while the register shift is still open. Everything paid for the visit is refunded, the visit stays on their record marked departed, the reason becomes a behavior note, and the Owners are notified. A visit paid ahead or with voucher credit, or a subscription bought at the same time, is left to a Manager. Off by default.'))
                             ->required(),
                         Toggle::make('reset_desk_event_on_member_change')
                             ->label('Pick the event again for each member')

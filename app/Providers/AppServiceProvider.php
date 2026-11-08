@@ -167,6 +167,11 @@ class AppServiceProvider extends ServiceProvider
         Gate::define('change-member-preferred-name', fn (User $user): bool => $user->role->atLeast(Role::Manager)
             || ($user->role->atLeast(Role::Door) && MembershipSetting::current()->door_preferred_name_change_enabled));
 
+        // Door+ once the club turns on desk_refunds_enabled; the window and
+        // the rest of the rules are DeskRefundService::refusalReason().
+        Gate::define('refund-visit-at-desk', fn (User $user): bool => $user->role->atLeast(Role::Door)
+            && MembershipSetting::current()->desk_refunds_enabled);
+
         // Door+ once the club turns on private_rentals_enabled: book a room
         // for a member's private rental at the desk. Re-checked server-side
         // in BooksPrivateRentals; who may be booked for is

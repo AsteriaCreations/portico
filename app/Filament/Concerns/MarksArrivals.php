@@ -86,7 +86,9 @@ trait MarksArrivals
         return Action::make('markAsReturned')
             ->label(__('Mark as returned'))
             ->color('success')
-            ->visible(fn (): bool => (bool) ($attendance?->departed_at) && Gate::allows('record-departures'))
+            // A visit refunded at the desk stays departed: they were given
+            // their money back.
+            ->visible(fn (): bool => (bool) ($attendance?->departed_at) && Gate::allows('record-departures') && ! $attendance->isDeskRefunded())
             ->action(function (): void {
                 if ($this->haltForTraining(__('Practice: mark-as-returned simulated.'))) {
                     return;
@@ -98,7 +100,7 @@ trait MarksArrivals
                 abort_unless(Gate::allows('record-departures'), 403);
 
                 $attendance = $this->getExistingAttendance();
-                abort_unless($attendance && $attendance->departed_at !== null, 404);
+                abort_unless($attendance && $attendance->departed_at !== null && ! $attendance->isDeskRefunded(), 404);
 
                 $attendance->update(['departed_at' => null]);
 

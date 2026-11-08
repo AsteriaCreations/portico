@@ -9,7 +9,9 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
- * One same-night conversion of a paid door entry into a subscription. Written
+ * One correction to a paid visit: a same-night conversion of a paid door
+ * entry into a subscription (EntryCorrectionService), or a refund at the desk
+ * soon after check-in, with no subscription (DeskRefundService). Written
  * only by App\Services\EntryCorrectionService; see PaymentCorrectionPolicy.
  */
 #[Fillable([

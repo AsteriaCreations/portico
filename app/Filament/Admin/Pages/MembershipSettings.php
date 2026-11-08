@@ -77,6 +77,7 @@ class MembershipSettings extends Page
             'checkin_close_minutes_overnight',
             'checkin_close_minutes_same_day',
             'first_visit_after_close_enabled',
+            'desk_refund_window_minutes',
             'kiosk_show_code_seconds',
             'kiosk_result_seconds',
             'kiosk_problem_result_seconds',
@@ -319,6 +320,14 @@ class MembershipSettings extends Page
                         Toggle::make('first_visit_after_close_enabled')
                             ->label('Let a first visit check in after close')
                             ->helperText(__('Lets the Check-In Desk still check in someone on their first visit (e.g. a new member finishing paperwork) after an event\'s check-in has closed. Off, check-in closes for everyone. The kiosk is always closed after close. On by default.'))
+                            ->required(),
+                        TextInput::make('desk_refund_window_minutes')
+                            ->label('Desk refund window (minutes)')
+                            ->helperText(__('How long after someone checks in the Check-In Desk can still refund their visit with "Refund visit". After that, a Manager handles it. Only matters while "Door can refund a visit soon after check-in" is on (Feature Flags).'))
+                            ->numeric()
+                            ->integer()
+                            ->minValue(1)
+                            ->maxValue(240)
                             ->required(),
                     ]),
                 Section::make(__('Check-In Desk'))

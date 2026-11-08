@@ -93,6 +93,27 @@ class Attendance extends Model
     }
 
     /**
+     * Refunded at the desk (DeskRefundService): a correction with no
+     * subscription.
+     */
+    public function isDeskRefunded(): bool
+    {
+        return $this->paymentCorrections()->whereNull('subscription_id')->exists();
+    }
+
+    /**
+     * Leaves out visits refunded at the desk, which don't count toward the
+     * showrunner's or instructor's pay.
+     *
+     * @param  Builder<Attendance>  $query
+     */
+    #[Scope]
+    protected function notDeskRefunded(Builder $query): void
+    {
+        $query->whereDoesntHave('paymentCorrections', fn (Builder $correction) => $correction->whereNull('subscription_id'));
+    }
+
+    /**
      * Per-visit, not per-member -- a guest can be overnight on one attendance
      * row and not another. Driven by the club's existing Private room
      * rental/Sleepover add-ons rather than a separate flag; see
