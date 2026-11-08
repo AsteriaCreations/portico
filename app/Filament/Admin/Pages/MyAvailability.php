@@ -115,7 +115,7 @@ class MyAvailability extends Page
                 'start' => $slot->starts_at->isoFormat('LT'),
                 'end' => $slot->ends_at->isoFormat('LT'),
             ]))
-            ->helperText($locked ? __('This shift has started, so it can\'t be changed.') : $slot->notes)
+            ->helperText($locked ? __('This shift has started or its week\'s schedule is out, so it can\'t be changed.') : $slot->notes)
             ->options(ShiftPreference::class)
             ->inline()
             ->disabled($locked);

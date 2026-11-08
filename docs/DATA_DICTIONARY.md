@@ -228,6 +228,8 @@ drawer, add those rows back (see recipe).
 | `shift_templates` | Per event type: `shift_role_id`, `start_offset_minutes` (from the event's `starts_at`; negative = before), `duration_minutes`, `headcount`. Copied onto each new event. |
 | `shift_slots` | The staff shifts on one event: `event_id`, `shift_role_id`, `starts_at`/`ends_at`, `headcount` (people needed), `notes`. |
 | `shift_availabilities` | One staff member's answer for one shift: `shift_slot_id`, `user_id`, `preference` ∈ `preferred`, `available`, `unavailable`. No row = not answered. |
+| `shift_assignments` | Who is scheduled on each shift: `shift_slot_id`, `user_id`, `assigned_by`. |
+| `schedule_weeks` | Schedule weeks published to staff: `week_starts_on` (the week's first day), `published_at`, `published_by`. No row = not published. |
 | `shift_week_notes` | A staff member's free-text note for one schedule week (`week_starts_on`, the week's first day). |
 | `membership_settings` | The singleton (ground rule 7). |
 

@@ -42,4 +42,9 @@ class ShiftSlot extends Model
     {
         return $this->hasMany(ShiftAvailability::class);
     }
+
+    public function assignments(): HasMany
+    {
+        return $this->hasMany(ShiftAssignment::class);
+    }
 }
