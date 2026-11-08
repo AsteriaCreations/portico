@@ -1,5 +1,6 @@
 <x-screen-instructions :title="__('How to use Private Rentals')">
     <p>{{ __('Every room booked for a member\'s private rental, soonest first. Bookings are made at the Check-In Desk: pick the member, then Book a private rental.') }}</p>
     <p>{!! __('Use <strong>Change</strong> to move a booking or change its hours or headcount; it keeps the prices it was booked at. <strong>Cancel booking</strong> frees the room and takes the rental off the desk. Neither is offered once a booking is over, cancelled or paid, and a booking can\'t be cancelled once someone has checked in to it.') !!}</p>
+    <p>{!! __('The group checks in to the rental at the desk: pick the rental as the event. The people the renter paid for get in free, first come, first served, the renter included; after that each person pays the extra-person charge. The desk shows how many covered spots are used under <strong>Due</strong>. The renter can register non-members as their guests, if the club allows it.') !!}</p>
     <p>{!! __('Payment is taken at the desk on the day of the rental: pick the renter and use <strong>Collect payment</strong> on their booking. A paid booking can only be cancelled by a Manager, with <strong>Cancel and refund</strong> on the renter\'s member card.') !!}</p>
 </x-screen-instructions>

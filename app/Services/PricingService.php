@@ -8,13 +8,14 @@ use App\Models\AddOn;
 use App\Models\Event;
 use App\Models\Member;
 use App\Models\Plan;
+use App\Models\PrivateRental;
 use App\Support\Cents;
 use Illuminate\Support\Collection;
 
 /**
  * The single source of truth for what a member owes at an event. Entry is
  * priced on its own (host bypass, category comp — full, or reduced to the
- * event's comped_entry_fee — the Regular subscription's
+ * event's comped_entry_fee — a private rental's paid-for spots, the Regular subscription's
  * per-visit credit); every subscribable add-on (Pool, at launch — see
  * AddOn::subscribable()) is priced independently of entry and of every other
  * add-on, each drawing on its own subscription/day-pass/comp coverage. See
@@ -109,10 +110,15 @@ class PricingService
             );
         }
 
+        $rental = $event->privateRental?->cancelled_at === null ? $event->privateRental : null;
+
         if ($entryFee > 0 && $event->host_id !== null && (int) $event->host_id === $member->id) {
             $entryCoverage = $entryFee;
             $entryCoveredBy = EntryCoverageSource::Host;
-        } elseif ($entryFee > 0 && $regularActive) {
+        } elseif ($entryFee > 0 && $rental !== null && $this->hasCoveredRentalSpot($rental, $member)) {
+            $entryCoverage = $entryFee;
+            $entryCoveredBy = EntryCoverageSource::PrivateRental;
+        } elseif ($entryFee > 0 && $regularActive && $rental === null) {
             $credit = Cents::of(Plan::currentFor(AddOn::entry(), $event->event_date)?->credit);
             $entryCoverage = min($entryFee, $credit);
             $entryCoveredBy = EntryCoverageSource::RegularSubscription;
@@ -154,6 +160,21 @@ class PricingService
             voucherCoverageCents: 0,
             amountPaidCents: $amountPaid,
         );
+    }
+
+    /**
+     * Whether a spot the renter paid for is still free for $member: first
+     * come, first served, counting everyone already checked in to the
+     * rental (the renter included) other than $member. Past that, each
+     * person pays the rental's per-extra-person charge (the event's entry
+     * fee), which a subscription doesn't cover: it's the rental's charge,
+     * not the club's entry. CheckInService prices under
+     * CapacityService::lockForAdmission(), so two desks can't both take
+     * the last spot.
+     */
+    private function hasCoveredRentalSpot(PrivateRental $rental, Member $member): bool
+    {
+        return $rental->spotsTaken(except: $member) < $rental->coveredSpots();
     }
 
     /**

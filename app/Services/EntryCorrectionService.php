@@ -45,6 +45,9 @@ class EntryCorrectionService
         return match (true) {
             ! $event->isCurrentlyActive() => __('Only a visit to tonight\'s event can be converted.'),
             $attendance->checked_in_at === null => __('The member hasn\'t arrived yet.'),
+            // A subscription doesn't cover a rental's extra-person charge
+            // (PricingService::hasCoveredRentalSpot()).
+            $event->privateRental()->exists() => __('A private rental\'s extra-person charge can\'t be converted.'),
             Cents::of($attendance->entry_fee) <= 0,
             $attendance->entry_covered_by !== EntryCoverageSource::None,
             Cents::of($attendance->voucher_coverage) > 0,

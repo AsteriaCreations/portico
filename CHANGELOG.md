@@ -12,6 +12,21 @@ releases below could carry small breaking changes in a minor release.
 
 ### Added
 
+- **Private room rentals, part 4: checking the group in.** Pick the rental as the event at the
+  desk and check people in as usual. The room's included people, or the headcount booked when
+  that's more, get in free, first come, first served, with the renter (host) counting as one;
+  their visits are recorded as a new *Private rental* coverage. After that each person pays the
+  rental's extra-person charge (its event's entry fee), which a subscription doesn't cover and
+  the paid-entry correction can't convert. What attendees pay at a rental's door counts as
+  **Rental** revenue in the box, Register Shifts and the monthly chart, not Event. A line under
+  **Due** shows how many covered spots are used and what the next person pays. With *Private
+  rentals can bring guests* on, only the renter registers guests at their rental, and the
+  nightly guest limit doesn't apply there (probation still does); off, guests can't be
+  registered there and a Guest-category member is turned away ("Private rentals are for members
+  only"). Normal admission and capacity still apply. Migration: widens
+  `attendance.entry_covered_by` and `instructor_pay_rates.entry_covered_by` (the
+  `analyst_attendance` view is recreated unchanged). This completes private rentals.
+
 - **Two voucher balances on one check-in.** With *Apply from a different member's balance*
   picked, the desk now also offers *From [member]'s own balance* when the attendee has credit
   of their own. The attendee's credit is spent first and the other member's covers what's

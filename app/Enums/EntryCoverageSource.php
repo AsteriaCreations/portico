@@ -12,6 +12,7 @@ enum EntryCoverageSource: string implements HasLabel
     case LegacyImport = 'legacy_import';
     case EventComp = 'event_comp';
     case Host = 'host';
+    case PrivateRental = 'private_rental';
 
     // Without this, Filament's TextColumn::badge() displays the raw backing
     // value (e.g. "regular_subscription") rather than a humanized name.
@@ -24,6 +25,7 @@ enum EntryCoverageSource: string implements HasLabel
             self::LegacyImport => __('Legacy Import'),
             self::EventComp => __('Event Comp'),
             self::Host => __('Host'),
+            self::PrivateRental => __('Private rental'),
         };
     }
 }

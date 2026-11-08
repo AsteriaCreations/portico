@@ -3,6 +3,7 @@
 namespace App\Filament\Concerns;
 
 use App\Exceptions\PrivateRentalRefused;
+use App\Models\Event;
 use App\Models\Member;
 use App\Models\MembershipSetting;
 use App\Models\PrivateRental;
@@ -282,6 +283,26 @@ trait BooksPrivateRentals
     }
 
     /**
+     * When the desk's event is a private rental: how many of its covered
+     * spots are used, and what the next person pays. Null otherwise.
+     */
+    public function selectedEventRentalSpotsLine(): ?string
+    {
+        $rental = $this->getSelectedEvent()?->privateRental;
+
+        if ($rental === null || $rental->cancelled_at !== null) {
+            return null;
+        }
+
+        $taken = $rental->spotsTaken();
+        $covered = $rental->coveredSpots();
+
+        return $taken < $covered
+            ? __('Private rental: :taken of :covered covered spots used. The next person is covered by the rental.', ['taken' => $taken, 'covered' => $covered])
+            : __('Private rental: all :covered covered spots used. Each extra person pays :fee.', ['covered' => $covered, 'fee' => MembershipSetting::formatMoney((float) $rental->event->entry_fee)]);
+    }
+
+    /**
      * The modal's running total, or what's still missing / why it can't be
      * booked.
      */
@@ -326,4 +347,6 @@ trait BooksPrivateRentals
     }
 
     abstract public function getSelectedMember(): ?Member;
+
+    abstract public function getSelectedEvent(): ?Event;
 }

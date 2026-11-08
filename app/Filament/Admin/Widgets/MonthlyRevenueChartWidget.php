@@ -7,6 +7,7 @@ use App\Models\AddOnDayPass;
 use App\Models\Attendance;
 use App\Models\MembershipSetting;
 use App\Models\MiscellaneousPayment;
+use App\Models\PrivateRental;
 use App\Models\PrivateRentalPayment;
 use App\Models\Subscription;
 use App\Support\Cents;
@@ -59,6 +60,7 @@ class MonthlyRevenueChartWidget extends ChartWidget
                 [
                     'label' => 'Event',
                     'data' => $months->map(fn ($month) => Cents::toFloat(Cents::of(Attendance::query()
+                        ->whereNotIn('event_id', PrivateRental::query()->select('event_id'))
                         ->whereNotNull('checked_in_at')
                         ->whereBetween('checked_in_at', [$month, $month->copy()->endOfMonth()])
                         ->sum('amount_paid'))))->all(),
@@ -69,13 +71,22 @@ class MonthlyRevenueChartWidget extends ChartWidget
                         ->whereBetween('paid_on', [$month, $month->copy()->endOfMonth()])
                         ->sum('amount_paid'))))->all(),
                 ],
-                // Only once the club uses private rentals (or has taken rental
-                // money before), so a club without them keeps three series.
-                ...(MembershipSetting::current()->private_rentals_enabled || PrivateRentalPayment::query()->exists() ? [[
+                // Only once the club uses private rentals (or has booked one
+                // before), so a club without them keeps three series. A
+                // rental's payments plus what its attendees paid at the door
+                // (its extra-person charge), as in revenueBreakdown().
+                ...(MembershipSetting::current()->private_rentals_enabled || PrivateRental::query()->exists() ? [[
                     'label' => 'Rental',
-                    'data' => $months->map(fn ($month) => Cents::toFloat(Cents::of(PrivateRentalPayment::query()
-                        ->whereBetween('created_at', [$month, $month->copy()->endOfMonth()])
-                        ->sum('amount'))))->all(),
+                    'data' => $months->map(fn ($month) => Cents::toFloat(
+                        Cents::of(PrivateRentalPayment::query()
+                            ->whereBetween('created_at', [$month, $month->copy()->endOfMonth()])
+                            ->sum('amount'))
+                        + Cents::of(Attendance::query()
+                            ->whereIn('event_id', PrivateRental::query()->select('event_id'))
+                            ->whereNotNull('checked_in_at')
+                            ->whereBetween('checked_in_at', [$month, $month->copy()->endOfMonth()])
+                            ->sum('amount_paid'))
+                    ))->all(),
                 ]] : []),
                 [
                     'label' => 'Other',

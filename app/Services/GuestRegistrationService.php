@@ -30,7 +30,31 @@ class GuestRegistrationService
             && $sponsorAttendance?->checked_in_at
             && $sponsorAttendance->member_id === $sponsor->id
             && $sponsor->canSponsorGuests()
-            && $sponsor->hasGuestAllowanceLeft($sponsorAttendance);
+            && $this->rentalAllowsGuestsFrom($sponsor, $sponsorAttendance)
+            && $this->hasAllowanceLeft($sponsor, $sponsorAttendance);
+    }
+
+    /**
+     * At a private rental, only the renter brings guests, and only while
+     * the club lets rentals include non-members
+     * (private_rental_guests_allowed). Any other event: always.
+     */
+    private function rentalAllowsGuestsFrom(Member $sponsor, Attendance $sponsorAttendance): bool
+    {
+        $rental = $sponsorAttendance->event->privateRental;
+
+        return $rental === null
+            || (MembershipSetting::current()->private_rental_guests_allowed && $rental->member_id === $sponsor->id);
+    }
+
+    /**
+     * The nightly guest limit, except for the renter at their own rental:
+     * their group is what they booked, and anyone past the spots they paid
+     * for pays the rental's extra-person charge.
+     */
+    private function hasAllowanceLeft(Member $sponsor, Attendance $sponsorAttendance): bool
+    {
+        return $sponsorAttendance->event->privateRental !== null || $sponsor->hasGuestAllowanceLeft($sponsorAttendance);
     }
 
     /**
@@ -48,6 +72,7 @@ class GuestRegistrationService
     {
         abort_unless($sponsorAttendance->member_id === $sponsor->id, 403);
         abort_unless($sponsor->canSponsorGuests(), 403);
+        abort_unless($this->rentalAllowsGuestsFrom($sponsor, $sponsorAttendance), 403);
 
         $guestCategory = Category::where('name', 'Guest')->firstOrFail();
 
@@ -59,7 +84,7 @@ class GuestRegistrationService
 
                     abort_unless($sponsorAttendance->checked_in_at, 403);
 
-                    if (! $sponsor->hasGuestAllowanceLeft($sponsorAttendance)) {
+                    if (! $this->hasAllowanceLeft($sponsor, $sponsorAttendance)) {
                         throw new GuestRefused(__('Guest limit reached — :max per member per night. No guest was registered.', ['max' => MembershipSetting::current()->max_guests_per_night]));
                     }
 

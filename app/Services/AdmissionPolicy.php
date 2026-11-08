@@ -38,6 +38,12 @@ class AdmissionPolicy
             return new AdmissionDecision(AdmissionOutcome::Block, __('Under :age — no admittance', ['age' => $settings->age_of_majority]));
         }
 
+        // A club that keeps private rentals to members only
+        // (private_rental_guests_allowed off) turns guests away at one.
+        if ($member->isGuest() && ! $settings->private_rental_guests_allowed && $event->exists && $event->privateRental()->exists()) {
+            return new AdmissionDecision(AdmissionOutcome::Block, __('Private rentals are for members only'));
+        }
+
         if ($member->on_watchlist) {
             return new AdmissionDecision(AdmissionOutcome::Warn, __('Notify :label', ['label' => MembershipSetting::watchlistNotifyLabel()]), $member->watchlist_reason);
         }
