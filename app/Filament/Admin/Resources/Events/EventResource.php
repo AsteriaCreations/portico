@@ -11,6 +11,7 @@ use App\Filament\Admin\Resources\Events\RelationManagers\AttendanceRelationManag
 use App\Filament\Admin\Resources\Events\RelationManagers\CompListRelationManager;
 use App\Filament\Admin\Resources\Events\RelationManagers\CompRequestsRelationManager;
 use App\Filament\Admin\Resources\Events\RelationManagers\PrepayListRelationManager;
+use App\Filament\Admin\Resources\Events\RelationManagers\ShiftSlotsRelationManager;
 use App\Filament\Admin\Resources\Events\Schemas\EventForm;
 use App\Filament\Admin\Resources\Events\Tables\EventsTable;
 use App\Filament\Concerns\TranslatesResourceLabels;
@@ -65,6 +66,7 @@ class EventResource extends Resource
             CompListRelationManager::class,
             CompRequestsRelationManager::class,
             AddOnDayPassesRelationManager::class,
+            ShiftSlotsRelationManager::class,
         ];
     }
 

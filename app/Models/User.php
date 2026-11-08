@@ -14,6 +14,7 @@ use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -92,6 +93,14 @@ class User extends Authenticatable implements FilamentUser
     public function capabilities(): HasMany
     {
         return $this->hasMany(UserCapability::class);
+    }
+
+    /**
+     * The shift roles (Door, Bar…) this person can be scheduled for.
+     */
+    public function shiftRoles(): BelongsToMany
+    {
+        return $this->belongsToMany(ShiftRole::class);
     }
 
     /**

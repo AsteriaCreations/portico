@@ -17,7 +17,7 @@ beforeEach(function () {
     AddOn::create(['name' => AddOn::ENTRY_NAME, 'kind' => AddOnKind::Entry, 'subscribable' => true]);
 
     // Resources hidden behind a default-off flag answer 403 until it's on.
-    MembershipSetting::current()->update(['private_rentals_enabled' => true]);
+    MembershipSetting::current()->update(['private_rentals_enabled' => true, 'staff_scheduling_enabled' => true]);
 });
 
 // Covers both mechanisms: a hand-written page view with <x-screen-instructions/>
