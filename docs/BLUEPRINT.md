@@ -548,6 +548,8 @@ Each one writes an append-only `payment_corrections` row with these fields:
 
 Every active Owner gets a notification. Manager+ reviews them under Records → Payment corrections and on the member's page.
 
+**Desk refund.** `App\Services\DeskRefundService` lets Door+ refund a visit at the Check-In Desk ("Refund visit") for someone who leaves straight after checking in. It's behind `membership_settings.desk_refunds_enabled` (Feature Flags, default off) and only within `desk_refund_window_minutes` (Membership Settings, default 30) of `checked_in_at`. The visit stays: `amount_paid` goes to 0 (everything paid on it, add-ons and fee included), `departed_at` is set, and "Mark as returned" is no longer offered. The refund is a `payment_corrections` row with no `subscription_id`, `subscription_amount` 0 and `net_amount` = −the refund, on the visit's own shift and method, so the drawer's expected cash drops through the usual SUMs. The reason, required, is also written as a behavior note on the visit while behavior notes are on. Every active Owner is notified. Refused (left to a Manager) when the shift has closed, the visit was paid ahead or used voucher credit, it already has a correction, or nothing was paid. A subscription or day pass bought in the same check-in is its own record and isn't refunded. A refunded visit still counts as a visit (first visit, probation, eligibility) but not toward the showrunner's or instructor's pay (`Attendance::notDeskRefunded()`).
+
 ---
 
 ## Removing a visit

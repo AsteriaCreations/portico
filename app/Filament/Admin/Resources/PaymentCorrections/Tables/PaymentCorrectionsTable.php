@@ -2,6 +2,7 @@
 
 namespace App\Filament\Admin\Resources\PaymentCorrections\Tables;
 
+use App\Models\PaymentCorrection;
 use Carbon\Carbon;
 use Filament\Forms\Components\DatePicker;
 use Filament\Support\Icons\Heroicon;
@@ -30,6 +31,12 @@ class PaymentCorrectionsTable
                     ->searchable(),
                 TextColumn::make('attendance.event.name')
                     ->label('Event'),
+                // No subscription = a desk refund (DeskRefundService).
+                TextColumn::make('kind')
+                    ->label('Kind')
+                    ->state(fn (PaymentCorrection $record): string => $record->subscription_id === null
+                        ? __('Desk refund')
+                        : __('Converted to subscription')),
                 TextColumn::make('old_amount_paid')
                     ->label('Visit paid before')
                     ->money(),

@@ -179,7 +179,7 @@ automatically after an event to comp-listed members who arrived (`comp_reasons.g
 |---|---|---|
 | `add_on_day_passes` | An add-on bought for one event outside a check-in | `amount_paid` |
 | `miscellaneous_payments` | Other money at the desk (vendor, donation, …), with a `notation` | `amount` |
-| `payment_corrections` | A same-night paid entry converted into a subscription (see below) | `old_amount_paid`, `new_amount_paid`, `subscription_amount`, `net_amount` |
+| `payment_corrections` | A same-night paid entry converted into a subscription, or a desk refund soon after check-in (`subscription_id` empty; see below) | `old_amount_paid`, `new_amount_paid`, `subscription_amount`, `net_amount` |
 | `visit_removals` | A deleted visit, a copy of what it had paid | `amount_paid` |
 | `instructor_payouts` | Cash paid to an event's instructor out of the drawer (signed; corrections are further rows) | `amount` (`calculated_amount` = what the rule suggested) |
 | `register_drops` | Cash taken out of the drawer mid-shift | `amount` |
@@ -188,7 +188,10 @@ automatically after an event to comp-listed members who arrived (`comp_reasons.g
 **Payment corrections** are the one case where a visit's `amount_paid` is changed after the
 fact. The visit is re-priced (`old_amount_paid` → `new_amount_paid`), a new `subscriptions` row
 is created (`subscription_id`), and the correction row keeps the before/after. Revenue totals
-stay right if you sum `attendance` + `subscriptions` as they are now.
+stay right if you sum `attendance` + `subscriptions` as they are now. A row with no
+`subscription_id` is a **desk refund**: the visit's `amount_paid` went to 0 and `net_amount` is
+the negative amount handed back. The visit is still there (marked departed), so count it as a
+visit but not as paid.
 
 **Visit removals:** a removed visit's `attendance` row is deleted, and a `visit_removals` row
 keeps a copy (member, event, amount, method, shift). `after_shift_closed = 1` means the money

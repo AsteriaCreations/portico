@@ -126,6 +126,7 @@ class ShowrunnerPayoutService
     {
         return Attendance::query()
             ->where('event_id', $event->id)
-            ->whereNotNull('checked_in_at');
+            ->whereNotNull('checked_in_at')
+            ->notDeskRefunded();
     }
 }

@@ -12,6 +12,19 @@ releases below could carry small breaking changes in a minor release.
 
 ### Added
 
+- **Refund a visit at the desk.** For someone who leaves straight after checking in, the
+  Check-In Desk gets a "Refund visit" button (Door+) for a short time after check-in: 30
+  minutes by default (*Desk refund window*, Membership Settings), while the visit's register
+  shift is open. Everything paid for the visit is refunded and the shift's expected cash drops
+  to match. The visit stays on the member's record, marked departed and can't be marked
+  returned; the reason, required, is saved as a behavior note; it's listed under Payment
+  corrections as a *Desk refund*; and the Owners are notified. A refunded visit doesn't count
+  toward the showrunner's or instructor's pay. Visits paid ahead or with voucher credit, and
+  anything past the window, are left to a Manager; a subscription or day pass bought at the
+  same check-in isn't refunded. Off by default: *Door can refund a visit soon after check-in*
+  on Feature Flags. Migration: two `membership_settings` columns, and
+  `payment_corrections.subscription_id` becomes optional.
+
 - **Visits before these records.** A new member field, *Visits before these records*
   (`members.prior_visits`, Manager+ on the member form, an optional last `prior_visits` column
   on the member upload), holds visits a member made before the club started using Portico, e.g.

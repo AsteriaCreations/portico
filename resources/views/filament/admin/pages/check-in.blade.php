@@ -387,6 +387,9 @@
                     <p class="font-medium desk-text-check">
                         {{ __('Checked in at :time — paid :amount.', ['time' => $attendance->checked_in_at->isoFormat('LT'), 'amount' => \App\Models\MembershipSetting::formatMoney($attendance->amount_paid)]) }}
                         {{ __('Marked departed at :time.', ['time' => $attendance->departed_at->isoFormat('LT')]) }}
+                        @if ($attendance->isDeskRefunded())
+                            {{ __('Refunded at the desk.') }}
+                        @endif
                     </p>
 
                     @if ($this->markAsReturnedAction->isVisible())
@@ -410,6 +413,13 @@
                     @elseif (\App\Models\MembershipSetting::current()->guests_enabled)
                         <p class="mt-2 text-sm text-gray-500">{{ __('On probation — cannot bring a guest yet.') }}</p>
                     @endif
+                @endif
+
+                {{-- Door+ behind desk_refunds_enabled, only while DeskRefundService allows it. --}}
+                @if ($this->refundVisitAction->isVisible())
+                    <div class="mt-4">
+                        {{ $this->refundVisitAction }}
+                    </div>
                 @endif
 
                 {{-- Manager+ only, and only while EntryCorrectionService allows it. --}}
