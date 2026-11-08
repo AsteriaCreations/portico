@@ -50,7 +50,7 @@ class StaffLoginCheckInService
 
         $member = $user->member;
 
-        $events = Event::currentQuery()->get()->filter(fn (Event $event): bool => $event->isCurrentlyActive());
+        $events = Event::currentQuery()->excludingPrivateRentals()->get()->filter(fn (Event $event): bool => $event->isCurrentlyActive());
         if ($events->isEmpty()) {
             return;
         }

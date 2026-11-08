@@ -4,6 +4,7 @@ namespace App\Policies;
 
 use App\Models\MembershipSetting;
 use App\Models\User;
+use Illuminate\Database\Eloquent\Model;
 
 class RoomPolicy extends RoleGatedPolicy
 {
@@ -13,5 +14,13 @@ class RoomPolicy extends RoleGatedPolicy
     public function viewAny(User $user): bool
     {
         return parent::viewAny($user) && MembershipSetting::current()->private_rentals_enabled;
+    }
+
+    // A room that's been booked keeps its bookings' history: turn it off
+    // (active) instead. The bulk delete checks each record against this too
+    // (RoomsTable's authorizeIndividualRecords).
+    public function delete(User $user, Model $model): bool
+    {
+        return parent::delete($user, $model) && ! $model->privateRentals()->exists();
     }
 }

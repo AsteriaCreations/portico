@@ -6,6 +6,7 @@ use Database\Factories\RoomFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
  * A room a member can book for a private rental at the desk. Its prices are
@@ -30,5 +31,10 @@ class Room extends Model
             'sort_order' => 'integer',
             'active' => 'boolean',
         ];
+    }
+
+    public function privateRentals(): HasMany
+    {
+        return $this->hasMany(PrivateRental::class);
     }
 }

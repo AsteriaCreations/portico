@@ -6,6 +6,7 @@ use App\Enums\AdmissionOutcome;
 use App\Enums\EntryCoverageSource;
 use App\Enums\Role;
 use App\Exceptions\CheckInRefused;
+use App\Filament\Concerns\BooksPrivateRentals;
 use App\Filament\Concerns\CapturesMemberIdentity;
 use App\Filament\Concerns\ManagesCashBox;
 use App\Filament\Concerns\MarksArrivals;
@@ -69,6 +70,7 @@ use Symfony\Component\HttpKernel\Exception\HttpException;
 
 class CheckIn extends Page implements HasTable
 {
+    use BooksPrivateRentals;
     use CapturesMemberIdentity;
     use InteractsWithTable;
     use ManagesCashBox;
@@ -1415,7 +1417,7 @@ class CheckIn extends Page implements HasTable
 
     protected static function defaultEventId(): ?int
     {
-        $currentEventIds = static::currentEventQuery()->pluck('id');
+        $currentEventIds = static::currentEventQuery()->excludingPrivateRentals()->pluck('id');
 
         return $currentEventIds->count() === 1 ? $currentEventIds->first() : null;
     }
