@@ -116,7 +116,8 @@ server. Apache as a Windows service (§2) has none of those constraints.
   a fresh go-live isn't the place to be the first to run the app on a newer PHP.
 - **Run PHP 8.4.27 or later.** Earlier 8.4 builds are open to unauthenticated remote code
   execution through the request parser (CVE-2026-109618 and CVE-2026-109619, "php2shell",
-  fixed 2026-10-21). Check with `php -v`. To upgrade, extract the new zip over `C:\php`,
+  fixed 2026-10-21). Check with `php -v`. `composer.json` pins `config.platform.php` to this
+  same version, so dependency updates only pick packages that run on it; raise both together. To upgrade, extract the new zip over `C:\php`,
   keep your `php.ini`, then restart the Apache service. The shipped Apache configs also
   set `session.upload_progress.enabled Off`, which Laravel doesn't use.
 - `copy C:\php\php.ini-production C:\php\php.ini`, then edit it:
