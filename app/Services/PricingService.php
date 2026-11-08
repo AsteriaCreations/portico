@@ -206,4 +206,32 @@ class PricingService
             amountPaidCents: $breakdown->amountPaidCents - $applied,
         );
     }
+
+    /**
+     * How much each voucher balance pays, when a check-in draws on more than
+     * one (the attendee's own, then another member's). Taken in the order
+     * given: each source spends up to the smaller of what the desk asked
+     * for and its balance, on entry/pool first and then on the
+     * subscriptions bought in the same check-in, and nothing past what's
+     * due. The desk's preview and CheckInService both use this, so the Due
+     * line always matches what's spent. All amounts are cents.
+     *
+     * @param  list<array{requested: int, balance: int}>  $sources
+     * @return list<array{entry: int, subscription: int}> one per source, same order
+     */
+    public function planVoucherDraws(int $entryDueCents, int $subscriptionDueCents, array $sources): array
+    {
+        $entryLeft = max(0, $entryDueCents);
+        $subscriptionLeft = max(0, $subscriptionDueCents);
+
+        return array_map(function (array $source) use (&$entryLeft, &$subscriptionLeft): array {
+            $available = max(0, min($source['requested'], $source['balance']));
+            $entry = min($available, $entryLeft);
+            $subscription = min($available - $entry, $subscriptionLeft);
+            $entryLeft -= $entry;
+            $subscriptionLeft -= $subscription;
+
+            return ['entry' => $entry, 'subscription' => $subscription];
+        }, $sources);
+    }
 }

@@ -129,7 +129,7 @@ class CheckIn extends Page implements HasTable
     // full amount and Check in asked for a payment method.
     public ?array $pricingData = self::EMPTY_PRICING_DATA;
 
-    private const EMPTY_PRICING_DATA = ['add_on_ids' => [], 'apply_voucher' => false, 'voucher_payer_id' => null];
+    private const EMPTY_PRICING_DATA = ['add_on_ids' => [], 'apply_voucher' => false, 'voucher_payer_id' => null, 'own_voucher_amount' => null];
 
     // Training mode: a new volunteer can rehearse the whole desk flow —
     // search, status line, Due total, Check in, the folded subscription /
@@ -554,22 +554,54 @@ class CheckIn extends Page implements HasTable
             return null;
         }
 
+        $entryCents = array_sum(array_column($this->getLiveVoucherPlan($breakdown), 'entry'));
+
+        return $entryCents > 0
+            ? app(PricingService::class)->applyVoucher($breakdown, $entryCents, $entryCents)
+            : $breakdown;
+    }
+
+    /**
+     * How the voucher choices would split, previewed without spending: the
+     * same sources, order and PricingService::planVoucherDraws() split as
+     * CheckInService::checkIn(), so the Due line matches what's spent.
+     *
+     * @return list<array{entry: int, subscription: int}>
+     */
+    private function getLiveVoucherPlan(?PriceBreakdown $beforeVoucher = null): array
+    {
         $member = $this->getSelectedMember();
+        $beforeVoucher ??= $this->getLivePriceBreakdownBeforeVoucher();
 
-        if ($member && ($this->pricingData['apply_voucher'] ?? false) && MembershipSetting::current()->vouchers_enabled) {
-            $payerId = ! empty($this->pricingData['voucher_payer_id']) ? $this->pricingData['voucher_payer_id'] : $member->id;
-            $payer = Member::find($payerId);
-
-            if ($payer) {
-                $breakdown = app(PricingService::class)->applyVoucher(
-                    $breakdown,
-                    Cents::of($payer->voucherBalance()),
-                    Cents::of($this->pricingData['voucher_amount'] ?? 0),
-                );
-            }
+        if (! $member || ! $beforeVoucher || ! ($this->pricingData['apply_voucher'] ?? false) || ! MembershipSetting::current()->vouchers_enabled) {
+            return [];
         }
 
-        return $breakdown;
+        $other = $this->otherVoucherPayer();
+        $sources = $other === null
+            ? [[$member, Cents::of($this->pricingData['voucher_amount'] ?? 0)]]
+            : array_values(array_filter([
+                Cents::of($this->pricingData['own_voucher_amount'] ?? 0) > 0 ? [$member, Cents::of($this->pricingData['own_voucher_amount'])] : null,
+                [$other, Cents::of($this->pricingData['voucher_amount'] ?? 0)],
+            ]));
+
+        return app(PricingService::class)->planVoucherDraws(
+            $beforeVoucher->amountPaidCents,
+            $this->getLiveSubscriptionTotalCents(),
+            array_map(fn (array $source): array => ['requested' => $source[1], 'balance' => Cents::of($source[0]->voucherBalance())], $sources),
+        );
+    }
+
+    /**
+     * The other member picked under "Apply from a different member's
+     * balance", or null when it's blank or the attendee themself.
+     */
+    private function otherVoucherPayer(): ?Member
+    {
+        $payerId = $this->pricingData['voucher_payer_id'] ?? null;
+        $member = $this->getSelectedMember();
+
+        return filled($payerId) && (int) $payerId !== $member?->id ? Member::find($payerId) : null;
     }
 
     /**
@@ -619,23 +651,7 @@ class CheckIn extends Page implements HasTable
      */
     public function getLiveSubscriptionVoucherCents(): int
     {
-        $member = $this->getSelectedMember();
-        $subscriptionTotal = $this->getLiveSubscriptionTotalCents();
-
-        if (! $member || $subscriptionTotal <= 0 || ! ($this->pricingData['apply_voucher'] ?? false) || ! MembershipSetting::current()->vouchers_enabled) {
-            return 0;
-        }
-
-        $payer = Member::find(! empty($this->pricingData['voucher_payer_id']) ? $this->pricingData['voucher_payer_id'] : $member->id);
-
-        if (! $payer) {
-            return 0;
-        }
-
-        $available = min(Cents::of($this->pricingData['voucher_amount'] ?? 0), Cents::of($payer->voucherBalance()));
-        $usedOnEntry = $this->getLivePriceBreakdown()?->voucherCoverageCents ?? 0;
-
-        return max(0, min($available - $usedOnEntry, $subscriptionTotal));
+        return array_sum(array_column($this->getLiveVoucherPlan(), 'subscription'));
     }
 
     // Add-ons never go through PricingService/PriceBreakdown — they're a flat
@@ -711,12 +727,25 @@ class CheckIn extends Page implements HasTable
         // attendee's own, or the other member picked below. Seeding it from
         // the attendee's balance alone left it blank (or at the attendee's
         // smaller balance) when another member was paying.
-        $suggestVoucherAmount = function (mixed $payerId) use ($member, $ownBalance, $dueBeforeVoucher): ?float {
-            $balance = filled($payerId) && (int) $payerId !== $member?->id
-                ? (Member::find($payerId)?->voucherBalance() ?? 0.0)
-                : $ownBalance;
+        // With another member picked, the attendee's own credit is suggested
+        // first and the other member's for whatever is still due after it.
+        $isOtherPayer = fn (mixed $payerId): bool => filled($payerId) && (int) $payerId !== $member?->id;
+        $suggestOtherAmount = fn (mixed $payerId, mixed $ownAmount): ?float => Cents::toFloat(min(
+            Cents::of(Member::find($payerId)?->voucherBalance() ?? 0.0),
+            max(0, $dueBeforeVoucher - min(Cents::of($ownAmount ?? 0), Cents::of($ownBalance))),
+        )) ?: null;
+        $suggestVoucherAmounts = function (Set $set, mixed $payerId) use ($isOtherPayer, $suggestOtherAmount, $ownBalance, $dueBeforeVoucher): void {
+            $ownAmount = Cents::toFloat(min(Cents::of($ownBalance), $dueBeforeVoucher)) ?: null;
 
-            return Cents::toFloat(min(Cents::of($balance), $dueBeforeVoucher)) ?: null;
+            if (! $isOtherPayer($payerId)) {
+                $set('own_voucher_amount', null);
+                $set('voucher_amount', $ownAmount);
+
+                return;
+            }
+
+            $set('own_voucher_amount', $ownAmount);
+            $set('voucher_amount', $suggestOtherAmount($payerId, $ownAmount));
         };
         $voucherLabel = $member
             ? __("Apply voucher credit — :amount available on :name's account", ['amount' => $this->formatCurrency($ownBalance), 'name' => $member->displayName()])
@@ -779,12 +808,12 @@ class CheckIn extends Page implements HasTable
                     ->live()
                     // Picking a subscription after the form loaded changes
                     // what's due, so the amount is re-suggested on ticking.
-                    ->afterStateUpdated(fn (Set $set, Get $get, ?bool $state) => $state ? $set('voucher_amount', $suggestVoucherAmount($get('voucher_payer_id'))) : null)
+                    ->afterStateUpdated(fn (Set $set, Get $get, ?bool $state) => $state ? $suggestVoucherAmounts($set, $get('voucher_payer_id')) : null)
                     ->visible($canPreviewPricing && $member && MembershipSetting::current()->vouchers_enabled && $dueBeforeVoucher > 0),
                 Select::make('voucher_payer_id')
                     ->label(__("Apply from a different member's balance (optional)"))
                     ->live()
-                    ->afterStateUpdated(fn (Set $set, mixed $state) => $set('voucher_amount', $suggestVoucherAmount($state)))
+                    ->afterStateUpdated(fn (Set $set, mixed $state) => $suggestVoucherAmounts($set, $state))
                     ->searchable()
                     ->getSearchResultsUsing(fn (string $search) => static::searchMembers($search)
                         ->mapWithKeys(fn (Member $payer) => [$payer->id => static::memberLabel($payer, $search).' — '.$this->formatCurrency($payer->voucherBalance()).' available'])
@@ -792,8 +821,21 @@ class CheckIn extends Page implements HasTable
                     ->getOptionLabelUsing(fn ($value) => ($payer = Member::find($value)) ? static::memberLabel($payer) : null)
                     ->helperText(__("Leave blank to use :name's own balance.", ['name' => $member?->displayName()]))
                     ->visible(fn (Get $get): bool => $canPreviewPricing && (bool) $get('apply_voucher')),
+                // Only with another member's balance picked: the attendee's
+                // own credit, spent first. Blank spends none of it.
+                TextInput::make('own_voucher_amount')
+                    ->label(fn (): string => __("From :name's own balance (:amount available)", ['name' => $member?->displayName(), 'amount' => $this->formatCurrency($ownBalance)]))
+                    ->numeric()
+                    ->minValue(0)
+                    ->step(0.01)
+                    ->live(onBlur: true)
+                    ->afterStateUpdated(fn (Set $set, Get $get, mixed $state) => $set('voucher_amount', $suggestOtherAmount($get('voucher_payer_id'), $state)))
+                    ->helperText(__("Spent first; the other member's balance covers what's left."))
+                    ->visible(fn (Get $get): bool => $canPreviewPricing && (bool) $get('apply_voucher') && $isOtherPayer($get('voucher_payer_id')) && $ownBalance > 0),
                 TextInput::make('voucher_amount')
-                    ->label(__('Voucher amount to apply'))
+                    ->label(fn (Get $get): string => $isOtherPayer($get('voucher_payer_id')) && $ownBalance > 0
+                        ? __("From the other member's balance")
+                        : __('Voucher amount to apply'))
                     ->numeric()
                     ->minValue(0.01)
                     ->step(0.01)
@@ -1366,6 +1408,7 @@ class CheckIn extends Page implements HasTable
             voucherPayerId: $pricingData['voucher_payer_id'] ?? null,
             voucherAmountCents: Cents::of($pricingData['voucher_amount'] ?? 0),
             voucherReason: (string) ($pricingData['voucher_reason'] ?? ''),
+            ownVoucherAmountCents: Cents::of($pricingData['own_voucher_amount'] ?? 0),
         );
     }
 

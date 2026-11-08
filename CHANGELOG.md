@@ -12,6 +12,15 @@ releases below could carry small breaking changes in a minor release.
 
 ### Added
 
+- **Two voucher balances on one check-in.** With *Apply from a different member's balance*
+  picked, the desk now also offers *From [member]'s own balance* when the attendee has credit
+  of their own. The attendee's credit is spent first and the other member's covers what's
+  left, each capped at its balance and at what's due (entry/pool first, then any subscription
+  bought in the same check-in). Picking the other member fills in both amounts, and changing
+  the attendee's share re-suggests the other. Before, picking another member replaced the
+  attendee's own balance, so a member short of the fee couldn't top it up from a friend's.
+  Each balance gets its own ledger row; the reason goes on the other member's. No migration.
+
 - **Private room rentals, part 3b: payment.** On the day of a rental, **Collect payment** on the
   renter's member card takes the booking's total through the desk's register like any desk sale:
   cash only while a box is open, and the method's transaction fee added on top. Rental money is
