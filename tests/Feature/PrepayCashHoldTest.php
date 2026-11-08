@@ -129,6 +129,7 @@ test('the shift breakdowns put prepays in their own bucket and still sum to cash
         'event' => 20.0,
         'prepay' => 45.0,
         'subscription' => 0.0,
+        'rental' => 0.0,
         'other' => 0.0,
     ])
         ->and($cash['event'])->toBe(2000)

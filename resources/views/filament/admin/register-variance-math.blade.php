@@ -5,6 +5,7 @@
         [__('Opening count'), '', $math['opening']],
         [__('Event cash'), '+', $math['event']],
         [__('Subscription cash'), '+', $math['subscription']],
+        ...($math['rental'] !== 0 ? [[__('Private rental cash'), '+', $math['rental']]] : []),
         [__('Other cash'), '+', $math['other']],
         [__('Drops'), '−', $math['drops']],
         [__('Paid out to instructors'), '−', $math['payouts']],

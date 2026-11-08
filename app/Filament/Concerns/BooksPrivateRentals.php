@@ -133,6 +133,121 @@ trait BooksPrivateRentals
             });
     }
 
+    /**
+     * Takes the booking's total at the start of the rental, through this
+     * desk's register like any desk sale: cash only while a box is open,
+     * with the method's transaction fee added.
+     */
+    public function collectPrivateRentalPaymentAction(): Action
+    {
+        return Action::make('collectPrivateRentalPayment')
+            ->label('Collect payment')
+            ->icon(Heroicon::OutlinedBanknotes)
+            ->color('success')
+            ->size('sm')
+            ->visible(fn (Action $action): bool => Gate::allows('book-private-rental')
+                && ($rental = $this->deskPrivateRental($action)) !== null
+                && app(PrivateRentalService::class)->canCollectPayment($rental))
+            ->modalHeading(fn (Action $action): string => __('Collect payment: :room', ['room' => $this->deskPrivateRental($action)?->room->name]))
+            ->modalDescription(fn (Action $action): string => __('Total :total for the room and :count people. A payment method\'s fee is added on top.', [
+                'total' => MembershipSetting::formatMoney((float) $this->deskPrivateRental($action)?->total),
+                'count' => $this->deskPrivateRental($action)?->headcount,
+            ]))
+            ->modalSubmitActionLabel(__('Record payment'))
+            ->schema(fn (): array => [
+                Select::make('payment_method')
+                    ->label(__('Payment method'))
+                    ->options($this->paymentMethodOptions($this->getOpenShift()))
+                    ->required()
+                    ->live()
+                    ->helperText(fn (Get $get): ?string => $this->paymentMethodHelperText($this->getOpenShift(), $get('payment_method'))),
+            ])
+            ->action(function (array $data, Action $action): void {
+                abort_unless(Gate::allows('book-private-rental'), 403);
+
+                $rental = $this->deskPrivateRental($action);
+                abort_unless($rental, 404);
+
+                if ($this->haltForTraining(__('Practice: rental payment simulated.'))) {
+                    return;
+                }
+
+                try {
+                    $payment = app(PrivateRentalService::class)->collectPayment($rental, $data['payment_method'], $this->getOpenShift(), auth()->user());
+                } catch (PrivateRentalRefused $refused) {
+                    Notification::make()->title(__('Not recorded'))->body($refused->getMessage())->danger()->send();
+
+                    return;
+                }
+
+                Notification::make()
+                    ->title(__('Rental paid — :amount', ['amount' => MembershipSetting::formatMoney((float) $payment->amount)]))
+                    ->success()
+                    ->send();
+            });
+    }
+
+    /**
+     * Manager+: cancel a paid booking and give back everything paid, out of
+     * this desk's box when the refund is cash. Needs a reason.
+     */
+    public function refundPrivateRentalAction(): Action
+    {
+        return Action::make('refundPrivateRental')
+            ->label('Cancel and refund')
+            ->icon(Heroicon::OutlinedArrowUturnLeft)
+            ->color('danger')
+            ->size('sm')
+            ->visible(fn (Action $action): bool => Gate::allows('refund-private-rental')
+                && ($rental = $this->deskPrivateRental($action)) !== null
+                && app(PrivateRentalService::class)->isChangeable($rental)
+                && app(PrivateRentalService::class)->isPaid($rental))
+            ->modalHeading(__('Cancel and refund this booking?'))
+            ->modalDescription(fn (Action $action): string => __('Gives back :amount and frees the room. The rental drops off the desk.', [
+                'amount' => ($rental = $this->deskPrivateRental($action))
+                    ? MembershipSetting::formatMoney(Cents::toFloat(app(PrivateRentalService::class)->netPaidCents($rental)))
+                    : '',
+            ]))
+            ->modalSubmitActionLabel(__('Cancel and refund'))
+            ->fillForm(fn (Action $action): array => [
+                'payment_method' => $this->deskPrivateRental($action)?->payments()->where('amount', '>', 0)->latest('id')->value('payment_method'),
+            ])
+            ->schema(fn (): array => [
+                Select::make('payment_method')
+                    ->label(__('Refund by'))
+                    ->options($this->paymentMethodOptions($this->getOpenShift()))
+                    ->required()
+                    ->helperText(fn (): ?string => $this->paymentMethodHelperText($this->getOpenShift(), null)),
+                TextInput::make('reason')
+                    ->label(__('Reason'))
+                    ->required()
+                    ->maxLength(255),
+            ])
+            ->action(function (array $data, Action $action): void {
+                abort_unless(Gate::allows('refund-private-rental'), 403);
+
+                $rental = $this->deskPrivateRental($action);
+                abort_unless($rental, 404);
+
+                if ($this->haltForTraining(__('Practice: refund simulated.'))) {
+                    return;
+                }
+
+                try {
+                    $refund = app(PrivateRentalService::class)->refundAndCancel($rental, $data['payment_method'], $this->getOpenShift(), $data['reason'], auth()->user());
+                } catch (PrivateRentalRefused $refused) {
+                    Notification::make()->title(__('Not refunded'))->body($refused->getMessage())->danger()->send();
+
+                    return;
+                }
+
+                Notification::make()
+                    ->title(__('Booking cancelled — refunded :amount', ['amount' => MembershipSetting::formatMoney(abs((float) $refund->amount))]))
+                    ->success()
+                    ->send();
+            });
+    }
+
     public function changePrivateRentalAction(): Action
     {
         return $this->makeChangePrivateRentalAction('changePrivateRental', fn (Action $action): ?PrivateRental => $this->deskPrivateRental($action), fn (string $message): bool => $this->haltForTraining($message));
@@ -158,6 +273,7 @@ trait BooksPrivateRentals
         }
 
         return PrivateRental::with('room')
+            ->withSum('payments', 'amount')
             ->notCancelled()
             ->where('member_id', $member->id)
             ->where('ends_at', '>', now())

@@ -47,6 +47,7 @@ class OperationalDataReset
         'cash_exchanges',
         'register_drops',
         'register_shifts',
+        'private_rental_payments',
         'private_rentals',
         'add_on_event',
         'events',

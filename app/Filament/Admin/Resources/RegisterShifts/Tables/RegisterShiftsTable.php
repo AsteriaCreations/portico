@@ -65,6 +65,11 @@ class RegisterShiftsTable
                     ->state(fn (RegisterShift $record) => app(RegisterShiftService::class)->revenueBreakdown($record)['subscription'])
                     ->money()
                     ->toggleable(isToggledHiddenByDefault: true),
+                TextColumn::make('rental_revenue')
+                    ->label('Rental')
+                    ->state(fn (RegisterShift $record) => app(RegisterShiftService::class)->revenueBreakdown($record)['rental'])
+                    ->money()
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('other_revenue')
                     ->label('Other')
                     ->state(fn (RegisterShift $record) => app(RegisterShiftService::class)->revenueBreakdown($record)['other'])

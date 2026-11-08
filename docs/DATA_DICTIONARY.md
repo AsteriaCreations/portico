@@ -218,6 +218,7 @@ drawer, add those rows back (see recipe).
 | `skills` / `member_skill` | Skills tagged on members. |
 | `instructor_pay_rates`, `showrunner_payout_tiers` | Payout rules. |
 | `private_rentals` | One row per room booking: `room_id`, `member_id` (the renter), `event_id` (the event made for it; the renter is its `host_id`), `starts_at`/`ends_at`, `hours`, `headcount`, the room's prices as booked (`hourly_rate`, `included_people`, `overage_fee`, `overage_per_hour`), `room_cost` + `extra_people_cost` = `total`, `booked_by`, `cancelled_at`/`cancelled_by`. A cancelled booking no longer holds the room. Find rental events with `events.id IN (SELECT event_id FROM private_rentals)`. |
+| `private_rental_payments` | Append-only money for a booking: `amount` (positive = paid, including `transaction_fee`; negative = refunded), `payment_method`, `register_shift_id` (the box it went through), `reason` (refunds), `recorded_by`. A booking is paid while its rows sum above zero. |
 | `rooms` | Rooms for private rentals: `hourly_rate`, `included_people` (covered by the room price), `overage_fee` per extra person, `overage_per_hour` (fee x hours, or once), `min_hours`, `max_hours`, `active`. |
 | `membership_settings` | The singleton (ground rule 7). |
 
@@ -375,7 +376,7 @@ Keep these out of shared exports and dashboards unless there's a reason and the 
 
 `docs/DEPLOYMENT.md` §4a gives two read-only accounts. The *full* one can see everything above.
 The *limited* one can't see the personal or secret columns at all, so it's the one to hand to an
-outside analyst. Six tables hold personal or free-text columns, and that account reads them
+outside analyst. Seven tables hold personal or free-text columns, and that account reads them
 only through a view of their safe columns, where `SELECT *` works:
 
 | Instead of | Query |
@@ -386,6 +387,7 @@ only through a view of their safe columns, where `SELECT *` works:
 | `comp_requests` | `analyst_comp_requests` |
 | `users` | `analyst_users` |
 | `membership_settings` | `analyst_membership_settings` |
+| `private_rental_payments` | `analyst_private_rental_payments` |
 
 The columns each view keeps are listed in `docs/DEPLOYMENT.md` §4a. Join the views exactly as
 you would the tables (`analyst_attendance.member_id = analyst_members.id`). Most other tables

@@ -7,7 +7,10 @@ use App\Exceptions\PrivateRentalRefused;
 use App\Models\Event;
 use App\Models\Member;
 use App\Models\MembershipSetting;
+use App\Models\PaymentMethod;
 use App\Models\PrivateRental;
+use App\Models\PrivateRentalPayment;
+use App\Models\RegisterShift;
 use App\Models\Room;
 use App\Models\User;
 use App\Support\Cents;
@@ -89,6 +92,113 @@ class PrivateRentalService
     }
 
     /**
+     * What's been paid for a booking, less refunds.
+     */
+    public function netPaidCents(PrivateRental $rental): int
+    {
+        return Cents::of($rental->payments()->sum('amount'));
+    }
+
+    /**
+     * Paid bookings are locked: no Change, and only a Manager+ cancel with
+     * refund (refundAndCancel()).
+     */
+    public function isPaid(PrivateRental $rental): bool
+    {
+        return $this->netPaidCents($rental) > 0;
+    }
+
+    /**
+     * Payment is taken at the start of the rental: from its day until it
+     * ends, once, while it isn't cancelled. Not ahead of its day, so the
+     * money always goes in that night's box.
+     */
+    public function canCollectPayment(PrivateRental $rental): bool
+    {
+        return $this->isChangeable($rental)
+            && $rental->starts_at->lte(today()->endOfDay())
+            && Cents::of($rental->total) > 0
+            && ! $this->isPaid($rental);
+    }
+
+    /**
+     * Takes the booking's total, plus the method's transaction fee, as one
+     * payment row on $shift (the desk's open box, if any). Cash needs an
+     * open box. Only the desk's own methods are accepted.
+     *
+     * @throws PrivateRentalRefused
+     */
+    public function collectPayment(PrivateRental $rental, string $paymentMethod, ?RegisterShift $shift, User $by): PrivateRentalPayment
+    {
+        abort_unless(MembershipSetting::current()->private_rentals_enabled, 403);
+        $this->assertDeskMethod($paymentMethod, $shift);
+
+        return DB::transaction(function () use ($rental, $paymentMethod, $shift, $by): PrivateRentalPayment {
+            // Two desks taking the same payment at once: only one gets past here.
+            $rental = PrivateRental::whereKey($rental->id)->lockForUpdate()->firstOrFail();
+
+            if (! $this->canCollectPayment($rental)) {
+                throw new PrivateRentalRefused($this->isPaid($rental)
+                    ? __('This booking is already paid.')
+                    : __('Payment is taken on the day of the rental, before it ends.'));
+            }
+
+            $feeCents = Cents::of(PaymentMethod::feeFor($paymentMethod));
+
+            return $rental->payments()->create([
+                'amount' => Cents::toDecimal(Cents::of($rental->total) + $feeCents),
+                'transaction_fee' => Cents::toDecimal($feeCents),
+                'payment_method' => $paymentMethod,
+                'register_shift_id' => $shift?->id,
+                'recorded_by' => $by->id,
+            ]);
+        });
+    }
+
+    /**
+     * Manager+ (refund-private-rental gate, checked by the caller): gives
+     * back everything paid, as a negative row by $paymentMethod on $shift,
+     * then cancels the booking. Cash back needs an open box. Refused once
+     * anyone has checked in, like an unpaid cancel.
+     *
+     * @throws PrivateRentalRefused
+     */
+    public function refundAndCancel(PrivateRental $rental, string $paymentMethod, ?RegisterShift $shift, string $reason, User $by): PrivateRentalPayment
+    {
+        abort_unless(MembershipSetting::current()->private_rentals_enabled, 403);
+        $this->assertDeskMethod($paymentMethod, $shift);
+
+        if (blank($reason)) {
+            throw new PrivateRentalRefused(__('Give a reason for the refund.'));
+        }
+
+        return DB::transaction(function () use ($rental, $paymentMethod, $shift, $reason, $by): PrivateRentalPayment {
+            $rental = PrivateRental::whereKey($rental->id)->lockForUpdate()->firstOrFail();
+
+            if (! $this->isChangeable($rental) || ! $this->isPaid($rental)) {
+                throw new PrivateRentalRefused(__('Only a paid booking that hasn\'t ended can be refunded.'));
+            }
+            if ($rental->event->attendance()->exists()) {
+                throw new PrivateRentalRefused(__('Someone is already checked in to this rental, so it can\'t be cancelled.'));
+            }
+
+            $refund = $rental->payments()->create([
+                'amount' => Cents::toDecimal(-$this->netPaidCents($rental)),
+                'transaction_fee' => '0.00',
+                'payment_method' => $paymentMethod,
+                'register_shift_id' => $shift?->id,
+                'reason' => trim($reason),
+                'recorded_by' => $by->id,
+            ]);
+
+            $rental->forceFill(['cancelled_at' => now(), 'cancelled_by' => $by->id])->save();
+            $rental->event->archive($by);
+
+            return $refund;
+        });
+    }
+
+    /**
      * @throws PrivateRentalRefused
      */
     public function book(Member $member, Room $room, CarbonInterface $startsAt, int $hours, int $headcount, User $bookedBy): PrivateRental
@@ -141,6 +251,9 @@ class PrivateRentalService
         if (! $this->isChangeable($rental)) {
             throw new PrivateRentalRefused(__('This booking can no longer be changed.'));
         }
+        if ($this->isPaid($rental)) {
+            throw new PrivateRentalRefused(__('This booking is paid, so it can\'t be changed.'));
+        }
 
         [$startsAt, $endsAt] = $this->validateSlot($rental->member, $rental->room, $startsAt, $hours, $headcount);
         $quote = $this->requote($rental, $hours, $headcount);
@@ -176,6 +289,9 @@ class PrivateRentalService
         if (! $this->isChangeable($rental)) {
             throw new PrivateRentalRefused(__('This booking can no longer be cancelled.'));
         }
+        if ($this->isPaid($rental)) {
+            throw new PrivateRentalRefused(__('This booking is paid: a Manager can cancel it with a refund.'));
+        }
         if ($rental->event->attendance()->exists()) {
             throw new PrivateRentalRefused(__('Someone is already checked in to this rental, so it can\'t be cancelled.'));
         }
@@ -186,6 +302,18 @@ class PrivateRentalService
 
             return $rental;
         });
+    }
+
+    /**
+     * The desk's own methods only, and cash only with an open box -- the
+     * same rule as the desk's payment pickers, re-checked here so a forged
+     * method or a cash payment with no box stops.
+     */
+    private function assertDeskMethod(string $paymentMethod, ?RegisterShift $shift): void
+    {
+        abort_unless(array_key_exists($paymentMethod, PaymentMethod::deskOptions()), 422);
+        abort_if($shift === null && PaymentMethod::cashCodes()->contains($paymentMethod), 422, 'Cash needs an open box.');
+        abort_if($shift !== null && $shift->closed_at !== null, 422, 'That box is closed.');
     }
 
     private function price(int $hourlyRate, int $includedPeople, int $overageFee, bool $overagePerHour, int $hours, int $headcount): PrivateRentalQuote

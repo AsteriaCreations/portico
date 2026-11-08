@@ -56,7 +56,7 @@
         <p>{!! __('Practising? <strong>Enter training mode</strong> at the top of the screen — everything behaves as normal, but nothing is saved.') !!}</p>
         <p>{{ __('Everything folded away — selling a subscription or day pass, add-ons / vouchers / comps, the cash box — is still here, one click open, and never needed for a normal check-in.') }}</p>
         @if (\App\Models\MembershipSetting::current()->private_rentals_enabled)
-            <p>{!! __('Booking a room for a member\'s private rental? Pick the member, then <strong>Book a private rental</strong>. The dialog shows the total before you book; it\'s paid at the start of the rental. Their upcoming bookings list on the card with <strong>Change</strong> and <strong>Cancel booking</strong>.') !!}</p>
+            <p>{!! __('Booking a room for a member\'s private rental? Pick the member, then <strong>Book a private rental</strong>. The dialog shows the total before you book; it\'s paid at the start of the rental. Their upcoming bookings list on the card with <strong>Change</strong> and <strong>Cancel booking</strong>; on the day, use <strong>Collect payment</strong> there.') !!}</p>
         @endif
         @if (\App\Models\MembershipSetting::current()->hold_desk_prepay_cash)
             <p>{{ __('Cash taken for a future event (a prepay) doesn\'t stay in the box: put it in that event\'s prepay envelope. The box\'s expected count leaves it out.') }}</p>
@@ -275,9 +275,16 @@
                                     'to' => $rental->ends_at->isoFormat('LT'),
                                     'count' => $rental->headcount,
                                     'total' => \App\Models\MembershipSetting::formatMoney((float) $rental->total),
-                                ]) }}</span>
-                                {{ ($this->changePrivateRentalAction)(['rental' => $rental->id]) }}
-                                {{ ($this->cancelPrivateRentalAction)(['rental' => $rental->id]) }}
+                                ]) }}@if ((float) $rental->payments_sum_amount > 0) · {{ __('Paid') }}@endif</span>
+                                {{-- A hidden action rendered with {{ }} still draws as a disabled button. --}}
+                                @foreach (['collectPrivateRentalPayment', 'changePrivateRental', 'cancelPrivateRental', 'refundPrivateRental'] as $rentalActionName)
+                                    @php
+                                        $rentalAction = ($this->{$rentalActionName.'Action'})(['rental' => $rental->id]);
+                                    @endphp
+                                    @if ($rentalAction->isVisible())
+                                        {{ $rentalAction }}
+                                    @endif
+                                @endforeach
                             </li>
                         @endforeach
                     </ul>

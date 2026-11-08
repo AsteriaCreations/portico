@@ -587,22 +587,26 @@ trait ManagesCashBox
         // the night's envelope is entry plus other only -- unless the club
         // folds it into the night's envelope (separate_subscription_envelope).
         $separateSubscriptions = MembershipSetting::current()->separate_subscription_envelope;
-        $tonightCents = $breakdown['event'] + $breakdown['other'] + ($separateSubscriptions ? 0 : $breakdown['subscription']);
+        // Private rental cash goes in the night's envelope too, written as its
+        // own amount; it's left off the line entirely when there's none.
+        $includeSubscriptions = ! $separateSubscriptions && $breakdown['subscription'] !== 0;
+        $tonightCents = $breakdown['event'] + $breakdown['rental'] + $breakdown['other'] + ($includeSubscriptions ? $breakdown['subscription'] : 0);
 
         if ($tonightCents !== 0) {
-            $amounts = [
-                'entry' => $this->formatCurrency(Cents::toFloat($breakdown['event'])),
-                'other' => $this->formatCurrency(Cents::toFloat($breakdown['other'])),
+            $parts = [__('Entry: :amount', ['amount' => $this->formatCurrency(Cents::toFloat($breakdown['event']))])];
+            if ($includeSubscriptions) {
+                $parts[] = __('Subscriptions: :amount', ['amount' => $this->formatCurrency(Cents::toFloat($breakdown['subscription']))]);
+            }
+            if ($breakdown['rental'] !== 0) {
+                $parts[] = __('Private rentals: :amount', ['amount' => $this->formatCurrency(Cents::toFloat($breakdown['rental']))]);
+            }
+            $parts[] = __('Other: :amount', ['amount' => $this->formatCurrency(Cents::toFloat($breakdown['other']))]);
+
+            $lines[] = __('Cash collected — :amounts (total :total). Make an envelope for :events with these amounts written on it.', [
+                'amounts' => implode(' · ', $parts),
                 'total' => $this->formatCurrency(Cents::toFloat($tonightCents)),
                 'events' => $eventLabels,
-            ];
-
-            $lines[] = $separateSubscriptions || $breakdown['subscription'] === 0
-                ? __('Cash collected — Entry: :entry · Other: :other (total :total). Make an envelope for :events with these amounts written on it.', $amounts)
-                : __('Cash collected — Entry: :entry · Subscriptions: :subscriptions · Other: :other (total :total). Make an envelope for :events with these amounts written on it.', [
-                    ...$amounts,
-                    'subscriptions' => $this->formatCurrency(Cents::toFloat($breakdown['subscription'])),
-                ]);
+            ]);
         }
 
         // Instructor cash already left the box, so the envelope holds less
