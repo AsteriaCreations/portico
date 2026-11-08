@@ -9,6 +9,7 @@ use App\Models\Event;
 use App\Models\InstructorPayout;
 use App\Models\MiscellaneousPayment;
 use App\Models\PaymentMethod;
+use App\Models\PrivateRentalPayment;
 use App\Models\Register;
 use App\Models\RegisterDrop;
 use App\Models\RegisterShift;
@@ -23,7 +24,8 @@ use Illuminate\Support\Facades\DB;
  * reconciling what the box should hold. Expected cash is always derived from
  * the shift's own opening count plus every cash-flagged (PaymentMethod::
  * cashCodes()) row attributed to it (attendance, subscriptions,
- * miscellaneous_payments, and add_on_day_passes -- the latter two for cash
+ * miscellaneous_payments, private_rental_payments (refunds are negative rows),
+ * and add_on_day_passes -- misc payments and day passes for cash
  * taken outside the normal event/subscription flow, e.g. a vendor payment,
  * donation, or a one-time add-on day pass) minus the append-only
  * register_drops, instructor_payouts and cash_exchanges ledgers, the same "derived, never
@@ -243,6 +245,7 @@ class RegisterShiftService
             ->sum('amount_paid');
 
         return Cents::of($attendanceCash) + Cents::of($subscriptionCash) + Cents::of($miscCash) + Cents::of($addOnDayPassCash)
+            + $this->rentalCents($shift, $cashCodes->all())
             + $this->removedAfterCloseCents($shift, $cashCodes->all());
     }
 
@@ -322,7 +325,7 @@ class RegisterShiftService
      * not the box-reconciliation figure cashReceived() computes). Prepays for
      * a later event are their own bucket, kept out of "event".
      *
-     * @return array{event: float, prepay: float, subscription: float, other: float}
+     * @return array{event: float, prepay: float, subscription: float, rental: float, other: float}
      */
     public function revenueBreakdown(RegisterShift $shift): array
     {
@@ -333,8 +336,21 @@ class RegisterShiftService
             'event' => Cents::toFloat($this->attendanceCents($shift, prepaidAhead: false)),
             'prepay' => Cents::toFloat($this->attendanceCents($shift, prepaidAhead: true)),
             'subscription' => Cents::toFloat(Cents::of(Subscription::where('register_shift_id', $shift->id)->sum('amount_paid'))),
+            'rental' => Cents::toFloat($this->rentalCents($shift)),
             'other' => Cents::toFloat($other),
         ];
+    }
+
+    /**
+     * Private rental payments on this shift, less refunds given from it.
+     *
+     * @param  string[]|null  $paymentMethods  null for every method
+     */
+    private function rentalCents(RegisterShift $shift, ?array $paymentMethods = null): int
+    {
+        return Cents::of(PrivateRentalPayment::where('register_shift_id', $shift->id)
+            ->when($paymentMethods !== null, fn ($query) => $query->whereIn('payment_method', $paymentMethods))
+            ->sum('amount'));
     }
 
     /**
@@ -365,7 +381,7 @@ class RegisterShiftService
      * "prepay" is heldPrepayCashCents($shift), which goes in its own
      * envelope per event rather than this one.
      *
-     * @return array{event: int, prepay: int, subscription: int, other: int}
+     * @return array{event: int, prepay: int, subscription: int, rental: int, other: int}
      */
     public function cashRevenueBreakdownCents(RegisterShift $shift): array
     {
@@ -380,6 +396,7 @@ class RegisterShiftService
             'event' => $this->attendanceCents($shift, prepaidAhead: false, paymentMethods: $cashCodes->all()),
             'prepay' => $this->heldPrepayCashCents($shift),
             'subscription' => Cents::of(Subscription::where('register_shift_id', $shift->id)->whereIn('payment_method', $cashCodes)->sum('amount_paid')),
+            'rental' => $this->rentalCents($shift, $cashCodes->all()),
             'other' => $other,
         ];
     }
@@ -403,6 +420,8 @@ class RegisterShiftService
             ->concat(VisitRemoval::where('register_shift_id', $shift->id)->where('after_shift_closed', true)->get(['payment_method', 'amount_paid']))
             ->concat(Subscription::where('register_shift_id', $shift->id)->get(['payment_method', 'amount_paid']))
             ->concat(AddOnDayPass::where('register_shift_id', $shift->id)->get(['payment_method', 'amount_paid']))
+            ->concat(PrivateRentalPayment::where('register_shift_id', $shift->id)->get(['payment_method', 'amount'])
+                ->map(fn (PrivateRentalPayment $payment) => (object) ['payment_method' => $payment->payment_method, 'amount_paid' => $payment->amount]))
             ->concat(MiscellaneousPayment::where('register_shift_id', $shift->id)->get(['payment_method', 'amount'])
                 ->map(fn (MiscellaneousPayment $payment) => (object) ['payment_method' => $payment->payment_method, 'amount_paid' => $payment->amount]));
 
@@ -477,7 +496,7 @@ class RegisterShiftService
      * enters the box -- takings and cash exchanges each on their own. counted
      * and variance are null while the shift is open.
      *
-     * @return array{opening: int, event: int, subscription: int, other: int, drops: int, payouts: int, exchanged: int, expected: int, counted: ?int, variance: ?int, prepay: int, electronic: array<string, int>, exchangeReceived: array<string, int>}
+     * @return array{opening: int, event: int, subscription: int, rental: int, other: int, drops: int, payouts: int, exchanged: int, expected: int, counted: ?int, variance: ?int, prepay: int, electronic: array<string, int>, exchangeReceived: array<string, int>}
      */
     public function varianceMathCents(RegisterShift $shift): array
     {
@@ -487,6 +506,7 @@ class RegisterShiftService
             'opening' => Cents::of($shift->opening_count),
             'event' => $cash['event'],
             'subscription' => $cash['subscription'],
+            'rental' => $cash['rental'],
             'other' => $cash['other'],
             'drops' => $this->totalDropsCents($shift),
             'payouts' => $this->totalInstructorPayoutsCents($shift),

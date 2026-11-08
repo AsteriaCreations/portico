@@ -174,6 +174,11 @@ class AppServiceProvider extends ServiceProvider
         Gate::define('book-private-rental', fn (User $user): bool => $user->role->atLeast(Role::Door)
             && MembershipSetting::current()->private_rentals_enabled);
 
+        // Manager+: cancel a paid booking and give the money back. Re-checked
+        // in BooksPrivateRentals::refundPrivateRentalAction().
+        Gate::define('refund-private-rental', fn (User $user): bool => $user->role->atLeast(Role::Manager)
+            && MembershipSetting::current()->private_rentals_enabled);
+
         // Door+ once the club turns on kiosk_checkin_enabled: show or print a
         // member's kiosk QR code. Same "role + flag baked into the gate"
         // shape as manage-visit-notes; re-checked server-side by

@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
  * A room booked for a member's private rental, with the room's prices as
@@ -72,5 +73,13 @@ class PrivateRental extends Model
     public function cancelledBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'cancelled_by');
+    }
+
+    /**
+     * Payments and refunds, append-only. See PrivateRentalService::netPaidCents().
+     */
+    public function payments(): HasMany
+    {
+        return $this->hasMany(PrivateRentalPayment::class);
     }
 }

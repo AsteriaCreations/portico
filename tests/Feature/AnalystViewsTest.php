@@ -37,6 +37,10 @@ function analystViewColumns(): array
             'id', 'subscription_eligibility_threshold', 'subscription_eligibility_window_months',
             'probation_period_days', 'venue_capacity', 'currency', 'week_starts_on',
         ],
+        'analyst_private_rental_payments' => [
+            'id', 'private_rental_id', 'amount', 'transaction_fee', 'payment_method', 'register_shift_id',
+            'recorded_by', 'created_at',
+        ],
     ];
 }
 

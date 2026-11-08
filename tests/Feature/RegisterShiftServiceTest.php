@@ -161,6 +161,7 @@ test('revenueBreakdown splits event, subscription, and other totals across every
         'event' => 35.0,
         'prepay' => 0.0,
         'subscription' => 25.0,
+        'rental' => 0.0,
         'other' => 65.0,
     ]);
 });
@@ -181,6 +182,7 @@ test('cashRevenueBreakdownCents splits event, subscription, and other cash total
         'event' => 2000,
         'prepay' => 0,
         'subscription' => 2500,
+        'rental' => 0,
         'other' => 4000,
     ])
         ->and(array_sum($breakdown))->toBe($this->service->cashReceivedCents($shift));
@@ -220,6 +222,7 @@ test('revenueBreakdown folds a pool day pass into the other bucket', function ()
         'event' => 0.0,
         'prepay' => 0.0,
         'subscription' => 0.0,
+        'rental' => 0.0,
         'other' => 15.0,
     ]);
 });

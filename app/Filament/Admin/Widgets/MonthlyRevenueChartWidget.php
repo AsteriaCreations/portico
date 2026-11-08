@@ -5,7 +5,9 @@ namespace App\Filament\Admin\Widgets;
 use App\Enums\Role;
 use App\Models\AddOnDayPass;
 use App\Models\Attendance;
+use App\Models\MembershipSetting;
 use App\Models\MiscellaneousPayment;
+use App\Models\PrivateRentalPayment;
 use App\Models\Subscription;
 use App\Support\Cents;
 use Filament\Widgets\ChartWidget;
@@ -67,6 +69,14 @@ class MonthlyRevenueChartWidget extends ChartWidget
                         ->whereBetween('paid_on', [$month, $month->copy()->endOfMonth()])
                         ->sum('amount_paid'))))->all(),
                 ],
+                // Only once the club uses private rentals (or has taken rental
+                // money before), so a club without them keeps three series.
+                ...(MembershipSetting::current()->private_rentals_enabled || PrivateRentalPayment::query()->exists() ? [[
+                    'label' => 'Rental',
+                    'data' => $months->map(fn ($month) => Cents::toFloat(Cents::of(PrivateRentalPayment::query()
+                        ->whereBetween('created_at', [$month, $month->copy()->endOfMonth()])
+                        ->sum('amount'))))->all(),
+                ]] : []),
                 [
                     'label' => 'Other',
                     'data' => $months->map(function ($month) {

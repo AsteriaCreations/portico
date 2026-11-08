@@ -45,7 +45,8 @@ trait ManagesPrivateRentalBookings
             ->size('sm')
             ->visible(fn (Action $action): bool => Gate::allows('book-private-rental')
                 && ($rental = $resolveRental($action)) !== null
-                && app(PrivateRentalService::class)->isChangeable($rental))
+                && app(PrivateRentalService::class)->isChangeable($rental)
+                && ! app(PrivateRentalService::class)->isPaid($rental))
             ->modalHeading(fn (Action $action): string => __('Change booking: :room', ['room' => $resolveRental($action)?->room->name]))
             ->modalSubmitActionLabel(__('Save changes'))
             ->fillForm(function (Action $action) use ($resolveRental): array {
@@ -139,7 +140,8 @@ trait ManagesPrivateRentalBookings
             ->size('sm')
             ->visible(fn (Action $action): bool => Gate::allows('book-private-rental')
                 && ($rental = $resolveRental($action)) !== null
-                && app(PrivateRentalService::class)->isChangeable($rental))
+                && app(PrivateRentalService::class)->isChangeable($rental)
+                && ! app(PrivateRentalService::class)->isPaid($rental))
             ->requiresConfirmation()
             ->modalHeading(__('Cancel this booking?'))
             ->modalDescription(fn (Action $action): string => __(':room, :when. The room is freed and the rental drops off the desk.', [

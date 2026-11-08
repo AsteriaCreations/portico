@@ -12,6 +12,18 @@ releases below could carry small breaking changes in a minor release.
 
 ### Added
 
+- **Private room rentals, part 3b: payment.** On the day of a rental, **Collect payment** on the
+  renter's member card takes the booking's total through the desk's register like any desk sale:
+  cash only while a box is open, and the method's transaction fee added on top. Rental money is
+  its own **Rental** amount wherever takings are split: the desk's box summary, the close-box
+  envelope reminder ("Private rentals: $..."), the variance math, a Rental column on Register
+  Shifts (hidden by default), and a Rental series on the monthly revenue chart (shown once a club
+  uses rentals). A paid booking can't be changed or cancelled by Door; Manager+ gets **Cancel and
+  refund**, which needs a reason and gives back everything paid by the method picked (cash out
+  of the open box). The Private Rentals list shows a booking as Paid. Migration: adds the
+  append-only `private_rental_payments` ledger (refunds are negative rows). It also adds an `analyst_private_rental_payments` view (every column but the
+  refund `reason`); an existing `portico_analyst` account needs
+  `GRANT SELECT ON <portico>.analyst_private_rental_payments` (`docs/DEPLOYMENT.md` §4a).
 - **Private room rentals, part 3a: change and cancel.** A renter's upcoming bookings now list on
   their member card at the desk, and a new Door+ **Private Rentals** page (Front of House) lists
   every booking, upcoming by default, filterable by room. Both offer **Change** (move the date

@@ -470,10 +470,11 @@ GRANT SELECT ON `<portico>`.analyst_member_status_changes TO 'portico_analyst'@'
 GRANT SELECT ON `<portico>`.analyst_comp_requests TO 'portico_analyst'@'localhost';
 GRANT SELECT ON `<portico>`.analyst_users TO 'portico_analyst'@'localhost';
 GRANT SELECT ON `<portico>`.analyst_membership_settings TO 'portico_analyst'@'localhost';
+GRANT SELECT ON `<portico>`.analyst_private_rental_payments TO 'portico_analyst'@'localhost';
 ```
 
-The six `analyst_*` views come with the app (a migration creates them). The analyst queries
-them in place of those six tables, which the account can't read at all, and `SELECT *` works
+The seven `analyst_*` views come with the app (a migration creates them). The analyst queries
+them in place of those seven tables, which the account can't read at all, and `SELECT *` works
 on them. Each view keeps only these columns:
 
 | View | Columns |
@@ -484,6 +485,7 @@ on them. Each view keeps only these columns:
 | `analyst_comp_requests` | `id, event_id, member_id, comp_reason_id, requested_by, status, reviewed_by, reviewed_at, attendance_id, created_at, updated_at` |
 | `analyst_users` | `id, role, active, member_id, created_at` |
 | `analyst_membership_settings` | `id, subscription_eligibility_threshold, subscription_eligibility_window_months, probation_period_days, venue_capacity, currency, week_starts_on` |
+| `analyst_private_rental_payments` | `id, private_rental_id, amount, transaction_fee, payment_method, register_shift_id, recorded_by, created_at` |
 
 A view reads its table with the rights of whoever created it: the app's own database user
 (`DB_USERNAME`), when `php artisan migrate` ran. So that user needs the `CREATE VIEW` right
@@ -492,7 +494,7 @@ views only open once a user of that same name exists there too. On a restored co
 also just use the full account.
 
 Made the limited account with this page's older column-by-column grants? Those still work, but
-`SELECT *` on those six tables is refused. Drop the account and create it again with the
+`SELECT *` on those seven tables is refused. Drop the account and create it again with the
 script above.
 
 Left out entirely: behavior notes, watchlist reviews, ban exceptions, username history, guest

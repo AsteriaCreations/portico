@@ -14,7 +14,7 @@ class PrivateRentalsTable
     public static function configure(Table $table): Table
     {
         return $table
-            ->modifyQueryUsing(fn (Builder $query) => $query->with(['room', 'member']))
+            ->modifyQueryUsing(fn (Builder $query) => $query->with(['room', 'member'])->withSum('payments', 'amount'))
             ->defaultSort('starts_at')
             ->columns([
                 TextColumn::make('starts_at')
@@ -40,13 +40,15 @@ class PrivateRentalsTable
                     ->state(fn (PrivateRental $record): string => match (true) {
                         $record->cancelled_at !== null => __('Cancelled'),
                         $record->ends_at->isPast() => __('Over'),
+                        (float) $record->payments_sum_amount > 0 => __('Paid'),
                         default => __('Booked'),
                     })
                     ->badge()
                     ->color(fn (PrivateRental $record): string => match (true) {
                         $record->cancelled_at !== null => 'gray',
                         $record->ends_at->isPast() => 'gray',
-                        default => 'success',
+                        (float) $record->payments_sum_amount > 0 => 'success',
+                        default => 'info',
                     }),
             ])
             ->filters([

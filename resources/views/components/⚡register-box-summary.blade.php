@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\Event;
+use App\Models\MembershipSetting;
 use App\Models\Register;
 use App\Models\RegisterShift;
 use App\Services\PrepayCashService;
@@ -49,6 +50,18 @@ new class extends Component
     public function breakdown(): ?array
     {
         return $this->shift ? app(RegisterShiftService::class)->revenueBreakdown($this->shift) : null;
+    }
+
+    // breakdown() as one line. Rental only once there is some, so a club
+    // without private rentals sees the line it always had.
+    #[Computed]
+    public function breakdownLine(): string
+    {
+        $amounts = collect($this->breakdown ?? [])->map(fn (float $amount): string => MembershipSetting::formatMoney($amount))->all();
+
+        return ($this->breakdown['rental'] ?? 0) != 0
+            ? __('Event :event · Prepaid :prepay · Subscription :subscription · Rental :rental · Other :other', $amounts)
+            : __('Event :event · Prepaid :prepay · Subscription :subscription · Other :other', $amounts);
     }
 
     // The non-cash part of breakdown(), per method -- counted in those
@@ -113,12 +126,7 @@ re-find these lines after every refresh. --}}
             ]) }}
         </p>
         <p role="status" class="text-sm text-gray-500">
-            {{ __('Event :event · Prepaid :prepay · Subscription :subscription · Other :other', [
-                'event' => \App\Models\MembershipSetting::formatMoney($this->breakdown['event']),
-                'prepay' => \App\Models\MembershipSetting::formatMoney($this->breakdown['prepay']),
-                'subscription' => \App\Models\MembershipSetting::formatMoney($this->breakdown['subscription']),
-                'other' => \App\Models\MembershipSetting::formatMoney($this->breakdown['other']),
-            ]) }}
+            {{ $this->breakdownLine }}
         </p>
         @if ($this->electronic !== [])
             <p role="status" class="text-sm text-gray-500">
