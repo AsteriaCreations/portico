@@ -51,7 +51,7 @@ class KioskCheckInService
 
         // Never a prepay for a later event from an unattended kiosk: only
         // what is running right now, and only when that's unambiguous.
-        $events = Event::currentQuery()->get()->filter(fn (Event $event): bool => $event->isCurrentlyActive());
+        $events = Event::currentQuery()->excludingPrivateRentals()->get()->filter(fn (Event $event): bool => $event->isCurrentlyActive());
         if ($events->isEmpty()) {
             return new KioskScanResult(KioskScanStatus::Closed, __('There\'s no event running right now.'), $name);
         }

@@ -5,12 +5,14 @@ namespace App\Models;
 use Carbon\CarbonInterface;
 use Database\Factories\EventFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Attributes\Scope;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Carbon;
 
 #[Fillable(['event_date', 'starts_at', 'ends_at', 'checkin_closes_at', 'ended_notification_sent_at', 'comp_list_due_at', 'name', 'event_type_id', 'entry_fee', 'comped_entry_fee', 'pool_fee', 'workday_voucher_amount', 'workday_min_hours', 'door_prepay_enabled', 'showrunner_id', 'host_id', 'notes', 'created_by'])]
@@ -161,6 +163,30 @@ class Event extends Model
     public function instructorPayouts(): HasMany
     {
         return $this->hasMany(InstructorPayout::class);
+    }
+
+    /**
+     * The private rental this event was created for, if it was one -- see
+     * PrivateRentalService::book().
+     */
+    public function privateRental(): HasOne
+    {
+        return $this->hasOne(PrivateRental::class);
+    }
+
+    /**
+     * Leaves out events made for a private rental. Everything that picks
+     * "tonight's event" on its own -- the kiosk, check-in on sign-in, the
+     * desk's default -- uses this, so a rental running alongside the night's
+     * event never makes it look like two events at once. The desk's event
+     * picker and Active Patrons still list rentals.
+     *
+     * @param  Builder<self>  $query
+     */
+    #[Scope]
+    protected function excludingPrivateRentals(Builder $query): void
+    {
+        $query->whereDoesntHave('privateRental');
     }
 
     public function archivedBy(): BelongsTo

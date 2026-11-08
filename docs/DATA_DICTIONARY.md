@@ -217,6 +217,7 @@ drawer, add those rows back (see recipe).
 | `paperwork_types` / `member_paperwork` | Forms and each signing (`signed_on`, ground rule 3). A type with `renewal_months` expires. |
 | `skills` / `member_skill` | Skills tagged on members. |
 | `instructor_pay_rates`, `showrunner_payout_tiers` | Payout rules. |
+| `private_rentals` | One row per room booking: `room_id`, `member_id` (the renter), `event_id` (the event made for it; the renter is its `host_id`), `starts_at`/`ends_at`, `hours`, `headcount`, the room's prices as booked (`hourly_rate`, `included_people`, `overage_fee`, `overage_per_hour`), `room_cost` + `extra_people_cost` = `total`, `booked_by`, `cancelled_at`/`cancelled_by`. A cancelled booking no longer holds the room. Find rental events with `events.id IN (SELECT event_id FROM private_rentals)`. |
 | `rooms` | Rooms for private rentals: `hourly_rate`, `included_people` (covered by the room price), `overage_fee` per extra person, `overage_per_hour` (fee x hours, or once), `min_hours`, `max_hours`, `active`. |
 | `membership_settings` | The singleton (ground rule 7). |
 

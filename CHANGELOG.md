@@ -12,6 +12,20 @@ releases below could carry small breaking changes in a minor release.
 
 ### Added
 
+- **Private room rentals, part 2: booking at the desk.** With *Private room rentals* on, Door+
+  gets **Book a private rental** on the Check-In Desk member card. Pick a room, a date (today
+  or later), a start time, whole hours within the room's limits and how many people are coming;
+  the dialog shows the room cost, extra people and total before you book. Booking is refused for
+  a member with "No private rentals" set or whom the admission check would turn away (banned,
+  deceased, under the age of majority on that date), and when that room is already booked for
+  any part of that time. Each booking keeps the room's prices as they were and adds its own event
+  (the renter is its host, so gets in free), which the desk can pick for check-in. The kiosk,
+  check-in on sign-in and the desk's default event ignore rental events, so a rental alongside
+  the night's event never looks like two events at once. Collecting payment, changing or
+  cancelling a booking, and checking the group in come in the next parts. Until then a rental
+  event charges everyone but the renter the extra-person fee at check-in. Migration: adds
+  `private_rentals`. An existing `portico_analyst` account needs
+  `GRANT SELECT ON <portico>.private_rentals` (`docs/DEPLOYMENT.md` §4a).
 - **Private room rentals, part 1: rooms.** A new Feature Flag, *Private room rentals* (off by
   default), adds a Manager+ **Rooms** list under Desk & Money. Each room has an hourly rate, how
   many people its price includes, a fee for each extra person (per hour or once), and the
