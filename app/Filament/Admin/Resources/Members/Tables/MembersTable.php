@@ -152,7 +152,8 @@ class MembersTable
                 // across the SQLite test suite and MySQL/MariaDB in production.
                 // With no override, the start is the first arrival's date: on
                 // probation when the member has arrived at least once and never
-                // before the first day still inside the period.
+                // before the first day still inside the period, and has no
+                // visits from before these records.
                 Filter::make('on_probation')
                     ->label('On probation')
                     ->toggle()
@@ -164,6 +165,7 @@ class MembersTable
                             fn (Builder $q) => $q
                                 ->where(fn (Builder $q) => $q->whereNotNull('probation_override_start')->where('probation_override_start', '>', $cutoff))
                                 ->orWhere(fn (Builder $q) => $q->whereNull('probation_override_start')
+                                    ->where('prior_visits', 0)
                                     ->whereHas('attendance', fn (Builder $a) => $a->whereNotNull('checked_in_at'))
                                     ->whereDoesntHave('attendance', fn (Builder $a) => $a->where('checked_in_at', '<', $firstDayInside)))
                         );

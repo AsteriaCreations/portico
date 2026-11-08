@@ -74,6 +74,7 @@ One row per person who has ever been recorded: members, prospectives and guests.
 | `category_id` | → `categories`. *Prospective* (not yet signed up), *Irregular* (signed up), *Guest*, plus club-defined ones. `categories.is_comped = 1` means entry is always free. |
 | `dob` | Date of birth (**sensitive**). Age-based flags are derived from it at read time. |
 | `date_vetted` | Informational only; it no longer starts probation. |
+| `prior_visits` | Visits made before the club's records in this app start (from an import, or set by a Manager). Any at all: never a first visit, no probation. Counts toward subscription eligibility when there's no eligibility window. |
 | `is_active` | Soft "still a member" flag. Inactive members remain in history. |
 | `subscription_eligible` | Manual override that makes a member eligible regardless of visit count. |
 | `on_watchlist`, `watchlist_reason`, `watchlist_review_on`, `watchlist_probation_start` | Watchlist state (**the reason is sensitive**). |
@@ -265,7 +266,8 @@ SELECT GREATEST(0,
 ```sql
 SELECT m.id,
        m.subscription_eligible = 1
-       OR COUNT(a.id) >= s.subscription_eligibility_threshold AS eligible
+       OR COUNT(a.id) + IF(s.subscription_eligibility_window_months IS NULL, m.prior_visits, 0)
+          >= s.subscription_eligibility_threshold AS eligible
 FROM members m
 CROSS JOIN membership_settings s
 LEFT JOIN attendance a ON a.member_id = m.id AND a.checked_in_at IS NOT NULL
@@ -275,11 +277,13 @@ GROUP BY m.id;
 ```
 
 **On probation:** probation starts at `probation_override_start`, else the date of the first
-arrived visit, and lasts `membership_settings.probation_period_days`.
+arrived visit, and lasts `membership_settings.probation_period_days`. A member with
+`prior_visits` and no override is never on probation.
 ```sql
 SELECT m.id,
-       CURDATE() < COALESCE(m.probation_override_start, DATE(MIN(a.checked_in_at)))
-                   + INTERVAL s.probation_period_days DAY AS on_probation
+       COALESCE(CURDATE() < COALESCE(m.probation_override_start,
+                                     IF(m.prior_visits > 0, NULL, DATE(MIN(a.checked_in_at))))
+                            + INTERVAL s.probation_period_days DAY, 0) AS on_probation
 FROM members m
 CROSS JOIN membership_settings s
 LEFT JOIN attendance a ON a.member_id = m.id AND a.checked_in_at IS NOT NULL
