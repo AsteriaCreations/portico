@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
  * A shift on one event that staff give availability for and get assigned
@@ -35,5 +36,10 @@ class ShiftSlot extends Model
     public function shiftRole(): BelongsTo
     {
         return $this->belongsTo(ShiftRole::class);
+    }
+
+    public function availabilities(): HasMany
+    {
+        return $this->hasMany(ShiftAvailability::class);
     }
 }

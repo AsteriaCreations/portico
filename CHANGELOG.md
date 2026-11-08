@@ -12,6 +12,11 @@ releases below could carry small breaking changes in a minor release.
 
 ### Added
 
+- **Staff scheduling, part 2: My availability.** Anyone with a shift role gets a *My
+  availability* page (Front of House): for each shift of their roles in a schedule week,
+  *Preferred*, *Available* or *No*, plus a note for the week. Answers can change until the
+  shift starts. Needs *Staff scheduling* on. Migration: `shift_availabilities` and
+  `shift_week_notes`.
 - **Staff scheduling, part 1: shift roles and shifts.** A new *Shift Roles* list (Admin+) for
   the jobs staff are scheduled for (Door, DM, Bar…), separate from login roles, with who can
   work each one. Each event type gets a *Staff shifts* tab listing the shifts its events need
