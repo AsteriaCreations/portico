@@ -460,6 +460,7 @@ GRANT SELECT ON `<portico>`.shift_roles TO 'portico_analyst'@'localhost';
 GRANT SELECT ON `<portico>`.shift_role_user TO 'portico_analyst'@'localhost';
 GRANT SELECT ON `<portico>`.shift_templates TO 'portico_analyst'@'localhost';
 GRANT SELECT ON `<portico>`.shift_slots TO 'portico_analyst'@'localhost';
+GRANT SELECT ON `<portico>`.shift_availabilities TO 'portico_analyst'@'localhost';
 GRANT SELECT ON `<portico>`.showrunner_payout_tiers TO 'portico_analyst'@'localhost';
 GRANT SELECT ON `<portico>`.skills TO 'portico_analyst'@'localhost';
 GRANT SELECT ON `<portico>`.member_skill TO 'portico_analyst'@'localhost';

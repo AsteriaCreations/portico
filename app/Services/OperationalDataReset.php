@@ -50,6 +50,8 @@ class OperationalDataReset
         'private_rental_payments',
         'private_rentals',
         'add_on_event',
+        'shift_availabilities',
+        'shift_week_notes',
         'shift_slots',
         'events',
         'members',

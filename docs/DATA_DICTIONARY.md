@@ -227,6 +227,8 @@ drawer, add those rows back (see recipe).
 | `shift_roles` / `shift_role_user` | Jobs staff are scheduled for (Door, Bar…; not login roles) and which `users` can work each. |
 | `shift_templates` | Per event type: `shift_role_id`, `start_offset_minutes` (from the event's `starts_at`; negative = before), `duration_minutes`, `headcount`. Copied onto each new event. |
 | `shift_slots` | The staff shifts on one event: `event_id`, `shift_role_id`, `starts_at`/`ends_at`, `headcount` (people needed), `notes`. |
+| `shift_availabilities` | One staff member's answer for one shift: `shift_slot_id`, `user_id`, `preference` ∈ `preferred`, `available`, `unavailable`. No row = not answered. |
+| `shift_week_notes` | A staff member's free-text note for one schedule week (`week_starts_on`, the week's first day). |
 | `membership_settings` | The singleton (ground rule 7). |
 
 ### Audit and status history
