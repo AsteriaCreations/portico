@@ -12,6 +12,13 @@ releases below could carry small breaking changes in a minor release.
 
 ### Added
 
+- **Staff scheduling, part 3: the Staff schedule.** Admin+ builds each schedule week on a new
+  *Staff schedule* page (Front of House): every shift lists the people who can work its role
+  with what they said (Preferred, Available, no answer, No, in that order). A shift takes no
+  more people than it needs, and nobody can be on two overlapping shifts. Staff see nothing
+  until *Publish week*, which notifies everyone on it with their shifts and locks that week's
+  availability; after that, adding or taking someone off a shift notifies them. Migration:
+  `shift_assignments` and `schedule_weeks`.
 - **Staff scheduling, part 2: My availability.** Anyone with a shift role gets a *My
   availability* page (Front of House): for each shift of their roles in a schedule week,
   *Preferred*, *Available* or *No*, plus a note for the week. Answers can change until the
