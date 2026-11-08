@@ -130,6 +130,12 @@ releases below could carry small breaking changes in a minor release.
 
 ### Fixed
 
+- **Instructor payouts stop showing once the event has ended.** The desk's "payout so far"
+  line and *Pay instructor* stayed up until midnight, so a class over at 9pm was still on
+  offer at 11. They now go once the event's end time passes. A Manager can still use
+  *Correct instructor payout* on a payout already made for the rest of the day. An event with
+  no end time keeps showing all day, as before.
+
 - **Spending another member's voucher credit at the desk.** Picking a different member under
   "Apply from a different member's balance" now fills in the amount from that member's balance,
   as it already did in tests. In the browser it kept the attendee's own (often $0) amount, so
