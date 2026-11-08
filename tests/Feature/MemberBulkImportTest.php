@@ -27,7 +27,7 @@ function buildMemberUploadFixture(array $rows): string
         'category', 'sponsor_username', 'member_number', 'date_vetted', 'dob', 'paperwork_date',
         'is_active', 'subscription_eligible', 'on_watchlist', 'watchlist_reason', 'is_banned',
         'ban_reason', 'probation_override_start', 'missing_paperwork', 'is_deceased',
-        'hospitality_note', 'notes',
+        'hospitality_note', 'notes', 'prior_visits',
     ], null, 'A1');
 
     foreach ($rows as $i => $row) {
@@ -47,7 +47,7 @@ function blankMemberRow(array $overrides = []): array
         '', '', '', '', '', '',
         '', '', '', '', '',
         '', '', '', '',
-        '', '',
+        '', '', '',
     ], $overrides);
 }
 
@@ -155,4 +155,24 @@ test('bulk upload prunes the member-uploads directory to the last 4 files', func
     }
 
     expect(Storage::disk('local')->files('member-uploads'))->toHaveCount(4);
+});
+
+test('bulk upload reads an optional prior_visits count and refuses a non-number', function () {
+    Category::factory()->create(['name' => 'Regular']);
+
+    $path = buildMemberUploadFixture([
+        blankMemberRow([0 => 'withprior', 6 => 'Regular', 23 => '12']),
+        blankMemberRow([0 => 'noprior', 6 => 'Regular']),
+        blankMemberRow([0 => 'badprior', 6 => 'Regular', 23 => 'lots']),
+    ]);
+
+    try {
+        callMemberBulkUpload($path)->assertHasNoErrors();
+    } finally {
+        @unlink($path);
+    }
+
+    expect(Member::where('username', 'withprior')->value('prior_visits'))->toBe(12)
+        ->and(Member::where('username', 'noprior')->value('prior_visits'))->toBe(0)
+        ->and(Member::where('username', 'badprior')->exists())->toBeFalse();
 });

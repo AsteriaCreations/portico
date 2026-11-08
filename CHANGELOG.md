@@ -12,6 +12,17 @@ releases below could carry small breaking changes in a minor release.
 
 ### Added
 
+- **Visits before these records.** A new member field, *Visits before these records*
+  (`members.prior_visits`, Manager+ on the member form, an optional last `prior_visits` column
+  on the member upload), holds visits a member made before the club started using Portico, e.g.
+  from an old spreadsheet. A member with any isn't treated as new: no first visit (so no
+  after-close first-visit exception), no "New member — first visit" badge on the roster or
+  Active Patrons, and no probation unless a Manager sets a probation start. The count also goes
+  toward subscription eligibility, unless Membership Settings sets an eligibility window (these
+  visits have no dates). Before, an imported long-standing member with no visit in the
+  imported range looked brand new on their next visit, and their probation started that
+  night. Migration: adds the column and to the `analyst_members` view.
+
 - **Private room rentals, part 4: checking the group in.** Pick the rental as the event at the
   desk and check people in as usual. The room's included people, or the headcount booked when
   that's more, get in free, first come, first served, with the renter (host) counting as one;

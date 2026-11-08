@@ -22,7 +22,7 @@ use Illuminate\Support\Str;
 
 #[Fillable([
     'member_number', 'username', 'preferred_name', 'first_name', 'last_name', 'email', 'email_opt_in',
-    'category_id', 'sponsor_id', 'date_vetted', 'dob', 'is_active', 'subscription_eligible',
+    'category_id', 'sponsor_id', 'date_vetted', 'prior_visits', 'dob', 'is_active', 'subscription_eligible',
     'on_watchlist', 'watchlist_reason', 'watchlist_review_on', 'is_banned', 'ban_reason', 'banned_until', 'probation_override_start',
     'missing_paperwork', 'is_deceased', 'rentals_blocked', 'rentals_blocked_reason', 'hospitality_note', 'notes',
 ])]
@@ -43,6 +43,7 @@ class Member extends Model
     {
         return [
             'date_vetted' => 'date',
+            'prior_visits' => 'integer',
             'dob' => 'date',
             'is_active' => 'boolean',
             'email_opt_in' => 'boolean',
@@ -302,6 +303,8 @@ class Member extends Model
      * Attended events that count toward subscription eligibility: all-time,
      * or only those in the last N months when Membership Settings sets a
      * window. Also what the Check-In Desk shows as "(3/5 events attended)".
+     * All-time includes prior_visits (visits from before these records);
+     * a window can't, since those have no dates.
      */
     public function eligibilityAttendanceCount(): int
     {
@@ -310,17 +313,29 @@ class Member extends Model
         return $this->attendance()
             ->whereNotNull('checked_in_at')
             ->when($windowMonths, fn ($query) => $query->where('checked_in_at', '>=', now()->subMonthsNoOverflow($windowMonths)))
-            ->count();
+            ->count()
+            + ($windowMonths ? 0 : (int) $this->prior_visits);
     }
 
     /**
-     * Never marked arrived at any event: an unarrived prepay doesn't count
-     * as a visit. Lets a new member through after check-in closes
+     * Never marked arrived at any event, and no visits from before these
+     * records (prior_visits): an unarrived prepay doesn't count as a visit.
+     * Lets a new member through after check-in closes
      * (Event::isCheckInClosedFor()).
      */
     public function isFirstVisit(): bool
     {
-        return ! $this->attendance()->whereNotNull('checked_in_at')->exists();
+        return ! $this->hasPriorVisits()
+            && ! $this->attendance()->whereNotNull('checked_in_at')->exists();
+    }
+
+    /**
+     * Visits from before the club's records in this app start, e.g. an
+     * import's per-year totals. Such a member has been before.
+     */
+    public function hasPriorVisits(): bool
+    {
+        return (int) $this->prior_visits > 0;
     }
 
     public function hasBanExceptionFor(Event $event): bool
@@ -444,7 +459,9 @@ class Member extends Model
      * desk. date_vetted plays no part. probation_override_start lets a
      * manager set when the clock actually started for an edge case — it
      * replaces the first entry as the basis, it isn't an on/off flag like
-     * subscription_eligible's manual override. Null = never been in.
+     * subscription_eligible's manual override. Null = never been in, or
+     * a member with visits from before these records (prior_visits): their
+     * probation was over long before, so it never starts again.
      *
      * A list can preload the first entry with withMin('attendance',
      * 'checked_in_at') (MIN skips the null checked_in_at of an unarrived
@@ -454,6 +471,10 @@ class Member extends Model
     {
         if ($this->probation_override_start !== null) {
             return $this->probation_override_start;
+        }
+
+        if ($this->hasPriorVisits()) {
+            return null;
         }
 
         $firstEntry = array_key_exists('attendance_min_checked_in_at', $this->attributes)

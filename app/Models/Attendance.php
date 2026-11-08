@@ -131,11 +131,12 @@ class Attendance extends Model
      * Irregular member arriving for the first time. Derived, since the
      * promotion itself isn't logged -- a Prospective can't check in until
      * the desk records their details, so their first arrival is the night
-     * they were promoted.
+     * they were promoted. Never for a member with visits from before these
+     * records (Member::hasPriorVisits()).
      */
     public function isNewMemberVisit(): bool
     {
-        if ($this->checked_in_at === null || $this->member?->category?->name !== 'Irregular') {
+        if ($this->checked_in_at === null || $this->member?->category?->name !== 'Irregular' || $this->member->hasPriorVisits()) {
             return false;
         }
 

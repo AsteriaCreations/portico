@@ -69,6 +69,13 @@ class MemberForm
                             ->searchable()
                             ->helperText(__('The member responsible for this guest, if this record is a Guest.')),
                         DatePicker::make('date_vetted'),
+                        TextInput::make('prior_visits')
+                            ->label('Visits before these records')
+                            ->integer()
+                            ->minValue(0)
+                            ->default(0)
+                            ->required()
+                            ->helperText(__('Visits this member made before the club started using this system, e.g. from an old spreadsheet. Any at all means they have been before: no first-visit badge or exception, and no probation. They count toward subscription eligibility unless Membership Settings sets a window.')),
                         DatePicker::make('dob'),
                         // Signed paperwork/waiver dates live in the
                         // "Paperwork & waivers" relation manager now, one
