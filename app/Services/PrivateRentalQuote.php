@@ -2,19 +2,22 @@
 
 namespace App\Services;
 
-use App\Models\Room;
 use App\Support\Cents;
 
 /**
  * What a private rental costs, in integer cents (see App\Support\Cents):
- * the room for every hour booked, plus each person past the room's
- * included_people at its overage fee (times the hours when the fee is
- * per hour). Built only by PrivateRentalService::quote().
+ * the room for every hour booked, plus each person past the people included
+ * at the overage fee (times the hours when the fee is per hour). Built only
+ * by PrivateRentalService, from a room's current prices for a new booking
+ * or from a booking's own snapshot when it's changed.
  */
 final readonly class PrivateRentalQuote
 {
     public function __construct(
-        public Room $room,
+        public int $hourlyRateCents,
+        public int $includedPeople,
+        public int $overageFeeCents,
+        public bool $overagePerHour,
         public int $hours,
         public int $headcount,
         public int $roomCostCents,
@@ -25,7 +28,8 @@ final readonly class PrivateRentalQuote
     ) {}
 
     /**
-     * The booking's price snapshot columns, ready for PrivateRental::create().
+     * The booking's price snapshot columns, ready for PrivateRental::create()
+     * or update().
      *
      * @return array<string, mixed>
      */
@@ -34,10 +38,10 @@ final readonly class PrivateRentalQuote
         return [
             'hours' => $this->hours,
             'headcount' => $this->headcount,
-            'hourly_rate' => $this->room->hourly_rate,
-            'included_people' => $this->room->included_people,
-            'overage_fee' => $this->room->overage_fee,
-            'overage_per_hour' => $this->room->overage_per_hour,
+            'hourly_rate' => Cents::toDecimal($this->hourlyRateCents),
+            'included_people' => $this->includedPeople,
+            'overage_fee' => Cents::toDecimal($this->overageFeeCents),
+            'overage_per_hour' => $this->overagePerHour,
             'room_cost' => Cents::toDecimal($this->roomCostCents),
             'extra_people_cost' => Cents::toDecimal($this->extraPeopleCostCents),
             'total' => Cents::toDecimal($this->totalCents),

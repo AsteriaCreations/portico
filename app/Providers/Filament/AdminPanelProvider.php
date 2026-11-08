@@ -18,6 +18,7 @@ use App\Filament\Admin\Resources\PaperworkTypes\PaperworkTypeResource;
 use App\Filament\Admin\Resources\PaymentCorrections\PaymentCorrectionResource;
 use App\Filament\Admin\Resources\PaymentMethods\PaymentMethodResource;
 use App\Filament\Admin\Resources\Plans\PlanResource;
+use App\Filament\Admin\Resources\PrivateRentals\PrivateRentalResource;
 use App\Filament\Admin\Resources\Registers\RegisterResource;
 use App\Filament\Admin\Resources\RegisterShifts\RegisterShiftResource;
 use App\Filament\Admin\Resources\Rooms\RoomResource;
@@ -170,6 +171,7 @@ class AdminPanelProvider extends PanelProvider
             PaperworkTypeResource::class => 'paperwork-types',
             PaymentCorrectionResource::class => 'payment-corrections',
             PaymentMethodResource::class => 'payment-methods',
+            PrivateRentalResource::class => 'private-rentals',
             PlanResource::class => 'plans',
             RegisterShiftResource::class => 'register-shifts',
             RegisterResource::class => 'registers',
