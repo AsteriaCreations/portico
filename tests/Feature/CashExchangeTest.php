@@ -12,7 +12,6 @@ use App\Models\PaymentMethod;
 use App\Models\Register;
 use App\Models\User;
 use App\Services\RegisterShiftService;
-use Filament\Notifications\Livewire\Notifications;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
 use Symfony\Component\HttpKernel\Exception\HttpException;
@@ -202,11 +201,10 @@ test('the box summary, variance math and close message list the swap apart from 
 
     deskWithBox($this->register)->callAction('closeShift', data: ['closing_count' => 105])->assertHasNoActionErrors();
 
-    $sent = new Notifications;
-    $sent->mount();
+    $sent = sentNotifications();
 
     expect($this->service->varianceCents($this->shift->fresh()))->toBe(0)
-        ->and($sent->notifications->map(fn ($notification) => $notification->getBody())->implode(' '))
+        ->and($sent->map(fn ($notification) => $notification->getBody())->implode(' '))
         ->toContain('Also received electronically in exchange for cash from the box (not takings): Venmo $15.00.');
 });
 

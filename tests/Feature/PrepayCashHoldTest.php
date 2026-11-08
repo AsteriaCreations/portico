@@ -20,7 +20,6 @@ use App\Models\VisitRemoval;
 use App\Services\PrepayCashService;
 use App\Services\RegisterShiftService;
 use App\Services\VisitRemovalService;
-use Filament\Notifications\Livewire\Notifications;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
 
@@ -74,10 +73,7 @@ function heldVisit(Event $event, array $overrides = []): Attendance
 
 function lastPrepayNotificationBody(): ?string
 {
-    $component = new Notifications;
-    $component->mount();
-
-    return $component->notifications->last()?->getBody();
+    return sentNotifications()->last()?->getBody();
 }
 
 test('prepaid cash counts as received on the shift but is held out of the expected close', function () {

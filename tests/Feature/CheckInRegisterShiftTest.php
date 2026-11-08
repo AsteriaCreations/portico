@@ -19,7 +19,6 @@ use App\Models\RegisterShift;
 use App\Models\Subscription;
 use App\Models\User;
 use App\Services\RegisterShiftService;
-use Filament\Notifications\Livewire\Notifications;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Livewire\Livewire;
@@ -474,10 +473,7 @@ test('recordMiscPayment is rejected once register_shifts_enabled is off, even vi
 
 function lastNotificationBody(): ?string
 {
-    $component = new Notifications;
-    $component->mount();
-
-    return $component->notifications->last()?->getBody();
+    return sentNotifications()->last()?->getBody();
 }
 
 test('closing a shift with cash collected includes an envelope reminder with the cash breakdown and event/date', function () {
@@ -618,10 +614,9 @@ test('the box summary and the close message list electronic payments apart from 
 
     // Read the way Notification::assertNotified() does; it only matches on
     // the title or the whole notification.
-    $sent = new Notifications;
-    $sent->mount();
+    $sent = sentNotifications();
 
-    expect($sent->notifications->map(fn ($notification) => $notification->getBody())->implode(' '))
+    expect($sent->map(fn ($notification) => $notification->getBody())->implode(' '))
         ->toContain('Taken electronically (not in the box or any envelope): Venmo $40.00 (total $40.00).');
 });
 
