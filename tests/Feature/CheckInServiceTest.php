@@ -361,3 +361,37 @@ test('the register counts only the cash taken for a subscription a voucher partl
 
     expect(app(RegisterShiftService::class)->cashReceivedCents($shift))->toBe(2500);
 });
+
+test("spends the attendee's own credit first, then another member's, each capped at its balance", function () {
+    $payer = serviceMember($this->category, 'payer');
+    Voucher::factory()->create(['member_id' => $this->member->id, 'amount' => 15]);
+    Voucher::factory()->create(['member_id' => $payer->id, 'amount' => 100]);
+
+    // Asks for more of the attendee's own credit than they have: only their
+    // $15 is spent, and the other member pays the remaining $25 of the $40.
+    $result = recordCheckIn($this->member, $this->event, $this->manager, new CheckInRequest(
+        applyVoucher: true,
+        voucherPayerId: $payer->id,
+        voucherAmountCents: 4000,
+        voucherReason: 'covering the rest',
+        ownVoucherAmountCents: 9900,
+    ));
+
+    expect($result->attendance->voucher_coverage)->toEqual(40)
+        ->and($result->attendance->amount_paid)->toEqual(0)
+        ->and($this->member->voucherBalance())->toEqual(0.0)
+        ->and($payer->voucherBalance())->toEqual(75.0);
+});
+
+test('ignores an own-credit amount when no other member is paying', function () {
+    Voucher::factory()->create(['member_id' => $this->member->id, 'amount' => 100]);
+
+    $result = recordCheckIn($this->member, $this->event, $this->manager, new CheckInRequest(
+        applyVoucher: true,
+        voucherAmountCents: 1000,
+        ownVoucherAmountCents: 4000,
+    ));
+
+    expect($result->attendance->voucher_coverage)->toEqual(10)
+        ->and($this->member->voucherBalance())->toEqual(90.0);
+});

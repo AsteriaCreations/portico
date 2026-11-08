@@ -245,7 +245,7 @@ test('add_on_ids is always seeded as a real array, never an absent key', functio
     // voucher_payer_id too: unseeded, picking another member's balance never
     // re-suggested the amount, so the visit still asked for a payment method.
     $freshComponent = Livewire::test(CheckIn::class);
-    expect($freshComponent->instance()->pricingData)->toBe(['add_on_ids' => [], 'apply_voucher' => false, 'voucher_payer_id' => null]);
+    expect($freshComponent->instance()->pricingData)->toBe(['add_on_ids' => [], 'apply_voucher' => false, 'voucher_payer_id' => null, 'own_voucher_amount' => null]);
 
     $member = clearMember($this->irregular);
     $event = Event::factory()->create(['event_date' => now()->toDateString(), 'entry_fee' => 20, 'pool_fee' => 0]);
@@ -253,7 +253,7 @@ test('add_on_ids is always seeded as a real array, never an absent key', functio
     $component = Livewire::test(CheckIn::class)
         ->fillForm(['event_id' => $event->id, 'member_id' => $member->id]);
 
-    expect($component->instance()->pricingData)->toBe(['add_on_ids' => [], 'apply_voucher' => false, 'voucher_payer_id' => null]);
+    expect($component->instance()->pricingData)->toBe(['add_on_ids' => [], 'apply_voucher' => false, 'voucher_payer_id' => null, 'own_voucher_amount' => null]);
 });
 
 test('pricingData resets when the member changes', function () {
@@ -273,7 +273,7 @@ test('pricingData resets when the member changes', function () {
     // an absent key, or the very next add-on click corrupts it to a scalar
     // via Alpine/Livewire's checkbox-group binding (see the property's own
     // comment in CheckIn.php).
-    expect($component->instance()->pricingData)->toBe(['add_on_ids' => [], 'apply_voucher' => false, 'voucher_payer_id' => null]);
+    expect($component->instance()->pricingData)->toBe(['add_on_ids' => [], 'apply_voucher' => false, 'voucher_payer_id' => null, 'own_voucher_amount' => null]);
 });
 
 test('pricingData resets when the event changes', function () {
@@ -293,7 +293,7 @@ test('pricingData resets when the event changes', function () {
     // an absent key, or the very next add-on click corrupts it to a scalar
     // via Alpine/Livewire's checkbox-group binding (see the property's own
     // comment in CheckIn.php).
-    expect($component->instance()->pricingData)->toBe(['add_on_ids' => [], 'apply_voucher' => false, 'voucher_payer_id' => null]);
+    expect($component->instance()->pricingData)->toBe(['add_on_ids' => [], 'apply_voucher' => false, 'voucher_payer_id' => null, 'own_voucher_amount' => null]);
 });
 
 test('pricingData resets after a successful check-in', function () {
@@ -311,7 +311,7 @@ test('pricingData resets after a successful check-in', function () {
     // an absent key, or the very next add-on click corrupts it to a scalar
     // via Alpine/Livewire's checkbox-group binding (see the property's own
     // comment in CheckIn.php).
-    expect($component->instance()->pricingData)->toBe(['add_on_ids' => [], 'apply_voucher' => false, 'voucher_payer_id' => null]);
+    expect($component->instance()->pricingData)->toBe(['add_on_ids' => [], 'apply_voucher' => false, 'voucher_payer_id' => null, 'own_voucher_amount' => null]);
 });
 
 test('the action-modals placeholder renders even with no event selected, so action clicks actually show a modal', function () {
@@ -1492,6 +1492,112 @@ test('a voucher can be redeemed on behalf of a different member than the one che
     expect($redemption->member_id)->toBe($payer->id)
         ->and($payer->voucherBalance())->toEqual(30.0)
         ->and($attendee->voucherBalance())->toEqual(0.0);
+});
+
+test('a member can spend their own voucher balance and another member\'s on the same check-in', function () {
+    // $20 entry: $10 of the attendee's own credit first, then $10 of a friend's.
+    $attendee = clearMember($this->irregular, ['username' => 'attendee2']);
+    $friend = clearMember($this->irregular, ['username' => 'friend2']);
+    $event = Event::factory()->create(['event_date' => now()->toDateString(), 'entry_fee' => 20, 'pool_fee' => 0]);
+    Voucher::factory()->for($attendee)->create(['amount' => 10, 'recorded_by' => $this->user->id]);
+    Voucher::factory()->for($friend)->create(['amount' => 50, 'recorded_by' => $this->user->id]);
+
+    $page = Livewire::test(CheckIn::class)
+        ->set('data.event_id', $event->id)
+        ->set('data.member_id', $attendee->id)
+        ->set('pricingData.apply_voucher', true)
+        ->set('pricingData.voucher_payer_id', $friend->id)
+        // Picking the friend fills in both: the attendee's own $10 first,
+        // then the friend's for the $10 still due.
+        ->assertSet('pricingData.own_voucher_amount', 10)
+        ->assertSet('pricingData.voucher_amount', 10)
+        ->fillForm(['voucher_reason' => 'birthday treat'], 'pricingForm');
+
+    expect($page->instance()->getLiveDueTotal())->toEqual(0.0);
+
+    $page->callAction('checkIn', data: ['payment_method' => 'comp', 'checked_in_at' => now()])->assertHasNoActionErrors();
+
+    $attendance = Attendance::where('member_id', $attendee->id)->where('event_id', $event->id)->firstOrFail();
+    expect($attendance->amount_paid)->toEqual(0)
+        ->and($attendance->voucher_coverage)->toEqual(20)
+        ->and($attendance->payment_method)->toBe(PaymentMethod::VOUCHER)
+        ->and($attendee->voucherBalance())->toEqual(0.0)
+        ->and($friend->voucherBalance())->toEqual(40.0);
+
+    $own = Voucher::where('attendance_id', $attendance->id)->where('member_id', $attendee->id)->sole();
+    $theirs = Voucher::where('attendance_id', $attendance->id)->where('member_id', $friend->id)->sole();
+    expect($own->amount)->toEqual(-10)
+        ->and($theirs->amount)->toEqual(-10)
+        ->and($theirs->reason)->toContain('birthday treat');
+});
+
+test('lowering the attendee\'s own share re-suggests the other member\'s, and the Due line follows both', function () {
+    $attendee = clearMember($this->irregular, ['username' => 'attendee3']);
+    $friend = clearMember($this->irregular, ['username' => 'friend3']);
+    $event = Event::factory()->create(['event_date' => now()->toDateString(), 'entry_fee' => 20, 'pool_fee' => 0]);
+    Voucher::factory()->for($attendee)->create(['amount' => 15, 'recorded_by' => $this->user->id]);
+    Voucher::factory()->for($friend)->create(['amount' => 8, 'recorded_by' => $this->user->id]);
+
+    $page = Livewire::test(CheckIn::class)
+        ->set('data.event_id', $event->id)
+        ->set('data.member_id', $attendee->id)
+        ->set('pricingData.apply_voucher', true)
+        ->set('pricingData.voucher_payer_id', $friend->id)
+        ->assertSet('pricingData.own_voucher_amount', 15)
+        ->assertSet('pricingData.voucher_amount', 5);
+
+    expect($page->instance()->getLiveDueTotal())->toEqual(0.0);
+
+    // Own share down to $5: the friend's $8 is all they have, so $7 is left to pay.
+    $page->set('pricingData.own_voucher_amount', 5)
+        ->assertSet('pricingData.voucher_amount', 8);
+
+    expect($page->instance()->getLiveDueTotal())->toEqual(7.0);
+});
+
+test('two balances pay toward a subscription bought at the same check-in, own credit first', function () {
+    // $20 entry is covered by the subscription's credit; $60 subscription:
+    // $25 of the attendee's own credit, then $35 of a friend's.
+    $attendee = clearMember($this->irregular, ['username' => 'attendee4', 'subscription_eligible' => true]);
+    $friend = clearMember($this->irregular, ['username' => 'friend4']);
+    $event = Event::factory()->create(['event_date' => now()->toDateString(), 'entry_fee' => 20, 'pool_fee' => 0]);
+    Voucher::factory()->for($attendee)->create(['amount' => 25, 'recorded_by' => $this->user->id]);
+    Voucher::factory()->for($friend)->create(['amount' => 100, 'recorded_by' => $this->user->id]);
+
+    $page = Livewire::test(CheckIn::class)
+        ->set('data.event_id', $event->id)
+        ->set('data.member_id', $attendee->id)
+        ->set('pricingData.subscription_regular_duration', '1')
+        ->set('pricingData.apply_voucher', true)
+        ->set('pricingData.voucher_payer_id', $friend->id)
+        ->assertSet('pricingData.own_voucher_amount', 25)
+        ->assertSet('pricingData.voucher_amount', 35)
+        ->fillForm(['voucher_reason' => 'gift'], 'pricingForm');
+
+    expect($page->instance()->getLiveDueTotal())->toEqual(0.0);
+
+    $page->callAction('checkIn', data: ['payment_method' => 'comp', 'checked_in_at' => now()])->assertHasNoActionErrors();
+
+    $subscription = Subscription::where('member_id', $attendee->id)->sole();
+    expect($subscription->amount_paid)->toEqual(0)
+        ->and($subscription->voucher_coverage)->toEqual(60)
+        ->and($attendee->voucherBalance())->toEqual(0.0)
+        ->and($friend->voucherBalance())->toEqual(65.0);
+});
+
+test('with only the other member\'s balance, a check-in is unchanged and the own-share field stays hidden', function () {
+    $attendee = clearMember($this->irregular, ['username' => 'attendee5']);
+    $friend = clearMember($this->irregular, ['username' => 'friend5']);
+    $event = Event::factory()->create(['event_date' => now()->toDateString(), 'entry_fee' => 20, 'pool_fee' => 0]);
+    Voucher::factory()->for($friend)->create(['amount' => 50, 'recorded_by' => $this->user->id]);
+
+    Livewire::test(CheckIn::class)
+        ->set('data.event_id', $event->id)
+        ->set('data.member_id', $attendee->id)
+        ->set('pricingData.apply_voucher', true)
+        ->set('pricingData.voucher_payer_id', $friend->id)
+        ->assertFormFieldHidden('own_voucher_amount', 'pricingForm')
+        ->assertSet('pricingData.voucher_amount', 20);
 });
 
 test('spending their own voucher balance needs no reason, and the ledger gets a default one', function () {

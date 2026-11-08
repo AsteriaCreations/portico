@@ -203,38 +203,53 @@ class CheckInService
                 $compReasonId = $compReason?->id;
             }
 
-            $voucherApplied = 0;
-            $voucherPayer = null;
+            // Voucher credit: one balance (the attendee's own, or another
+            // member's), or the attendee's own first and then another
+            // member's. PricingService::planVoucherDraws() splits it,
+            // entry/pool first and the rest toward the subscriptions bought
+            // above, which is spent once the attendance row exists so its
+            // ledger rows can link to it.
+            $voucherDraws = [];
             if ($request->applyVoucher && MembershipSetting::current()->vouchers_enabled) {
-                $voucherPayerId = ! empty($request->voucherPayerId) ? $request->voucherPayerId : $member->id;
+                $otherPayerId = ! empty($request->voucherPayerId) && (int) $request->voucherPayerId !== $member->id
+                    ? (int) $request->voucherPayerId
+                    : null;
 
-                // Locked for the rest of this transaction: two check-ins
-                // drawing from the same payer's balance at once must not
-                // both read the pre-spend balance before either commits,
-                // or the ledger can go negative with no error raised
+                // [payer id, cents asked for, ledger reason]
+                $sources = $otherPayerId === null
+                    ? [[$member->id, $request->voucherAmountCents, $request->voucherReason]]
+                    : array_values(array_filter([
+                        $request->ownVoucherAmountCents > 0 ? [$member->id, $request->ownVoucherAmountCents, ''] : null,
+                        [$otherPayerId, $request->voucherAmountCents, $request->voucherReason],
+                    ]));
+
+                // Locked for the rest of this transaction, in id order: two
+                // check-ins drawing from the same balance at once must not
+                // both read the pre-spend balance before either commits, or
+                // the ledger can go negative with no error raised
                 // (voucherBalance() is a live SUM with no DB constraint
                 // against it going negative).
-                $voucherPayer = Member::where('id', $voucherPayerId)->lockForUpdate()->first();
+                $payers = Member::whereIn('id', array_column($sources, 0))->orderBy('id')->lockForUpdate()->get()->keyBy('id');
+                $sources = array_values(array_filter($sources, fn (array $source): bool => $payers->has($source[0])));
 
-                if ($voucherPayer) {
-                    $breakdown = app(PricingService::class)->applyVoucher(
-                        $breakdown,
-                        Cents::of($voucherPayer->voucherBalance()),
-                        $request->voucherAmountCents,
-                    );
-                    $voucherApplied = $breakdown->voucherCoverageCents;
+                $plan = app(PricingService::class)->planVoucherDraws(
+                    $breakdown->amountPaidCents,
+                    $subscriptionTotal,
+                    array_map(fn (array $source): array => ['requested' => $source[1], 'balance' => Cents::of($payers[$source[0]]->voucherBalance())], $sources),
+                );
+
+                foreach ($sources as $i => [$payerId, , $reason]) {
+                    $voucherDraws[] = ['payer' => $payers[$payerId], 'reason' => $reason, ...$plan[$i]];
                 }
             }
 
-            // Whatever of the requested credit entry/pool didn't use goes on
-            // to the subscriptions bought above; it's spent once the
-            // attendance row exists, so its ledger rows can link to it.
-            $subscriptionVoucher = 0;
-            if ($voucherPayer && $subscriptionTotal > 0) {
-                $available = min($request->voucherAmountCents, Cents::of($voucherPayer->voucherBalance()));
-                $subscriptionVoucher = max(0, min($available - $voucherApplied, $subscriptionTotal));
-                $subscriptionTotal -= $subscriptionVoucher;
+            $voucherApplied = array_sum(array_column($voucherDraws, 'entry'));
+            if ($voucherApplied > 0) {
+                $breakdown = app(PricingService::class)->applyVoucher($breakdown, $voucherApplied, $voucherApplied);
             }
+
+            $subscriptionVoucher = array_sum(array_column($voucherDraws, 'subscription'));
+            $subscriptionTotal -= $subscriptionVoucher;
 
             // Voucher credit covered the whole visit, so nothing changed
             // hands: recorded as Voucher whatever the desk picked, or a
@@ -315,25 +330,27 @@ class CheckInService
                 $member->recordOneTimeMethodUsage(PaymentMethod::where('code', $paymentMethod)->value('label'));
             }
 
-            if ($voucherApplied > 0 && $voucherPayer) {
-                Voucher::create([
-                    'member_id' => $voucherPayer->id,
-                    'amount' => Cents::toDecimal(-$voucherApplied),
-                    'reason' => Voucher::redemptionReason($request->voucherReason),
-                    'attendance_id' => $attendance->id,
-                    'recorded_by' => $staff->id,
-                ]);
-            }
+            foreach ($voucherDraws as $draw) {
+                if ($draw['entry'] > 0) {
+                    Voucher::create([
+                        'member_id' => $draw['payer']->id,
+                        'amount' => Cents::toDecimal(-$draw['entry']),
+                        'reason' => Voucher::redemptionReason($draw['reason']),
+                        'attendance_id' => $attendance->id,
+                        'recorded_by' => $staff->id,
+                    ]);
+                }
 
-            if ($subscriptionVoucher > 0) {
-                app(SubscriptionBundleService::class)->applyVoucher(
-                    $boughtSubscriptions,
-                    $voucherPayer,
-                    $subscriptionVoucher,
-                    $request->voucherReason,
-                    $staff,
-                    $attendance,
-                );
+                if ($draw['subscription'] > 0) {
+                    app(SubscriptionBundleService::class)->applyVoucher(
+                        $boughtSubscriptions,
+                        $draw['payer'],
+                        $draw['subscription'],
+                        $draw['reason'],
+                        $staff,
+                        $attendance,
+                    );
+                }
             }
 
             return new CheckInResult($attendance, $breakdown, $subscriptionTotal, $voucherApplied + $subscriptionVoucher, $addOnTotal);

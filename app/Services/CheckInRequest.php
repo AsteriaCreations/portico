@@ -29,5 +29,8 @@ final readonly class CheckInRequest
         public int|string|null $voucherPayerId = null,
         public int $voucherAmountCents = 0,
         public string $voucherReason = '',
+        // With another member's balance picked above: how much of the
+        // attendee's own balance to spend first. 0 = none, as before.
+        public int $ownVoucherAmountCents = 0,
     ) {}
 }
