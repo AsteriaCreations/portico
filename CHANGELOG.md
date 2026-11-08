@@ -12,6 +12,15 @@ releases below could carry small breaking changes in a minor release.
 
 ### Added
 
+- **Staff scheduling, part 1: shift roles and shifts.** A new *Shift Roles* list (Admin+) for
+  the jobs staff are scheduled for (Door, DM, Bar…), separate from login roles, with who can
+  work each one. Each event type gets a *Staff shifts* tab listing the shifts its events need
+  (role, start relative to the event's start, length, how many people), and each event gets
+  a *Staff shifts* tab of its own, filled from the type when the event is created (duplicates
+  and repeats included) and editable for a one-off. A *Staff schedule week starts on* setting
+  sets the schedule's week, separate from the club's. Availability and the schedule itself
+  follow. Off by default: *Staff scheduling* on Feature Flags. Migration: four new tables and
+  two `membership_settings` columns.
 - **Refund a visit at the desk.** For someone who leaves straight after checking in, the
   Check-In Desk gets a "Refund visit" button (Door+) for a short time after check-in: 30
   minutes by default (*Desk refund window*, Membership Settings), while the visit's register

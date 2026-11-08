@@ -12,6 +12,7 @@ use App\Filament\Admin\Resources\PaperworkTypes\PaperworkTypeResource;
 use App\Filament\Admin\Resources\PaymentMethods\PaymentMethodResource;
 use App\Filament\Admin\Resources\Plans\PlanResource;
 use App\Filament\Admin\Resources\Registers\RegisterResource;
+use App\Filament\Admin\Resources\ShiftRoles\ShiftRoleResource;
 use App\Filament\Admin\Resources\ShowrunnerPayoutTiers\ShowrunnerPayoutTierResource;
 use App\Models\AddOn;
 use App\Models\CompReason;
@@ -22,6 +23,8 @@ use App\Models\PaperworkType;
 use App\Models\PaymentMethod;
 use App\Models\Plan;
 use App\Models\Register;
+use App\Models\ShiftRole;
+use App\Models\ShiftTemplate;
 use App\Models\ShowrunnerPayoutTier;
 use App\Models\User;
 use Closure;
@@ -215,6 +218,27 @@ class FeatureSetupReminders
                     'url' => $settingsPage,
                     'canOpen' => $canOpenSettings,
                     'needed' => fn (): bool => blank($settings->deploy_task_name),
+                ],
+            ],
+            'staff_scheduling_enabled' => [
+                $this->reminder(
+                    __('Staff scheduling: add your shift roles'),
+                    __('Add the jobs staff work (Door, DM, Bar…) and who can work each one.'),
+                    ShiftRoleResource::class,
+                    fn (): bool => ! ShiftRole::where('active', true)->whereHas('users')->exists(),
+                ),
+                $this->reminder(
+                    __('Staff scheduling: set the shifts each event type needs'),
+                    __('No event type has staff shifts yet — open an event type\'s "Staff shifts" tab.'),
+                    EventTypeResource::class,
+                    fn (): bool => ! ShiftTemplate::query()->exists(),
+                ),
+                [
+                    'title' => __('Staff scheduling: choose the first day of the schedule week'),
+                    'body' => __('Set "Staff schedule week starts on" on Membership Settings if the schedule runs on a different week from the rest of the club.'),
+                    'url' => $settingsPage,
+                    'canOpen' => $canOpenSettings,
+                    'needed' => fn (): bool => $settings->staff_schedule_week_starts_on === null,
                 ],
             ],
             'kiosk_checkin_enabled' => [
