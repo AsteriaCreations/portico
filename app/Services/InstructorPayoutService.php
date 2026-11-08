@@ -25,17 +25,22 @@ class InstructorPayoutService
      * type pays an instructor per head, once they've started. currentQuery()
      * counts all of event_date from midnight, so without the start check a
      * class later today showed up for payout during the night before's
-     * overnight event. An event with no starts_at keeps the whole-day rule.
-     * Callers check instructor_payouts_enabled themselves.
+     * overnight event. It also drops off once the event has ended, so a
+     * class over at 9pm isn't still offered at 11, unless $includeEnded (the
+     * Manager's correction, so a mistake found after the class can still be
+     * fixed that night). An event with no starts_at/ends_at keeps the
+     * whole-day rule for that side. Callers check instructor_payouts_enabled
+     * themselves.
      *
      * @return Builder<Event>
      */
-    public function currentEventsQuery(): Builder
+    public function currentEventsQuery(bool $includeEnded = false): Builder
     {
         $startsBy = now()->addMinutes(MembershipSetting::current()->event_window_buffer_minutes);
 
         return Event::currentQuery()
             ->where(fn (Builder $query) => $query->whereNull('starts_at')->orWhere('starts_at', '<=', $startsBy))
+            ->when(! $includeEnded, fn (Builder $query) => $query->where(fn (Builder $query) => $query->whereNull('ends_at')->orWhere('ends_at', '>', now())))
             ->whereHas('eventType.instructorPayRates')
             ->orderBy('starts_at')
             ->orderBy('name');
@@ -83,6 +88,7 @@ class InstructorPayoutService
         $counts = Attendance::query()
             ->where('event_id', $event->id)
             ->whereNotNull('checked_in_at')
+            ->notDeskRefunded()
             ->get(['entry_covered_by'])
             ->countBy(fn (Attendance $attendance) => $attendance->entry_covered_by->value);
 

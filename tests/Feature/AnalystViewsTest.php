@@ -20,7 +20,7 @@ function analystViewColumns(): array
         'analyst_members' => [
             'id', 'member_number', 'category_id', 'is_active', 'subscription_eligible', 'on_watchlist',
             'is_banned', 'banned_until', 'missing_paperwork', 'is_deceased', 'sponsor_id', 'email_opt_in',
-            'probation_override_start', 'date_vetted', 'created_at', 'updated_at',
+            'probation_override_start', 'date_vetted', 'created_at', 'updated_at', 'prior_visits',
         ],
         'analyst_attendance' => [
             'id', 'member_id', 'event_id', 'checked_in_by', 'checked_in_at', 'departed_at', 'entry_fee',

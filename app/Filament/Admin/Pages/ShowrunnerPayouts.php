@@ -222,10 +222,12 @@ class ShowrunnerPayouts extends Page implements HasTable
             ->withCount([
                 'attendance as cash_count' => fn (Builder $query) => $query
                     ->whereNotNull('checked_in_at')
-                    ->where('entry_covered_by', EntryCoverageSource::None),
+                    ->where('entry_covered_by', EntryCoverageSource::None)
+                    ->notDeskRefunded(),
                 'attendance as sh_count' => fn (Builder $query) => $query
                     ->whereNotNull('checked_in_at')
-                    ->whereIn('entry_covered_by', ShowrunnerPayoutService::SUBSCRIPTION_SOURCES),
+                    ->whereIn('entry_covered_by', ShowrunnerPayoutService::SUBSCRIPTION_SOURCES)
+                    ->notDeskRefunded(),
             ]);
     }
 

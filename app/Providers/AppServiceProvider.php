@@ -13,6 +13,7 @@ use App\Observers\CompReasonObserver;
 use App\Observers\MemberObserver;
 use App\Observers\UserObserver;
 use App\Services\BehaviorNoteRetractionService;
+use App\Services\ShiftAvailabilityService;
 use App\Services\StaffLoginCheckInService;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Field;
@@ -167,6 +168,11 @@ class AppServiceProvider extends ServiceProvider
         Gate::define('change-member-preferred-name', fn (User $user): bool => $user->role->atLeast(Role::Manager)
             || ($user->role->atLeast(Role::Door) && MembershipSetting::current()->door_preferred_name_change_enabled));
 
+        // Door+ once the club turns on desk_refunds_enabled; the window and
+        // the rest of the rules are DeskRefundService::refusalReason().
+        Gate::define('refund-visit-at-desk', fn (User $user): bool => $user->role->atLeast(Role::Door)
+            && MembershipSetting::current()->desk_refunds_enabled);
+
         // Door+ once the club turns on private_rentals_enabled: book a room
         // for a member's private rental at the desk. Re-checked server-side
         // in BooksPrivateRentals; who may be booked for is
@@ -212,6 +218,12 @@ class AppServiceProvider extends ServiceProvider
         // Orthogonal to role -- a capability grants nothing rank-related on
         // its own. See App\Enums\Capability.
         Gate::define('access-cleaning-checklist', fn (User $user): bool => $user->hasCapability(Capability::CleaningCrew));
+
+        Gate::define('build-staff-schedule', fn (User $user): bool => $user->role->atLeast(Role::Admin) && MembershipSetting::current()->staff_scheduling_enabled);
+
+        // Any role: what matters is having a shift role to answer for. See
+        // ShiftAvailabilityService.
+        Gate::define('give-shift-availability', fn (User $user): bool => app(ShiftAvailabilityService::class)->canGiveAvailability($user));
 
         // Same "role + flag(s) baked into the gate itself" shape as
         // manage-visit-notes/manage-behavior-notes above -- triggerDeployAction()

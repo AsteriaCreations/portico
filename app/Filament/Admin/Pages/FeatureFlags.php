@@ -83,10 +83,12 @@ class FeatureFlags extends Page
             'guests_enabled',
             'door_username_rename_enabled',
             'door_preferred_name_change_enabled',
+            'desk_refunds_enabled',
             'kiosk_checkin_enabled',
             'staff_login_checkin_enabled',
             'issue_reports_enabled',
             'private_rentals_enabled',
+            'staff_scheduling_enabled',
             'kiosk_show_code_enabled',
             'kiosk_subscribers_only',
             'hold_desk_prepay_cash',
@@ -152,6 +154,10 @@ class FeatureFlags extends Page
                         Toggle::make('door_preferred_name_change_enabled')
                             ->label('Door can change preferred names')
                             ->helperText(__('Adds a "Change preferred name" button for the selected member on the Check-In Desk, so Door staff can update what a member goes by without a Manager. Changes aren\'t logged, same as editing it on the member\'s page. Managers and above see the button either way. Off by default.'))
+                            ->required(),
+                        Toggle::make('desk_refunds_enabled')
+                            ->label('Door can refund a visit soon after check-in')
+                            ->helperText(__('Adds a "Refund visit" button on the Check-In Desk for someone who leaves straight after checking in: within 30 minutes by default (set on Membership Settings), while the register shift is still open. Everything paid for the visit is refunded, the visit stays on their record marked departed, the reason becomes a behavior note, and the Owners are notified. A visit paid ahead or with voucher credit, or a subscription bought at the same time, is left to a Manager. Off by default.'))
                             ->required(),
                         Toggle::make('reset_desk_event_on_member_change')
                             ->label('Pick the event again for each member')
@@ -225,6 +231,10 @@ class FeatureFlags extends Page
                         Toggle::make('instructor_payouts_enabled')
                             ->label('Instructor per-head pay enabled')
                             ->helperText(__('Turns off the Instructor Pay Rates tab on Event Types, the instructor payout breakdown shown on an event\'s edit page, and paying the instructor from the Check-In Desk. Leave on unless this club doesn\'t pay instructors per attendee.'))
+                            ->required(),
+                        Toggle::make('staff_scheduling_enabled')
+                            ->label('Staff scheduling')
+                            ->helperText(__('Adds Shift Roles (the jobs staff work, and who can work each) and a Staff shifts tab on Event Types and Events, for Admin+. New events get their event type\'s shifts automatically. Off by default.'))
                             ->required(),
                     ]),
                 Section::make(__('System'))

@@ -101,6 +101,34 @@ test('a class later today is not offered for payout until it starts, less the ev
         ->assertActionVisible('payInstructor');
 });
 
+test('an event is no longer offered for payout once it has ended', function () {
+    $this->actingAs($this->door);
+    openDeskBox($this->door);
+
+    $this->travelTo(today()->setTime(22, 59));
+    $this->get('/admin/check-in')->assertSee('Sunrise Yoga instructor payout so far: $40.00');
+
+    $this->travelTo(today()->setTime(23, 0));
+    $this->get('/admin/check-in')->assertDontSee('instructor payout so far');
+    Livewire::test(CheckIn::class)
+        ->set('registerId', $this->register->id)
+        ->assertActionHidden('payInstructor');
+});
+
+test('a Manager can still correct a payout after the event has ended', function () {
+    $shift = openDeskBox($this->door);
+    app(RegisterShiftService::class)->recordInstructorPayout($shift, $this->yoga, $this->door, 40);
+    $this->travelTo(today()->setTime(23, 30));
+
+    $this->actingAs($this->manager);
+    Livewire::test(CheckIn::class)
+        ->set('registerId', $this->register->id)
+        ->callAction('correctInstructorPayout', data: ['event_id' => $this->yoga->id, 'amount' => -5, 'notes' => 'Found after class'])
+        ->assertHasNoActionErrors();
+
+    expect(app(RegisterShiftService::class)->totalInstructorPayoutsCents($shift))->toBe(3500);
+});
+
 test('an event with no start time is offered for payout all day', function () {
     $this->actingAs($this->door);
     $this->yoga->update(['starts_at' => null, 'ends_at' => null]);

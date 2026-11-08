@@ -77,6 +77,7 @@ class MembershipSettings extends Page
             'checkin_close_minutes_overnight',
             'checkin_close_minutes_same_day',
             'first_visit_after_close_enabled',
+            'desk_refund_window_minutes',
             'kiosk_show_code_seconds',
             'kiosk_result_seconds',
             'kiosk_problem_result_seconds',
@@ -84,6 +85,7 @@ class MembershipSettings extends Page
             'kiosk_requests_per_minute',
             'kiosk_code_email_batch_size',
             'week_starts_on',
+            'staff_schedule_week_starts_on',
             'age_of_majority',
             'alcohol_flag_age',
             'watchlist_notify_label',
@@ -177,6 +179,19 @@ class MembershipSettings extends Page
                             ->label('Week starts on')
                             ->helperText(__('The first day of the club\'s week, for the "this week" figures on Analytics and when the Cleaning Checklist resets. Blank follows the language setting (Monday in English). Changing it mid-week re-opens this week\'s checklist tasks, since their ticks belong to the old week.'))
                             ->placeholder(__('Follow the language setting'))
+                            ->options([
+                                0 => __('Sunday'),
+                                1 => __('Monday'),
+                                2 => __('Tuesday'),
+                                3 => __('Wednesday'),
+                                4 => __('Thursday'),
+                                5 => __('Friday'),
+                                6 => __('Saturday'),
+                            ]),
+                        Select::make('staff_schedule_week_starts_on')
+                            ->label('Staff schedule week starts on')
+                            ->helperText(__('The first day of each week on the staff schedule, when staff scheduling is on. Blank uses "Week starts on" above.'))
+                            ->placeholder(__('Same as "Week starts on"'))
                             ->options([
                                 0 => __('Sunday'),
                                 1 => __('Monday'),
@@ -319,6 +334,14 @@ class MembershipSettings extends Page
                         Toggle::make('first_visit_after_close_enabled')
                             ->label('Let a first visit check in after close')
                             ->helperText(__('Lets the Check-In Desk still check in someone on their first visit (e.g. a new member finishing paperwork) after an event\'s check-in has closed. Off, check-in closes for everyone. The kiosk is always closed after close. On by default.'))
+                            ->required(),
+                        TextInput::make('desk_refund_window_minutes')
+                            ->label('Desk refund window (minutes)')
+                            ->helperText(__('How long after someone checks in the Check-In Desk can still refund their visit with "Refund visit". After that, a Manager handles it. Only matters while "Door can refund a visit soon after check-in" is on (Feature Flags).'))
+                            ->numeric()
+                            ->integer()
+                            ->minValue(1)
+                            ->maxValue(240)
                             ->required(),
                     ]),
                 Section::make(__('Check-In Desk'))

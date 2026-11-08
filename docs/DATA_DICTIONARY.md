@@ -74,6 +74,7 @@ One row per person who has ever been recorded: members, prospectives and guests.
 | `category_id` | → `categories`. *Prospective* (not yet signed up), *Irregular* (signed up), *Guest*, plus club-defined ones. `categories.is_comped = 1` means entry is always free. |
 | `dob` | Date of birth (**sensitive**). Age-based flags are derived from it at read time. |
 | `date_vetted` | Informational only; it no longer starts probation. |
+| `prior_visits` | Visits made before the club's records in this app start (from an import, or set by a Manager). Any at all: never a first visit, no probation. Counts toward subscription eligibility when there's no eligibility window. |
 | `is_active` | Soft "still a member" flag. Inactive members remain in history. |
 | `subscription_eligible` | Manual override that makes a member eligible regardless of visit count. |
 | `on_watchlist`, `watchlist_reason`, `watchlist_review_on`, `watchlist_probation_start` | Watchlist state (**the reason is sensitive**). |
@@ -178,7 +179,7 @@ automatically after an event to comp-listed members who arrived (`comp_reasons.g
 |---|---|---|
 | `add_on_day_passes` | An add-on bought for one event outside a check-in | `amount_paid` |
 | `miscellaneous_payments` | Other money at the desk (vendor, donation, …), with a `notation` | `amount` |
-| `payment_corrections` | A same-night paid entry converted into a subscription (see below) | `old_amount_paid`, `new_amount_paid`, `subscription_amount`, `net_amount` |
+| `payment_corrections` | A same-night paid entry converted into a subscription, or a desk refund soon after check-in (`subscription_id` empty; see below) | `old_amount_paid`, `new_amount_paid`, `subscription_amount`, `net_amount` |
 | `visit_removals` | A deleted visit, a copy of what it had paid | `amount_paid` |
 | `instructor_payouts` | Cash paid to an event's instructor out of the drawer (signed; corrections are further rows) | `amount` (`calculated_amount` = what the rule suggested) |
 | `register_drops` | Cash taken out of the drawer mid-shift | `amount` |
@@ -187,7 +188,10 @@ automatically after an event to comp-listed members who arrived (`comp_reasons.g
 **Payment corrections** are the one case where a visit's `amount_paid` is changed after the
 fact. The visit is re-priced (`old_amount_paid` → `new_amount_paid`), a new `subscriptions` row
 is created (`subscription_id`), and the correction row keeps the before/after. Revenue totals
-stay right if you sum `attendance` + `subscriptions` as they are now.
+stay right if you sum `attendance` + `subscriptions` as they are now. A row with no
+`subscription_id` is a **desk refund**: the visit's `amount_paid` went to 0 and `net_amount` is
+the negative amount handed back. The visit is still there (marked departed), so count it as a
+visit but not as paid.
 
 **Visit removals:** a removed visit's `attendance` row is deleted, and a `visit_removals` row
 keeps a copy (member, event, amount, method, shift). `after_shift_closed = 1` means the money
@@ -220,6 +224,13 @@ drawer, add those rows back (see recipe).
 | `private_rentals` | One row per room booking: `room_id`, `member_id` (the renter), `event_id` (the event made for it; the renter is its `host_id`), `starts_at`/`ends_at`, `hours`, `headcount`, the room's prices as booked (`hourly_rate`, `included_people`, `overage_fee`, `overage_per_hour`), `room_cost` + `extra_people_cost` = `total`, `booked_by`, `cancelled_at`/`cancelled_by`. A cancelled booking no longer holds the room. Find rental events with `events.id IN (SELECT event_id FROM private_rentals)`; what attendees paid at a rental's door is its extra-person charge (Rental revenue, not Event). |
 | `private_rental_payments` | Append-only money for a booking: `amount` (positive = paid, including `transaction_fee`; negative = refunded), `payment_method`, `register_shift_id` (the box it went through), `reason` (refunds), `recorded_by`. A booking is paid while its rows sum above zero. |
 | `rooms` | Rooms for private rentals: `hourly_rate`, `included_people` (covered by the room price), `overage_fee` per extra person, `overage_per_hour` (fee x hours, or once), `min_hours`, `max_hours`, `active`. |
+| `shift_roles` / `shift_role_user` | Jobs staff are scheduled for (Door, Bar…; not login roles) and which `users` can work each. |
+| `shift_templates` | Per event type: `shift_role_id`, `start_offset_minutes` (from the event's `starts_at`; negative = before), `duration_minutes`, `headcount`. Copied onto each new event. |
+| `shift_slots` | The staff shifts on one event: `event_id`, `shift_role_id`, `starts_at`/`ends_at`, `headcount` (people needed), `notes`. |
+| `shift_availabilities` | One staff member's answer for one shift: `shift_slot_id`, `user_id`, `preference` ∈ `preferred`, `available`, `unavailable`. No row = not answered. |
+| `shift_assignments` | Who is scheduled on each shift: `shift_slot_id`, `user_id`, `assigned_by`. |
+| `schedule_weeks` | Schedule weeks published to staff: `week_starts_on` (the week's first day), `published_at`, `published_by`. No row = not published. |
+| `shift_week_notes` | A staff member's free-text note for one schedule week (`week_starts_on`, the week's first day). |
 | `membership_settings` | The singleton (ground rule 7). |
 
 ### Audit and status history
@@ -265,7 +276,8 @@ SELECT GREATEST(0,
 ```sql
 SELECT m.id,
        m.subscription_eligible = 1
-       OR COUNT(a.id) >= s.subscription_eligibility_threshold AS eligible
+       OR COUNT(a.id) + IF(s.subscription_eligibility_window_months IS NULL, m.prior_visits, 0)
+          >= s.subscription_eligibility_threshold AS eligible
 FROM members m
 CROSS JOIN membership_settings s
 LEFT JOIN attendance a ON a.member_id = m.id AND a.checked_in_at IS NOT NULL
@@ -275,11 +287,13 @@ GROUP BY m.id;
 ```
 
 **On probation:** probation starts at `probation_override_start`, else the date of the first
-arrived visit, and lasts `membership_settings.probation_period_days`.
+arrived visit, and lasts `membership_settings.probation_period_days`. A member with
+`prior_visits` and no override is never on probation.
 ```sql
 SELECT m.id,
-       CURDATE() < COALESCE(m.probation_override_start, DATE(MIN(a.checked_in_at)))
-                   + INTERVAL s.probation_period_days DAY AS on_probation
+       COALESCE(CURDATE() < COALESCE(m.probation_override_start,
+                                     IF(m.prior_visits > 0, NULL, DATE(MIN(a.checked_in_at))))
+                            + INTERVAL s.probation_period_days DAY, 0) AS on_probation
 FROM members m
 CROSS JOIN membership_settings s
 LEFT JOIN attendance a ON a.member_id = m.id AND a.checked_in_at IS NOT NULL

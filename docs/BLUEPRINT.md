@@ -86,6 +86,7 @@ CREATE TABLE members (
   category_id       INT NOT NULL,
   sponsor_id        INT,                               -- self-referential; the member responsible for a Guest they brought
   date_vetted       DATE,
+  prior_visits      INT UNSIGNED NOT NULL DEFAULT 0, -- visits before these records (import/Manager); see below
   dob               DATE,                            -- SOURCE OF TRUTH for 18 & 21 cutoffs
   is_active         BOOLEAN NOT NULL DEFAULT TRUE,
   subscription_eligible BOOLEAN NOT NULL DEFAULT FALSE,
@@ -115,6 +116,8 @@ CREATE TABLE members (
 --   on probation while today < (probation_override_start ?? date of first entry) + probation_period_days (config, default 90)
 --   first entry = earliest attendance.checked_in_at (a prepaid-but-not-arrived row doesn't count),
 --   the visit where a new member first does paperwork. date_vetted plays no part.
+--   prior_visits > 0 (visits before these records) and no override => never on probation, never a
+--   first visit (Member::isFirstVisit(), the new-member badge); counted toward eligibility with no window.
 --   reporting-only: never affects admission or pricing.
 -- Watchlist review is derived too (Member::isWatchlistReviewDue()): due while
 --   on_watchlist and watchlist_review_on <= today. Manager+ sees a count on the
@@ -473,7 +476,7 @@ Each subscription discounts only its own line. `entry_fee = 0` is a pool-only ev
 
 The event picker's "current" window (`CheckIn::eventSelectQuery()`/`defaultEventId()`) isn't `event_date` alone: an event's own `event_date` still matches for the whole calendar day regardless of its actual `starts_at`/`ends_at`, but an event that spans midnight would otherwise vanish from the picker the instant the clock passes 12am, since `event_date` no longer says "today." Widened with an additional check — is `now()` within `starts_at`/`ends_at`, plus `config('membership.event_window_buffer_minutes')` (default 15) of slack on each side, so staff can pull the event up a little before it officially starts and keep working it a little after it ends. `door_prepay_enabled` events are unaffected by any of this — that flag alone surfaces them, however far in the future their own `starts_at`/`ends_at` fall.
 
-**Check-in close time.** `events.checkin_closes_at` is when the desk and kiosk stop taking new check-ins for a running event (`Event::isCheckInClosed()`): the desk hides "Check in" and says when it closed, the kiosk answers "closed", and `CheckInService` refuses a late submission inside its transaction. Marking arrived someone already on the Prepay or Comp List, departures, and prepays for a later event are unaffected. A member on their first visit (`Member::isFirstVisit()`: never marked arrived anywhere) can still be checked in at the desk after the close (`Event::isCheckInClosedFor()`), so a Prospective doing paperwork at the close isn't turned away; the desk says why. A club can turn this off with `membership_settings.first_visit_after_close_enabled` (Membership Settings, default on), and then the close applies to everyone. The kiosk stays closed for everyone either way. Left blank, it defaults on save (`Event::defaultCheckInClose()`): an event whose `ends_at` falls on a later day than `starts_at` closes `membership_settings.checkin_close_minutes_overnight` (default 60) before its end, any other `checkin_close_minutes_same_day` (default 30) before, never before `starts_at`. A club wanting check-in open to the end sets it to `ends_at`.
+**Check-in close time.** `events.checkin_closes_at` is when the desk and kiosk stop taking new check-ins for a running event (`Event::isCheckInClosed()`): the desk hides "Check in" and says when it closed, the kiosk answers "closed", and `CheckInService` refuses a late submission inside its transaction. Marking arrived someone already on the Prepay or Comp List, departures, and prepays for a later event are unaffected. A member on their first visit (`Member::isFirstVisit()`: never marked arrived anywhere, and no `prior_visits`) can still be checked in at the desk after the close (`Event::isCheckInClosedFor()`), so a Prospective doing paperwork at the close isn't turned away; the desk says why. A club can turn this off with `membership_settings.first_visit_after_close_enabled` (Membership Settings, default on), and then the close applies to everyone. The kiosk stays closed for everyone either way. Left blank, it defaults on save (`Event::defaultCheckInClose()`): an event whose `ends_at` falls on a later day than `starts_at` closes `membership_settings.checkin_close_minutes_overnight` (default 60) before its end, any other `checkin_close_minutes_same_day` (default 30) before, never before `starts_at`. A club wanting check-in open to the end sets it to `ends_at`.
 
 ---
 
@@ -544,6 +547,8 @@ Each one writes an append-only `payment_corrections` row with these fields:
 - `corrected_by`, `created_at`
 
 Every active Owner gets a notification. Manager+ reviews them under Records → Payment corrections and on the member's page.
+
+**Desk refund.** `App\Services\DeskRefundService` lets Door+ refund a visit at the Check-In Desk ("Refund visit") for someone who leaves straight after checking in. It's behind `membership_settings.desk_refunds_enabled` (Feature Flags, default off) and only within `desk_refund_window_minutes` (Membership Settings, default 30) of `checked_in_at`. The visit stays: `amount_paid` goes to 0 (everything paid on it, add-ons and fee included), `departed_at` is set, and "Mark as returned" is no longer offered. The refund is a `payment_corrections` row with no `subscription_id`, `subscription_amount` 0 and `net_amount` = −the refund, on the visit's own shift and method, so the drawer's expected cash drops through the usual SUMs. The reason, required, is also written as a behavior note on the visit while behavior notes are on. Every active Owner is notified. Refused (left to a Manager) when the shift has closed, the visit was paid ahead or used voucher credit, it already has a correction, or nothing was paid. A subscription or day pass bought in the same check-in is its own record and isn't refunded. A refunded visit still counts as a visit (first visit, probation, eligibility) but not toward the showrunner's or instructor's pay (`Attendance::notDeskRefunded()`).
 
 ---
 
@@ -782,6 +787,18 @@ Registering a guest collects first/last name, optional email, bulk-email consent
 **Accountability is scoped to the night of the visit, not open-ended.** If a guest gets banned or put on the watchlist while they still have an attendance row checked in *that same day*, `App\Observers\MemberObserver` appends a note to the sponsor's own `notes` — the sponsor is only on the hook for what happened the night they brought the guest in, not anything that surfaces later and is unrelated to that visit.
 
 Everything downstream of registration reuses existing mechanisms with no new code: filtering to "which Guests need the post-event welcome message" is the existing `category_id` filter on the Members table; "moving a welcomed guest to their standard class" happens when Manager+ marks the follow-up sent (the Members list's **Mark follow-up sent** bulk action, `Member::markGuestFollowupSent()`), which moves the guest to Irregular by default, or to the category chosen on Membership Settings (`membership_settings.guest_followup_category_id`, null meaning Irregular, as is a deleted category), or leaves them a Guest when `guest_followup_moves_category` is off (`MembershipSetting::guestFollowupTargetCategory()`); **Mark follow-up not sent** moves anyone still in that category back to Guest.
+
+---
+
+## Staff scheduling (shift roles and shifts)
+
+Behind `staff_scheduling_enabled` (default off), Admin+. A **shift role** (`shift_roles`) is a job on the schedule (Door, DM, Bar, Setup…), deliberately separate from login roles: a login role decides what someone can do in the app, a shift role is what they're scheduled to do, and a club needs jobs (Bar, Setup) that are no app permission. `shift_role_user` records who can work each role, and only those people are offered its shifts.
+
+Each event type's `shift_templates` say what every event of that type needs: a role, a start in minutes from the event's `starts_at` (negative = before doors), a length and a headcount. `ShiftSlotService` copies them onto each new event as `shift_slots` from `Event::created`, so a duplicated, repeated or uploaded event gets them too, and Admin+ adjusts one event's slots on its own tab. Templates are copied, never linked: editing a template moves no shift already made, and "Add shifts from the template" adds only what an event is missing (same role, start and end). An event with no `starts_at` gets none. The schedule's week is `staff_schedule_week_starts_on`, null meaning the club's `week_starts_on` (`MembershipSetting::startOfScheduleWeek()`), because a rota's week (e.g. Thursday–Wednesday) needn't be the one Analytics and the cleaning checklist use.
+
+**Availability.** Anyone with an active shift role, of any login role (`give-shift-availability`), answers on **My availability**: `shift_availabilities` holds *preferred* / *available* / *unavailable* per shift and person (no row = not answered), `shift_week_notes` a note per schedule week. `ShiftAvailabilityService` offers only the shifts of roles the person can work, on unarchived events, in the chosen week, and ignores any other slot id in a submission; a shift that has started, or whose week is published, is locked.
+
+**Building and publishing.** Admin+ (`build-staff-schedule`) picks who works each shift on **Staff schedule**. `ShiftScheduleService::assign()` refuses the whole save if a shift gets someone who can't work its role, more people than its `headcount`, or someone already on an overlapping shift (this week's or any other); a started shift is left alone. A week is a draft until `publish()` writes its `schedule_weeks` row and bells (`sendNow`) everyone on it with their shifts; once published, every add or remove bells the person it affects. Publishing again does nothing.
 
 ---
 
