@@ -36,6 +36,11 @@ releases below could carry small breaking changes in a minor release.
 
 ### Changed
 
+- Dependencies: Filament 5.8.3 → 5.11.0 and Laravel 13.34 → 13.39, plus minor dev-tool bumps
+  (Dependabot). The republished Filament assets under `public/` are included. Nothing changes
+  for staff. Filament now delivers toasts through a per-session mailbox instead of reading them
+  on page load, so the tests that read a toast's text now use a shared `sentNotifications()`
+  helper (`tests/Pest.php`). Deploy as usual; `composer install` runs `filament:upgrade`.
 - **A comp no longer rewrites an entry that was already free.** Comping a subscriber whose credit
   already covers the fee (or a comped-category member, or the host) now keeps the visit's real
   coverage and only records the reason. Before, the visit turned into a comp, which dropped it from

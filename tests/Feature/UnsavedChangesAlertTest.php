@@ -34,11 +34,11 @@ test('the event edit page (where add-ons are picked) carries the warning', funct
     $event = Event::factory()->create();
 
     Livewire::test(EditEvent::class, ['record' => $event->getRouteKey()])
-        ->assertSeeHtml('setUpUnsavedDataChangesAlert');
+        ->assertSeeHtml('setUpFilamentUnsavedDataChangesAlert');
 });
 
 test('each settings page carries the warning and starts out with nothing unsaved', function (string $page) {
-    $component = Livewire::test($page)->assertSeeHtml('setUpUnsavedDataChangesAlert');
+    $component = Livewire::test($page)->assertSeeHtml('setUpFilamentUnsavedDataChangesAlert');
 
     expect($component->get('savedDataHash'))->toBe(unsavedDataHash($component->get('data')));
 })->with([
