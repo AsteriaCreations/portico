@@ -85,6 +85,7 @@ class MembershipSettings extends Page
             'kiosk_requests_per_minute',
             'kiosk_code_email_batch_size',
             'week_starts_on',
+            'staff_schedule_week_starts_on',
             'age_of_majority',
             'alcohol_flag_age',
             'watchlist_notify_label',
@@ -178,6 +179,19 @@ class MembershipSettings extends Page
                             ->label('Week starts on')
                             ->helperText(__('The first day of the club\'s week, for the "this week" figures on Analytics and when the Cleaning Checklist resets. Blank follows the language setting (Monday in English). Changing it mid-week re-opens this week\'s checklist tasks, since their ticks belong to the old week.'))
                             ->placeholder(__('Follow the language setting'))
+                            ->options([
+                                0 => __('Sunday'),
+                                1 => __('Monday'),
+                                2 => __('Tuesday'),
+                                3 => __('Wednesday'),
+                                4 => __('Thursday'),
+                                5 => __('Friday'),
+                                6 => __('Saturday'),
+                            ]),
+                        Select::make('staff_schedule_week_starts_on')
+                            ->label('Staff schedule week starts on')
+                            ->helperText(__('The first day of each week on the staff schedule, when staff scheduling is on. Blank uses "Week starts on" above.'))
+                            ->placeholder(__('Same as "Week starts on"'))
                             ->options([
                                 0 => __('Sunday'),
                                 1 => __('Monday'),

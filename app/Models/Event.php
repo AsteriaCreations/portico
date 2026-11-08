@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\ShiftSlotService;
 use Carbon\CarbonInterface;
 use Database\Factories\EventFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -53,6 +54,10 @@ class Event extends Model
                 $event->checkin_closes_at = static::defaultCheckInClose($event->starts_at, $event->ends_at);
             }
         });
+
+        // The same "every save path" reasoning: a duplicated, repeated or
+        // uploaded event gets its type's staff shifts too.
+        static::created(fn (Event $event) => app(ShiftSlotService::class)->fillNewEvent($event));
     }
 
     /**
@@ -163,6 +168,14 @@ class Event extends Model
     public function instructorPayouts(): HasMany
     {
         return $this->hasMany(InstructorPayout::class);
+    }
+
+    /**
+     * The staff shifts this event needs -- see ShiftSlotService.
+     */
+    public function shiftSlots(): HasMany
+    {
+        return $this->hasMany(ShiftSlot::class);
     }
 
     /**

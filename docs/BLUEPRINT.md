@@ -790,6 +790,18 @@ Everything downstream of registration reuses existing mechanisms with no new cod
 
 ---
 
+## Staff scheduling (shift roles and shifts)
+
+Behind `staff_scheduling_enabled` (default off), Admin+. A **shift role** (`shift_roles`) is a job on the schedule (Door, DM, Bar, Setup…), deliberately separate from login roles: a login role decides what someone can do in the app, a shift role is what they're scheduled to do, and a club needs jobs (Bar, Setup) that are no app permission. `shift_role_user` records who can work each role, and only those people are offered its shifts.
+
+Each event type's `shift_templates` say what every event of that type needs: a role, a start in minutes from the event's `starts_at` (negative = before doors), a length and a headcount. `ShiftSlotService` copies them onto each new event as `shift_slots` from `Event::created`, so a duplicated, repeated or uploaded event gets them too, and Admin+ adjusts one event's slots on its own tab. Templates are copied, never linked: editing a template moves no shift already made, and "Add shifts from the template" adds only what an event is missing (same role, start and end). An event with no `starts_at` gets none. The schedule's week is `staff_schedule_week_starts_on`, null meaning the club's `week_starts_on` (`MembershipSetting::startOfScheduleWeek()`), because a rota's week (e.g. Thursday–Wednesday) needn't be the one Analytics and the cleaning checklist use.
+
+**Availability.** Anyone with an active shift role, of any login role (`give-shift-availability`), answers on **My availability**: `shift_availabilities` holds *preferred* / *available* / *unavailable* per shift and person (no row = not answered), `shift_week_notes` a note per schedule week. `ShiftAvailabilityService` offers only the shifts of roles the person can work, on unarchived events, in the chosen week, and ignores any other slot id in a submission; a shift that has started, or whose week is published, is locked.
+
+**Building and publishing.** Admin+ (`build-staff-schedule`) picks who works each shift on **Staff schedule**. `ShiftScheduleService::assign()` refuses the whole save if a shift gets someone who can't work its role, more people than its `headcount`, or someone already on an overlapping shift (this week's or any other); a started shift is left alone. A week is a draft until `publish()` writes its `schedule_weeks` row and bells (`sendNow`) everyone on it with their shifts; once published, every add or remove bells the person it affects. Publishing again does nothing.
+
+---
+
 ## Build order (thin vertical slices)
 
 The app was built in thin vertical slices, in roughly this order — a useful reading order for the codebase:

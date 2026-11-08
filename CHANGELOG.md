@@ -12,6 +12,27 @@ releases below could carry small breaking changes in a minor release.
 
 ### Added
 
+- **Staff scheduling, part 3: the Staff schedule.** Admin+ builds each schedule week on a new
+  *Staff schedule* page (Front of House): every shift lists the people who can work its role
+  with what they said (Preferred, Available, no answer, No, in that order). A shift takes no
+  more people than it needs, and nobody can be on two overlapping shifts. Staff see nothing
+  until *Publish week*, which notifies everyone on it with their shifts and locks that week's
+  availability; after that, adding or taking someone off a shift notifies them. Migration:
+  `shift_assignments` and `schedule_weeks`.
+- **Staff scheduling, part 2: My availability.** Anyone with a shift role gets a *My
+  availability* page (Front of House): for each shift of their roles in a schedule week,
+  *Preferred*, *Available* or *No*, plus a note for the week. Answers can change until the
+  shift starts. Needs *Staff scheduling* on. Migration: `shift_availabilities` and
+  `shift_week_notes`.
+- **Staff scheduling, part 1: shift roles and shifts.** A new *Shift Roles* list (Admin+) for
+  the jobs staff are scheduled for (Door, DM, Bar…), separate from login roles, with who can
+  work each one. Each event type gets a *Staff shifts* tab listing the shifts its events need
+  (role, start relative to the event's start, length, how many people), and each event gets
+  a *Staff shifts* tab of its own, filled from the type when the event is created (duplicates
+  and repeats included) and editable for a one-off. A *Staff schedule week starts on* setting
+  sets the schedule's week, separate from the club's. Availability and the schedule itself
+  follow. Off by default: *Staff scheduling* on Feature Flags. Migration: four new tables and
+  two `membership_settings` columns.
 - **Refund a visit at the desk.** For someone who leaves straight after checking in, the
   Check-In Desk gets a "Refund visit" button (Door+) for a short time after check-in: 30
   minutes by default (*Desk refund window*, Membership Settings), while the visit's register
@@ -129,6 +150,12 @@ releases below could carry small breaking changes in a minor release.
   comped as before.
 
 ### Fixed
+
+- **Instructor payouts stop showing once the event has ended.** The desk's "payout so far"
+  line and *Pay instructor* stayed up until midnight, so a class over at 9pm was still on
+  offer at 11. They now go once the event's end time passes. A Manager can still use
+  *Correct instructor payout* on a payout already made for the rest of the day. An event with
+  no end time keeps showing all day, as before.
 
 - **Spending another member's voucher credit at the desk.** Picking a different member under
   "Apply from a different member's balance" now fills in the amount from that member's balance,

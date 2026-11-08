@@ -224,6 +224,13 @@ drawer, add those rows back (see recipe).
 | `private_rentals` | One row per room booking: `room_id`, `member_id` (the renter), `event_id` (the event made for it; the renter is its `host_id`), `starts_at`/`ends_at`, `hours`, `headcount`, the room's prices as booked (`hourly_rate`, `included_people`, `overage_fee`, `overage_per_hour`), `room_cost` + `extra_people_cost` = `total`, `booked_by`, `cancelled_at`/`cancelled_by`. A cancelled booking no longer holds the room. Find rental events with `events.id IN (SELECT event_id FROM private_rentals)`; what attendees paid at a rental's door is its extra-person charge (Rental revenue, not Event). |
 | `private_rental_payments` | Append-only money for a booking: `amount` (positive = paid, including `transaction_fee`; negative = refunded), `payment_method`, `register_shift_id` (the box it went through), `reason` (refunds), `recorded_by`. A booking is paid while its rows sum above zero. |
 | `rooms` | Rooms for private rentals: `hourly_rate`, `included_people` (covered by the room price), `overage_fee` per extra person, `overage_per_hour` (fee x hours, or once), `min_hours`, `max_hours`, `active`. |
+| `shift_roles` / `shift_role_user` | Jobs staff are scheduled for (Door, Bar…; not login roles) and which `users` can work each. |
+| `shift_templates` | Per event type: `shift_role_id`, `start_offset_minutes` (from the event's `starts_at`; negative = before), `duration_minutes`, `headcount`. Copied onto each new event. |
+| `shift_slots` | The staff shifts on one event: `event_id`, `shift_role_id`, `starts_at`/`ends_at`, `headcount` (people needed), `notes`. |
+| `shift_availabilities` | One staff member's answer for one shift: `shift_slot_id`, `user_id`, `preference` ∈ `preferred`, `available`, `unavailable`. No row = not answered. |
+| `shift_assignments` | Who is scheduled on each shift: `shift_slot_id`, `user_id`, `assigned_by`. |
+| `schedule_weeks` | Schedule weeks published to staff: `week_starts_on` (the week's first day), `published_at`, `published_by`. No row = not published. |
+| `shift_week_notes` | A staff member's free-text note for one schedule week (`week_starts_on`, the week's first day). |
 | `membership_settings` | The singleton (ground rule 7). |
 
 ### Audit and status history

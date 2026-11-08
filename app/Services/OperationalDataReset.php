@@ -50,6 +50,11 @@ class OperationalDataReset
         'private_rental_payments',
         'private_rentals',
         'add_on_event',
+        'shift_assignments',
+        'schedule_weeks',
+        'shift_availabilities',
+        'shift_week_notes',
+        'shift_slots',
         'events',
         'members',
         'occupancy_adjustments',
@@ -90,6 +95,9 @@ class OperationalDataReset
         'showrunner_payout_tiers',
         'instructor_pay_rates',
         'rooms',
+        'shift_roles',
+        'shift_role_user',
+        'shift_templates',
     ];
 
     /**

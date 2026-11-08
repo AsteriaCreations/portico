@@ -274,7 +274,9 @@ trait ManagesCashBox
             return [];
         }
 
-        return app(InstructorPayoutService::class)->currentEventsQuery()
+        // Paying stops when the event ends; correcting a payout already made
+        // stays open for the rest of the night.
+        return app(InstructorPayoutService::class)->currentEventsQuery(includeEnded: $paid)
             ->withSum('instructorPayouts', 'amount')
             ->get()
             ->filter(fn (Event $event): bool => (Cents::of($event->instructor_payouts_sum_amount) !== 0) === $paid)

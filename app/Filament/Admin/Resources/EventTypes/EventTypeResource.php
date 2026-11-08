@@ -6,6 +6,7 @@ use App\Filament\Admin\Resources\EventTypes\Pages\CreateEventType;
 use App\Filament\Admin\Resources\EventTypes\Pages\EditEventType;
 use App\Filament\Admin\Resources\EventTypes\Pages\ListEventTypes;
 use App\Filament\Admin\Resources\EventTypes\RelationManagers\InstructorPayRatesRelationManager;
+use App\Filament\Admin\Resources\EventTypes\RelationManagers\ShiftTemplatesRelationManager;
 use App\Filament\Admin\Resources\EventTypes\Schemas\EventTypeForm;
 use App\Filament\Admin\Resources\EventTypes\Tables\EventTypesTable;
 use App\Filament\Concerns\TranslatesResourceLabels;
@@ -45,6 +46,7 @@ class EventTypeResource extends Resource
     {
         return [
             InstructorPayRatesRelationManager::class,
+            ShiftTemplatesRelationManager::class,
         ];
     }
 
