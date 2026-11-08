@@ -177,14 +177,14 @@ class ListMembers extends ListRecords
                         'category', 'sponsor_username', 'member_number', 'date_vetted', 'dob', 'paperwork_date',
                         'is_active', 'subscription_eligible', 'on_watchlist', 'watchlist_reason', 'is_banned',
                         'ban_reason', 'probation_override_start', 'missing_paperwork', 'is_deceased',
-                        'hospitality_note', 'notes',
+                        'hospitality_note', 'notes', 'prior_visits',
                     ]);
                     fputcsv($handle, [
                         'jsmith', 'Jane', 'Smith', 'Jane', 'jane@example.com', 'Y',
                         'Regular', '', '', '2026-01-15', '1990-05-20', '',
                         'Y', 'N', 'N', '', 'N',
                         '', '', 'N', 'N',
-                        '', '',
+                        '', '', '0',
                     ]);
                     fclose($handle);
                 }, 'member-upload-template-'.now()->toDateString().'.csv');

@@ -57,6 +57,7 @@ class MemberBulkImporter
             $isDeceasedRaw = trim((string) $sheet->getCell("U{$row}")->getValue());
             $hospitalityNote = trim((string) $sheet->getCell("V{$row}")->getValue());
             $notes = trim((string) $sheet->getCell("W{$row}")->getValue());
+            $priorVisitsRaw = trim((string) $sheet->getCell("X{$row}")->getValue());
 
             if ($username === '' && $firstName === '' && $lastName === '') {
                 continue;
@@ -112,6 +113,13 @@ class MemberBulkImporter
                 $memberNumber = (int) $memberNumberRaw;
             }
 
+            // Optional, last column: visits from before these records.
+            if ($priorVisitsRaw !== '' && ! ctype_digit($priorVisitsRaw)) {
+                $log[] = "row {$row}: non-numeric prior_visits '{$priorVisitsRaw}', skipped";
+
+                continue;
+            }
+
             try {
                 $dateVetted = $this->parseDate($dateVettedRaw, 'date_vetted');
                 $dob = $this->parseDate($dobRaw, 'dob');
@@ -143,6 +151,7 @@ class MemberBulkImporter
                     'sponsor_id' => $sponsorId,
                     'member_number' => $memberNumber,
                     'date_vetted' => $dateVetted,
+                    'prior_visits' => (int) $priorVisitsRaw,
                     'dob' => $dob,
                     'is_active' => $isActive,
                     'subscription_eligible' => $subscriptionEligible,

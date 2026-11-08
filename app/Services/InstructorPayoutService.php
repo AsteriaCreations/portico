@@ -83,6 +83,7 @@ class InstructorPayoutService
         $counts = Attendance::query()
             ->where('event_id', $event->id)
             ->whereNotNull('checked_in_at')
+            ->notDeskRefunded()
             ->get(['entry_covered_by'])
             ->countBy(fn (Attendance $attendance) => $attendance->entry_covered_by->value);
 

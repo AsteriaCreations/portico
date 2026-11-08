@@ -10,6 +10,7 @@ use App\Filament\Concerns\BooksPrivateRentals;
 use App\Filament\Concerns\CapturesMemberIdentity;
 use App\Filament\Concerns\ManagesCashBox;
 use App\Filament\Concerns\MarksArrivals;
+use App\Filament\Concerns\RefundsVisitsAtDesk;
 use App\Filament\Concerns\RenamesMemberUsername;
 use App\Filament\Concerns\SellsSubscriptionsAtDesk;
 use App\Filament\Concerns\ShowsKioskQrCode;
@@ -75,6 +76,7 @@ class CheckIn extends Page implements HasTable
     use InteractsWithTable;
     use ManagesCashBox;
     use MarksArrivals;
+    use RefundsVisitsAtDesk;
     use RenamesMemberUsername;
     use SellsSubscriptionsAtDesk;
     use ShowsKioskQrCode;

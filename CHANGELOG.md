@@ -12,6 +12,30 @@ releases below could carry small breaking changes in a minor release.
 
 ### Added
 
+- **Refund a visit at the desk.** For someone who leaves straight after checking in, the
+  Check-In Desk gets a "Refund visit" button (Door+) for a short time after check-in: 30
+  minutes by default (*Desk refund window*, Membership Settings), while the visit's register
+  shift is open. Everything paid for the visit is refunded and the shift's expected cash drops
+  to match. The visit stays on the member's record, marked departed and can't be marked
+  returned; the reason, required, is saved as a behavior note; it's listed under Payment
+  corrections as a *Desk refund*; and the Owners are notified. A refunded visit doesn't count
+  toward the showrunner's or instructor's pay. Visits paid ahead or with voucher credit, and
+  anything past the window, are left to a Manager; a subscription or day pass bought at the
+  same check-in isn't refunded. Off by default: *Door can refund a visit soon after check-in*
+  on Feature Flags. Migration: two `membership_settings` columns, and
+  `payment_corrections.subscription_id` becomes optional.
+
+- **Visits before these records.** A new member field, *Visits before these records*
+  (`members.prior_visits`, Manager+ on the member form, an optional last `prior_visits` column
+  on the member upload), holds visits a member made before the club started using Portico, e.g.
+  from an old spreadsheet. A member with any isn't treated as new: no first visit (so no
+  after-close first-visit exception), no "New member — first visit" badge on the roster or
+  Active Patrons, and no probation unless a Manager sets a probation start. The count also goes
+  toward subscription eligibility, unless Membership Settings sets an eligibility window (these
+  visits have no dates). Before, an imported long-standing member with no visit in the
+  imported range looked brand new on their next visit, and their probation started that
+  night. Migration: adds the column and to the `analyst_members` view.
+
 - **Private room rentals, part 4: checking the group in.** Pick the rental as the event at the
   desk and check people in as usual. The room's included people, or the headcount booked when
   that's more, get in free, first come, first served, with the renter (host) counting as one;
