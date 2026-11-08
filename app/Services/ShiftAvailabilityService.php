@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Enums\ShiftPreference;
 use App\Models\MembershipSetting;
+use App\Models\ScheduleWeek;
 use App\Models\ShiftAvailability;
 use App\Models\ShiftSlot;
 use App\Models\ShiftWeekNote;
@@ -73,9 +74,14 @@ class ShiftAvailabilityService
             ->value('note');
     }
 
+    /**
+     * Started, or its week has been published: from then on the schedule,
+     * not availability, is what counts.
+     */
     public function isLocked(ShiftSlot $slot): bool
     {
-        return $slot->starts_at->isPast();
+        return $slot->starts_at->isPast()
+            || ScheduleWeek::query()->whereDate('week_starts_on', MembershipSetting::startOfScheduleWeek($slot->starts_at)->toDateString())->exists();
     }
 
     /**

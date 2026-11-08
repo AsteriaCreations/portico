@@ -219,6 +219,8 @@ class AppServiceProvider extends ServiceProvider
         // its own. See App\Enums\Capability.
         Gate::define('access-cleaning-checklist', fn (User $user): bool => $user->hasCapability(Capability::CleaningCrew));
 
+        Gate::define('build-staff-schedule', fn (User $user): bool => $user->role->atLeast(Role::Admin) && MembershipSetting::current()->staff_scheduling_enabled);
+
         // Any role: what matters is having a shift role to answer for. See
         // ShiftAvailabilityService.
         Gate::define('give-shift-availability', fn (User $user): bool => app(ShiftAvailabilityService::class)->canGiveAvailability($user));
