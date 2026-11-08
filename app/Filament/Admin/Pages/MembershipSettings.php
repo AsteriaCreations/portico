@@ -233,7 +233,7 @@ class MembershipSettings extends Page
                             ->required(),
                         Toggle::make('private_rental_guests_allowed')
                             ->label('Private rentals can bring guests')
-                            ->helperText(__('Lets the people in a member\'s private rental include non-members, registered at the desk as the renter\'s guests. Off, everyone in the group must already be a member. Only matters while private room rentals are on (Feature Flags). On by default.'))
+                            ->helperText(__('Lets the people in a member\'s private rental include non-members, registered at the desk as the renter\'s guests (only the renter registers them, and the nightly guest limit doesn\'t apply there). Off, everyone in the group must already be a member, and guests are turned away at a rental. Only matters while private room rentals are on (Feature Flags). On by default.'))
                             ->required(),
                         TextInput::make('max_guests_per_night')
                             ->label('Max guests per member per night')

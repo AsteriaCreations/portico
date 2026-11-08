@@ -946,7 +946,10 @@ class CheckIn extends Page implements HasTable
         $blockPolicy = match (true) {
             $member->is_deceased => ['headline' => null, 'instructions' => null],
             $member->isCurrentlyBanned() => $banned,
-            default => $underMajority,
+            $policy->isUnderAgeOfMajority($member, $event) => $underMajority,
+            // Anything else (a guest at a members-only private rental) has
+            // no House Policy wording: show the decision's own.
+            default => ['headline' => $decision->message, 'instructions' => null],
         };
 
         // detail carries the actionable instruction only; the ban/watchlist

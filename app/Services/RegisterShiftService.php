@@ -9,6 +9,7 @@ use App\Models\Event;
 use App\Models\InstructorPayout;
 use App\Models\MiscellaneousPayment;
 use App\Models\PaymentMethod;
+use App\Models\PrivateRental;
 use App\Models\PrivateRentalPayment;
 use App\Models\Register;
 use App\Models\RegisterDrop;
@@ -17,6 +18,7 @@ use App\Models\Subscription;
 use App\Models\User;
 use App\Models\VisitRemoval;
 use App\Support\Cents;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -245,7 +247,7 @@ class RegisterShiftService
             ->sum('amount_paid');
 
         return Cents::of($attendanceCash) + Cents::of($subscriptionCash) + Cents::of($miscCash) + Cents::of($addOnDayPassCash)
-            + $this->rentalCents($shift, $cashCodes->all())
+            + $this->rentalPaymentCents($shift, $cashCodes->all())
             + $this->removedAfterCloseCents($shift, $cashCodes->all());
     }
 
@@ -259,14 +261,31 @@ class RegisterShiftService
      *
      * @param  string[]|null  $paymentMethods  null for every method
      * @param  bool|null  $prepaidAhead  null for both prepays and same-night visits
+     * @param  bool|null  $atRentals  true for visits to a private rental only, false for every other visit, null for both
      */
-    private function removedAfterCloseCents(RegisterShift $shift, ?array $paymentMethods = null, ?bool $prepaidAhead = null): int
+    private function removedAfterCloseCents(RegisterShift $shift, ?array $paymentMethods = null, ?bool $prepaidAhead = null, ?bool $atRentals = null): int
     {
         return Cents::of(VisitRemoval::where('register_shift_id', $shift->id)
             ->where('after_shift_closed', true)
             ->when($paymentMethods !== null, fn ($query) => $query->whereIn('payment_method', $paymentMethods))
             ->when($prepaidAhead !== null, fn ($query) => $query->where('prepaid_ahead', $prepaidAhead))
+            ->when($atRentals !== null, fn ($query) => $this->scopeToRentals($query, $atRentals))
             ->sum('amount_paid'));
+    }
+
+    /**
+     * Visits to a private rental's event ($atRentals true) or to any other
+     * event (false). What an attendee pays at a rental is its extra-person
+     * charge, so it's Rental revenue, not Event.
+     *
+     * @param  Builder<Attendance>|Builder<VisitRemoval>  $query
+     * @return Builder<Attendance>|Builder<VisitRemoval>
+     */
+    private function scopeToRentals(Builder $query, bool $atRentals): Builder
+    {
+        $rentalEvents = PrivateRental::query()->select('event_id');
+
+        return $atRentals ? $query->whereIn('event_id', $rentalEvents) : $query->whereNotIn('event_id', $rentalEvents);
     }
 
     /**
@@ -342,11 +361,27 @@ class RegisterShiftService
     }
 
     /**
-     * Private rental payments on this shift, less refunds given from it.
+     * Private rental payments on this shift, less refunds given from it,
+     * plus what attendees paid at the door of a rental (its extra-person
+     * charge) and any of those visits removed after close.
      *
      * @param  string[]|null  $paymentMethods  null for every method
      */
     private function rentalCents(RegisterShift $shift, ?array $paymentMethods = null): int
+    {
+        return $this->rentalPaymentCents($shift, $paymentMethods)
+            + Cents::of($this->scopeToRentals(Attendance::where('register_shift_id', $shift->id), true)
+                ->when($paymentMethods !== null, fn ($query) => $query->whereIn('payment_method', $paymentMethods))
+                ->sum('amount_paid'))
+            + $this->removedAfterCloseCents($shift, $paymentMethods, atRentals: true);
+    }
+
+    /**
+     * Private rental payments on this shift, less refunds given from it.
+     *
+     * @param  string[]|null  $paymentMethods  null for every method
+     */
+    private function rentalPaymentCents(RegisterShift $shift, ?array $paymentMethods = null): int
     {
         return Cents::of(PrivateRentalPayment::where('register_shift_id', $shift->id)
             ->when($paymentMethods !== null, fn ($query) => $query->whereIn('payment_method', $paymentMethods))
@@ -355,17 +390,18 @@ class RegisterShiftService
 
     /**
      * Attendance on this shift plus paid visits removed after it closed, for
-     * either prepays or same-night visits.
+     * either prepays or same-night visits. Visits to a private rental are
+     * in rentalCents() instead.
      *
      * @param  string[]|null  $paymentMethods  null for every method
      */
     private function attendanceCents(RegisterShift $shift, bool $prepaidAhead, ?array $paymentMethods = null): int
     {
-        return Cents::of(Attendance::where('register_shift_id', $shift->id)
+        return Cents::of($this->scopeToRentals(Attendance::where('register_shift_id', $shift->id), false)
             ->where('prepaid_ahead', $prepaidAhead)
             ->when($paymentMethods !== null, fn ($query) => $query->whereIn('payment_method', $paymentMethods))
             ->sum('amount_paid'))
-            + $this->removedAfterCloseCents($shift, $paymentMethods, $prepaidAhead);
+            + $this->removedAfterCloseCents($shift, $paymentMethods, $prepaidAhead, atRentals: false);
     }
 
     /**

@@ -76,6 +76,28 @@ class PrivateRental extends Model
     }
 
     /**
+     * How many people get in on the rental: the room's included people,
+     * or the headcount the renter paid for when that's more. The renter is
+     * one of them.
+     */
+    public function coveredSpots(): int
+    {
+        return max($this->included_people, $this->headcount);
+    }
+
+    /**
+     * How many covered spots are used: everyone checked in to the rental
+     * (the renter included), first come, first served. $except leaves one
+     * person out, so pricing their own visit doesn't count it twice.
+     */
+    public function spotsTaken(?Member $except = null): int
+    {
+        return Attendance::where('event_id', $this->event_id)
+            ->when($except, fn ($query) => $query->where('member_id', '!=', $except->id))
+            ->count();
+    }
+
+    /**
      * Payments and refunds, append-only. See PrivateRentalService::netPaidCents().
      */
     public function payments(): HasMany
