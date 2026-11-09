@@ -812,6 +812,8 @@ Behind `staff_scheduling_enabled` (default off). A **shift role** (Admin+) (`shi
 
 **Proposals.** Anyone who can work a role proposes a task for it from My tasks (`RoleTaskProposalService::propose()`, a `role_tasks` row with `status = proposed`, `proposed_by`), which bells every other active Manager+. The others who can work the role vote it up or down (`role_task_votes`, one per person, changeable or withdrawn while it's proposed; never on your own). Votes are advice only: a Manager+ decides on **Task proposals**, approving it onto the standard list (with area and sort order) or declining it with a required reason (`decided_by`, `decided_at`, `decline_reason`), and the proposer is notified. A decided proposal takes no more votes.
 
+**Tasks on Shifts Worked.** The page adds *Tasks done* and *Off-shift tasks* per person for the month (`RoleTaskService::countsFor()`, by `completed_at`), and lists anyone who ticked tasks that month even without a scheduled role. They're information for the Manager granting the voucher; they don't change the requirement count.
+
 ---
 
 ## Build order (thin vertical slices)

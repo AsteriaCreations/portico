@@ -2,6 +2,7 @@
 
 use App\Enums\Role;
 use App\Filament\Admin\Pages\MyTasks;
+use App\Filament\Admin\Pages\ShiftsWorked;
 use App\Filament\Admin\Resources\RoleTasks\RoleTaskResource;
 use App\Models\Event;
 use App\Models\MembershipSetting;
@@ -167,4 +168,28 @@ test('the Cleaning Checklist moves onto a weekly Cleaning Crew role, with its hi
         ->and(MembershipSetting::current()->staff_scheduling_enabled)->toBeTrue()
         ->and(Schema::hasTable('cleaning_tasks'))->toBeFalse()
         ->and(Schema::hasTable('user_capabilities'))->toBeFalse();
+});
+
+test('Shifts worked counts each person\'s tasks for the month, with off-shift ones, and lists task-only people', function () {
+    $this->service->complete($this->sam, $this->float, $this->open);
+    $this->service->complete($this->lee, $this->mop, null);
+    RoleTaskCompletion::query()->delete();
+
+    $this->service->complete($this->jo, $this->float, $this->open);
+    $this->service->complete($this->lee, $this->mop, null);
+    // Last month's tick isn't counted.
+    RoleTaskCompletion::create(['role_task_id' => $this->mop->id, 'user_id' => $this->lee->id, 'week_start' => '2026-10-22', 'completed_at' => '2026-10-25 12:00']);
+
+    expect($this->service->countsFor(Carbon::parse('2026-11-01')))->toBe([
+        $this->jo->id => ['done' => 1, 'offShift' => 1],
+        $this->lee->id => ['done' => 1, 'offShift' => 0],
+    ]);
+
+    $this->actingAs(User::factory()->create(['role' => Role::Manager, 'active' => true]));
+    Livewire::test(ShiftsWorked::class)
+        ->assertCanSeeTableRecords([$this->jo, $this->lee])
+        ->assertTableColumnStateSet('tasks', 1, $this->jo)
+        ->assertTableColumnStateSet('off_shift_tasks', 1, $this->jo)
+        ->assertTableColumnStateSet('tasks', 1, $this->lee)
+        ->assertTableColumnStateSet('off_shift_tasks', null, $this->lee);
 });

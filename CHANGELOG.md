@@ -12,6 +12,10 @@ releases below could carry small breaking changes in a minor release.
 
 ### Added
 
+- **Tasks on Shifts Worked.** *Tasks done* (task-list ticks that month) and *Off-shift tasks*
+  (done on a shift the person wasn't on) sit beside the shift counts, so a Manager can see who
+  goes beyond when granting the voucher. Someone who only did tasks (Cleaning Crew) is listed
+  too. No migration.
 - **Task proposals and votes.** On *My tasks*, *Propose a task* suggests a task for a role you
   work; the others who work that role vote it up or down (not their own, and pressing your vote
   again takes it back). *Task proposals* (Staff section, Manager+, with a count of those waiting)
