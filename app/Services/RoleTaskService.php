@@ -185,6 +185,26 @@ class RoleTaskService
         $completion->delete();
     }
 
+    /**
+     * Tasks each person ticked in the month starting $monthStart (by when
+     * they ticked them), and how many of those were off shift: done on a
+     * shift they weren't on, beyond their own. Keyed by user id; people
+     * with none are left out.
+     *
+     * @return array<int, array{done: int, offShift: int}>
+     */
+    public function countsFor(CarbonInterface $monthStart): array
+    {
+        return RoleTaskCompletion::query()
+            ->selectRaw('user_id, count(*) as done, sum(case when on_shift = 0 then 1 else 0 end) as off_shift')
+            ->where('completed_at', '>=', $monthStart->copy()->startOfMonth())
+            ->where('completed_at', '<', $monthStart->copy()->startOfMonth()->addMonth())
+            ->groupBy('user_id')
+            ->get()
+            ->mapWithKeys(fn (RoleTaskCompletion $row): array => [(int) $row->user_id => ['done' => (int) $row->done, 'offShift' => (int) $row->off_shift]])
+            ->all();
+    }
+
     public function isShiftOpen(ShiftSlot $slot): bool
     {
         $now = now();

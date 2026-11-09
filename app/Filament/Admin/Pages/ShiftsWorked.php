@@ -6,6 +6,7 @@ use App\Filament\Concerns\TranslatesPageLabels;
 use App\Models\MembershipSetting;
 use App\Models\ShiftReward;
 use App\Models\User;
+use App\Services\RoleTaskService;
 use App\Services\ShiftRewardService;
 use App\Services\ShiftWorkService;
 use BackedEnum;
@@ -52,6 +53,9 @@ class ShiftsWorked extends Page implements HasTable
     /** @var array{month: string, counts: array<int, int>}|null */
     protected ?array $countCache = null;
 
+    /** @var array{month: string, tasks: array<int, array{done: int, offShift: int}>}|null */
+    protected ?array $taskCache = null;
+
     /** @var array{month: string, rewards: array<int, ShiftReward>}|null */
     protected ?array $rewardCache = null;
 
@@ -80,7 +84,9 @@ class ShiftsWorked extends Page implements HasTable
             ->query(fn (): Builder => User::query()
                 ->where(fn (Builder $query) => $query
                     ->where(fn (Builder $active) => $active->where('active', true)->whereHas('shiftRoles', fn (Builder $role) => $role->scheduled()))
-                    ->orWhereIn('id', array_keys($this->counts()))))
+                    ->orWhereIn('id', array_keys($this->counts()))
+                    // Someone who only did tasks (Cleaning Crew) this month.
+                    ->orWhereIn('id', array_keys($this->tasks()))))
             ->defaultSort('name')
             ->columns([
                 TextColumn::make('name')
@@ -109,6 +115,19 @@ class ShiftsWorked extends Page implements HasTable
                     ->label(__('Beyond the requirement'))
                     ->state(fn (User $record): int => $this->beyond($this->counts()[$record->id] ?? 0))
                     ->numeric(),
+                TextColumn::make('tasks')
+                    ->label(__('Tasks done'))
+                    ->state(fn (User $record): int => $this->tasks()[$record->id]['done'] ?? 0)
+                    ->numeric(),
+                TextColumn::make('off_shift_tasks')
+                    ->label(__('Off-shift tasks'))
+                    ->tooltip(__('Tasks done on a shift the person was not on: extra effort beyond their own shifts.'))
+                    ->state(fn (User $record): ?int => ($this->tasks()[$record->id]['offShift'] ?? 0) ?: null)
+                    ->numeric()
+                    ->badge()
+                    ->color('success')
+                    ->icon(Heroicon::OutlinedStar)
+                    ->placeholder(__('—')),
                 TextColumn::make('reward')
                     ->label(__('Voucher'))
                     ->state(fn (User $record): ?string => $this->rewardLabel($record))
@@ -258,6 +277,18 @@ class ShiftsWorked extends Page implements HasTable
         }
 
         return $this->countCache['counts'];
+    }
+
+    /**
+     * @return array<int, array{done: int, offShift: int}>
+     */
+    protected function tasks(): array
+    {
+        if ($this->taskCache === null || $this->taskCache['month'] !== $this->month) {
+            $this->taskCache = ['month' => $this->month, 'tasks' => app(RoleTaskService::class)->countsFor($this->monthStart())];
+        }
+
+        return $this->taskCache['tasks'];
     }
 
     protected function status(int $worked): string
