@@ -67,6 +67,7 @@ All are Manager+ unless noted. They're grouped in the left nav exactly as listed
 | **Event Types** | Social, Class, Munch, … Each event picks one. Its **Instructor Pay Rates** tab sets per-head instructor pay (only if `instructor_payouts_enabled`). |
 | **Shift Roles** | The jobs staff are scheduled for (Door, DM, Bar, Setup…) and who can work each, separate from login roles. Admin+, only shown while Staff scheduling is on. Turn a role off rather than deleting it; one with shifts on events can't be deleted. Turn off *Put on event shifts* for a role that isn't scheduled, such as Cleaning: it works its task list weekly. |
 | **Task lists** | Each shift role's standard tasks (Staff section, Manager+), optionally in an area. A scheduled role's list is worked each shift, an unscheduled role's each week. |
+| **Task proposals** | Tasks staff proposed for their roles (Staff section, Manager+), with the up and down votes from others who work the role. Approve one onto the standard list, or decline it with a reason; the proposer is notified either way. |
 | **Task areas** | Where tasks are done (Bathrooms, Main floor…), with notes on how each is handled (Staff section, Manager+). |
 | **Showrunner Payout Tiers** | Headcount bands for the Showrunner's commission (only if `showrunner_payouts_enabled`). Percentage bands stack like tax brackets on the entry fee (e.g. attendees 36–100 at 10%, 101+ at 15%); a voucher band pays a flat amount for a small event (e.g. up to 35). |
 

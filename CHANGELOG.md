@@ -12,6 +12,12 @@ releases below could carry small breaking changes in a minor release.
 
 ### Added
 
+- **Task proposals and votes.** On *My tasks*, *Propose a task* suggests a task for a role you
+  work; the others who work that role vote it up or down (not their own, and pressing your vote
+  again takes it back). *Task proposals* (Staff section, Manager+, with a count of those waiting)
+  shows the votes and *Approve* (onto the standard list, with its area and order) or *Decline*
+  (with a reason). Manager+ is notified of each proposal and the proposer of the decision.
+  Migration: `role_task_votes`. No npm build.
 - **My tasks: ticking role task lists, and Cleaning folds in.** *My tasks* (Staff section) shows
   the list for each shift of yours that's running (from an hour before it starts to an hour
   after it ends) and for other running shifts of roles you can work, where a tick counts as

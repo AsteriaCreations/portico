@@ -49,6 +49,11 @@ class RoleTask extends Model
         return $this->hasMany(RoleTaskCompletion::class);
     }
 
+    public function votes(): HasMany
+    {
+        return $this->hasMany(RoleTaskVote::class);
+    }
+
     public function proposedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'proposed_by');
