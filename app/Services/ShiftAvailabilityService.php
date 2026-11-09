@@ -33,12 +33,12 @@ class ShiftAvailabilityService
     {
         return $user->active
             && MembershipSetting::current()->staff_scheduling_enabled
-            && $user->shiftRoles()->where('active', true)->exists();
+            && $user->shiftRoles()->scheduled()->exists();
     }
 
     /**
-     * Everyone availability can be entered for: active logins with an active
-     * shift role, by name.
+     * Everyone availability can be entered for: active logins with an active,
+     * scheduled shift role, by name.
      *
      * @return Collection<int, User>
      */
@@ -46,7 +46,7 @@ class ShiftAvailabilityService
     {
         return User::query()
             ->where('active', true)
-            ->whereHas('shiftRoles', fn (Builder $query) => $query->where('active', true))
+            ->whereHas('shiftRoles', fn (Builder $query) => $query->scheduled())
             ->orderBy('name')
             ->get();
     }
@@ -84,8 +84,8 @@ class ShiftAvailabilityService
         return ShiftSlot::query()
             ->with(['event', 'shiftRole'])
             ->where(fn (Builder $query) => $query
-                ->whereIn('shift_role_id', $user->shiftRoles()->where('active', true)->select('shift_roles.id'))
-                ->orWhereHas('shiftRole', fn (Builder $role) => $role->where('active', true)->where('open_to_all', true)))
+                ->whereIn('shift_role_id', $user->shiftRoles()->scheduled()->select('shift_roles.id'))
+                ->orWhereHas('shiftRole', fn (Builder $role) => $role->scheduled()->where('open_to_all', true)))
             ->whereHas('event', fn (Builder $query) => $query->whereNull('archived_at'))
             ->where('starts_at', '>=', $weekStart)
             ->where('starts_at', '<', $weekStart->copy()->addWeek())

@@ -79,7 +79,7 @@ class ShiftsWorked extends Page implements HasTable
         return $table
             ->query(fn (): Builder => User::query()
                 ->where(fn (Builder $query) => $query
-                    ->where(fn (Builder $active) => $active->where('active', true)->whereHas('shiftRoles', fn (Builder $role) => $role->where('active', true)))
+                    ->where(fn (Builder $active) => $active->where('active', true)->whereHas('shiftRoles', fn (Builder $role) => $role->scheduled()))
                     ->orWhereIn('id', array_keys($this->counts()))))
             ->defaultSort('name')
             ->columns([

@@ -465,6 +465,8 @@ GRANT SELECT ON `<portico>`.shift_assignments TO 'portico_analyst'@'localhost';
 GRANT SELECT ON `<portico>`.schedule_weeks TO 'portico_analyst'@'localhost';
 GRANT SELECT ON `<portico>`.shift_rewards TO 'portico_analyst'@'localhost';
 GRANT SELECT ON `<portico>`.shift_presences TO 'portico_analyst'@'localhost';
+GRANT SELECT ON `<portico>`.task_areas TO 'portico_analyst'@'localhost';
+GRANT SELECT ON `<portico>`.role_tasks TO 'portico_analyst'@'localhost';
 GRANT SELECT ON `<portico>`.showrunner_payout_tiers TO 'portico_analyst'@'localhost';
 GRANT SELECT ON `<portico>`.skills TO 'portico_analyst'@'localhost';
 GRANT SELECT ON `<portico>`.member_skill TO 'portico_analyst'@'localhost';

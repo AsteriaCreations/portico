@@ -32,6 +32,10 @@ class ShiftRoleForm
                     ->helperText(__('For jobs like Setup that just need people: everyone with any shift role is offered its shifts, and "Who can work it" is ignored. Its shifts are added one at a time, not counted in the standard shifts.'))
                     ->live()
                     ->default(false),
+                Toggle::make('scheduled')
+                    ->label(__('Put on event shifts'))
+                    ->helperText(__('Turn off for a role that isn\'t scheduled, such as Cleaning: it gets no shifts, availability or staffing counts, and its task list resets each week instead of each shift.'))
+                    ->default(true),
                 Toggle::make('counts_toward_requirement')
                     ->label(__('Counts toward the monthly requirement'))
                     ->helperText(__('Turn off for shifts that shouldn\'t count toward the shifts each person owes a month, such as hosting.'))

@@ -40,7 +40,7 @@ class ShiftSlotService
      */
     public function standardRoles(): Collection
     {
-        return ShiftRole::query()->where('active', true)->where('open_to_all', false)->orderBy('sort_order')->orderBy('name')->get();
+        return ShiftRole::query()->scheduled()->where('open_to_all', false)->orderBy('sort_order')->orderBy('name')->get();
     }
 
     /**
