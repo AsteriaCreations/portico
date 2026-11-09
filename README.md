@@ -140,7 +140,6 @@ Seven nested tiers — `Showrunner ⊂ Volunteer ⊂ DM ⊂ Door ⊂ Manager ⊂
 | Create, edit, or delete events (incl. their fees, start/end times, and door-prepay flag), manage volunteer accounts, issue/correct voucher credit | | | | | | ✓ | ✓ |
 | Approve or reject a comp request (Manager+ can see the queue on the event's Comp Requests tab) | | | | | | ✓ | ✓ |
 | Associate a Skill with a member (a Manager can edit the Skills catalog itself, but not tag a member) | | | | | | ✓ | ✓ |
-| Grant a per-user capability such as Cleaning Crew § | | | | | | ✓ | ✓ |
 | Open the Technical page, and Upstream Updates when that flag is on — including "Run update now" once the deploy flag and task are configured | | | | | | ✓ | ✓ |
 | Bulk upload staff accounts or vouchers; set up the kiosk tablet | | | | | | ✓ | ✓ |
 | Change the club's displayed name (Membership Settings) | | | | | | | ✓ |
@@ -150,8 +149,6 @@ Seven nested tiers — `Showrunner ⊂ Volunteer ⊂ DM ⊂ Door ⊂ Manager ⊂
 † Deliberately not monotonic — Admin sits between Manager and Owner in rank but can't grant this perk. See `docs/BLUEPRINT.md` "Monthly Manager & Owner Subscription Perk".
 
 ‡ Also deliberately not monotonic — only the Showrunner role itself can open the comp-request page, and only while the "Showrunner comp requests" flag is on. Higher roles review and approve requests from the event's Comp Requests tab instead.
-
-§ The Cleaning Checklist page is gated by a per-user *capability* (Cleaning Crew, granted on a user's Capabilities tab by an Admin+), not by rank — it's orthogonal to this table.
 
 Showrunner's entire surface is the comp-request page. Door's is the check-in desk, the Volunteer-level tools it inherits (Active Patrons and departures), and register shifts and miscellaneous payments; every Manager-level resource returns 403 for Door. Member names shown at the desk follow a club-configurable setting (`preferred_name` by default, or full name, or `username` — and it always falls back to `username` rather than showing a blank); legal name and email never appear outside the Members resource itself. Every Manager+-only capability above is enforced **server-side**, not just hidden in the UI — e.g. a forged check-in payload from a Door session can't apply a per-event comp or grant the subscription perk.
 

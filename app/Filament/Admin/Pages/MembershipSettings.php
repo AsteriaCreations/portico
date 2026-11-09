@@ -181,7 +181,7 @@ class MembershipSettings extends Page
                             }),
                         Select::make('week_starts_on')
                             ->label('Week starts on')
-                            ->helperText(__('The first day of the club\'s week, for the "this week" figures on Analytics and when the Cleaning Checklist resets. Blank follows the language setting (Monday in English). Changing it mid-week re-opens this week\'s checklist tasks, since their ticks belong to the old week.'))
+                            ->helperText(__('The first day of the club\'s week, for the "this week" figures on Analytics. Blank follows the language setting (Monday in English). Staff task lists follow the schedule week instead (Staff schedule week starts on).'))
                             ->placeholder(__('Follow the language setting'))
                             ->options([
                                 0 => __('Sunday'),

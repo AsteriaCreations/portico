@@ -460,8 +460,7 @@ class MembershipSetting extends Model
 
     /**
      * The start of the club's week containing $date (default now). Every
-     * "this week" figure -- the weekly Analytics widgets and the Cleaning
-     * Checklist reset -- goes through this and endOfWeek(). week_starts_on
+     * "this week" figure -- the weekly Analytics widgets -- goes through this and endOfWeek(). week_starts_on
      * is a Carbon day number (0 = Sunday … 6 = Saturday); null follows the
      * install's language, which is what these used before the setting existed.
      */

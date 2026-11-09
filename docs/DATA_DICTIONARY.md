@@ -226,6 +226,7 @@ drawer, add those rows back (see recipe).
 | `rooms` | Rooms for private rentals: `hourly_rate`, `included_people` (covered by the room price), `overage_fee` per extra person, `overage_per_hour` (fee x hours, or once), `min_hours`, `max_hours`, `active`. |
 | `shift_roles` / `shift_role_user` | Jobs staff are scheduled for (Desk, DM, Setup…; not login roles) and which `users` can work each; `open_to_all` = anyone on the roster can (Setup); `counts_toward_requirement` (off for e.g. Host); `scheduled` = put on event shifts (off for e.g. Cleaning: no shifts or availability, its tasks are weekly). |
 | `task_areas` | Where role tasks are done (Bathrooms, Main floor…): `name`, `notes` on how the area is handled, `sort_order`, `active`. |
+| `role_task_completions` | A role task ticked as done, by `user_id` at `completed_at`: for a scheduled role on one shift (`shift_slot_id`; `on_shift` false = the person wasn't on that shift, extra effort), for an unscheduled role in one schedule week (`week_start`, `on_shift` null). Once per task per shift or week. |
 | `role_tasks` | A task on a shift role's list: `shift_role_id`, optional `task_area_id`, `name`, `description`, `status` ∈ `standard`, `proposed` (made by staff, `proposed_by`), `declined` (`decided_by`, `decided_at`, `decline_reason`), `sort_order`, `active`. |
 | `shift_slots` | The staff shifts on one event: `event_id`, `shift_role_id`, `kind` ∈ `open`, `close`, `single` (whole night), `setup`, `extra`; `label`, `starts_at`/`ends_at`, `headcount` (people needed), `notes`. |
 | `shift_availabilities` | One staff member's answer for one shift: `shift_slot_id`, `user_id`, `preference` ∈ `preferred`, `available`, `unavailable`; `entered_by` (the person, or a Manager+ for them; null on older rows). No row = not answered. |
@@ -248,13 +249,11 @@ drawer, add those rows back (see recipe).
 | `attendance_behavior_notes` | Staff notes on a visit (**sensitive**). A retracted note keeps its row; check `behavior_note_retractions`. |
 | `behavior_note_retractions` | One row per retracted behavior note: `reason`, `retracted_by`. A note with a row here is withdrawn. |
 | `occupancy_adjustments` | Anonymous "N people left" counts per night (`delta`, usually negative). |
-| `cleaning_tasks`, `cleaning_task_completions` | Weekly cleaning checklist. |
 
 ### Staff
 
 `users` = staff logins: `role` ∈ `showrunner`, `volunteer`, `dm`, `door`, `manager`, `admin`,
-`owner` (in increasing rank); `member_id` links a login to their member record. Extra
-permissions are in `user_capabilities`. `password`, `remember_token` and the framework tables
+`owner` (in increasing rank); `member_id` links a login to their member record. `password`, `remember_token` and the framework tables
 (`sessions`, `cache*`, `jobs`, `job_batches`, `failed_jobs`, `password_reset_tokens`,
 `notifications`, `migrations`, `command_runs`) are not for reporting.
 

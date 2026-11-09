@@ -104,10 +104,10 @@ SHOWRUNNER & INSTRUCTOR PAYOUTS
 - Instructor pay at the desk — the Check-In Desk shows tonight's running instructor payout to Door+; "Pay instructor" in the Cash box records the cash handed over (prefilled, editable, once per event; the calculated figure is snapshotted), which comes off the box's expected cash so close-out balances; Manager+ can add a signed correction with a reason; append-only `instructor_payouts` ledger; the event page shows what was paid
 - Independently feature-flagged (showrunner_payouts_enabled, instructor_payouts_enabled)
 
-ORTHOGONAL CAPABILITIES
+ROLE TASK LISTS
 --------------------------
-- Capability system independent of the role hierarchy — a user can hold any combination, granted/revoked via a relation manager on Users
-- Cleaning Crew capability gates a dedicated weekly Cleaning Checklist page, with per-task (not whole-list) completion that resets every calendar week
+- Each shift role has a standard task list (Task lists, Manager+), optionally grouped by Task areas with notes on how each area is handled
+- My tasks: tick tasks on a shift that's running (once per shift; ticking someone else's shift of a role you can work counts as extra), or weekly for a role that isn't scheduled (Cleaning Crew), with a history of what you did
 
 VOUCHERS & COMP REWARDS
 -------------------------

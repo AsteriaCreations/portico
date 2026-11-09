@@ -2,7 +2,6 @@
 
 namespace App\Providers;
 
-use App\Enums\Capability;
 use App\Enums\Role;
 use App\Models\AttendanceBehaviorNote;
 use App\Models\CompReason;
@@ -13,6 +12,7 @@ use App\Observers\CompReasonObserver;
 use App\Observers\MemberObserver;
 use App\Observers\UserObserver;
 use App\Services\BehaviorNoteRetractionService;
+use App\Services\RoleTaskService;
 use App\Services\ShiftAvailabilityService;
 use App\Services\ShiftScheduleService;
 use App\Services\ShiftWorkService;
@@ -233,9 +233,7 @@ class AppServiceProvider extends ServiceProvider
         Gate::define('email-kiosk-codes', fn (User $user): bool => $user->role->atLeast(Role::Manager)
             && MembershipSetting::current()->kiosk_checkin_enabled);
 
-        // Orthogonal to role -- a capability grants nothing rank-related on
-        // its own. See App\Enums\Capability.
-        Gate::define('access-cleaning-checklist', fn (User $user): bool => $user->hasCapability(Capability::CleaningCrew));
+        Gate::define('work-role-tasks', fn (User $user): bool => app(RoleTaskService::class)->canUseTasks($user));
 
         Gate::define('build-staff-schedule', fn (User $user): bool => $user->role->atLeast(Role::Admin) && MembershipSetting::current()->staff_scheduling_enabled);
 

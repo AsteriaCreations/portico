@@ -6,7 +6,6 @@ use App\Filament\Admin\Resources\Users\Pages\CreateUser;
 use App\Filament\Admin\Resources\Users\Pages\EditUser;
 use App\Filament\Admin\Resources\Users\Pages\ListUsers;
 use App\Filament\Admin\Resources\Users\RelationManagers\BehaviorNotesWrittenRelationManager;
-use App\Filament\Admin\Resources\Users\RelationManagers\CapabilitiesRelationManager;
 use App\Filament\Admin\Resources\Users\Schemas\UserForm;
 use App\Filament\Admin\Resources\Users\Tables\UsersTable;
 use App\Filament\Concerns\TranslatesResourceLabels;
@@ -45,7 +44,6 @@ class UserResource extends Resource
     public static function getRelations(): array
     {
         return [
-            CapabilitiesRelationManager::class,
             BehaviorNotesWrittenRelationManager::class,
         ];
     }

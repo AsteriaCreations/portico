@@ -60,7 +60,7 @@ class OperationalDataReset
         'events',
         'members',
         'occupancy_adjustments',
-        'cleaning_task_completions',
+        'role_task_completions',
         'notifications',
     ];
 
@@ -75,7 +75,6 @@ class OperationalDataReset
         'users',
         'password_reset_tokens',
         'sessions',
-        'user_capabilities',
         'migrations',
         'cache',
         'cache_locks',
@@ -93,7 +92,6 @@ class OperationalDataReset
         'add_ons',
         'paperwork_types',
         'skills',
-        'cleaning_tasks',
         'showrunner_payout_tiers',
         'instructor_pay_rates',
         'rooms',

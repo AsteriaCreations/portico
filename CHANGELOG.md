@@ -12,6 +12,17 @@ releases below could carry small breaking changes in a minor release.
 
 ### Added
 
+- **My tasks: ticking role task lists, and Cleaning folds in.** *My tasks* (Staff section) shows
+  the list for each shift of yours that's running (from an hour before it starts to an hour
+  after it ends) and for other running shifts of roles you can work, where a tick counts as
+  extra. A role that isn't scheduled works its list weekly. Each task is done once per shift or
+  week, shows who did it, and can be undone by that person while it's still on; *History* lists
+  your own ticks. **The Cleaning Checklist is replaced:** its tasks and their history move to a
+  *Cleaning Crew* shift role that isn't scheduled (weekly, following the schedule week, not the
+  club week), everyone with the Cleaning Crew capability gets that role, and Staff scheduling is
+  turned on if the checklist was in use. The capability system (only ever Cleaning Crew) and the
+  Cleaning Tasks screen are removed. Migration: `role_task_completions`; drops `cleaning_tasks`,
+  `cleaning_task_completions`, `user_capabilities`. No npm build.
 - **Task lists per shift role (first part).** *Task lists* (Staff section, Manager+) keeps each
   shift role's standard tasks, optionally grouped by *Task areas* (Bathrooms, Main floor…) with
   notes on how each area is handled. Shift roles gain *Put on event shifts*: turn it off for a

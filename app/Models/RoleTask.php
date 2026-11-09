@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
  * One task on a shift role's list (Desk: count the float; Cleaning: mop
@@ -41,6 +42,11 @@ class RoleTask extends Model
     public function area(): BelongsTo
     {
         return $this->belongsTo(TaskArea::class, 'task_area_id');
+    }
+
+    public function completions(): HasMany
+    {
+        return $this->hasMany(RoleTaskCompletion::class);
     }
 
     public function proposedBy(): BelongsTo

@@ -1,12 +1,9 @@
 <?php
 
-use App\Enums\Capability;
 use App\Enums\Role;
-use App\Filament\Admin\Pages\CleaningChecklist;
 use App\Filament\Admin\Pages\FeatureFlags;
 use App\Filament\Admin\Pages\MembershipSettings;
 use App\Models\User;
-use App\Models\UserCapability;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
 
@@ -18,7 +15,7 @@ beforeEach(function () {
     app('translator')->setLoaded(['*' => ['*' => ['es' => [
         'System' => 'xx-System',
         'How to use Feature Flags' => 'xx-How to use Feature Flags',
-        "Each row is one recurring task. Click <strong>Mark done</strong> once you've completed it." => 'xx-Click <strong>Mark done</strong> row',
+        'Turning a feature off only stops <strong>new</strong> use of it — it never deletes, hides, or retroactively rewrites anything already recorded (an existing subscription still works after its add-on is turned off, for example).' => 'xx-Stops <strong>new</strong> use',
         'Name (first & last)' => 'xx-Name (first & last)',
         ':count behavior note|:count behavior notes' => 'xx-:count note|xx-:count notes',
     ]]]]);
@@ -39,10 +36,9 @@ test('a page section heading and its instruction panel title are translated', fu
 });
 
 test('an instruction paragraph containing markup is translated and rendered as HTML', function () {
-    UserCapability::factory()->create(['user_id' => auth()->id(), 'capability' => Capability::CleaningCrew]);
     app()->setLocale('es');
 
-    Livewire::test(CleaningChecklist::class)->assertSeeHtml('xx-Click <strong>Mark done</strong> row');
+    Livewire::test(FeatureFlags::class)->assertSeeHtml('xx-Stops <strong>new</strong> use');
 });
 
 test('select option labels on the settings page are translated', function () {
