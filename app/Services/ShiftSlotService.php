@@ -14,7 +14,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 /**
- * An event's staffing (its Staffing tab, Manager+). The standard shifts are
+ * An event's staffing (the Staffing page, Manager+). The standard shifts are
  * set together: Open and Close, or one Whole night shift on the club's
  * single-shift nights, each with a number of people per role. Open runs
  * from the event's start to the handover; Close starts staff_handover_minutes

@@ -206,7 +206,7 @@ class MembershipSettings extends Page
                             ]),
                         CheckboxList::make('staff_single_shift_days')
                             ->label('One-shift nights')
-                            ->helperText(__('Events on these days get one shift for the whole night by default, instead of Open and Close. Any event can be changed on its Staffing tab.'))
+                            ->helperText(__('Events on these days get one shift for the whole night by default, instead of Open and Close. Any event can be changed on the Staffing page.'))
                             ->options([
                                 0 => __('Sunday'),
                                 1 => __('Monday'),

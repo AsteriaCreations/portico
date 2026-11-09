@@ -41,9 +41,9 @@ class MyShifts extends Page
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedClipboardDocumentList;
 
-    protected static string|UnitEnum|null $navigationGroup = 'Front of House';
+    protected static string|UnitEnum|null $navigationGroup = 'Staff';
 
-    protected static ?int $navigationSort = 4;
+    protected static ?int $navigationSort = 1;
 
     /** The first day (Y-m-d) of the schedule week on screen. */
     #[Url(as: 'week')]

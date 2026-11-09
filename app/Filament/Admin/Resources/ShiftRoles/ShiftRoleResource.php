@@ -28,7 +28,7 @@ class ShiftRoleResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedUserGroup;
 
-    protected static string|UnitEnum|null $navigationGroup = 'Members & Events';
+    protected static string|UnitEnum|null $navigationGroup = 'Staff';
 
     protected static ?int $navigationSort = 6;
 

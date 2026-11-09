@@ -17,7 +17,7 @@ use Illuminate\Support\Facades\DB;
  * shift requirement (staff_monthly_shift_requirement, default 3; 0 = none).
  * A scheduled spot is marked worked when the person signs in during the
  * shift (from SIGN_IN_EARLY_MINUTES before it starts until it ends), or by
- * a Manager+ on the event's Staffing tab, who can also add someone who
+ * a Manager+ on the Staffing page, who can also add someone who
  * covered without being scheduled. Only shifts of roles that count toward
  * the requirement (shift_roles.counts_toward_requirement, off for e.g.
  * Host) are counted; a shift belongs to the month it starts in.

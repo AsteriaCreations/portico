@@ -37,9 +37,9 @@ class ShiftsWorked extends Page implements HasTable
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedCheckBadge;
 
-    protected static string|UnitEnum|null $navigationGroup = 'Front of House';
+    protected static string|UnitEnum|null $navigationGroup = 'Staff';
 
-    protected static ?int $navigationSort = 7;
+    protected static ?int $navigationSort = 5;
 
     /** The month on screen, as Y-m. */
     public string $month = '';
