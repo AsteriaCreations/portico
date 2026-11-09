@@ -230,7 +230,7 @@ class ShiftScheduleService
         return $user->active
             && MembershipSetting::current()->staff_scheduling_enabled
             && ($user->role->atLeast(Role::Admin)
-                || $user->shiftRoles()->where('active', true)->exists()
+                || $user->shiftRoles()->scheduled()->exists()
                 || $user->shiftAssignments()->exists());
     }
 

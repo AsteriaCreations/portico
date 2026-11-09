@@ -21,11 +21,13 @@ use App\Filament\Admin\Resources\Plans\PlanResource;
 use App\Filament\Admin\Resources\PrivateRentals\PrivateRentalResource;
 use App\Filament\Admin\Resources\Registers\RegisterResource;
 use App\Filament\Admin\Resources\RegisterShifts\RegisterShiftResource;
+use App\Filament\Admin\Resources\RoleTasks\RoleTaskResource;
 use App\Filament\Admin\Resources\Rooms\RoomResource;
 use App\Filament\Admin\Resources\ShiftRoles\ShiftRoleResource;
 use App\Filament\Admin\Resources\ShowrunnerPayoutTiers\ShowrunnerPayoutTierResource;
 use App\Filament\Admin\Resources\Skills\SkillResource;
 use App\Filament\Admin\Resources\Subscriptions\SubscriptionResource;
+use App\Filament\Admin\Resources\TaskAreas\TaskAreaResource;
 use App\Filament\Admin\Resources\Users\UserResource;
 use App\Filament\Admin\Resources\VisitRemovals\VisitRemovalResource;
 use App\Filament\Admin\Resources\Vouchers\VoucherResource;
@@ -177,11 +179,13 @@ class AdminPanelProvider extends PanelProvider
             PlanResource::class => 'plans',
             RegisterShiftResource::class => 'register-shifts',
             RegisterResource::class => 'registers',
+            RoleTaskResource::class => 'role-tasks',
             RoomResource::class => 'rooms',
             ShiftRoleResource::class => 'shift-roles',
             ShowrunnerPayoutTierResource::class => 'showrunner-payout-tiers',
             SkillResource::class => 'skills',
             SubscriptionResource::class => 'subscriptions',
+            TaskAreaResource::class => 'task-areas',
             UserResource::class => 'users',
             VisitRemovalResource::class => 'visit-removals',
             VoucherResource::class => 'vouchers',

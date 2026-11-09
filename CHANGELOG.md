@@ -12,6 +12,12 @@ releases below could carry small breaking changes in a minor release.
 
 ### Added
 
+- **Task lists per shift role (first part).** *Task lists* (Staff section, Manager+) keeps each
+  shift role's standard tasks, optionally grouped by *Task areas* (Bathrooms, Main floor…) with
+  notes on how each area is handled. Shift roles gain *Put on event shifts*: turn it off for a
+  role such as Cleaning, which then gets no shifts, availability or staffing counts and works its
+  list weekly. Ticking tasks, staff proposals and votes follow. Migration: `scheduled` on
+  `shift_roles`, `task_areas`, `role_tasks`. No npm build.
 - **Staff schedule grid, and Off / Out.** *Grid view* on My shifts (published weeks) and the
   Staff schedule (drafts too) lays the week out like the club's paper schedule: Open and Close
   columns for each night that has them, a row per role, setup, resets and other shifts on

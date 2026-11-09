@@ -806,6 +806,8 @@ Behind `staff_scheduling_enabled` (default off). A **shift role** (Admin+) (`shi
 
 **Going beyond it.** There's no automatic reward: a Manager+ recognises someone who worked beyond the requirement with **Grant voucher** on Shifts Worked (`ShiftRewardService`), because the point is that a person notices. The voucher goes on the login's linked member (`users.member_id`; none linked, no button, and the page says so), its amount pre-filled as shifts beyond × `staff_extra_shift_voucher_amount` and editable. `shift_rewards` (append-only, unique per user and month) records it, so a month is rewarded once, even if granted before the month ends.
 
+**Task lists.** Each shift role has a list of tasks (`role_tasks`, the **Task lists** resource, Manager+), optionally grouped by **Task areas** (`task_areas`) whose notes say how an area is handled. A role with `scheduled` off (Cleaning) is never put on event shifts: the `ShiftRole::scheduled()` scope (active and scheduled) is what availability, staffing, the schedule, Shifts worked and *Anyone can work it* eligibility read, so such a role gets none of them. A scheduled role's tasks are worked once per shift, an unscheduled role's once per schedule week. A `role_tasks` row is `standard`, or `proposed` by staff and then approved (standard) or `declined` by a Manager+; Task lists shows standard tasks only.
+
 ---
 
 ## Build order (thin vertical slices)

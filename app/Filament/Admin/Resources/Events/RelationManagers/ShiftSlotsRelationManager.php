@@ -77,7 +77,7 @@ class ShiftSlotsRelationManager extends RelationManager
                     ->maxLength(40),
                 Select::make('shift_role_id')
                     ->label(__('Shift role'))
-                    ->relationship('shiftRole', 'name', modifyQueryUsing: fn (Builder $query) => $query->where('active', true)->orderBy('sort_order'))
+                    ->relationship('shiftRole', 'name', modifyQueryUsing: fn (Builder $query) => $query->scheduled()->orderBy('sort_order'))
                     ->required(),
                 TextInput::make('headcount')
                     ->label(__('People needed'))
