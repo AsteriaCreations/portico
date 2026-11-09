@@ -222,6 +222,9 @@ class AppServiceProvider extends ServiceProvider
 
         Gate::define('build-staff-schedule', fn (User $user): bool => $user->role->atLeast(Role::Admin) && MembershipSetting::current()->staff_scheduling_enabled);
 
+        // For staff who don't use the app yet. See ShiftAvailabilityService.
+        Gate::define('enter-staff-availability', fn (User $user): bool => $user->role->atLeast(Role::Manager) && MembershipSetting::current()->staff_scheduling_enabled);
+
         // Anyone who has a shift role, is on a shift, or builds the schedule.
         Gate::define('view-staff-schedule', fn (User $user): bool => app(ShiftScheduleService::class)->canViewSchedule($user));
 
