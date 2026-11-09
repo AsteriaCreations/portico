@@ -13,6 +13,11 @@ releases below could carry small breaking changes in a minor release.
 ### Fixed
 
 - **My tasks: Propose a task opens its dialog.** The page only shows its table on History, and Filament leaves a table page's dialogs to the table, so on the tasks view the button did nothing.
+- **My shifts: every row lines up.** A day's shifts now have the same four columns whether or not a row has a "spots open" or "You" badge.
+- **Staffing: readable times.** Start and end times show as "Fri Nov 13, 9:00 PM" instead of "2026-11-13 21:00:00", on Staffing and an event's shift list.
+- **Issue reports: the snapshot's first line is no longer indented.** Copying it still gives the plain JSON.
+- **Active Patrons: Sort by names the default.** It shows "Arrival time, Descending" instead of "-"; a sort chosen this session is still kept.
+- **Editing a user no longer asks "Leave site?" with nothing changed.** The password box started as empty on the server and "" in the browser; it now starts as "", and Chrome no longer offers the signed-in Admin's own password there.
 
 ### Added
 

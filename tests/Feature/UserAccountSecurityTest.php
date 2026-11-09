@@ -317,3 +317,17 @@ test('a console-driven save is not subject to the self or owner guards', functio
 
     expect($owner->refresh()->active)->toBeFalse();
 });
+
+test('an untouched user page has nothing unsaved, and saving it keeps the password', function () {
+    $door = User::factory()->create(['role' => Role::Door, 'active' => true]);
+    $hash = $door->password;
+
+    // The browser reads an empty password box back as '', so the form must
+    // start with '' too, or the page asks "Leave site?" with nothing changed.
+    Livewire::test(EditUser::class, ['record' => $door->getRouteKey()])
+        ->assertSet('data.password', '', strict: true)
+        ->call('save')
+        ->assertHasNoErrors();
+
+    expect($door->fresh()->password)->toBe($hash);
+});

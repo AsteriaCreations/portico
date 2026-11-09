@@ -8,6 +8,7 @@ use App\Models\ShiftRole;
 use App\Models\ShiftSlot;
 use App\Models\User;
 use App\Services\ShiftScheduleService;
+use Filament\Schemas\Components\Grid;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Gate;
@@ -115,4 +116,18 @@ test('My shifts is for people with a shift role, on a shift, or Admin and up, wi
     MembershipSetting::current()->update(['staff_scheduling_enabled' => false]);
 
     $this->actingAs($this->sam)->get(MyShifts::getUrl())->assertForbidden();
+});
+
+test('every shift row has the same four columns, with or without a badge, so a day lines up', function () {
+    app(ShiftScheduleService::class)->publish($this->owner, $this->week);
+    $this->actingAs($this->jo);
+    $page = Livewire::test(MyShifts::class)->instance();
+
+    // The Door shift has a spot open; the Bar shift is full and is Jo's own.
+    foreach ([$this->doorSlot, $this->barSlot] as $slot) {
+        $row = (fn () => $this->shiftRow($slot->fresh(['assignments.user', 'event', 'shiftRole'])))->call($page);
+
+        expect($row)->toBeInstanceOf(Grid::class)
+            ->and($row->getDefaultChildComponents())->toHaveCount(4);
+    }
 });

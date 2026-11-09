@@ -124,11 +124,11 @@ class ShiftSlotsRelationManager extends RelationManager
                     ->badge(),
                 TextColumn::make('starts_at')
                     ->label(__('Starts'))
-                    ->dateTime()
+                    ->dateTime('D M j, g:i A')
                     ->sortable(),
                 TextColumn::make('ends_at')
                     ->label(__('Ends'))
-                    ->dateTime(),
+                    ->dateTime('D M j, g:i A'),
                 TextColumn::make('headcount')
                     ->label(__('People needed'))
                     ->numeric(),

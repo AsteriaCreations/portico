@@ -98,7 +98,7 @@ class Staffing extends Page implements HasTable
                     ->description(fn (Event $record): ?string => $record->id === $this->eventId ? __('Open below') : null),
                 TextColumn::make('starts_at')
                     ->label(__('Starts'))
-                    ->dateTime()
+                    ->dateTime('D M j, g:i A')
                     ->placeholder(fn (Event $record): string => $record->event_date?->isoFormat('ddd ll') ?? ''),
                 TextColumn::make('shifts')
                     ->label(__('Shifts'))

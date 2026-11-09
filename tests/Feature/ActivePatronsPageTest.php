@@ -707,3 +707,15 @@ test('patrons list newest arrival first by default, and Sort by flips it to olde
         ->sortTable('event.name', 'asc')
         ->assertCanSeeTableRecords([$earliest, $middle, $latest], inOrder: true);
 });
+
+test('the Sort by control names the default sort instead of showing a dash', function () {
+    $this->actingAs(User::factory()->create(['active' => true, 'role' => Role::Volunteer]));
+
+    Livewire::test(ActivePatrons::class)
+        ->assertSet('tableSort', 'event.name:desc')
+        ->set('tableSort', 'event.name:asc')
+        ->assertSet('tableSort', 'event.name:asc');
+
+    // A choice made this session comes back next time.
+    Livewire::test(ActivePatrons::class)->assertSet('tableSort', 'event.name:asc');
+});
