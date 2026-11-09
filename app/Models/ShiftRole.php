@@ -16,7 +16,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * users() is who can work it, so availability and assignment only offer
  * those people -- unless open_to_all (Setup), when anyone on the roster can.
  */
-#[Fillable(['name', 'description', 'open_to_all', 'sort_order', 'active'])]
+#[Fillable(['name', 'description', 'open_to_all', 'counts_toward_requirement', 'sort_order', 'active'])]
 class ShiftRole extends Model
 {
     /** @use HasFactory<ShiftRoleFactory> */
@@ -26,6 +26,7 @@ class ShiftRole extends Model
     {
         return [
             'open_to_all' => 'boolean',
+            'counts_toward_requirement' => 'boolean',
             'sort_order' => 'integer',
             'active' => 'boolean',
         ];

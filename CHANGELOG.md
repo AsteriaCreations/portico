@@ -12,6 +12,14 @@ releases below could carry small breaking changes in a minor release.
 
 ### Added
 
+- **Staff scheduling: shifts worked and the monthly requirement.** A scheduled shift is marked
+  worked when the person signs in from an hour before it starts until it ends (a toast says
+  so), or by a Manager+ with *Who worked* on the event's Staffing tab, which also records
+  someone who covered. A new *Shifts Worked* page (Manager+) shows each person's shifts
+  worked a month against the *Monthly shift requirement* (Membership Settings, default 3):
+  short, met, and how many beyond it. Shift roles get *Counts toward the monthly
+  requirement* (turn off for Host). Migration: three `shift_assignments` columns,
+  `shift_roles.counts_toward_requirement`, `membership_settings.staff_monthly_shift_requirement`.
 - **Staff scheduling: Managers enter availability for staff.** For staff who don't use the
   app yet, Manager+ can open *My availability*, pick a *Person* from the roster, and answer
   for them. Every answer and week note records who entered it, and the page shows *Entered

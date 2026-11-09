@@ -15,9 +15,11 @@ use App\Observers\UserObserver;
 use App\Services\BehaviorNoteRetractionService;
 use App\Services\ShiftAvailabilityService;
 use App\Services\ShiftScheduleService;
+use App\Services\ShiftWorkService;
 use App\Services\StaffLoginCheckInService;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Field;
+use Filament\Notifications\Notification as FilamentNotification;
 use Filament\Tables\Columns\Column;
 use Filament\Tables\Filters\BaseFilter;
 use Filament\Tables\Table;
@@ -71,6 +73,21 @@ class AppServiceProvider extends ServiceProvider
 
             try {
                 app(StaffLoginCheckInService::class)->handle($event->user);
+            } catch (Throwable $exception) {
+                report($exception);
+            }
+
+            // Signing in during a scheduled shift marks it worked.
+            try {
+                $shifts = app(ShiftWorkService::class)->recordSignIn($event->user);
+
+                if ($shifts->isNotEmpty()) {
+                    FilamentNotification::make()
+                        ->title(__('Checked in for your shift'))
+                        ->body($shifts->map(fn ($slot): string => $slot->displayName())->implode(', '))
+                        ->success()
+                        ->send();
+                }
             } catch (Throwable $exception) {
                 report($exception);
             }
@@ -221,6 +238,8 @@ class AppServiceProvider extends ServiceProvider
         Gate::define('access-cleaning-checklist', fn (User $user): bool => $user->hasCapability(Capability::CleaningCrew));
 
         Gate::define('build-staff-schedule', fn (User $user): bool => $user->role->atLeast(Role::Admin) && MembershipSetting::current()->staff_scheduling_enabled);
+
+        Gate::define('record-shifts-worked', fn (User $user): bool => $user->role->atLeast(Role::Manager) && MembershipSetting::current()->staff_scheduling_enabled);
 
         // For staff who don't use the app yet. See ShiftAvailabilityService.
         Gate::define('enter-staff-availability', fn (User $user): bool => $user->role->atLeast(Role::Manager) && MembershipSetting::current()->staff_scheduling_enabled);

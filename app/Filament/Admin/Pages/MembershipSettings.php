@@ -88,6 +88,7 @@ class MembershipSettings extends Page
             'staff_schedule_week_starts_on',
             'staff_single_shift_days',
             'staff_handover_minutes',
+            'staff_monthly_shift_requirement',
             'age_of_majority',
             'alcohol_flag_age',
             'watchlist_notify_label',
@@ -224,6 +225,14 @@ class MembershipSettings extends Page
                             ->integer()
                             ->minValue(0)
                             ->maxValue(240),
+                        TextInput::make('staff_monthly_shift_requirement')
+                            ->label('Monthly shift requirement')
+                            ->helperText(__('How many shifts each staff member is expected to work a month, counted on Shifts Worked. Only roles with "Counts toward the monthly requirement" count. 0 means no requirement.'))
+                            ->required()
+                            ->numeric()
+                            ->integer()
+                            ->minValue(0)
+                            ->maxValue(31),
                     ]),
                 Section::make(__('Admission & membership'))
                     ->components([
