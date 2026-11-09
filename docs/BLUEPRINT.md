@@ -800,6 +800,8 @@ Each event type's `shift_templates` say what every event of that type needs: a r
 
 **Building and publishing.** Admin+ (`build-staff-schedule`) picks who works each shift on **Staff schedule**. `ShiftScheduleService::assign()` refuses the whole save if a shift gets someone who can't work its role, more people than its `headcount`, or someone already on an overlapping shift (this week's or any other); a started shift is left alone. A week is a draft until `publish()` writes its `schedule_weeks` row and bells (`sendNow`) everyone on it with their shifts; once published, every add or remove bells the person it affects. Publishing again does nothing.
 
+**Reading it.** **My shifts** (`view-staff-schedule`: anyone with an active shift role or an assignment, and Admin+) shows a published week only (`ShiftScheduleService::publishedSlotsFor()`), so a draft never reaches staff: every shift, who's on it, open spots, and the viewer's own. The publish and change notifications link to it with `?week=`.
+
 ---
 
 ## Build order (thin vertical slices)

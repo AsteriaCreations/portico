@@ -2,6 +2,8 @@
 
 namespace App\Services;
 
+use App\Enums\Role;
+use App\Filament\Admin\Pages\MyShifts;
 use App\Models\MembershipSetting;
 use App\Models\ScheduleWeek;
 use App\Models\ShiftAssignment;
@@ -9,6 +11,7 @@ use App\Models\ShiftSlot;
 use App\Models\ShiftWeekNote;
 use App\Models\User;
 use Carbon\CarbonInterface;
+use Filament\Actions\Action;
 use Filament\Notifications\Notification;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
@@ -200,10 +203,39 @@ class ShiftScheduleService
                     ->body($lines)
                     ->icon('heroicon-o-calendar-days')
                     ->info()
+                    ->actions([$this->viewScheduleAction($weekStart)])
                     ->toDatabase());
             });
 
         return $week;
+    }
+
+    public function canViewSchedule(User $user): bool
+    {
+        return $user->active
+            && MembershipSetting::current()->staff_scheduling_enabled
+            && ($user->role->atLeast(Role::Admin)
+                || $user->shiftRoles()->where('active', true)->exists()
+                || $user->shiftAssignments()->exists());
+    }
+
+    /**
+     * What staff see on My shifts: the week's shifts once it's published,
+     * nothing while it's still a draft.
+     *
+     * @return Collection<int, ShiftSlot>
+     */
+    public function publishedSlotsFor(CarbonInterface $weekStart): Collection
+    {
+        return $this->isPublished($weekStart) ? $this->slotsFor($weekStart) : new Collection;
+    }
+
+    private function viewScheduleAction(CarbonInterface $weekStart): Action
+    {
+        return Action::make('viewSchedule')
+            ->label(__('View schedule'))
+            ->url(MyShifts::getUrl(['week' => $this->weekStart($weekStart)->toDateString()]))
+            ->markAsRead();
     }
 
     public function describe(ShiftSlot $slot): string
@@ -274,6 +306,7 @@ class ShiftScheduleService
                         ->body($this->describe($slot))
                         ->icon('heroicon-o-calendar-days')
                         ->warning()
+                        ->actions([$this->viewScheduleAction($slot->starts_at)])
                         ->toDatabase());
                 }
             }
