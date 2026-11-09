@@ -30,6 +30,10 @@ class ShiftRoleForm
                     ->helperText(__('For jobs like Setup that just need people: everyone with any shift role is offered its shifts, and "Who can work it" is ignored. Its shifts are added one at a time, not counted in the standard shifts.'))
                     ->live()
                     ->default(false),
+                Toggle::make('counts_toward_requirement')
+                    ->label(__('Counts toward the monthly requirement'))
+                    ->helperText(__('Turn off for shifts that shouldn\'t count toward the shifts each person owes a month, such as hosting.'))
+                    ->default(true),
                 // Synced by the Create/Edit page's saveRelationships().
                 Select::make('users')
                     ->label(__('Who can work it'))
