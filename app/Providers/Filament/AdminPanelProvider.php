@@ -91,6 +91,7 @@ class AdminPanelProvider extends PanelProvider
             // so a plain __() here would always resolve in the default locale.
             ->navigationGroups([
                 'Front of House' => NavigationGroup::make()->label(fn (): string => __('Front of House')),
+                'Staff' => NavigationGroup::make()->label(fn (): string => __('Staff')),
                 'Records' => NavigationGroup::make()->label(fn (): string => __('Records')),
                 'Desk & Money' => NavigationGroup::make()->label(fn (): string => __('Desk & Money'))->collapsed(),
                 'Members & Events' => NavigationGroup::make()->label(fn (): string => __('Members & Events'))->collapsed(),

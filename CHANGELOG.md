@@ -12,9 +12,14 @@ releases below could carry small breaking changes in a minor release.
 
 ### Added
 
+- **Staff scheduling gets its own Staff section** in the navigation: My shifts, My
+  availability, a new *Staffing* page, Staff schedule, Shifts Worked and Shift Roles.
+  *Staffing* (Manager+) lists each schedule week's events with a summary of their shifts
+  ("Open: Desk 2, DM 1 · Close: Desk 1") and how many spots are filled; picking one opens its
+  shifts below. This replaces the Staffing tab on each event.
 - **Staff scheduling: shifts worked and the monthly requirement.** A scheduled shift is marked
   worked when the person signs in from an hour before it starts until it ends (a toast says
-  so), or by a Manager+ with *Who worked* on the event's Staffing tab, which also records
+  so), or by a Manager+ with *Who worked* on the Staffing page, which also records
   someone who covered. A new *Shifts Worked* page (Manager+) shows each person's shifts
   worked a month against the *Monthly shift requirement* (Membership Settings, default 3):
   short, met, and how many beyond it. Shift roles get *Counts toward the monthly

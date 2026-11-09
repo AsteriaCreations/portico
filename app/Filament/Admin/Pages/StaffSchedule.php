@@ -39,9 +39,9 @@ class StaffSchedule extends Page
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedCalendar;
 
-    protected static string|UnitEnum|null $navigationGroup = 'Front of House';
+    protected static string|UnitEnum|null $navigationGroup = 'Staff';
 
-    protected static ?int $navigationSort = 6;
+    protected static ?int $navigationSort = 4;
 
     /** The first day (Y-m-d) of the schedule week on screen. */
     public string $weekStart = '';
@@ -88,7 +88,7 @@ class StaffSchedule extends Page
         $notes = $this->service()->notesFor($this->week());
 
         $days = $slots->isEmpty()
-            ? [Text::make(__('There are no shifts this week. Shifts come from each event\'s Staffing tab.'))]
+            ? [Text::make(__('There are no shifts this week. Shifts are set on the Staffing page.'))]
             : $slots
                 ->groupBy(fn (ShiftSlot $slot): string => $slot->starts_at->toDateString())
                 ->map(fn (Collection $daySlots, string $date): Section => Section::make(CarbonImmutable::parse($date)->isoFormat('dddd ll'))
