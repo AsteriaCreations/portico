@@ -2,10 +2,10 @@
 
 use App\Enums\AddOnCoverageSource;
 use App\Enums\AdmissionOutcome;
-use App\Enums\Capability;
 use App\Enums\EntryCoverageSource;
 use App\Enums\PayoutType;
 use App\Enums\Role;
+use App\Enums\RoleTaskStatus;
 use App\Filament\Admin\Pages\CheckIn;
 use App\Models\Category;
 use App\Models\Event;
@@ -27,7 +27,7 @@ beforeEach(function () {
         'Comp' => 'xx-Comp',
         'Event Comp' => 'xx-Event Comp',
         'Percentage' => 'xx-Percentage',
-        'Cleaning Crew' => 'xx-Cleaning Crew',
+        'Proposed' => 'xx-Proposed',
         'Monitor' => 'xx-Monitor',
         'Check-In Desk' => 'xx-Check-In Desk',
         'Training mode — practice freely. Nothing you do here is saved.' => 'xx-Training banner',
@@ -50,7 +50,7 @@ test('enum labels come from the translator and fall back to English', function (
     expect(EntryCoverageSource::EventComp->getLabel())->toBe('xx-Event Comp')
         ->and(AddOnCoverageSource::Comp->getLabel())->toBe('xx-Comp')
         ->and(PayoutType::Percentage->getLabel())->toBe('xx-Percentage')
-        ->and(Capability::CleaningCrew->getLabel())->toBe('xx-Cleaning Crew')
+        ->and(RoleTaskStatus::Proposed->getLabel())->toBe('xx-Proposed')
         // Untranslated in the fixture, so it falls back to the English source.
         ->and(PayoutType::Voucher->getLabel())->toBe('Voucher');
 });

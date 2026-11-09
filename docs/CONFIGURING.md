@@ -55,7 +55,6 @@ All are Manager+ unless noted. They're grouped in the left nav exactly as listed
 | **Add-Ons** | Priced extras sold at check-in (room rental, sleepover, …). `subscribable` gives an add-on a monthly plan + day pass (this is how Pool works). `is_overnight` keeps a guest visible on Active Patrons past their event. An add-on can be waiver-gated via Paperwork Types. |
 | **Comp Reasons** | The reasons a Manager can waive one visit's entry fee. Ships with Presenter, Volunteer, and Guest of a staff member. A `grants_voucher_amount` auto-issues a reward voucher once that event ends (run `vouchers:grant-comp-rewards`). |
 | **Registers** | The physical cash drawers/tills. Only relevant if `register_shifts_enabled`. |
-| **Cleaning Tasks** | The checklist items on the Cleaning Checklist page. |
 | **Rooms** | Rooms a member can book for a private rental at the Check-In Desk: an hourly rate, how many people the price includes, a fee for each extra person (per hour or once), and the minimum and maximum hours. Bookings keep the prices they were made at. Turn a room off rather than deleting it. Only shown while Private room rentals is on (Feature Flags). |
 
 ### Members & Events
@@ -97,7 +96,7 @@ rarely need to touch most of them.
 | Organization logo | *(none)* | Owner only. Replaces the name in the panel header, the login page and the kiosk — see "Name & branding". |
 | Language | *(blank — server default, English)* | The admin panel's language for everyone on this install. Lists only languages that have a `lang/{code}.json` translation file; with none installed, English is the only choice. Names you enter yourself (categories, comp reasons, plans, …) are never translated. |
 | Currency code | `USD` | A 3-letter ISO 4217 code, used everywhere a money figure is shown — the check-in desk's live totals, every Analytics widget, and every money column in the admin panel. |
-| Week starts on | *(blank — follows the language; Monday in English)* | First day of the club's week, for the "this week" figures on Analytics and when the Cleaning Checklist resets. Changing it mid-week re-opens this week's checklist tasks. |
+| Week starts on | *(blank — follows the language; Monday in English)* | First day of the club's week, for the "this week" figures on Analytics. |
 | Staff schedule week starts on | *(blank — same as Week starts on)* | First day of each week on the staff schedule (e.g. Thursday for a Thursday–Wednesday rota). Only matters with Staff scheduling on. |
 | One-shift nights | *(none)* | Days whose events get one whole-night shift by default instead of Open and Close (e.g. Sunday–Thursday). Any event can be changed on Staffing. |
 | Handover between Open and Close (minutes) | 30 | Close starts this long before Open ends, so the shifts overlap. |

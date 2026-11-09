@@ -8,7 +8,6 @@ use App\Filament\Admin\Pages\MyAccount;
 use App\Filament\Admin\Pages\Technical;
 use App\Filament\Admin\Resources\AddOns\AddOnResource;
 use App\Filament\Admin\Resources\Categories\CategoryResource;
-use App\Filament\Admin\Resources\CleaningTasks\CleaningTaskResource;
 use App\Filament\Admin\Resources\CompReasons\CompReasonResource;
 use App\Filament\Admin\Resources\Events\EventResource;
 use App\Filament\Admin\Resources\EventTypes\EventTypeResource;
@@ -166,7 +165,6 @@ class AdminPanelProvider extends PanelProvider
             Technical::class => 'technical',
             AddOnResource::class => 'add-ons',
             CategoryResource::class => 'categories',
-            CleaningTaskResource::class => 'cleaning-tasks',
             CompReasonResource::class => 'comp-reasons',
             EventTypeResource::class => 'event-types',
             EventResource::class => 'events',

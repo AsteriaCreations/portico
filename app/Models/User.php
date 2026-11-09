@@ -3,7 +3,6 @@
 namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
-use App\Enums\Capability;
 use App\Enums\Role;
 use App\Support\TemporaryPassword;
 use Database\Factories\UserFactory;
@@ -88,11 +87,6 @@ class User extends Authenticatable implements FilamentUser
     public function recordedVouchers(): HasMany
     {
         return $this->hasMany(Voucher::class, 'recorded_by');
-    }
-
-    public function capabilities(): HasMany
-    {
-        return $this->hasMany(UserCapability::class);
     }
 
     /**
@@ -192,11 +186,6 @@ class User extends Authenticatable implements FilamentUser
     public function routeNotificationForMail(): ?string
     {
         return $this->mailAddress();
-    }
-
-    public function hasCapability(Capability $capability): bool
-    {
-        return $this->capabilities()->where('capability', $capability)->exists();
     }
 
     /**
