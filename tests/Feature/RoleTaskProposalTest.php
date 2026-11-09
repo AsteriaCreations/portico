@@ -46,6 +46,15 @@ test('staff propose a task for their role from My tasks, and Manager+ is notifie
         ->and($this->sam->notifications()->count())->toBe(0);
 });
 
+test('the Propose a task dialog has somewhere to open while the tasks view hides the table', function () {
+    $this->actingAs($this->sam);
+
+    // Filament leaves a table page's dialogs to its table, which this page
+    // only shows on History: without its own modals the button did nothing.
+    Livewire::test(MyTasks::class)
+        ->assertSeeHtml('wire:partial="action-modals"');
+});
+
 test('you can only propose for a role you work', function () {
     expect(fn () => $this->service->propose($this->lee, $this->desk, 'Count the float', null, null))->toThrow(ValidationException::class)
         ->and($this->service->rolesFor($this->lee)->pluck('name')->all())->toBe(['Cleaning Crew']);
