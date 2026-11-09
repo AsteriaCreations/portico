@@ -7,12 +7,12 @@ use App\Models\MembershipSetting;
 use App\Models\User;
 
 /**
- * Admin+, and only while staff scheduling is on. The tab itself is gated the
+ * Manager+ (staffing an event), and only while staff scheduling is on. The tab itself is gated the
  * same way (its relation manager's canViewForRecord()).
  */
 class ShiftSlotPolicy extends RoleGatedPolicy
 {
-    protected Role $minimumRole = Role::Admin;
+    protected Role $minimumRole = Role::Manager;
 
     public function viewAny(User $user): bool
     {

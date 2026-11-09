@@ -93,6 +93,7 @@ class EventDuplicator
                     'comp_list_due_at' => static::shift($data['comp_list_due_at'] ?? null, $days),
                 ]);
                 $event->addOns()->sync($addOnIds);
+                app(ShiftSlotService::class)->copyShifts($source, $event);
 
                 $created++;
             }

@@ -12,6 +12,17 @@ releases below could carry small breaking changes in a minor release.
 
 ### Added
 
+- **Staff scheduling: staffing per event.** Each event's *Staffing* tab (Manager+) sets its
+  standard shifts, either *Open and Close* (Close starts 30 minutes before Open ends, set by
+  *Handover between Open and Close*, and runs to the end) or one shift for the whole night
+  (the default on the *One-shift nights* chosen in Membership Settings), with how many people
+  each role needs on each. *Setup* and *Extra* shifts (e.g. late cover, 11pm–2am) are added
+  with their own times and a label, and shifts read "Desk – Open", "Setup" everywhere. A
+  shift role can be *Anyone can work it* (Setup). Changing the numbers keeps whoever is
+  scheduled and refuses a change that would drop them. A duplicated or repeated event copies
+  the shifts. This replaces the per-event-type shift lists. Migration: `shift_slots.kind` and
+  `label`, `shift_roles.open_to_all`, two `membership_settings` columns; drops
+  `shift_templates`.
 - **Staff scheduling, part 4: My shifts.** Staff read the published schedule on a new *My
   shifts* page (Front of House): one schedule week at a time, every shift with who's on it and
   any open spots, their own marked *You* and listed at the top. A week that isn't published
@@ -31,10 +42,7 @@ releases below could carry small breaking changes in a minor release.
   `shift_week_notes`.
 - **Staff scheduling, part 1: shift roles and shifts.** A new *Shift Roles* list (Admin+) for
   the jobs staff are scheduled for (Door, DM, Bar…), separate from login roles, with who can
-  work each one. Each event type gets a *Staff shifts* tab listing the shifts its events need
-  (role, start relative to the event's start, length, how many people), and each event gets
-  a *Staff shifts* tab of its own, filled from the type when the event is created (duplicates
-  and repeats included) and editable for a one-off. A *Staff schedule week starts on* setting
+  work each one, and each event's shifts. A *Staff schedule week starts on* setting
   sets the schedule's week, separate from the club's. Availability and the schedule itself
   follow. Off by default: *Staff scheduling* on Feature Flags. Migration: four new tables and
   two `membership_settings` columns.

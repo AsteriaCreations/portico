@@ -25,7 +25,7 @@ class ShiftRolesTable
                     ->listWithLineBreaks()
                     ->limitList(5)
                     ->expandableLimitedList()
-                    ->placeholder(__('No one yet')),
+                    ->placeholder(fn ($record): string => $record->open_to_all ? __('Anyone') : __('No one yet')),
                 TextColumn::make('sort_order')
                     ->label(__('Sort order'))
                     ->numeric()

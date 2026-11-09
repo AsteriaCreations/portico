@@ -110,7 +110,7 @@ class MyAvailability extends Page
 
         return ToggleButtons::make('slot_'.$slot->id)
             ->label(__(':role, :event, :start to :end', [
-                'role' => $slot->shiftRole->name,
+                'role' => $slot->displayName(),
                 'event' => $slot->event->name,
                 'start' => $slot->starts_at->isoFormat('LT'),
                 'end' => $slot->ends_at->isoFormat('LT'),
