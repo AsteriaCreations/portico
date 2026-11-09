@@ -8,6 +8,7 @@ use App\Models\MembershipSetting;
 use App\Models\ShiftRole;
 use App\Models\ShiftSlot;
 use Carbon\CarbonInterface;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -159,6 +160,53 @@ class ShiftSlotService
 
             return count($kept);
         });
+    }
+
+    /**
+     * $role's shifts on upcoming, unarchived events: how many, and how many
+     * of those have someone scheduled. For warning before a role is turned
+     * off, since turning it off leaves those shifts in place.
+     *
+     * @return array{shifts: int, staffed: int}
+     */
+    public function upcomingShiftsFor(ShiftRole $role): array
+    {
+        $upcoming = $this->upcomingShiftsQuery($role);
+
+        return [
+            'shifts' => $upcoming->clone()->count(),
+            'staffed' => $upcoming->clone()->whereHas('assignments')->count(),
+        ];
+    }
+
+    /**
+     * Removes $role's upcoming shifts that nobody is scheduled on (their
+     * availability answers go with them). Shifts with people on them stay,
+     * so nobody is dropped from a schedule. Returns how many it removed.
+     */
+    public function removeUnstaffedUpcomingShifts(ShiftRole $role): int
+    {
+        return DB::transaction(function () use ($role): int {
+            $removed = 0;
+
+            foreach ($this->upcomingShiftsQuery($role)->whereDoesntHave('assignments')->get() as $slot) {
+                $slot->delete();
+                $removed++;
+            }
+
+            return $removed;
+        });
+    }
+
+    /**
+     * @return Builder<ShiftSlot>
+     */
+    private function upcomingShiftsQuery(ShiftRole $role): Builder
+    {
+        return ShiftSlot::query()
+            ->where('shift_role_id', $role->id)
+            ->where('starts_at', '>', now())
+            ->whereHas('event', fn (Builder $query) => $query->whereNull('archived_at'));
     }
 
     /**
