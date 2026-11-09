@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Database\Factories\ShiftRoleFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -13,9 +14,9 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * A job staff work on a shift (Door, DM, Bar, Setup…): the club's own list,
  * separate from the login roles that decide what someone can do in the app.
  * users() is who can work it, so availability and assignment only offer
- * those people.
+ * those people -- unless open_to_all (Setup), when anyone on the roster can.
  */
-#[Fillable(['name', 'description', 'sort_order', 'active'])]
+#[Fillable(['name', 'description', 'open_to_all', 'sort_order', 'active'])]
 class ShiftRole extends Model
 {
     /** @use HasFactory<ShiftRoleFactory> */
@@ -24,6 +25,7 @@ class ShiftRole extends Model
     protected function casts(): array
     {
         return [
+            'open_to_all' => 'boolean',
             'sort_order' => 'integer',
             'active' => 'boolean',
         ];
@@ -34,9 +36,24 @@ class ShiftRole extends Model
         return $this->belongsToMany(User::class);
     }
 
-    public function templates(): HasMany
+    /**
+     * Who can be offered and put on this role's shifts: its own list, or for
+     * an open_to_all role everyone on the roster (an active login with at
+     * least one active shift role).
+     *
+     * @return Collection<int, User>
+     */
+    public function eligibleUsers(): Collection
     {
-        return $this->hasMany(ShiftTemplate::class);
+        if (! $this->open_to_all) {
+            return $this->users->where('active', true)->sortBy('name')->values();
+        }
+
+        return User::query()
+            ->where('active', true)
+            ->whereHas('shiftRoles', fn ($query) => $query->where('active', true))
+            ->orderBy('name')
+            ->get();
     }
 
     public function slots(): HasMany

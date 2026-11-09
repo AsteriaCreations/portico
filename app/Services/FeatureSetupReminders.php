@@ -24,7 +24,6 @@ use App\Models\PaymentMethod;
 use App\Models\Plan;
 use App\Models\Register;
 use App\Models\ShiftRole;
-use App\Models\ShiftTemplate;
 use App\Models\ShowrunnerPayoutTier;
 use App\Models\User;
 use Closure;
@@ -226,12 +225,6 @@ class FeatureSetupReminders
                     __('Add the jobs staff work (Door, DM, Bar…) and who can work each one.'),
                     ShiftRoleResource::class,
                     fn (): bool => ! ShiftRole::where('active', true)->whereHas('users')->exists(),
-                ),
-                $this->reminder(
-                    __('Staff scheduling: set the shifts each event type needs'),
-                    __('No event type has staff shifts yet — open an event type\'s "Staff shifts" tab.'),
-                    EventTypeResource::class,
-                    fn (): bool => ! ShiftTemplate::query()->exists(),
                 ),
                 [
                     'title' => __('Staff scheduling: choose the first day of the schedule week'),

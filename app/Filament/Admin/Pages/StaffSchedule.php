@@ -88,7 +88,7 @@ class StaffSchedule extends Page
         $notes = $this->service()->notesFor($this->week());
 
         $days = $slots->isEmpty()
-            ? [Text::make(__('There are no shifts this week. Shifts come from each event\'s Staff shifts tab.'))]
+            ? [Text::make(__('There are no shifts this week. Shifts come from each event\'s Staffing tab.'))]
             : $slots
                 ->groupBy(fn (ShiftSlot $slot): string => $slot->starts_at->toDateString())
                 ->map(fn (Collection $daySlots, string $date): Section => Section::make(CarbonImmutable::parse($date)->isoFormat('dddd ll'))
@@ -113,7 +113,7 @@ class StaffSchedule extends Page
 
         return Select::make('slot_'.$slot->id)
             ->label(__(':role, :event, :start to :end (needs :count)', [
-                'role' => $slot->shiftRole->name,
+                'role' => $slot->displayName(),
                 'event' => $slot->event->name,
                 'start' => $slot->starts_at->isoFormat('LT'),
                 'end' => $slot->ends_at->isoFormat('LT'),

@@ -97,7 +97,6 @@ class OperationalDataReset
         'rooms',
         'shift_roles',
         'shift_role_user',
-        'shift_templates',
     ];
 
     /**

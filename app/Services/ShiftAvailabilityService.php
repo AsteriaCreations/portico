@@ -16,7 +16,8 @@ use Illuminate\Support\Facades\DB;
 
 /**
  * Staff saying which shifts they can work (My availability). A person is
- * only offered the shifts of roles they can work (shift_role_user), on
+ * only offered the shifts of roles they can work (shift_role_user, or any
+ * role open to everyone, like Setup), on
  * events that aren't archived, in one schedule week at a time. A shift that
  * has already started can't be changed: by then the answer is history.
  */
@@ -41,7 +42,9 @@ class ShiftAvailabilityService
 
         return ShiftSlot::query()
             ->with(['event', 'shiftRole'])
-            ->whereIn('shift_role_id', $user->shiftRoles()->where('active', true)->select('shift_roles.id'))
+            ->where(fn (Builder $query) => $query
+                ->whereIn('shift_role_id', $user->shiftRoles()->where('active', true)->select('shift_roles.id'))
+                ->orWhereHas('shiftRole', fn (Builder $role) => $role->where('active', true)->where('open_to_all', true)))
             ->whereHas('event', fn (Builder $query) => $query->whereNull('archived_at'))
             ->where('starts_at', '>=', $weekStart)
             ->where('starts_at', '<', $weekStart->copy()->addWeek())

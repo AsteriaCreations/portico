@@ -86,6 +86,8 @@ class MembershipSettings extends Page
             'kiosk_code_email_batch_size',
             'week_starts_on',
             'staff_schedule_week_starts_on',
+            'staff_single_shift_days',
+            'staff_handover_minutes',
             'age_of_majority',
             'alcohol_flag_age',
             'watchlist_notify_label',
@@ -201,6 +203,27 @@ class MembershipSettings extends Page
                                 5 => __('Friday'),
                                 6 => __('Saturday'),
                             ]),
+                        CheckboxList::make('staff_single_shift_days')
+                            ->label('One-shift nights')
+                            ->helperText(__('Events on these days get one shift for the whole night by default, instead of Open and Close. Any event can be changed on its Staffing tab.'))
+                            ->options([
+                                0 => __('Sunday'),
+                                1 => __('Monday'),
+                                2 => __('Tuesday'),
+                                3 => __('Wednesday'),
+                                4 => __('Thursday'),
+                                5 => __('Friday'),
+                                6 => __('Saturday'),
+                            ])
+                            ->columns(4),
+                        TextInput::make('staff_handover_minutes')
+                            ->label('Handover between Open and Close (minutes)')
+                            ->helperText(__('Close starts this long before Open ends, so the two shifts overlap.'))
+                            ->required()
+                            ->numeric()
+                            ->integer()
+                            ->minValue(0)
+                            ->maxValue(240),
                     ]),
                 Section::make(__('Admission & membership'))
                     ->components([

@@ -33,13 +33,4 @@ class EventType extends Model
     {
         return $this->hasMany(InstructorPayRate::class);
     }
-
-    /**
-     * The shifts every event of this type needs, copied onto each event as
-     * it's created -- see ShiftSlotService.
-     */
-    public function shiftTemplates(): HasMany
-    {
-        return $this->hasMany(ShiftTemplate::class);
-    }
 }

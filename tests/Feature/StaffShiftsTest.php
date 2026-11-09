@@ -2,180 +2,231 @@
 
 use App\Enums\EventRepeat;
 use App\Enums\Role;
+use App\Enums\ShiftKind;
 use App\Filament\Admin\Pages\FeatureFlags;
 use App\Filament\Admin\Resources\Events\Pages\EditEvent;
 use App\Filament\Admin\Resources\Events\RelationManagers\ShiftSlotsRelationManager;
-use App\Filament\Admin\Resources\EventTypes\Pages\EditEventType;
-use App\Filament\Admin\Resources\EventTypes\RelationManagers\ShiftTemplatesRelationManager;
 use App\Filament\Admin\Resources\ShiftRoles\Pages\CreateShiftRole;
 use App\Filament\Admin\Resources\ShiftRoles\ShiftRoleResource;
 use App\Models\Event;
-use App\Models\EventType;
 use App\Models\MembershipSetting;
+use App\Models\ShiftAssignment;
 use App\Models\ShiftRole;
 use App\Models\ShiftSlot;
-use App\Models\ShiftTemplate;
 use App\Models\User;
 use App\Services\EventDuplicator;
+use App\Services\ShiftAvailabilityService;
+use App\Services\ShiftScheduleService;
 use App\Services\ShiftSlotService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Validation\ValidationException;
 use Livewire\Livewire;
 
 uses(RefreshDatabase::class);
 
 beforeEach(function () {
-    MembershipSetting::current()->update(['staff_scheduling_enabled' => true]);
+    MembershipSetting::current()->update(['staff_scheduling_enabled' => true, 'staff_single_shift_days' => [0, 1, 2, 3, 4]]);
 
-    $this->admin = User::factory()->create(['role' => Role::Admin, 'active' => true]);
-    $this->actingAs($this->admin);
+    $this->manager = User::factory()->create(['role' => Role::Manager, 'active' => true]);
+    $this->actingAs($this->manager);
 
-    $this->type = EventType::factory()->create();
-    $this->door = ShiftRole::factory()->create(['name' => 'Door']);
-    $this->bar = ShiftRole::factory()->create(['name' => 'Bar']);
-
-    ShiftTemplate::factory()->create(['event_type_id' => $this->type->id, 'shift_role_id' => $this->door->id, 'start_offset_minutes' => -30, 'duration_minutes' => 270, 'headcount' => 2]);
-    ShiftTemplate::factory()->create(['event_type_id' => $this->type->id, 'shift_role_id' => $this->bar->id, 'start_offset_minutes' => 60, 'duration_minutes' => 180]);
+    $this->desk = ShiftRole::factory()->create(['name' => 'Desk', 'sort_order' => 1]);
+    $this->dm = ShiftRole::factory()->create(['name' => 'DM', 'sort_order' => 2]);
+    $this->setup = ShiftRole::factory()->create(['name' => 'Setup', 'open_to_all' => true, 'sort_order' => 3]);
 });
 
-function scheduledEvent(object $test, array $overrides = []): Event
+/**
+ * Friday 20 Nov 2026, 9pm to 3am.
+ */
+function staffedEvent(array $overrides = []): Event
 {
     return Event::factory()->create([
-        'event_type_id' => $test->type->id,
-        'event_date' => '2026-11-19',
-        'starts_at' => Carbon::parse('2026-11-19 21:00'),
-        'ends_at' => Carbon::parse('2026-11-20 02:00'),
+        'name' => 'Friday Social',
+        'event_date' => '2026-11-20',
+        'starts_at' => Carbon::parse('2026-11-20 21:00'),
+        'ends_at' => Carbon::parse('2026-11-21 03:00'),
         ...$overrides,
     ]);
 }
 
-test('a new event gets its type\'s shifts, timed from the event\'s start', function () {
-    $event = scheduledEvent($this);
+test('Open runs to the handover and Close starts 30 minutes before it, to the end', function () {
+    $event = staffedEvent();
 
-    $slots = $event->shiftSlots()->orderBy('starts_at')->get();
+    app(ShiftSlotService::class)->setStandardShifts($event, ShiftSlotService::SHAPE_OPEN_CLOSE, Carbon::parse('2026-11-21 00:00'), [
+        'open' => [$this->desk->id => 2, $this->dm->id => 1],
+        'close' => [$this->desk->id => 1, $this->dm->id => 1],
+    ]);
 
-    expect($slots)->toHaveCount(2)
-        ->and($slots[0]->shift_role_id)->toBe($this->door->id)
-        ->and($slots[0]->starts_at->format('Y-m-d H:i'))->toBe('2026-11-19 20:30')
-        ->and($slots[0]->ends_at->format('Y-m-d H:i'))->toBe('2026-11-20 01:00')
-        ->and($slots[0]->headcount)->toBe(2)
-        ->and($slots[1]->starts_at->format('H:i'))->toBe('22:00');
+    $open = $event->shiftSlots()->where('kind', 'open')->where('shift_role_id', $this->desk->id)->sole();
+    $close = $event->shiftSlots()->where('kind', 'close')->where('shift_role_id', $this->desk->id)->sole();
+
+    expect($event->shiftSlots()->count())->toBe(4)
+        ->and([$open->starts_at->format('H:i'), $open->ends_at->format('H:i'), $open->headcount])->toBe(['21:00', '00:00', 2])
+        ->and([$close->starts_at->format('H:i'), $close->ends_at->format('H:i'), $close->headcount])->toBe(['23:30', '03:00', 1])
+        ->and($open->displayName())->toBe('Desk – Open');
 });
 
-test('no shifts are added while staff scheduling is off, for an inactive role, or with no start time', function () {
-    MembershipSetting::current()->update(['staff_scheduling_enabled' => false]);
-    expect(scheduledEvent($this)->shiftSlots()->count())->toBe(0);
+test('the handover follows Membership Settings', function () {
+    MembershipSetting::current()->update(['staff_handover_minutes' => 60]);
+    $event = staffedEvent();
 
-    MembershipSetting::current()->update(['staff_scheduling_enabled' => true]);
-    $this->bar->update(['active' => false]);
-    expect(scheduledEvent($this)->shiftSlots()->count())->toBe(1)
-        ->and(scheduledEvent($this, ['starts_at' => null, 'ends_at' => null])->shiftSlots()->count())->toBe(0);
+    app(ShiftSlotService::class)->setStandardShifts($event, ShiftSlotService::SHAPE_OPEN_CLOSE, Carbon::parse('2026-11-21 00:00'), ['close' => [$this->dm->id => 1]]);
+
+    expect($event->shiftSlots()->sole()->starts_at->format('H:i'))->toBe('23:00');
 });
 
-test('filling from the template again only adds what is missing', function () {
-    $event = scheduledEvent($this);
-    $event->shiftSlots()->where('shift_role_id', $this->bar->id)->delete();
+test('a single-shift night defaults to one shift for the whole event; other nights to Open and Close at halfway', function () {
+    $sunday = staffedEvent(['event_date' => '2026-11-22', 'starts_at' => Carbon::parse('2026-11-22 19:00'), 'ends_at' => Carbon::parse('2026-11-22 23:00')]);
+    $friday = staffedEvent();
+    $service = app(ShiftSlotService::class);
 
-    expect(app(ShiftSlotService::class)->fillFromTemplate($event))->toBe(1)
-        ->and(app(ShiftSlotService::class)->fillFromTemplate($event))->toBe(0)
-        ->and($event->shiftSlots()->count())->toBe(2);
+    expect($service->shapeFor($sunday))->toBe(ShiftSlotService::SHAPE_SINGLE)
+        ->and($service->shapeFor($friday))->toBe(ShiftSlotService::SHAPE_OPEN_CLOSE)
+        ->and($service->openEndsAtFor($friday)->format('Y-m-d H:i'))->toBe('2026-11-21 00:00');
+
+    $service->setStandardShifts($sunday, ShiftSlotService::SHAPE_SINGLE, null, ['single' => [$this->desk->id => 1]]);
+
+    $slot = $sunday->shiftSlots()->sole();
+    expect([$slot->kind, $slot->starts_at->format('H:i'), $slot->ends_at->format('H:i'), $slot->displayName()])
+        ->toBe([ShiftKind::Single, '19:00', '23:00', 'Desk']);
 });
 
-test('repeating an event weekly gives each copy its type\'s shifts', function () {
-    $event = scheduledEvent($this);
+test('changing the numbers keeps whoever is scheduled, and refuses to drop them', function () {
+    $event = staffedEvent();
+    $service = app(ShiftSlotService::class);
+    $service->setStandardShifts($event, ShiftSlotService::SHAPE_OPEN_CLOSE, Carbon::parse('2026-11-21 00:00'), ['open' => [$this->desk->id => 2]]);
+    $slot = $event->shiftSlots()->sole();
+    $staff = User::factory()->count(2)->create(['active' => true]);
+    foreach ($staff as $person) {
+        ShiftAssignment::create(['shift_slot_id' => $slot->id, 'user_id' => $person->id, 'assigned_by' => $this->manager->id]);
+    }
+
+    // Moving the handover moves the shift; the people stay on it.
+    $service->setStandardShifts($event, ShiftSlotService::SHAPE_OPEN_CLOSE, Carbon::parse('2026-11-21 00:30'), ['open' => [$this->desk->id => 2]]);
+    expect($slot->fresh()->ends_at->format('H:i'))->toBe('00:30')
+        ->and($slot->assignments()->count())->toBe(2);
+
+    expect(fn () => $service->setStandardShifts($event, ShiftSlotService::SHAPE_OPEN_CLOSE, Carbon::parse('2026-11-21 00:30'), ['open' => [$this->desk->id => 1]]))
+        ->toThrow(ValidationException::class, '2 people are already scheduled on Desk – Open')
+        ->and(fn () => $service->setStandardShifts($event, ShiftSlotService::SHAPE_SINGLE, null, ['single' => [$this->desk->id => 2]]))
+        ->toThrow(ValidationException::class, 'Someone is scheduled on Desk – Open');
+
+    expect($slot->fresh()->headcount)->toBe(2);
+});
+
+test('Open has to end inside the event, past the handover', function (string $openEndsAt) {
+    expect(fn () => app(ShiftSlotService::class)->setStandardShifts(staffedEvent(), ShiftSlotService::SHAPE_OPEN_CLOSE, Carbon::parse($openEndsAt), ['open' => [$this->desk->id => 1]]))
+        ->toThrow(ValidationException::class, 'Open has to end before the event does');
+})->with(['2026-11-20 21:20', '2026-11-21 03:00']);
+
+test('Managers set standard shifts from the event\'s Staffing tab', function () {
+    $event = staffedEvent();
+
+    Livewire::test(ShiftSlotsRelationManager::class, ['ownerRecord' => $event, 'pageClass' => EditEvent::class])
+        ->assertTableActionVisible('setStandardShifts')
+        ->callTableAction('setStandardShifts', data: [
+            'shape' => ShiftSlotService::SHAPE_OPEN_CLOSE,
+            'open_ends_at' => '2026-11-21 00:00:00',
+            'counts' => ['open' => [$this->desk->id => 2, $this->dm->id => 1], 'close' => [$this->desk->id => 1]],
+        ])
+        ->assertHasNoTableActionErrors();
+
+    expect($event->shiftSlots()->count())->toBe(3)
+        ->and($event->shiftSlots()->where('shift_role_id', $this->setup->id)->exists())->toBeFalse();
+});
+
+test('setup and partial-coverage shifts are added with their own times and label', function () {
+    $event = staffedEvent();
+
+    Livewire::test(ShiftSlotsRelationManager::class, ['ownerRecord' => $event, 'pageClass' => EditEvent::class])
+        ->callTableAction('create', data: ['kind' => 'setup', 'shift_role_id' => $this->setup->id, 'headcount' => 4, 'starts_at' => '2026-11-20 18:00', 'ends_at' => '2026-11-20 21:00'])
+        ->assertHasNoTableActionErrors();
+
+    Livewire::test(ShiftSlotsRelationManager::class, ['ownerRecord' => $event, 'pageClass' => EditEvent::class])
+        ->callTableAction('create', data: ['kind' => 'extra', 'label' => 'Late cover', 'shift_role_id' => $this->desk->id, 'headcount' => 1, 'starts_at' => '2026-11-20 23:00', 'ends_at' => '2026-11-21 02:00'])
+        ->assertHasNoTableActionErrors();
+
+    expect($event->shiftSlots()->orderBy('starts_at')->get()->map->displayName()->all())->toBe(['Setup', 'Desk – Late cover']);
+});
+
+test('a role open to everyone is offered to, and can be scheduled with, anyone on the roster', function () {
+    $event = staffedEvent(['event_date' => '2026-11-13', 'starts_at' => Carbon::parse('2026-11-13 21:00'), 'ends_at' => Carbon::parse('2026-11-14 02:00')]);
+    $setupShift = ShiftSlot::factory()->create(['event_id' => $event->id, 'shift_role_id' => $this->setup->id, 'kind' => 'setup', 'starts_at' => '2026-11-13 18:00', 'ends_at' => '2026-11-13 21:00', 'headcount' => 3]);
+    $deskOnly = User::factory()->create(['name' => 'Desk Person', 'active' => true]);
+    $this->desk->users()->attach($deskOnly);
+    $noRoles = User::factory()->create(['active' => true]);
+    $owner = User::factory()->create(['role' => Role::Owner, 'active' => true]);
+
+    $this->travelTo(Carbon::parse('2026-11-11 12:00'));
+    MembershipSetting::current()->update(['staff_schedule_week_starts_on' => 4]);
+
+    expect(app(ShiftAvailabilityService::class)->slotsFor($deskOnly, Carbon::parse('2026-11-12'))->modelKeys())->toBe([$setupShift->id])
+        ->and(array_keys(app(ShiftScheduleService::class)->candidateOptions(app(ShiftScheduleService::class)->slotsFor(Carbon::parse('2026-11-12'))->first())))->toBe([$deskOnly->id])
+        ->and(app(ShiftScheduleService::class)->assign($owner, Carbon::parse('2026-11-12'), [$setupShift->id => [$deskOnly->id]]))->toBe(1)
+        ->and(fn () => app(ShiftScheduleService::class)->assign($owner, Carbon::parse('2026-11-12'), [$setupShift->id => [$noRoles->id]]))->toThrow(ValidationException::class);
+});
+
+test('a duplicated or repeated event copies the shifts, moved to its date, with nobody on them', function () {
+    $event = staffedEvent();
+    app(ShiftSlotService::class)->setStandardShifts($event, ShiftSlotService::SHAPE_OPEN_CLOSE, Carbon::parse('2026-11-21 00:00'), ['open' => [$this->desk->id => 2]]);
+    ShiftAssignment::create(['shift_slot_id' => $event->shiftSlots()->sole()->id, 'user_id' => $this->manager->id, 'assigned_by' => $this->manager->id]);
 
     app(EventDuplicator::class)->duplicate($event, [
         'name' => $event->name,
-        'event_type_id' => $this->type->id,
+        'event_type_id' => $event->event_type_id,
         'entry_fee' => 20,
-        'event_date' => '2026-11-26',
-        'starts_at' => '2026-11-26 21:00:00',
-        'ends_at' => '2026-11-27 02:00:00',
+        'event_date' => '2026-11-27',
+        'starts_at' => '2026-11-27 21:00:00',
+        'ends_at' => '2026-11-28 03:00:00',
     ], EventRepeat::Weekly, 2);
 
-    $copies = Event::whereDate('event_date', '>', '2026-11-19')->orderBy('event_date')->get();
+    $copy = Event::whereDate('event_date', '2026-12-04')->sole()->shiftSlots()->sole();
 
-    expect($copies)->toHaveCount(2)
-        ->and($copies[1]->shiftSlots()->orderBy('starts_at')->first()->starts_at->format('Y-m-d H:i'))->toBe('2026-12-03 20:30');
-});
-
-test('Admin adds shifts from the template on the event\'s tab', function () {
-    MembershipSetting::current()->update(['staff_scheduling_enabled' => false]);
-    $event = scheduledEvent($this);
-    MembershipSetting::current()->update(['staff_scheduling_enabled' => true]);
-
-    Livewire::test(ShiftSlotsRelationManager::class, ['ownerRecord' => $event, 'pageClass' => EditEvent::class])
-        ->callTableAction('fillFromTemplate');
-
-    expect($event->shiftSlots()->count())->toBe(2);
-});
-
-test('Admin adds a one-off shift on an event, which must end after it starts', function () {
-    $event = scheduledEvent($this);
-
-    Livewire::test(ShiftSlotsRelationManager::class, ['ownerRecord' => $event, 'pageClass' => EditEvent::class])
-        ->callTableAction('create', data: ['shift_role_id' => $this->bar->id, 'headcount' => 1, 'starts_at' => '2026-11-19 23:00', 'ends_at' => '2026-11-19 22:00'])
-        ->assertHasTableActionErrors(['ends_at']);
-
-    Livewire::test(ShiftSlotsRelationManager::class, ['ownerRecord' => $event, 'pageClass' => EditEvent::class])
-        ->callTableAction('create', data: ['shift_role_id' => $this->bar->id, 'headcount' => 1, 'starts_at' => '2026-11-19 23:00', 'ends_at' => '2026-11-20 01:00', 'notes' => 'Cover'])
-        ->assertHasNoTableActionErrors();
-
-    expect($event->shiftSlots()->where('notes', 'Cover')->exists())->toBeTrue();
-});
-
-test('Admin sets an event type\'s shifts on its tab', function () {
-    $type = EventType::factory()->create();
-
-    Livewire::test(ShiftTemplatesRelationManager::class, ['ownerRecord' => $type, 'pageClass' => EditEventType::class])
-        ->callTableAction('create', data: ['shift_role_id' => $this->door->id, 'start_offset_minutes' => -60, 'duration_minutes' => 300, 'headcount' => 3])
-        ->assertHasNoTableActionErrors();
-
-    expect($type->shiftTemplates()->sole()->only(['start_offset_minutes', 'duration_minutes', 'headcount']))
-        ->toBe(['start_offset_minutes' => -60, 'duration_minutes' => 300, 'headcount' => 3]);
+    expect([$copy->kind, $copy->starts_at->format('Y-m-d H:i'), $copy->ends_at->format('Y-m-d H:i'), $copy->headcount, $copy->assignments()->count()])
+        ->toBe([ShiftKind::Open, '2026-12-04 21:00', '2026-12-05 00:00', 2, 0]);
 });
 
 test('a shift role records who can work it', function () {
+    $this->actingAs(User::factory()->create(['role' => Role::Admin, 'active' => true]));
     $staff = User::factory()->count(2)->create(['active' => true]);
 
     Livewire::test(CreateShiftRole::class)
-        ->fillForm(['name' => 'Setup', 'users' => $staff->pluck('id')->all(), 'sort_order' => 0, 'active' => true])
+        ->fillForm(['name' => 'Rover', 'users' => $staff->pluck('id')->all(), 'sort_order' => 0, 'active' => true])
         ->call('create')
         ->assertHasNoFormErrors();
 
-    expect(ShiftRole::where('name', 'Setup')->sole()->users()->pluck('users.id')->sort()->values()->all())
-        ->toBe($staff->pluck('id')->sort()->values()->all())
-        ->and($staff->first()->shiftRoles()->pluck('name')->all())->toBe(['Setup']);
+    expect(ShiftRole::where('name', 'Rover')->sole()->users()->pluck('users.id')->sort()->values()->all())
+        ->toBe($staff->pluck('id')->sort()->values()->all());
 });
 
 test('a shift role with shifts on events can\'t be deleted, one without can', function () {
-    scheduledEvent($this);
-    $unused = ShiftRole::factory()->create();
+    $this->actingAs(User::factory()->create(['role' => Role::Admin, 'active' => true]));
+    ShiftSlot::factory()->create(['shift_role_id' => $this->desk->id]);
 
-    expect(Gate::allows('delete', $this->door))->toBeFalse()
-        ->and(Gate::allows('delete', $unused))->toBeTrue();
+    expect(Gate::allows('delete', $this->desk))->toBeFalse()
+        ->and(Gate::allows('delete', $this->dm))->toBeTrue();
 });
 
-test('staff scheduling screens are Admin and up, and only with the flag on', function (Role $role, bool $allowed) {
+test('Shift Roles is Admin and up; staffing an event is Manager and up', function (Role $role, bool $roles, bool $staffing) {
     $this->actingAs(User::factory()->create(['role' => $role, 'active' => true]));
 
-    expect(ShiftRoleResource::canAccess())->toBe($allowed)
-        ->and(Gate::allows('create', ShiftSlot::class))->toBe($allowed)
-        ->and(Gate::allows('create', ShiftTemplate::class))->toBe($allowed);
+    expect(ShiftRoleResource::canAccess())->toBe($roles)
+        ->and(Gate::allows('create', ShiftSlot::class))->toBe($staffing);
 })->with([
-    [Role::Manager, false],
-    [Role::Admin, true],
-    [Role::Owner, true],
+    [Role::Door, false, false],
+    [Role::Manager, false, true],
+    [Role::Admin, true, true],
 ]);
 
-test('the screens and tabs disappear while the flag is off', function () {
-    $event = scheduledEvent($this);
+test('the Staffing tab and Shift Roles disappear while the flag is off', function () {
+    $event = staffedEvent();
     MembershipSetting::current()->update(['staff_scheduling_enabled' => false]);
+    $this->actingAs(User::factory()->create(['role' => Role::Owner, 'active' => true]));
 
     expect(ShiftRoleResource::canAccess())->toBeFalse()
-        ->and(ShiftSlotsRelationManager::canViewForRecord($event, EditEvent::class))->toBeFalse()
-        ->and(ShiftTemplatesRelationManager::canViewForRecord($this->type, EditEventType::class))->toBeFalse();
+        ->and(ShiftSlotsRelationManager::canViewForRecord($event, EditEvent::class))->toBeFalse();
 });
 
 test('the schedule week follows its own setting, or the club week when blank', function () {
@@ -189,6 +240,8 @@ test('the schedule week follows its own setting, or the club week when blank', f
 });
 
 test('turning staff scheduling on reminds about the setup still undone', function () {
+    $admin = User::factory()->create(['role' => Role::Admin, 'active' => true]);
+    $this->actingAs($admin);
     MembershipSetting::current()->update(['staff_scheduling_enabled' => false]);
 
     Livewire::test(FeatureFlags::class)
@@ -196,9 +249,7 @@ test('turning staff scheduling on reminds about the setup still undone', functio
         ->callAction('save')
         ->assertHasNoActionErrors();
 
-    // Templates exist (beforeEach), but no role has anyone who can work it
-    // and the schedule week isn't set.
-    expect($this->admin->fresh()->notifications->pluck('data.title')->sort()->values()->all())->toBe([
+    expect($admin->fresh()->notifications->pluck('data.title')->sort()->values()->all())->toBe([
         'Staff scheduling: add your shift roles',
         'Staff scheduling: choose the first day of the schedule week',
     ]);

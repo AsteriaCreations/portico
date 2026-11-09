@@ -121,7 +121,7 @@ class MyShifts extends Page
         $open = $slot->headcount - $people->count();
 
         return Flex::make(array_values(array_filter([
-            Text::make(__(':role, :event', ['role' => $slot->shiftRole->name, 'event' => $slot->event->name]))
+            Text::make(__(':role, :event', ['role' => $slot->displayName(), 'event' => $slot->event->name]))
                 ->weight(FontWeight::SemiBold),
             Text::make(__(':start to :end', ['start' => $slot->starts_at->isoFormat('LT'), 'end' => $slot->ends_at->isoFormat('LT')])),
             Text::make($people->isEmpty() ? __('No one yet') : $people->implode(', ')),

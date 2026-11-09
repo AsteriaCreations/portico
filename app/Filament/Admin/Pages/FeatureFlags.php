@@ -234,7 +234,7 @@ class FeatureFlags extends Page
                             ->required(),
                         Toggle::make('staff_scheduling_enabled')
                             ->label('Staff scheduling')
-                            ->helperText(__('Adds Shift Roles (the jobs staff work, and who can work each) and a Staff shifts tab on Event Types and Events, for Admin+. New events get their event type\'s shifts automatically. Off by default.'))
+                            ->helperText(__('Adds Shift Roles (the jobs staff work, and who can work each, Admin+), a Staffing tab on each event (Manager+), My availability, the Staff schedule (Admin+) and My shifts. Off by default.'))
                             ->required(),
                     ]),
                 Section::make(__('System'))

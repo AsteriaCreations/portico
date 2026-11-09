@@ -31,6 +31,9 @@ class ShiftScheduleService
     /** Order the picker lists people in. */
     private const PREFERENCE_RANK = ['preferred' => 0, 'available' => 1, 'none' => 2, 'unavailable' => 3];
 
+    /** @var array<int, Collection<int, User>> */
+    private array $eligibleByRole = [];
+
     public function weekStart(CarbonInterface $date): CarbonInterface
     {
         return MembershipSetting::startOfScheduleWeek($date)->startOfDay();
@@ -76,7 +79,7 @@ class ShiftScheduleService
     public function candidateOptions(ShiftSlot $slot): array
     {
         $answers = $slot->availabilities->mapWithKeys(fn ($answer): array => [$answer->user_id => $answer->preference]);
-        $people = $slot->shiftRole->users->concat($slot->assignments->pluck('user'))->unique('id');
+        $people = $this->eligibleFor($slot)->concat($slot->assignments->pluck('user'))->filter()->unique('id');
 
         return $people
             ->sortBy(fn (User $user): string => self::PREFERENCE_RANK[$answers->get($user->id)?->value ?? 'none'].mb_strtolower($user->name))
@@ -100,6 +103,18 @@ class ShiftScheduleService
             ->get()
             ->sortBy('user.name')
             ->values();
+    }
+
+    /**
+     * Who can be put on $slot: its role's list, or the whole roster for a
+     * role open to everyone. Held per role for the request, since a week
+     * repeats the same roles.
+     *
+     * @return Collection<int, User>
+     */
+    public function eligibleFor(ShiftSlot $slot): Collection
+    {
+        return $this->eligibleByRole[$slot->shift_role_id] ??= $slot->shiftRole->eligibleUsers();
     }
 
     public function isLocked(ShiftSlot $slot): bool
@@ -134,7 +149,7 @@ class ShiftScheduleService
 
             $userIds = collect($userIds)->map(fn ($id): int => (int) $id)->unique()->values()->all();
             $current = $slot->assignments->pluck('user_id')->all();
-            $allowed = [...$slot->shiftRole->users->modelKeys(), ...$current];
+            $allowed = [...$this->eligibleFor($slot)->modelKeys(), ...$current];
 
             if (array_diff($userIds, $allowed) !== []) {
                 throw ValidationException::withMessages(['slot_'.$slot->id => __('Only people who can work :role can be scheduled on it.', ['role' => $slot->shiftRole->name])]);
@@ -240,8 +255,8 @@ class ShiftScheduleService
 
     public function describe(ShiftSlot $slot): string
     {
-        return __(':role, :event: :day :start to :end', [
-            'role' => $slot->shiftRole->name,
+        return __(':shift, :event: :day :start to :end', [
+            'shift' => $slot->displayName(),
             'event' => $slot->event->name,
             'day' => $slot->starts_at->isoFormat('ddd ll'),
             'start' => $slot->starts_at->isoFormat('LT'),
@@ -285,7 +300,7 @@ class ShiftScheduleService
 
                     throw ValidationException::withMessages(['slot_'.$clash->id => __(':name is already on :shift at that time.', [
                         'name' => User::find($userId)?->name,
-                        'shift' => $other->shiftRole->name.' '.$other->starts_at->isoFormat('ddd LT'),
+                        'shift' => $other->displayName().' '.$other->starts_at->isoFormat('ddd LT'),
                     ])]);
                 }
             }
