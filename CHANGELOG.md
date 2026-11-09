@@ -138,6 +138,12 @@ releases below could carry small breaking changes in a minor release.
 
 ### Changed
 
+- Dependencies: Filament 5.11.0 → 5.11.2, Laravel 13.39 → 13.40, Boost 2.10.4, plus their
+  Symfony/league patch releases; republished Filament assets under `public/` included.
+  `composer.json` now pins `config.platform.php` to 8.4.27, the PHP that CI and the
+  recommended install run, so Composer and Dependabot only pick packages that install there
+  (endroid/qr-code 6.2 needs PHP 8.5, so it stays on 6.1). Raise the pin when the install's
+  PHP is upgraded.
 - Dependencies: Filament 5.8.3 → 5.11.0 and Laravel 13.34 → 13.39, plus minor dev-tool bumps
   (Dependabot). The republished Filament assets under `public/` are included. Nothing changes
   for staff. Filament now delivers toasts through a per-session mailbox instead of reading them
