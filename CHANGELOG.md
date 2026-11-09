@@ -12,6 +12,10 @@ releases below could carry small breaking changes in a minor release.
 
 ### Added
 
+- **Shift Roles: a warning before turning a role off.** Switching *Active* off says how many
+  shifts the role has on upcoming events and how many have people scheduled, since turning it
+  off leaves them there. Once it's off, *Remove unstaffed upcoming shifts* clears the ones
+  nobody is on (staffed ones stay). No migration.
 - **Staff scheduling: a voucher for going beyond.** On Shifts Worked, a Manager+ can *Grant
   voucher* to anyone who worked beyond the monthly requirement, on their linked member
   record. The amount starts at the shifts beyond × *Voucher per extra shift* (Membership

@@ -2,6 +2,8 @@
 
 namespace App\Filament\Admin\Resources\ShiftRoles\Schemas;
 
+use App\Models\ShiftRole;
+use App\Services\ShiftSlotService;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
@@ -52,9 +54,35 @@ class ShiftRoleForm
                     ->default(0),
                 Toggle::make('active')
                     ->label(__('Active'))
-                    ->helperText(__('Turn off to stop adding this role\'s shifts to new events. Shifts already on events keep it.'))
+                    ->helperText(fn (Get $get, ?ShiftRole $record): string => static::activeHelp($get('active'), $record))
+                    ->live()
                     ->required()
                     ->default(true),
             ]);
+    }
+
+    /**
+     * Turning a role off leaves its shifts on upcoming events in place, so
+     * say how many before it's saved.
+     */
+    protected static function activeHelp(mixed $active, ?ShiftRole $record): string
+    {
+        $default = __('Turn off to stop adding this role\'s shifts to new events. Shifts already on events keep it.');
+
+        if ($active || $record === null) {
+            return $default;
+        }
+
+        $upcoming = app(ShiftSlotService::class)->upcomingShiftsFor($record);
+
+        if ($upcoming['shifts'] === 0) {
+            return __('No upcoming events have :role shifts, so turning it off changes nothing already planned.', ['role' => $record->name]);
+        }
+
+        return trans_choice(
+            ':role has :count shift on upcoming events (:staffed with people scheduled). Turning it off leaves it there: staff can no longer give availability for it, and anyone scheduled stays on it. Once saved, "Remove unstaffed upcoming shifts" at the top of this page clears the ones nobody is on.|:role has :count shifts on upcoming events (:staffed with people scheduled). Turning it off leaves them there: staff can no longer give availability for them, and anyone scheduled stays on them. Once saved, "Remove unstaffed upcoming shifts" at the top of this page clears the ones nobody is on.',
+            $upcoming['shifts'],
+            ['role' => $record->name, 'staffed' => $upcoming['staffed']],
+        );
     }
 }

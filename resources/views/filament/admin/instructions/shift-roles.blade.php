@@ -3,5 +3,5 @@
     <p>{!! __('Add the people who can work a role under <strong>Who can work it</strong>. Only they can give availability for, or be scheduled on, its shifts.') !!}</p>
     <p>{!! __('Turn on <strong>Anyone can work it</strong> for jobs like Setup that just need people: everyone with any shift role is offered its shifts.') !!}</p>
     <p>{!! __('How many people each event needs is set on <strong>Staffing</strong>: its Open and Close (or whole-night) shifts with a count for each role here, plus any setup or extra shifts.') !!}</p>
-    <p>{!! __('To stop using a role, turn off <strong>Active</strong> rather than deleting it. A role with shifts on events can\'t be deleted.') !!}</p>
+    <p>{!! __('To stop using a role, turn off <strong>Active</strong> rather than deleting it. A role with shifts on events can\'t be deleted. Turning one off leaves its upcoming shifts in place (the form says how many); then <strong>Remove unstaffed upcoming shifts</strong> clears the ones nobody is scheduled on.') !!}</p>
 </x-screen-instructions>
