@@ -12,6 +12,11 @@ releases below could carry small breaking changes in a minor release.
 
 ### Added
 
+- **Staff scheduling: Managers enter availability for staff.** For staff who don't use the
+  app yet, Manager+ can open *My availability*, pick a *Person* from the roster, and answer
+  for them. Every answer and week note records who entered it, and the page shows *Entered
+  by …* when it wasn't the person themselves. Migration: `entered_by` on
+  `shift_availabilities` and `shift_week_notes`.
 - **Staff scheduling: staffing per event.** Each event's *Staffing* tab (Manager+) sets its
   standard shifts, either *Open and Close* (Close starts 30 minutes before Open ends, set by
   *Handover between Open and Close*, and runs to the end) or one shift for the whole night

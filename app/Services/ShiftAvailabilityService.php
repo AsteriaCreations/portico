@@ -20,6 +20,8 @@ use Illuminate\Support\Facades\DB;
  * role open to everyone, like Setup), on
  * events that aren't archived, in one schedule week at a time. A shift that
  * has already started can't be changed: by then the answer is history.
+ * Manager+ can answer for someone else (enter-staff-availability), for
+ * staff who don't use the app; each answer records who entered it.
  */
 class ShiftAvailabilityService
 {
@@ -28,6 +30,41 @@ class ShiftAvailabilityService
         return $user->active
             && MembershipSetting::current()->staff_scheduling_enabled
             && $user->shiftRoles()->where('active', true)->exists();
+    }
+
+    /**
+     * Everyone availability can be entered for: active logins with an active
+     * shift role, by name.
+     *
+     * @return Collection<int, User>
+     */
+    public function roster(): Collection
+    {
+        return User::query()
+            ->where('active', true)
+            ->whereHas('shiftRoles', fn (Builder $query) => $query->where('active', true))
+            ->orderBy('name')
+            ->get();
+    }
+
+    /**
+     * For each answer of $user's that someone else entered, who did, keyed
+     * by shift slot id.
+     *
+     * @param  Collection<int, ShiftSlot>  $slots
+     * @return array<int, string>
+     */
+    public function enteredByOthersFor(User $user, Collection $slots): array
+    {
+        return ShiftAvailability::query()
+            ->with('enteredBy')
+            ->where('user_id', $user->id)
+            ->whereIn('shift_slot_id', $slots->modelKeys())
+            ->whereNotNull('entered_by')
+            ->where('entered_by', '!=', $user->id)
+            ->get()
+            ->mapWithKeys(fn (ShiftAvailability $answer): array => [$answer->shift_slot_id => $answer->enteredBy?->name ?? __('someone')])
+            ->all();
     }
 
     /**
@@ -91,19 +128,24 @@ class ShiftAvailabilityService
      * Saves $user's answers for the week. $answers is keyed by shift slot id;
      * null clears an answer. A slot outside what slotsFor() offers (another
      * role's, another week's, a forged id) or one already started is left
-     * alone. Returns how many answers changed.
+     * alone. $enteredBy is who is saving, when not $user themselves: it must
+     * be allowed to enter availability for staff. Returns how many answers
+     * changed.
      *
      * @param  array<int|string, ShiftPreference|string|null>  $answers
      */
-    public function save(User $user, CarbonInterface $weekStart, array $answers, ?string $note): int
+    public function save(User $user, CarbonInterface $weekStart, array $answers, ?string $note, ?User $enteredBy = null): int
     {
+        $enteredBy ??= $user;
+
         abort_unless($this->canGiveAvailability($user), 403);
+        abort_unless($enteredBy->is($user) || $enteredBy->can('enter-staff-availability'), 403);
 
         $weekStart = MembershipSetting::startOfScheduleWeek($weekStart)->startOfDay();
         $slots = $this->slotsFor($user, $weekStart)->keyBy('id');
         $changed = 0;
 
-        DB::transaction(function () use ($user, $weekStart, $answers, $note, $slots, &$changed): void {
+        DB::transaction(function () use ($user, $enteredBy, $weekStart, $answers, $note, $slots, &$changed): void {
             foreach ($answers as $slotId => $value) {
                 $slot = $slots->get((int) $slotId);
 
@@ -126,7 +168,7 @@ class ShiftAvailabilityService
 
                 ShiftAvailability::query()->updateOrCreate(
                     ['user_id' => $user->id, 'shift_slot_id' => $slot->id],
-                    ['preference' => $preference],
+                    ['preference' => $preference, 'entered_by' => $enteredBy->id],
                 );
                 $changed++;
             }
@@ -138,9 +180,9 @@ class ShiftAvailabilityService
                 $existingNote->delete();
             } elseif ($existingNote->clone()->exists()) {
                 // Not "update() returned 0": MySQL counts an unchanged row as 0 affected.
-                $existingNote->update(['note' => $note]);
+                $existingNote->clone()->where('note', '!=', $note)->update(['note' => $note, 'entered_by' => $enteredBy->id]);
             } else {
-                ShiftWeekNote::create(['user_id' => $user->id, 'week_starts_on' => $weekStart->toDateString(), 'note' => $note]);
+                ShiftWeekNote::create(['user_id' => $user->id, 'entered_by' => $enteredBy->id, 'week_starts_on' => $weekStart->toDateString(), 'note' => $note]);
             }
         });
 

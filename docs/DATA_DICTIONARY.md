@@ -226,7 +226,7 @@ drawer, add those rows back (see recipe).
 | `rooms` | Rooms for private rentals: `hourly_rate`, `included_people` (covered by the room price), `overage_fee` per extra person, `overage_per_hour` (fee x hours, or once), `min_hours`, `max_hours`, `active`. |
 | `shift_roles` / `shift_role_user` | Jobs staff are scheduled for (Desk, DM, Setup…; not login roles) and which `users` can work each; `open_to_all` = anyone on the roster can (Setup). |
 | `shift_slots` | The staff shifts on one event: `event_id`, `shift_role_id`, `kind` ∈ `open`, `close`, `single` (whole night), `setup`, `extra`; `label`, `starts_at`/`ends_at`, `headcount` (people needed), `notes`. |
-| `shift_availabilities` | One staff member's answer for one shift: `shift_slot_id`, `user_id`, `preference` ∈ `preferred`, `available`, `unavailable`. No row = not answered. |
+| `shift_availabilities` | One staff member's answer for one shift: `shift_slot_id`, `user_id`, `preference` ∈ `preferred`, `available`, `unavailable`; `entered_by` (the person, or a Manager+ for them; null on older rows). No row = not answered. |
 | `shift_assignments` | Who is scheduled on each shift: `shift_slot_id`, `user_id`, `assigned_by`. |
 | `schedule_weeks` | Schedule weeks published to staff: `week_starts_on` (the week's first day), `published_at`, `published_by`. No row = not published. |
 | `shift_week_notes` | A staff member's free-text note for one schedule week (`week_starts_on`, the week's first day). |

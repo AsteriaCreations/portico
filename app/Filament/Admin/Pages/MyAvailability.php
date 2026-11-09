@@ -6,10 +6,12 @@ use App\Enums\ShiftPreference;
 use App\Filament\Concerns\TranslatesPageLabels;
 use App\Models\MembershipSetting;
 use App\Models\ShiftSlot;
+use App\Models\User;
 use App\Services\ShiftAvailabilityService;
 use BackedEnum;
 use Carbon\CarbonImmutable;
 use Filament\Actions\Action;
+use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\ToggleButtons;
 use Filament\Notifications\Notification;
@@ -26,7 +28,9 @@ use UnitEnum;
  * Where staff say which shifts they can work, one schedule week at a time:
  * Preferred, Available or No for each shift of a role they can work.
  * Reached by anyone with at least one shift role while staff scheduling is
- * on (give-shift-availability). All the rules are in ShiftAvailabilityService.
+ * on (give-shift-availability), and by Manager+ (enter-staff-availability),
+ * who can pick anyone on the roster and answer for them -- for staff who
+ * don't use the app yet. All the rules are in ShiftAvailabilityService.
  */
 class MyAvailability extends Page
 {
@@ -47,24 +51,46 @@ class MyAvailability extends Page
     /** The first day (Y-m-d) of the schedule week on screen. */
     public string $weekStart = '';
 
+    /** Whose availability is on screen; null = nobody picked yet. Checked in subject(). */
+    public ?int $personId = null;
+
     /**
      * @var array<string, mixed>
      */
     public ?array $data = [];
 
-    /** @var array{week: string, slots: Collection<int, ShiftSlot>}|null */
+    /**
+     * @var array<string, mixed>
+     */
+    public ?array $personData = [];
+
+    /** @var array{key: string, slots: Collection<int, ShiftSlot>}|null */
     protected ?array $slotCache = null;
+
+    /** @var Collection<int, User>|null */
+    protected ?Collection $rosterCache = null;
 
     public static function canAccess(): bool
     {
-        return Gate::allows('give-shift-availability');
+        return Gate::any(['give-shift-availability', 'enter-staff-availability']);
     }
 
     public function mount(): void
     {
         // Availability is usually for the week ahead.
         $this->weekStart = $this->currentWeekStart()->addWeek()->toDateString();
+        $this->personId = Gate::allows('give-shift-availability') ? auth()->id() : null;
+        $this->personForm->fill(['person_id' => $this->personId]);
         $this->loadWeek();
+    }
+
+    public function getTitle(): string
+    {
+        $subject = $this->subject();
+
+        return $subject === null || $subject->is(auth()->user())
+            ? __('My availability')
+            : __('Availability: :name', ['name' => $subject->name]);
     }
 
     public function getSubheading(): string
@@ -77,20 +103,52 @@ class MyAvailability extends Page
         ]);
     }
 
+    public function canEnterForOthers(): bool
+    {
+        return Gate::allows('enter-staff-availability');
+    }
+
+    /**
+     * Manager+ picks whose availability to enter.
+     */
+    public function personForm(Schema $schema): Schema
+    {
+        return $schema
+            ->statePath('personData')
+            ->components([
+                Select::make('person_id')
+                    ->label(__('Person'))
+                    ->helperText(__('Enter availability for someone who doesn\'t use the app. Their answers show who entered them.'))
+                    ->options(fn (): array => ($this->rosterCache ??= app(ShiftAvailabilityService::class)->roster())->pluck('name', 'id')->all())
+                    ->searchable()
+                    ->live()
+                    ->afterStateUpdated(fn ($state) => $this->switchPerson(filled($state) ? (int) $state : null)),
+            ]);
+    }
+
     public function form(Schema $schema): Schema
     {
-        $slots = $this->slots();
+        $subject = $this->subject();
 
-        if ($slots->isEmpty()) {
-            $days = [Text::make(__('There are no shifts for your roles this week yet.'))];
-        } else {
-            $days = $slots
+        if ($subject === null) {
+            return $schema->statePath('data')->components([
+                Text::make(__('Pick a person to enter their availability.')),
+            ]);
+        }
+
+        $slots = $this->slots();
+        $enteredBy = app(ShiftAvailabilityService::class)->enteredByOthersFor($subject, $slots);
+
+        $days = $slots->isEmpty()
+            ? [Text::make($subject->is(auth()->user())
+                ? __('There are no shifts for your roles this week yet.')
+                : __('There are no shifts for their roles this week yet.'))]
+            : $slots
                 ->groupBy(fn (ShiftSlot $slot): string => $slot->starts_at->toDateString())
                 ->map(fn (Collection $daySlots, string $date): Section => Section::make(CarbonImmutable::parse($date)->isoFormat('dddd ll'))
-                    ->components($daySlots->map(fn (ShiftSlot $slot): ToggleButtons => $this->slotField($slot))->all()))
+                    ->components($daySlots->map(fn (ShiftSlot $slot): ToggleButtons => $this->slotField($slot, $enteredBy[$slot->id] ?? null))->all()))
                 ->values()
                 ->all();
-        }
 
         return $schema
             ->statePath('data')
@@ -104,9 +162,14 @@ class MyAvailability extends Page
             ]);
     }
 
-    protected function slotField(ShiftSlot $slot): ToggleButtons
+    protected function slotField(ShiftSlot $slot, ?string $enteredBy): ToggleButtons
     {
         $locked = app(ShiftAvailabilityService::class)->isLocked($slot);
+
+        $help = array_filter([
+            $locked ? __('This shift has started or its week\'s schedule is out, so it can\'t be changed.') : $slot->notes,
+            $enteredBy !== null ? __('Entered by :name.', ['name' => $enteredBy]) : null,
+        ]);
 
         return ToggleButtons::make('slot_'.$slot->id)
             ->label(__(':role, :event, :start to :end', [
@@ -115,7 +178,7 @@ class MyAvailability extends Page
                 'start' => $slot->starts_at->isoFormat('LT'),
                 'end' => $slot->ends_at->isoFormat('LT'),
             ]))
-            ->helperText($locked ? __('This shift has started or its week\'s schedule is out, so it can\'t be changed.') : $slot->notes)
+            ->helperText($help === [] ? null : implode(' ', $help))
             ->options(ShiftPreference::class)
             ->inline()
             ->disabled($locked);
@@ -125,17 +188,27 @@ class MyAvailability extends Page
     {
         return Action::make('save')
             ->label(__('Save'))
+            ->disabled(fn (): bool => $this->subject() === null)
             ->action(function (): void {
                 abort_unless(static::canAccess(), 403);
+
+                $subject = $this->subject();
+                abort_if($subject === null, 403);
 
                 $state = $this->form->getState();
                 $answers = $this->slots()
                     ->mapWithKeys(fn (ShiftSlot $slot): array => [$slot->id => $state['slot_'.$slot->id] ?? null])
                     ->all();
 
-                app(ShiftAvailabilityService::class)->save(auth()->user(), $this->week(), $answers, $state['note'] ?? null);
+                app(ShiftAvailabilityService::class)->save($subject, $this->week(), $answers, $state['note'] ?? null, auth()->user());
 
-                Notification::make()->title(__('Availability saved'))->success()->send();
+                $this->slotCache = null;
+                $this->loadWeek();
+
+                Notification::make()
+                    ->title($subject->is(auth()->user()) ? __('Availability saved') : __('Availability saved for :name', ['name' => $subject->name]))
+                    ->success()
+                    ->send();
             });
     }
 
@@ -172,19 +245,60 @@ class MyAvailability extends Page
         $this->loadWeek();
     }
 
+    /**
+     * Unsaved choices are dropped when switching person, too.
+     */
+    public function switchPerson(?int $personId): void
+    {
+        abort_unless($this->canEnterForOthers(), 403);
+
+        $this->personId = $personId;
+        $this->loadWeek();
+    }
+
+    /**
+     * Whose availability is on screen: the signed-in user, or for Manager+
+     * the person picked -- only someone on the roster, so a forged personId
+     * can't reach anyone else.
+     */
+    protected function subject(): ?User
+    {
+        $me = auth()->user();
+
+        if ($this->personId === null || $this->personId === $me->id) {
+            return Gate::allows('give-shift-availability') ? $me : null;
+        }
+
+        if (! $this->canEnterForOthers()) {
+            return Gate::allows('give-shift-availability') ? $me : null;
+        }
+
+        $this->rosterCache ??= app(ShiftAvailabilityService::class)->roster();
+
+        return $this->rosterCache->firstWhere('id', $this->personId);
+    }
+
     protected function loadWeek(): void
     {
+        // The form was built for the week and person this request started
+        // on; rebuild it for the ones now on screen before filling it.
+        $this->cacheSchema('form');
+
+        $subject = $this->subject();
+
+        if ($subject === null) {
+            $this->form->fill([]);
+
+            return;
+        }
+
         $service = app(ShiftAvailabilityService::class);
         $slots = $this->slots();
-
-        // The form was built for the week this request started on; rebuild
-        // it for the one now on screen before filling it.
-        $this->cacheSchema('form');
-        $answers = $service->answersFor(auth()->user(), $slots);
+        $answers = $service->answersFor($subject, $slots);
 
         $this->form->fill([
             ...$slots->mapWithKeys(fn (ShiftSlot $slot): array => ['slot_'.$slot->id => $answers[$slot->id]->value ?? null])->all(),
-            'note' => $service->noteFor(auth()->user(), $this->week()),
+            'note' => $service->noteFor($subject, $this->week()),
         ]);
     }
 
@@ -193,10 +307,18 @@ class MyAvailability extends Page
      */
     protected function slots(): Collection
     {
-        if ($this->slotCache === null || $this->slotCache['week'] !== $this->weekStart) {
+        $subject = $this->subject();
+
+        if ($subject === null) {
+            return new Collection;
+        }
+
+        $key = $this->weekStart.'|'.$subject->id;
+
+        if ($this->slotCache === null || $this->slotCache['key'] !== $key) {
             $this->slotCache = [
-                'week' => $this->weekStart,
-                'slots' => app(ShiftAvailabilityService::class)->slotsFor(auth()->user(), $this->week()),
+                'key' => $key,
+                'slots' => app(ShiftAvailabilityService::class)->slotsFor($subject, $this->week()),
             ];
         }
 

@@ -15,6 +15,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Gate;
 use Livewire\Livewire;
+use Symfony\Component\HttpKernel\Exception\HttpException;
 
 uses(RefreshDatabase::class);
 
@@ -141,8 +142,70 @@ test('My availability can\'t go back before the current week', function () {
         ->assertActionDisabled('previousWeek');
 });
 
-test('someone without a shift role can\'t open My availability', function () {
-    $this->actingAs(User::factory()->create(['role' => Role::Owner, 'active' => true]))
+test('below Manager, someone without a shift role can\'t open My availability; a Manager can', function () {
+    $this->actingAs(User::factory()->create(['role' => Role::Door, 'active' => true]))
         ->get(MyAvailability::getUrl())
         ->assertForbidden();
+
+    $this->actingAs(User::factory()->create(['role' => Role::Manager, 'active' => true]))
+        ->get(MyAvailability::getUrl())
+        ->assertSuccessful();
+});
+
+test('a Manager enters availability for someone, and it records who entered it', function () {
+    $manager = User::factory()->create(['name' => 'Morgan', 'role' => Role::Manager, 'active' => true]);
+    $this->actingAs($manager);
+
+    Livewire::test(MyAvailability::class)
+        ->assertSee('Pick a person to enter their availability.')
+        ->set('personData.person_id', $this->staff->id)
+        ->assertSet('personId', $this->staff->id)
+        ->assertSee('Door, Friday Social')
+        ->fillForm(['slot_'.$this->doorSlot->id => 'available', 'note' => 'Called in'])
+        ->callAction('save')
+        ->assertHasNoActionErrors();
+
+    expect(ShiftAvailability::sole()->only(['user_id', 'entered_by']))->toBe(['user_id' => $this->staff->id, 'entered_by' => $manager->id])
+        ->and(ShiftWeekNote::sole()->only(['user_id', 'entered_by', 'note']))->toBe(['user_id' => $this->staff->id, 'entered_by' => $manager->id, 'note' => 'Called in']);
+
+    // The staff member sees who entered it.
+    $this->actingAs($this->staff);
+    Livewire::test(MyAvailability::class)->assertSee('Entered by Morgan.');
+});
+
+test('staff answering for themselves record themselves, with no "Entered by"', function () {
+    Livewire::test(MyAvailability::class)
+        ->fillForm(['slot_'.$this->doorSlot->id => 'preferred'])
+        ->callAction('save');
+
+    expect(ShiftAvailability::sole()->entered_by)->toBe($this->staff->id);
+
+    Livewire::test(MyAvailability::class)->assertDontSee('Entered by');
+});
+
+test('below Manager, nobody can answer for someone else', function () {
+    $other = User::factory()->create(['role' => Role::Door, 'active' => true]);
+    $this->door->users()->attach($other);
+
+    expect(fn () => app(ShiftAvailabilityService::class)->save($other, Carbon::parse('2026-11-12'), [$this->doorSlot->id => 'available'], null, $this->staff))
+        ->toThrow(HttpException::class);
+
+    // A forged person on the page falls back to their own availability.
+    Livewire::test(MyAvailability::class)
+        ->assertDontSee('Person')
+        ->set('personId', $other->id)
+        ->fillForm(['slot_'.$this->doorSlot->id => 'available'])
+        ->callAction('save');
+
+    expect(ShiftAvailability::sole()->user_id)->toBe($this->staff->id);
+});
+
+test('a Manager can only pick someone on the roster', function () {
+    $this->actingAs(User::factory()->create(['role' => Role::Manager, 'active' => true]));
+    $notOnRoster = User::factory()->create(['active' => true]);
+
+    Livewire::test(MyAvailability::class)
+        ->set('personId', $notOnRoster->id)
+        ->assertSee('Pick a person to enter their availability.')
+        ->assertActionDisabled('save');
 });
