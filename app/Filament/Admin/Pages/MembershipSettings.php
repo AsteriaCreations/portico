@@ -89,6 +89,7 @@ class MembershipSettings extends Page
             'staff_single_shift_days',
             'staff_handover_minutes',
             'staff_monthly_shift_requirement',
+            'staff_extra_shift_voucher_amount',
             'age_of_majority',
             'alcohol_flag_age',
             'watchlist_notify_label',
@@ -233,6 +234,12 @@ class MembershipSettings extends Page
                             ->integer()
                             ->minValue(0)
                             ->maxValue(31),
+                        TextInput::make('staff_extra_shift_voucher_amount')
+                            ->label('Voucher per extra shift')
+                            ->helperText(__('What a Manager\'s "Grant voucher" on Shifts Worked starts at, for each shift beyond the monthly requirement. They can change it each time. Blank: they type the amount.'))
+                            ->numeric()
+                            ->minValue(0)
+                            ->prefix('$'),
                     ]),
                 Section::make(__('Admission & membership'))
                     ->components([

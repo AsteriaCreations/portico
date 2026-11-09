@@ -3,11 +3,16 @@
 namespace App\Filament\Admin\Pages;
 
 use App\Filament\Concerns\TranslatesPageLabels;
+use App\Models\MembershipSetting;
+use App\Models\ShiftReward;
 use App\Models\User;
+use App\Services\ShiftRewardService;
 use App\Services\ShiftWorkService;
 use BackedEnum;
 use Carbon\CarbonImmutable;
 use Filament\Actions\Action;
+use Filament\Forms\Components\TextInput;
+use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
@@ -46,6 +51,9 @@ class ShiftsWorked extends Page implements HasTable
 
     /** @var array{month: string, counts: array<int, int>}|null */
     protected ?array $countCache = null;
+
+    /** @var array{month: string, rewards: array<int, ShiftReward>}|null */
+    protected ?array $rewardCache = null;
 
     public static function canAccess(): bool
     {
@@ -101,6 +109,19 @@ class ShiftsWorked extends Page implements HasTable
                     ->label(__('Beyond the requirement'))
                     ->state(fn (User $record): int => $this->beyond($this->counts()[$record->id] ?? 0))
                     ->numeric(),
+                TextColumn::make('reward')
+                    ->label(__('Voucher'))
+                    ->state(fn (User $record): ?string => $this->rewardLabel($record))
+                    ->badge()
+                    ->color(fn (User $record): string => isset($this->rewards()[$record->id]) ? 'success' : 'gray')
+                    ->icon(fn (User $record): ?Heroicon => isset($this->rewards()[$record->id]) ? Heroicon::OutlinedGift : null)
+                    ->tooltip(fn (User $record): ?string => ($reward = $this->rewards()[$record->id] ?? null)
+                        ? __('Granted by :name on :date', ['name' => $reward->grantedBy?->name, 'date' => $reward->created_at?->isoFormat('ll')])
+                        : null)
+                    ->placeholder(__('—')),
+            ])
+            ->recordActions([
+                $this->grantVoucherAction(),
             ])
             ->filters([
                 SelectFilter::make('status')
@@ -130,6 +151,74 @@ class ShiftsWorked extends Page implements HasTable
                     }),
             ])
             ->paginated([25, 50, 100]);
+    }
+
+    /**
+     * A Manager+ recognises someone who went beyond the requirement with a
+     * voucher on their member record (ShiftRewardService). The amount is
+     * pre-filled and can be changed.
+     */
+    protected function grantVoucherAction(): Action
+    {
+        return Action::make('grantVoucher')
+            ->label(__('Grant voucher'))
+            ->icon(Heroicon::OutlinedGift)
+            ->visible(fn (User $record): bool => app(ShiftRewardService::class)->refusalReason($record, $this->monthStart()) === null)
+            ->modalHeading(fn (User $record): string => __('Voucher for :name', ['name' => $record->name]))
+            ->modalDescription(fn (User $record): string => trim(trans_choice(':count shift beyond the requirement in :month.|:count shifts beyond the requirement in :month.', app(ShiftRewardService::class)->shiftsBeyond($record, $this->monthStart()), ['month' => $this->monthStart()->isoFormat('MMMM YYYY')])
+                .' '.($this->monthStart()->isSameMonth(now()) ? __('The month isn\'t over: this is the only voucher for it, so shifts worked after this won\'t get another.') : '')))
+            ->fillForm(fn (User $record): array => ['amount' => app(ShiftRewardService::class)->suggestedAmount($record, $this->monthStart())])
+            ->schema([
+                TextInput::make('amount')
+                    ->label(__('Amount'))
+                    ->helperText(__('Filled in from "Voucher per extra shift" on Membership Settings; change it if you like.'))
+                    ->required()
+                    ->numeric()
+                    ->minValue(0.01)
+                    ->prefix('$'),
+                TextInput::make('note')
+                    ->label(__('Note'))
+                    ->helperText(__('Optional, added to the voucher\'s reason.'))
+                    ->maxLength(200),
+            ])
+            ->action(function (User $record, array $data): void {
+                abort_unless(static::canAccess(), 403);
+
+                $reward = app(ShiftRewardService::class)->grant(auth()->user(), $record, $this->monthStart(), (string) $data['amount'], $data['note'] ?? null);
+                $this->rewardCache = null;
+
+                Notification::make()
+                    ->title(__('Voucher granted to :name', ['name' => $record->name]))
+                    ->body(MembershipSetting::formatMoney((float) $reward->amount))
+                    ->success()
+                    ->send();
+            });
+    }
+
+    protected function rewardLabel(User $record): ?string
+    {
+        if ($reward = $this->rewards()[$record->id] ?? null) {
+            return __('Granted :amount', ['amount' => MembershipSetting::formatMoney((float) $reward->amount)]);
+        }
+
+        // Say why the button isn't there for someone who went beyond.
+        if ($this->beyond($this->counts()[$record->id] ?? 0) > 0 && $record->member_id === null) {
+            return __('No member record linked');
+        }
+
+        return null;
+    }
+
+    /**
+     * @return array<int, ShiftReward>
+     */
+    protected function rewards(): array
+    {
+        if ($this->rewardCache === null || $this->rewardCache['month'] !== $this->month) {
+            $this->rewardCache = ['month' => $this->month, 'rewards' => app(ShiftRewardService::class)->rewardsFor($this->monthStart())];
+        }
+
+        return $this->rewardCache['rewards'];
     }
 
     protected function getHeaderActions(): array
