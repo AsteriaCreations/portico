@@ -14,6 +14,7 @@ use App\Observers\MemberObserver;
 use App\Observers\UserObserver;
 use App\Services\BehaviorNoteRetractionService;
 use App\Services\ShiftAvailabilityService;
+use App\Services\ShiftScheduleService;
 use App\Services\StaffLoginCheckInService;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Field;
@@ -220,6 +221,9 @@ class AppServiceProvider extends ServiceProvider
         Gate::define('access-cleaning-checklist', fn (User $user): bool => $user->hasCapability(Capability::CleaningCrew));
 
         Gate::define('build-staff-schedule', fn (User $user): bool => $user->role->atLeast(Role::Admin) && MembershipSetting::current()->staff_scheduling_enabled);
+
+        // Anyone who has a shift role, is on a shift, or builds the schedule.
+        Gate::define('view-staff-schedule', fn (User $user): bool => app(ShiftScheduleService::class)->canViewSchedule($user));
 
         // Any role: what matters is having a shift role to answer for. See
         // ShiftAvailabilityService.

@@ -112,6 +112,14 @@ class User extends Authenticatable implements FilamentUser
     }
 
     /**
+     * The shifts this person is scheduled on.
+     */
+    public function shiftAssignments(): HasMany
+    {
+        return $this->hasMany(ShiftAssignment::class);
+    }
+
+    /**
      * Oversight view of what this staff member has written into the
      * behavior-note audit trail -- "who is entering notes," not "what notes
      * exist on a member" (that's Member::behaviorNotes()). See

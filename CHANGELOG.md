@@ -12,6 +12,11 @@ releases below could carry small breaking changes in a minor release.
 
 ### Added
 
+- **Staff scheduling, part 4: My shifts.** Staff read the published schedule on a new *My
+  shifts* page (Front of House): one schedule week at a time, every shift with who's on it and
+  any open spots, their own marked *You* and listed at the top. A week that isn't published
+  yet shows nothing. The publish and change notifications gain *View schedule*, opening that
+  week. No migration.
 - **Staff scheduling, part 3: the Staff schedule.** Admin+ builds each schedule week on a new
   *Staff schedule* page (Front of House): every shift lists the people who can work its role
   with what they said (Preferred, Available, no answer, No, in that order). A shift takes no
