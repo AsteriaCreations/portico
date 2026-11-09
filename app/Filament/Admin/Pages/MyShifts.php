@@ -5,6 +5,7 @@ namespace App\Filament\Admin\Pages;
 use App\Filament\Concerns\TranslatesPageLabels;
 use App\Models\ShiftAssignment;
 use App\Models\ShiftSlot;
+use App\Services\ShiftGridService;
 use App\Services\ShiftScheduleService;
 use BackedEnum;
 use Carbon\CarbonImmutable;
@@ -48,6 +49,10 @@ class MyShifts extends Page
     /** The first day (Y-m-d) of the schedule week on screen. */
     #[Url(as: 'week')]
     public string $weekStart = '';
+
+    /** 'list' (day by day, yours first) or 'grid' (the paper-schedule layout). */
+    #[Url(as: 'view')]
+    public string $display = 'list';
 
     /** @var array{week: string, slots: Collection<int, ShiftSlot>}|null */
     protected ?array $slotCache = null;
@@ -130,9 +135,32 @@ class MyShifts extends Page
         ])))->from('md');
     }
 
+    /**
+     * The grid, for the view: published weeks only, like the list.
+     *
+     * @return array<string, mixed>|null
+     */
+    public function grid(): ?array
+    {
+        return $this->display === 'grid' && $this->service()->isPublished($this->week())
+            ? app(ShiftGridService::class)->build($this->week(), publishedOnly: true)
+            : null;
+    }
+
     protected function getHeaderActions(): array
     {
         return [
+            Action::make('toggleLayout')
+                ->label(fn (): string => $this->display === 'grid' ? __('List view') : __('Grid view'))
+                ->icon(fn (): Heroicon => $this->display === 'grid' ? Heroicon::OutlinedListBullet : Heroicon::OutlinedTableCells)
+                ->color('gray')
+                ->action(fn () => $this->display = $this->display === 'grid' ? 'list' : 'grid'),
+            Action::make('print')
+                ->label(__('Print'))
+                ->icon(Heroicon::OutlinedPrinter)
+                ->color('gray')
+                ->visible(fn (): bool => $this->display === 'grid')
+                ->alpineClickHandler('window.print()'),
             Action::make('previousWeek')
                 ->label(__('Previous week'))
                 ->icon(Heroicon::OutlinedChevronLeft)

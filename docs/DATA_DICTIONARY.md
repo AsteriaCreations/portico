@@ -230,6 +230,7 @@ drawer, add those rows back (see recipe).
 | `shift_assignments` | Who is on each shift: `shift_slot_id`, `user_id`, `assigned_by`; `worked_at` (set = worked), `worked_source` ∈ `sign_in`, `manager`, `worked_recorded_by`. Shifts worked in a month: `worked_at IS NOT NULL` on slots starting that month whose role has `counts_toward_requirement`. |
 | `shift_rewards` | Append-only: a voucher a Manager+ granted for working beyond the monthly shift requirement, one per `user_id` per `month` (first day): `shifts_worked`, `shifts_beyond`, `amount`, `voucher_id`, `note`, `granted_by`. |
 | `schedule_weeks` | Schedule weeks published to staff: `week_starts_on` (the week's first day), `published_at`, `published_by`. No row = not published. |
+| `shift_presences` | For a night someone isn't on a shift: `user_id`, `night` (the date events start on), `status` ∈ `off` (will be there), `out` (won't be); `entered_by`. |
 | `shift_week_notes` | A staff member's free-text note for one schedule week (`week_starts_on`, the week's first day). |
 | `membership_settings` | The singleton (ground rule 7). |
 

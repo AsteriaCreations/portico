@@ -12,6 +12,12 @@ releases below could carry small breaking changes in a minor release.
 
 ### Added
 
+- **Staff schedule grid, and Off / Out.** *Grid view* on My shifts (published weeks) and the
+  Staff schedule (drafts too) lays the week out like the club's paper schedule: Open and Close
+  columns for each night that has them, a row per role, setup, resets and other shifts on
+  the right, weekday shifts underneath, and *Print*. My availability asks, for each night, *If
+  you're not on a shift this night*: **Off** (I'll be there) or **Out**; the grid lists both.
+  Migration: `shift_presences`. No npm build.
 - **Shift Roles: a warning before turning a role off.** Switching *Active* off says how many
   shifts the role has on upcoming events and how many have people scheduled, since turning it
   off leaves them there. Once it's off, *Remove unstaffed upcoming shifts* clears the ones

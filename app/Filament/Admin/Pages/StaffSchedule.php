@@ -5,6 +5,7 @@ namespace App\Filament\Admin\Pages;
 use App\Filament\Concerns\TranslatesPageLabels;
 use App\Models\ShiftSlot;
 use App\Models\ShiftWeekNote;
+use App\Services\ShiftGridService;
 use App\Services\ShiftScheduleService;
 use BackedEnum;
 use Carbon\CarbonImmutable;
@@ -45,6 +46,9 @@ class StaffSchedule extends Page
 
     /** The first day (Y-m-d) of the schedule week on screen. */
     public string $weekStart = '';
+
+    /** 'edit' (pick who works each shift) or 'grid' (read-only, drafts included). */
+    public string $display = 'edit';
 
     /**
      * @var array<string, mixed>
@@ -161,9 +165,34 @@ class StaffSchedule extends Page
             });
     }
 
+    /**
+     * The week in the paper-schedule layout, draft or published. Unsaved
+     * picks aren't in it: it shows what's saved.
+     *
+     * @return array<string, mixed>|null
+     */
+    public function grid(): ?array
+    {
+        return $this->display === 'grid' ? app(ShiftGridService::class)->build($this->week(), publishedOnly: false) : null;
+    }
+
     protected function getHeaderActions(): array
     {
         return [
+            Action::make('toggleLayout')
+                ->label(fn (): string => $this->display === 'grid' ? __('Edit view') : __('Grid view'))
+                ->icon(fn (): Heroicon => $this->display === 'grid' ? Heroicon::OutlinedPencilSquare : Heroicon::OutlinedTableCells)
+                ->color('gray')
+                ->action(function (): void {
+                    $this->display = $this->display === 'grid' ? 'edit' : 'grid';
+                    $this->loadWeek();
+                }),
+            Action::make('print')
+                ->label(__('Print'))
+                ->icon(Heroicon::OutlinedPrinter)
+                ->color('gray')
+                ->visible(fn (): bool => $this->display === 'grid')
+                ->alpineClickHandler('window.print()'),
             Action::make('previousWeek')
                 ->label(__('Previous week'))
                 ->icon(Heroicon::OutlinedChevronLeft)
