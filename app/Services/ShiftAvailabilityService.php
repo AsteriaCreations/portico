@@ -3,12 +3,16 @@
 namespace App\Services;
 
 use App\Enums\ShiftPreference;
+use App\Enums\ShiftPresence;
+use App\Models\Event;
 use App\Models\MembershipSetting;
 use App\Models\ScheduleWeek;
 use App\Models\ShiftAvailability;
+use App\Models\ShiftPresenceAnswer;
 use App\Models\ShiftSlot;
 use App\Models\ShiftWeekNote;
 use App\Models\User;
+use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
@@ -125,16 +129,74 @@ class ShiftAvailabilityService
     }
 
     /**
+     * The week's nights that have an unarchived event, as Y-m-d (the date an
+     * event starts on; an overnight event belongs to its first night).
+     *
+     * @return list<string>
+     */
+    public function nightsFor(CarbonInterface $weekStart): array
+    {
+        $start = CarbonImmutable::instance(MembershipSetting::startOfScheduleWeek($weekStart))->startOfDay();
+        $end = $start->addWeek();
+
+        return Event::query()
+            ->whereNull('archived_at')
+            ->where(fn (Builder $query) => $query
+                ->where(fn (Builder $timed) => $timed->where('starts_at', '>=', $start)->where('starts_at', '<', $end))
+                ->orWhere(fn (Builder $dated) => $dated->whereNull('starts_at')->whereDate('event_date', '>=', $start->toDateString())->whereDate('event_date', '<', $end->toDateString())))
+            ->get(['starts_at', 'event_date'])
+            ->map(fn (Event $event): string => ($event->starts_at ?? $event->event_date)->toDateString())
+            ->unique()
+            ->sort()
+            ->values()
+            ->all();
+    }
+
+    /**
+     * $user's Off/Out answers for the nights, keyed Y-m-d.
+     *
+     * @param  list<string>  $nights
+     * @return array<string, ShiftPresence>
+     */
+    public function presenceFor(User $user, array $nights): array
+    {
+        if ($nights === []) {
+            return [];
+        }
+
+        return ShiftPresenceAnswer::query()
+            ->where('user_id', $user->id)
+            ->whereDate('night', '>=', min($nights))
+            ->whereDate('night', '<=', max($nights))
+            ->get()
+            ->mapWithKeys(fn (ShiftPresenceAnswer $answer): array => [$answer->night->toDateString() => $answer->status])
+            ->all();
+    }
+
+    /**
+     * A night that's over, or whose week is published, can't change.
+     */
+    public function isNightLocked(string $night): bool
+    {
+        $date = CarbonImmutable::parse($night);
+
+        return $date->lt(today())
+            || ScheduleWeek::query()->whereDate('week_starts_on', MembershipSetting::startOfScheduleWeek($date)->toDateString())->exists();
+    }
+
+    /**
      * Saves $user's answers for the week. $answers is keyed by shift slot id;
      * null clears an answer. A slot outside what slotsFor() offers (another
      * role's, another week's, a forged id) or one already started is left
      * alone. $enteredBy is who is saving, when not $user themselves: it must
-     * be allowed to enter availability for staff. Returns how many answers
-     * changed.
+     * be allowed to enter availability for staff. $presence is Off/Out per
+     * night (Y-m-d => value, null clears), for the week's event nights only.
+     * Returns how many shift answers changed.
      *
      * @param  array<int|string, ShiftPreference|string|null>  $answers
+     * @param  array<string, ShiftPresence|string|null>  $presence
      */
-    public function save(User $user, CarbonInterface $weekStart, array $answers, ?string $note, ?User $enteredBy = null): int
+    public function save(User $user, CarbonInterface $weekStart, array $answers, ?string $note, ?User $enteredBy = null, array $presence = []): int
     {
         $enteredBy ??= $user;
 
@@ -145,7 +207,26 @@ class ShiftAvailabilityService
         $slots = $this->slotsFor($user, $weekStart)->keyBy('id');
         $changed = 0;
 
-        DB::transaction(function () use ($user, $enteredBy, $weekStart, $answers, $note, $slots, &$changed): void {
+        DB::transaction(function () use ($user, $enteredBy, $weekStart, $answers, $note, $presence, $slots, &$changed): void {
+            $nights = $this->nightsFor($weekStart);
+
+            foreach ($presence as $night => $value) {
+                if (! in_array($night, $nights, true) || $this->isNightLocked($night)) {
+                    continue;
+                }
+
+                $status = $value instanceof ShiftPresence ? $value : ShiftPresence::tryFrom((string) $value);
+                $existing = ShiftPresenceAnswer::query()->where('user_id', $user->id)->whereDate('night', $night);
+
+                if ($status === null) {
+                    $existing->delete();
+                } elseif ($existing->clone()->exists()) {
+                    $existing->clone()->where('status', '!=', $status->value)->update(['status' => $status->value, 'entered_by' => $enteredBy->id]);
+                } else {
+                    ShiftPresenceAnswer::create(['user_id' => $user->id, 'entered_by' => $enteredBy->id, 'night' => $night, 'status' => $status]);
+                }
+            }
+
             foreach ($answers as $slotId => $value) {
                 $slot = $slots->get((int) $slotId);
 

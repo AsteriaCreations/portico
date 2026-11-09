@@ -53,6 +53,7 @@ class OperationalDataReset
         'shift_rewards',
         'shift_assignments',
         'schedule_weeks',
+        'shift_presences',
         'shift_availabilities',
         'shift_week_notes',
         'shift_slots',

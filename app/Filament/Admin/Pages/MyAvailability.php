@@ -3,6 +3,7 @@
 namespace App\Filament\Admin\Pages;
 
 use App\Enums\ShiftPreference;
+use App\Enums\ShiftPresence;
 use App\Filament\Concerns\TranslatesPageLabels;
 use App\Models\MembershipSetting;
 use App\Models\ShiftSlot;
@@ -138,17 +139,25 @@ class MyAvailability extends Page
 
         $slots = $this->slots();
         $enteredBy = app(ShiftAvailabilityService::class)->enteredByOthersFor($subject, $slots);
+        $byNight = $slots->groupBy(fn (ShiftSlot $slot): string => $slot->starts_at->toDateString());
 
-        $days = $slots->isEmpty()
-            ? [Text::make($subject->is(auth()->user())
+        // Every night with an event gets Off/Out, even with no shifts for
+        // their roles that night; nights with shifts list them under it.
+        $nights = collect($this->nights())->merge($byNight->keys())->unique()->sort()->values();
+
+        $days = $nights
+            ->map(fn (string $night): Section => Section::make(CarbonImmutable::parse($night)->isoFormat('dddd ll'))
+                ->components([
+                    $this->presenceField($night),
+                    ...($byNight->get($night) ?? collect())->map(fn (ShiftSlot $slot): ToggleButtons => $this->slotField($slot, $enteredBy[$slot->id] ?? null))->all(),
+                ]))
+            ->all();
+
+        if ($slots->isEmpty()) {
+            array_unshift($days, Text::make($subject->is(auth()->user())
                 ? __('There are no shifts for your roles this week yet.')
-                : __('There are no shifts for their roles this week yet.'))]
-            : $slots
-                ->groupBy(fn (ShiftSlot $slot): string => $slot->starts_at->toDateString())
-                ->map(fn (Collection $daySlots, string $date): Section => Section::make(CarbonImmutable::parse($date)->isoFormat('dddd ll'))
-                    ->components($daySlots->map(fn (ShiftSlot $slot): ToggleButtons => $this->slotField($slot, $enteredBy[$slot->id] ?? null))->all()))
-                ->values()
-                ->all();
+                : __('There are no shifts for their roles this week yet.')));
+        }
 
         return $schema
             ->statePath('data')
@@ -160,6 +169,29 @@ class MyAvailability extends Page
                     ->maxLength(500)
                     ->rows(2),
             ]);
+    }
+
+    /**
+     * Off (here anyway) or Out (not here) for a night they aren't working.
+     */
+    protected function presenceField(string $night): ToggleButtons
+    {
+        $locked = app(ShiftAvailabilityService::class)->isNightLocked($night);
+
+        return ToggleButtons::make('presence_'.$night)
+            ->label(__('If you\'re not on a shift this night'))
+            ->helperText($locked ? __('This night is over or its week\'s schedule is out, so it can\'t be changed.') : null)
+            ->options(ShiftPresence::class)
+            ->inline()
+            ->disabled($locked);
+    }
+
+    /**
+     * @return list<string>
+     */
+    protected function nights(): array
+    {
+        return $this->subject() === null ? [] : app(ShiftAvailabilityService::class)->nightsFor($this->week());
     }
 
     protected function slotField(ShiftSlot $slot, ?string $enteredBy): ToggleButtons
@@ -200,7 +232,11 @@ class MyAvailability extends Page
                     ->mapWithKeys(fn (ShiftSlot $slot): array => [$slot->id => $state['slot_'.$slot->id] ?? null])
                     ->all();
 
-                app(ShiftAvailabilityService::class)->save($subject, $this->week(), $answers, $state['note'] ?? null, auth()->user());
+                $presence = collect($this->nights())
+                    ->mapWithKeys(fn (string $night): array => [$night => $state['presence_'.$night] ?? null])
+                    ->all();
+
+                app(ShiftAvailabilityService::class)->save($subject, $this->week(), $answers, $state['note'] ?? null, auth()->user(), $presence);
 
                 $this->slotCache = null;
                 $this->loadWeek();
@@ -295,9 +331,12 @@ class MyAvailability extends Page
         $service = app(ShiftAvailabilityService::class);
         $slots = $this->slots();
         $answers = $service->answersFor($subject, $slots);
+        $nights = $this->nights();
+        $presence = $service->presenceFor($subject, $nights);
 
         $this->form->fill([
             ...$slots->mapWithKeys(fn (ShiftSlot $slot): array => ['slot_'.$slot->id => $answers[$slot->id]->value ?? null])->all(),
+            ...collect($nights)->mapWithKeys(fn (string $night): array => ['presence_'.$night => $presence[$night]->value ?? null])->all(),
             'note' => $service->noteFor($subject, $this->week()),
         ]);
     }
