@@ -99,6 +99,7 @@ class OperationalDataReset
         'shift_role_user',
         'task_areas',
         'role_tasks',
+        'role_task_votes',
     ];
 
     /**

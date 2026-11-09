@@ -7,9 +7,13 @@ use App\Models\RoleTask;
 use App\Models\RoleTaskCompletion;
 use App\Models\ShiftRole;
 use App\Models\ShiftSlot;
+use App\Models\TaskArea;
+use App\Services\RoleTaskProposalService;
 use App\Services\RoleTaskService;
 use BackedEnum;
 use Filament\Actions\Action;
+use Filament\Forms\Components\Select;
+use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 use Filament\Support\Icons\Heroicon;
@@ -194,7 +198,107 @@ class MyTasks extends Page implements HasTable
                 ->icon(fn (): Heroicon => $this->display === 'history' ? Heroicon::OutlinedCheckCircle : Heroicon::OutlinedClock)
                 ->color('gray')
                 ->action(fn () => $this->display = $this->display === 'history' ? 'tasks' : 'history'),
+            $this->proposeAction(),
         ];
+    }
+
+    /**
+     * Suggest a task for one of your roles; the others who work it vote,
+     * and a Manager+ decides (RoleTaskProposalService).
+     */
+    protected function proposeAction(): Action
+    {
+        return Action::make('propose')
+            ->label(__('Propose a task'))
+            ->icon(Heroicon::OutlinedLightBulb)
+            ->modalDescription(__('Others who work the role can vote on it, and a Manager decides whether it joins the standard list.'))
+            ->schema([
+                Select::make('shift_role_id')
+                    ->label(__('Shift role'))
+                    ->options(fn (): array => $this->proposals()->rolesFor(auth()->user())->pluck('name', 'id')->all())
+                    ->required(),
+                Select::make('task_area_id')
+                    ->label(__('Area'))
+                    ->options(fn (): array => TaskArea::where('active', true)->orderBy('sort_order')->orderBy('name')->pluck('name', 'id')->all())
+                    ->placeholder(__('No area')),
+                TextInput::make('name')
+                    ->label(__('Task'))
+                    ->required()
+                    ->maxLength(100),
+                TextInput::make('description')
+                    ->label(__('Details'))
+                    ->maxLength(255),
+            ])
+            ->action(function (array $data): void {
+                abort_unless(static::canAccess(), 403);
+
+                $role = ShiftRole::find($data['shift_role_id']);
+                abort_if($role === null, 404);
+
+                $this->proposals()->propose(
+                    auth()->user(),
+                    $role,
+                    $data['name'],
+                    $data['description'] ?? null,
+                    filled($data['task_area_id'] ?? null) ? TaskArea::find($data['task_area_id']) : null,
+                );
+
+                Notification::make()->title(__('Proposed'))->body(__('A Manager will decide, after the others who work the role have had a chance to vote.'))->success()->send();
+            });
+    }
+
+    /**
+     * Open proposals for your roles, shaped for the view.
+     *
+     * @return list<array{id: int, role: string, name: string, description: string|null, area: string|null, by: string, up: int, down: int, mine: bool, myVote: int}>
+     */
+    public function openProposals(): array
+    {
+        $user = auth()->user();
+
+        return $this->proposals()->openFor($user)->map(function (RoleTask $task) use ($user): array {
+            $tally = $this->proposals()->tally($task);
+
+            return [
+                'id' => $task->id,
+                'role' => $task->shiftRole->name,
+                'name' => $task->name,
+                'description' => $task->description,
+                'area' => $task->area?->name,
+                'by' => $task->proposedBy?->name ?? __('Someone no longer on staff'),
+                'up' => $tally['up'],
+                'down' => $tally['down'],
+                'mine' => $task->proposed_by === $user->id,
+                'myVote' => (int) $task->votes->firstWhere('user_id', $user->id)?->vote,
+            ];
+        })->all();
+    }
+
+    /**
+     * Pressing the vote you already gave takes it back.
+     */
+    public function vote(int $taskId, int $vote): void
+    {
+        abort_unless(static::canAccess(), 403);
+
+        $task = RoleTask::with(['shiftRole', 'votes'])->find($taskId);
+
+        if ($task === null) {
+            return;
+        }
+
+        $current = (int) $task->votes->firstWhere('user_id', auth()->id())?->vote;
+
+        try {
+            $this->proposals()->vote(auth()->user(), $task, $current === $vote ? 0 : $vote);
+        } catch (ValidationException $exception) {
+            Notification::make()->title($exception->validator->errors()->first())->danger()->send();
+        }
+    }
+
+    protected function proposals(): RoleTaskProposalService
+    {
+        return app(RoleTaskProposalService::class);
     }
 
     protected function service(): RoleTaskService

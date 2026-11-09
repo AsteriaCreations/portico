@@ -810,6 +810,8 @@ Behind `staff_scheduling_enabled` (default off). A **shift role** (Admin+) (`shi
 
 **Working the lists.** **My tasks** (`work-role-tasks`: an active shift role, while scheduling is on) is where tasks are ticked (`RoleTaskService`, `role_task_completions`). A scheduled role's task is ticked once per shift, on a shift running now (`EARLY_MINUTES` before its start to `LATE_MINUTES` after its end, so closing tasks count); anyone who can work the role may tick it, and someone not assigned to that shift is recorded `on_shift = false`, extra effort beyond their own shifts. An unscheduled role's task is ticked once per schedule week (`week_start`). Only the person who ticked can undo it, while its shift or week is still on. A task with ticks can't be deleted, only turned off. The old Cleaning Checklist (a `cleaning_crew` user capability plus `cleaning_tasks`) moved onto an unscheduled *Cleaning Crew* role by migration; the capability system, which only ever had that one capability, is gone.
 
+**Proposals.** Anyone who can work a role proposes a task for it from My tasks (`RoleTaskProposalService::propose()`, a `role_tasks` row with `status = proposed`, `proposed_by`), which bells every other active Manager+. The others who can work the role vote it up or down (`role_task_votes`, one per person, changeable or withdrawn while it's proposed; never on your own). Votes are advice only: a Manager+ decides on **Task proposals**, approving it onto the standard list (with area and sort order) or declining it with a required reason (`decided_by`, `decided_at`, `decline_reason`), and the proposer is notified. A decided proposal takes no more votes.
+
 ---
 
 ## Build order (thin vertical slices)
