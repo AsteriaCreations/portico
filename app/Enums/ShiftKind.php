@@ -6,7 +6,7 @@ use Filament\Support\Contracts\HasLabel;
 
 /**
  * What a shift is for. Open, Close and Single are an event's standard
- * shifts, set together from its Staffing tab (ShiftSlotService); Setup and
+ * shifts, set together on the Staffing page (ShiftSlotService); Setup and
  * Extra are added one at a time, with their own times.
  */
 enum ShiftKind: string implements HasLabel
