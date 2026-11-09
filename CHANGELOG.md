@@ -12,6 +12,12 @@ releases below could carry small breaking changes in a minor release.
 
 ### Added
 
+- **Staff scheduling: a voucher for going beyond.** On Shifts Worked, a Manager+ can *Grant
+  voucher* to anyone who worked beyond the monthly requirement, on their linked member
+  record. The amount starts at the shifts beyond × *Voucher per extra shift* (Membership
+  Settings) and can be changed, with an optional note. Once per person per month; the page
+  shows *Granted $X*, or *No member record linked* when there's nowhere to put it.
+  Migration: `shift_rewards`, `membership_settings.staff_extra_shift_voucher_amount`.
 - **Staff scheduling gets its own Staff section** in the navigation: My shifts, My
   availability, a new *Staffing* page, Staff schedule, Shifts Worked and Shift Roles.
   *Staffing* (Manager+) lists each schedule week's events with a summary of their shifts

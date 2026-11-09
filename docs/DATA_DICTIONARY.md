@@ -228,6 +228,7 @@ drawer, add those rows back (see recipe).
 | `shift_slots` | The staff shifts on one event: `event_id`, `shift_role_id`, `kind` ∈ `open`, `close`, `single` (whole night), `setup`, `extra`; `label`, `starts_at`/`ends_at`, `headcount` (people needed), `notes`. |
 | `shift_availabilities` | One staff member's answer for one shift: `shift_slot_id`, `user_id`, `preference` ∈ `preferred`, `available`, `unavailable`; `entered_by` (the person, or a Manager+ for them; null on older rows). No row = not answered. |
 | `shift_assignments` | Who is on each shift: `shift_slot_id`, `user_id`, `assigned_by`; `worked_at` (set = worked), `worked_source` ∈ `sign_in`, `manager`, `worked_recorded_by`. Shifts worked in a month: `worked_at IS NOT NULL` on slots starting that month whose role has `counts_toward_requirement`. |
+| `shift_rewards` | Append-only: a voucher a Manager+ granted for working beyond the monthly shift requirement, one per `user_id` per `month` (first day): `shifts_worked`, `shifts_beyond`, `amount`, `voucher_id`, `note`, `granted_by`. |
 | `schedule_weeks` | Schedule weeks published to staff: `week_starts_on` (the week's first day), `published_at`, `published_by`. No row = not published. |
 | `shift_week_notes` | A staff member's free-text note for one schedule week (`week_starts_on`, the week's first day). |
 | `membership_settings` | The singleton (ground rule 7). |

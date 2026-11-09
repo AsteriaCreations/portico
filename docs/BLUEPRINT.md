@@ -804,6 +804,8 @@ Behind `staff_scheduling_enabled` (default off). A **shift role** (Admin+) (`shi
 
 **Shifts worked.** `shift_assignments.worked_at` marks a scheduled spot as worked (`ShiftWorkService`). Signing in (the same `Login` listener as staff check-in) marks any of the person's shifts running from an hour before start to the end, `worked_source = sign_in`; a Manager+ (`record-shifts-worked`) records **Who worked** once a shift has started, unticking no-shows and adding anyone eligible who covered (a new assignment, already worked), `worked_source = manager`, `worked_recorded_by` either way. The monthly count is worked assignments on roles with `counts_toward_requirement` (off for Host), by the month the shift starts in, against `staff_monthly_shift_requirement` (default 3, 0 = none), shown on **Shifts Worked**. Being an event's host isn't a shift, so it never counts. A person already signed in when a shift starts isn't caught by the listener; a Manager ticks them.
 
+**Going beyond it.** There's no automatic reward: a Manager+ recognises someone who worked beyond the requirement with **Grant voucher** on Shifts Worked (`ShiftRewardService`), because the point is that a person notices. The voucher goes on the login's linked member (`users.member_id`; none linked, no button, and the page says so), its amount pre-filled as shifts beyond × `staff_extra_shift_voucher_amount` and editable. `shift_rewards` (append-only, unique per user and month) records it, so a month is rewarded once, even if granted before the month ends.
+
 ---
 
 ## Build order (thin vertical slices)
