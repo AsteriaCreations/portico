@@ -3,6 +3,7 @@
 namespace App\Filament\Admin\Pages;
 
 use App\Filament\Concerns\TranslatesPageLabels;
+use App\Models\ScheduleWeek;
 use App\Models\ShiftSlot;
 use App\Models\ShiftWeekNote;
 use App\Services\ShiftGridService;
@@ -58,6 +59,9 @@ class StaffSchedule extends Page
     /** @var array{week: string, slots: Collection<int, ShiftSlot>}|null */
     protected ?array $slotCache = null;
 
+    /** @var array{week: string, publication: ScheduleWeek|null}|null */
+    protected ?array $publicationCache = null;
+
     public static function canAccess(): bool
     {
         return Gate::allows('build-staff-schedule');
@@ -75,7 +79,7 @@ class StaffSchedule extends Page
         $start = $this->week();
         $slots = $this->slots();
         $staffed = $slots->filter(fn (ShiftSlot $slot): bool => $slot->assignments->count() >= $slot->headcount)->count();
-        $publication = $this->service()->publication($start);
+        $publication = $this->publication();
 
         return implode(' · ', array_filter([
             __('Week of :start to :end', ['start' => $start->isoFormat('ddd ll'), 'end' => $start->addDays(6)->isoFormat('ddd ll')]),
@@ -157,7 +161,7 @@ class StaffSchedule extends Page
 
                 Notification::make()
                     ->title(__('Schedule saved'))
-                    ->body($this->service()->isPublished($this->week()) && $changed > 0
+                    ->body($this->publication() !== null && $changed > 0
                         ? __('This week is published, so everyone added or taken off a shift has been notified.')
                         : null)
                     ->success()
@@ -209,11 +213,12 @@ class StaffSchedule extends Page
                 ->icon(Heroicon::OutlinedMegaphone)
                 ->requiresConfirmation()
                 ->modalDescription(__('Staff will see this week\'s schedule, and everyone on it gets a notification with their shifts. Save any changes first. After publishing, each change notifies the person it affects.'))
-                ->hidden(fn (): bool => $this->slots()->isEmpty() || $this->service()->isPublished($this->week()))
+                ->hidden(fn (): bool => $this->slots()->isEmpty() || $this->publication() !== null)
                 ->action(function (): void {
                     abort_unless(static::canAccess(), 403);
 
                     $this->service()->publish(auth()->user(), $this->week());
+                    $this->publicationCache = null;
 
                     Notification::make()->title(__('Week published'))->success()->send();
                 }),
@@ -249,6 +254,19 @@ class StaffSchedule extends Page
         }
 
         return $this->slotCache['slots'];
+    }
+
+    /**
+     * The week's publication, looked up once per request: the subheading
+     * and the Publish button both ask, more than once per render.
+     */
+    protected function publication(): ?ScheduleWeek
+    {
+        if ($this->publicationCache === null || $this->publicationCache['week'] !== $this->weekStart) {
+            $this->publicationCache = ['week' => $this->weekStart, 'publication' => $this->service()->publication($this->week())];
+        }
+
+        return $this->publicationCache['publication'];
     }
 
     protected function week(): CarbonImmutable

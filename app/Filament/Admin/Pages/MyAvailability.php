@@ -71,6 +71,9 @@ class MyAvailability extends Page
     /** @var Collection<int, User>|null */
     protected ?Collection $rosterCache = null;
 
+    /** Whether the signed-in user gives their own availability, asked once per request. */
+    protected ?bool $givesOwn = null;
+
     public static function canAccess(): bool
     {
         return Gate::any(['give-shift-availability', 'enter-staff-availability']);
@@ -301,12 +304,10 @@ class MyAvailability extends Page
     {
         $me = auth()->user();
 
-        if ($this->personId === null || $this->personId === $me->id) {
-            return Gate::allows('give-shift-availability') ? $me : null;
-        }
+        $this->givesOwn ??= Gate::allows('give-shift-availability');
 
-        if (! $this->canEnterForOthers()) {
-            return Gate::allows('give-shift-availability') ? $me : null;
+        if ($this->personId === null || $this->personId === $me->id || ! $this->canEnterForOthers()) {
+            return $this->givesOwn ? $me : null;
         }
 
         $this->rosterCache ??= app(ShiftAvailabilityService::class)->roster();

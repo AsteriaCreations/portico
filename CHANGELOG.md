@@ -212,6 +212,12 @@ releases below could carry small breaking changes in a minor release.
 
 ### Changed
 
+- **Fewer database queries on the Staff pages.** Shifts Worked no longer recounts the month for
+  every row to decide whether to show *Grant voucher* (25 → 5 queries for 20 staff), My tasks
+  checks your roles once instead of per shift (29 → 19), My availability asks its permission
+  once per request (16 → 9) and the Staff schedule looks up the week's publication once
+  (17 → 14). A test keeps Shifts Worked and My tasks from growing per row again.
+
 - Dependencies: Filament 5.11.0 → 5.11.2, Laravel 13.39 → 13.40, Boost 2.10.4, plus their
   Symfony/league patch releases; republished Filament assets under `public/` included.
   `composer.json` now pins `config.platform.php` to 8.4.27, the PHP that CI and the

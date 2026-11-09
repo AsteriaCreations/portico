@@ -182,7 +182,10 @@ class ShiftsWorked extends Page implements HasTable
         return Action::make('grantVoucher')
             ->label(__('Grant voucher'))
             ->icon(Heroicon::OutlinedGift)
-            ->visible(fn (User $record): bool => app(ShiftRewardService::class)->refusalReason($record, $this->monthStart()) === null)
+            // The page's own count rules out most rows without asking the
+            // service, which would recount the month for each one.
+            ->visible(fn (User $record): bool => $this->beyond($this->counts()[$record->id] ?? 0) > 0
+                && app(ShiftRewardService::class)->refusalReason($record, $this->monthStart()) === null)
             ->modalHeading(fn (User $record): string => __('Voucher for :name', ['name' => $record->name]))
             ->modalDescription(fn (User $record): string => trim(trans_choice(':count shift beyond the requirement in :month.|:count shifts beyond the requirement in :month.', app(ShiftRewardService::class)->shiftsBeyond($record, $this->monthStart()), ['month' => $this->monthStart()->isoFormat('MMMM YYYY')])
                 .' '.($this->monthStart()->isSameMonth(now()) ? __('The month isn\'t over: this is the only voucher for it, so shifts worked after this won\'t get another.') : '')))
