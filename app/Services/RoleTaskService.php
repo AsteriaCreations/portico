@@ -48,9 +48,13 @@ class RoleTaskService
             return false;
         }
 
+        // Loaded once and reused: My tasks asks this for every running shift
+        // and every role.
+        $roles = $user->loadMissing('shiftRoles')->shiftRoles;
+
         return $role->open_to_all && $role->scheduled
-            ? $user->shiftRoles()->scheduled()->exists()
-            : $user->shiftRoles()->whereKey($role->id)->exists();
+            ? $roles->contains(fn (ShiftRole $held): bool => $held->active && $held->scheduled)
+            : $roles->contains('id', $role->id);
     }
 
     /**
