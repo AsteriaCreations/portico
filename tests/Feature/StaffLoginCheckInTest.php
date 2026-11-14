@@ -33,7 +33,7 @@ beforeEach(function () {
     Plan::create(['add_on_id' => $this->entry->id, 'price' => 60, 'credit' => 25, 'effective_from' => '2026-01-01']);
     $this->category = Category::factory()->create(['name' => 'Irregular', 'is_comped' => false]);
 
-    $this->event = Event::factory()->create(['event_date' => today()->toDateString(), 'entry_fee' => 20, 'pool_fee' => 0]);
+    $this->event = Event::factory()->create(['event_date' => today()->toDateString(), 'starts_at' => now()->subHour(), 'ends_at' => now()->addHours(3), 'entry_fee' => 20, 'pool_fee' => 0]);
     $this->member = staffLoginMember($this->category);
     $this->user = User::factory()->create(['role' => Role::Volunteer, 'active' => true, 'member_id' => $this->member->id]);
 
@@ -130,6 +130,37 @@ test('a login with no linked member, or signing in with no event running, does n
     expect(Attendance::count())->toBe(0)
         ->and($this->user->notifications()->count())->toBe(0)
         ->and($this->desk->notifications()->count())->toBe(0);
+});
+
+test('signing in earlier on the day of an event, before its window opens, does nothing', function () {
+    staffLoginSubscribe($this->member, $this->entry);
+    $buffer = MembershipSetting::current()->event_window_buffer_minutes;
+    $this->event->update(['starts_at' => now()->addMinutes($buffer + 60), 'ends_at' => now()->addMinutes($buffer + 300)]);
+
+    Auth::login($this->user);
+
+    expect(staffLoginVisit($this->member))->toBeNull()
+        ->and($this->user->notifications()->count())->toBe(0)
+        ->and($this->desk->notifications()->count())->toBe(0);
+});
+
+test('signing in within the buffer before an event starts checks them in', function () {
+    staffLoginSubscribe($this->member, $this->entry);
+    MembershipSetting::current()->update(['event_window_buffer_minutes' => 30]);
+    $this->event->update(['starts_at' => now()->addMinutes(20), 'ends_at' => now()->addHours(4)]);
+
+    Auth::login($this->user);
+
+    expect(staffLoginVisit($this->member))->not->toBeNull();
+});
+
+test('an event with no start or end time never auto-checks anyone in', function () {
+    staffLoginSubscribe($this->member, $this->entry);
+    $this->event->update(['starts_at' => null, 'ends_at' => null, 'checkin_closes_at' => null]);
+
+    Auth::login($this->user);
+
+    expect(staffLoginVisit($this->member))->toBeNull();
 });
 
 test('money due sends the person to the desk and alerts the Door staff signed in', function () {
