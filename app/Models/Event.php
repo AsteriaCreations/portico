@@ -349,11 +349,19 @@ class Event extends Model
             return false;
         }
 
-        if ($this->event_date->isToday()) {
-            return true;
-        }
+        return $this->event_date->isToday() || $this->isWithinTimeWindow();
+    }
 
-        if (! $this->starts_at || ! $this->ends_at) {
+    /**
+     * Strictly inside starts_at..ends_at, give or take
+     * event_window_buffer_minutes -- unlike isCurrentlyActive(), "today"
+     * alone isn't enough, so a 9pm event isn't running at 10am. An event
+     * with no start or end time never is. Used where nobody at the desk
+     * decides, e.g. StaffLoginCheckInService.
+     */
+    public function isWithinTimeWindow(): bool
+    {
+        if ($this->isArchived() || ! $this->starts_at || ! $this->ends_at) {
             return false;
         }
 

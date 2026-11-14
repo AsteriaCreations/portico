@@ -169,7 +169,7 @@ class FeatureFlags extends Page
                             ->required(),
                         Toggle::make('staff_login_checkin_enabled')
                             ->label('Check in staff when they sign in')
-                            ->helperText(__('Signing in with a login linked to a member (My account, or Users) checks that member in to tonight\'s event when they owe nothing: a subscription, a comped category, the host, or a free event. Anything else (money due, two events at once, check-in closed or full, a watchlist or ID check) tells them to check in at the desk and notifies the Door staff signed in. Signing in when no event is running does nothing. Off by default.'))
+                            ->helperText(__('Signing in with a login linked to a member (My account, or Users) checks that member in to tonight\'s event when they owe nothing: a subscription, a comped category, the host, or a free event. Anything else (money due, two events at once, check-in closed or full, a watchlist or ID check) tells them to check in at the desk and notifies the Door staff signed in. Signing in outside an event\'s start-to-end time (give or take the event window buffer) does nothing. Off by default.'))
                             ->required(),
                         Toggle::make('issue_reports_enabled')
                             ->label('Report a problem from the desk')

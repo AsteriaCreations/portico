@@ -12,6 +12,7 @@ releases below could carry small breaking changes in a minor release.
 
 ### Fixed
 
+- **Signing in only checks staff in during the event.** With staff sign-in check-in on, it used to check a linked login in to any event dated today, so signing in that afternoon for a 9 PM event did it. Now it needs the event's own start-to-end window, give or take the event window buffer; an event with no start or end time is never auto-checked.
 - **My tasks: Propose a task opens its dialog.** The page only shows its table on History, and Filament leaves a table page's dialogs to the table, so on the tasks view the button did nothing.
 - **My shifts: every row lines up.** A day's shifts now have the same four columns whether or not a row has a "spots open" or "You" badge.
 - **Staffing: readable times.** Start and end times show as "Fri Nov 13, 9:00 PM" instead of "2026-11-13 21:00:00", on Staffing and an event's shift list.
