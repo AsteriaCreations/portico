@@ -21,7 +21,9 @@ use Illuminate\Support\Facades\Notification as LaravelNotification;
  * Signing in with a login linked to a member (users.member_id) checks that
  * member in to tonight's event, when staff_login_checkin_enabled is on. Like
  * the kiosk (KioskCheckInService) it only does what needs no human judgment:
- * exactly one event running, no visit on file yet, an admission decision of
+ * exactly one event running (inside its own starts_at..ends_at window give
+ * or take event_window_buffer_minutes -- not merely today, so signing in
+ * that afternoon does nothing), no visit on file yet, an admission decision of
  * exactly Ok, room, check-in open, and nothing to pay -- any $0 visit
  * (subscription, comped category, host, free event). Anything else tells the
  * person to go to the desk (toast + bell) and alerts the Door+ staff signed
@@ -50,7 +52,7 @@ class StaffLoginCheckInService
 
         $member = $user->member;
 
-        $events = Event::currentQuery()->excludingPrivateRentals()->get()->filter(fn (Event $event): bool => $event->isCurrentlyActive());
+        $events = Event::currentQuery()->excludingPrivateRentals()->get()->filter(fn (Event $event): bool => $event->isWithinTimeWindow());
         if ($events->isEmpty()) {
             return;
         }
