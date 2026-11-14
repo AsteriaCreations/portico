@@ -10,6 +10,10 @@ releases below could carry small breaking changes in a minor release.
 
 ## [Unreleased]
 
+### Fixed
+
+- **My tasks: Propose a task opens its dialog.** The page only shows its table on History, and Filament leaves a table page's dialogs to the table, so on the tasks view the button did nothing.
+
 ### Added
 
 - **Tasks on Shifts Worked.** *Tasks done* (task-list ticks that month) and *Off-shift tasks*

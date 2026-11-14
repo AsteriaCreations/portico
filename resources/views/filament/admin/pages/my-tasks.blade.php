@@ -108,4 +108,8 @@
             </x-filament::section>
         @endif
     @endif
+
+    {{-- The page only shows its table on History, and Filament leaves a table page's
+         dialogs to the table, so render them here too (Propose a task). --}}
+    <x-filament-actions::modals />
 </x-filament-panels::page>
