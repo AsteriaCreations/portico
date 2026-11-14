@@ -13,6 +13,7 @@ use Filament\Actions\Action;
 use Filament\Pages\Page;
 use Filament\Schemas\Components\EmptyState;
 use Filament\Schemas\Components\Flex;
+use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Text;
 use Filament\Schemas\Components\UnorderedList;
@@ -114,25 +115,33 @@ class MyShifts extends Page
             ...$slots
                 ->groupBy(fn (ShiftSlot $slot): string => $slot->starts_at->toDateString())
                 ->map(fn (Collection $daySlots, string $date): Section => Section::make(CarbonImmutable::parse($date)->isoFormat('dddd ll'))
-                    ->components($daySlots->map(fn (ShiftSlot $slot): Flex => $this->shiftRow($slot))->all()))
+                    ->components($daySlots->map(fn (ShiftSlot $slot): Grid => $this->shiftRow($slot))->all()))
                 ->values()
                 ->all(),
         ]);
     }
 
-    protected function shiftRow(ShiftSlot $slot): Flex
+    /**
+     * Always four columns, the last holding whatever badges apply, so every
+     * row of the day lines up whether or not it has a badge.
+     */
+    protected function shiftRow(ShiftSlot $slot): Grid
     {
         $people = $slot->assignments->map(fn (ShiftAssignment $assignment): ?string => $assignment->user?->name)->filter()->sort()->values();
         $open = $slot->headcount - $people->count();
 
-        return Flex::make(array_values(array_filter([
+        $badges = array_values(array_filter([
+            $open > 0 ? Text::make(trans_choice(':count spot open|:count spots open', $open))->badge()->color('warning')->icon(Heroicon::OutlinedExclamationTriangle) : null,
+            $this->isMine($slot) ? Text::make(__('You'))->badge()->color('success')->icon(Heroicon::OutlinedUser) : null,
+        ]));
+
+        return Grid::make(['default' => 1, 'md' => 4])->schema([
             Text::make(__(':role, :event', ['role' => $slot->displayName(), 'event' => $slot->event->name]))
                 ->weight(FontWeight::SemiBold),
             Text::make(__(':start to :end', ['start' => $slot->starts_at->isoFormat('LT'), 'end' => $slot->ends_at->isoFormat('LT')])),
             Text::make($people->isEmpty() ? __('No one yet') : $people->implode(', ')),
-            $open > 0 ? Text::make(trans_choice(':count spot open|:count spots open', $open))->badge()->color('warning')->icon(Heroicon::OutlinedExclamationTriangle) : null,
-            $this->isMine($slot) ? Text::make(__('You'))->badge()->color('success')->icon(Heroicon::OutlinedUser) : null,
-        ])))->from('md');
+            Flex::make($badges === [] ? [Text::make('')] : $badges),
+        ]);
     }
 
     /**

@@ -38,6 +38,12 @@ class UserForm
                 TextInput::make('password')
                     ->password()
                     ->revealable()
+                    // Start as '' not null: the browser turns an empty password box
+                    // into '' as the page loads, which made an untouched user page
+                    // ask "Leave site?". new-password keeps Chrome from filling in
+                    // the signed-in Admin's own password.
+                    ->formatStateUsing(fn (): string => '')
+                    ->autocomplete('new-password')
                     ->rule(Password::default())
                     ->required(fn (string $operation): bool => $operation === 'create')
                     ->dehydrateStateUsing(fn ($state) => Hash::make($state))

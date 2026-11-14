@@ -88,3 +88,9 @@ test('Staffing is Manager and up, with the flag on', function () {
     MembershipSetting::current()->update(['staff_scheduling_enabled' => false]);
     $this->get(Staffing::getUrl())->assertForbidden();
 });
+
+test('start and end times read like the rest of the desk, not as raw timestamps', function () {
+    Livewire::test(Staffing::class)
+        ->assertSee('Fri Nov 13, 9:00 PM')
+        ->assertDontSee('2026-11-13 21:00:00');
+});

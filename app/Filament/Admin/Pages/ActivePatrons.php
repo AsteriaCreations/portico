@@ -44,7 +44,9 @@ use UnitEnum;
  */
 class ActivePatrons extends Page implements HasTable
 {
-    use InteractsWithTable;
+    use InteractsWithTable {
+        bootedInteractsWithTable as protected bootTable;
+    }
     use RetractsBehaviorNotes;
     use TranslatesPageLabels;
 
@@ -120,6 +122,18 @@ class ActivePatrons extends Page implements HasTable
         return $this->getSignedInStaff()
             ->map(fn (User $user): string => $showRoles ? "{$user->name} ({$user->role->displayLabel()})" : $user->name)
             ->implode(', ');
+    }
+
+    /**
+     * Filament's Sort by control shows "-" while the table falls back on its
+     * default sort, so name the default (newest arrivals first) outright once
+     * the table has restored any sort this session chose.
+     */
+    public function bootedInteractsWithTable(): void
+    {
+        $this->bootTable();
+
+        $this->tableSort ??= 'event.name:desc';
     }
 
     public function table(Table $table): Table

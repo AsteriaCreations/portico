@@ -216,3 +216,15 @@ describe('posting to GitHub', function () {
         Livewire::test(ViewIssueReport::class, ['record' => $this->report->getKey()])->assertActionHidden('postToGitHub');
     });
 });
+
+test('the snapshot shows in its own pre block, and copying gives the plain JSON', function () {
+    $report = IssueReport::factory()->create(['reported_by' => $this->door->id]);
+    $this->actingAs(User::factory()->create(['active' => true, 'role' => Role::Manager]));
+
+    $html = Livewire::test(ViewIssueReport::class, ['record' => $report->getRouteKey()])->html();
+
+    // The pre-wrap lives on the <pre> alone, so the template's own indentation
+    // doesn't push the first line of the JSON to the right.
+    expect($html)->toContain('<pre style="margin: 0; white-space: pre-wrap;')
+        ->and($html)->not->toContain('style="white-space: pre-wrap; overflow-wrap: anywhere;"');
+});

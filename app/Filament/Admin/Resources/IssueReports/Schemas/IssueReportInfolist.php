@@ -7,6 +7,7 @@ use Filament\Infolists\Components\TextEntry;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Filament\Support\Enums\FontFamily;
+use Illuminate\Support\HtmlString;
 
 class IssueReportInfolist
 {
@@ -44,10 +45,13 @@ class IssueReportInfolist
                                 ['note' => $record->note, ...$record->snapshot],
                                 JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE,
                             ))
+                            // Pre-wrap on the <pre> only: on the entry's wrapper it also kept
+                            // the template's own indentation, pushing the first line right.
+                            ->formatStateUsing(fn (string $state): HtmlString => new HtmlString('<pre style="margin: 0; white-space: pre-wrap; overflow-wrap: anywhere;">'.e($state).'</pre>'))
                             ->fontFamily(FontFamily::Mono)
                             ->copyable()
-                            ->copyMessage(__('Copied'))
-                            ->extraAttributes(['style' => 'white-space: pre-wrap; overflow-wrap: anywhere;']),
+                            ->copyableState(fn (string $state): string => $state)
+                            ->copyMessage(__('Copied')),
                     ]),
             ]);
     }
