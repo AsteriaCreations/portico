@@ -190,6 +190,8 @@ BACKUP_RETENTION_DAYS=30
 MYSQLDUMP_PATH="C:/Program Files/MariaDB 12.3/bin/mysqldump.exe"     # set this if mysqldump isn't on PATH — find yours under "C:/Program Files/MariaDB */bin/"
 ```
 
+**Emergency roster (optional).** Add `BACKUP_EMERGENCY_ROSTER=true` and each backup also writes `roster/<prefix>-roster.xlsx` under the destination, replacing the last one: every member with the door's decision for them (*OK*, *Do not admit*, *Notify …* for the watchlist, *Paperwork needed*), the under-age flag, and whether they hold this month's subscription. It is for a night the system itself is down, and it travels off the machine with the backups. It never holds a ban or watchlist reason, a date of birth, notes or an email, but it does hold names, so it is off by default. `php artisan roster:export` writes it on demand.
+
 **Register the nightly run in Windows Task Scheduler** (this app is never run via `php artisan serve` in production — see `CONTRIBUTING.md`):
 
 1. Task Scheduler → Create Task.

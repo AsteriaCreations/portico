@@ -386,6 +386,14 @@ allow Windows Hello sign-in for Microsoft accounts" must be **off** for stored-p
 auto-login to work) or sync to a network share instead. Confirm the sync icon goes green
 after the first unattended run.
 
+**For a night the box itself is down**, turn on the emergency roster
+(`BACKUP_EMERGENCY_ROSTER=true`, then `php artisan optimize`): each backup then also writes
+`roster/<prefix>-roster.xlsx`, a spreadsheet of every member with the door's decision for
+them, into the same folder, so it leaves the machine the same way. See
+[README.md](../README.md#backups). Make sure whoever runs the door can reach that folder
+from a phone or another computer, and that an off-machine copy job (if you use one) copies
+subfolders.
+
 **The Technical page's buttons run as the web server's account.** "Run backup now" and
 "Reset member & event data" (which backs up first) run inside Apache, and that's often
 `LocalSystem`, not the account the nightly Scheduled Task uses. So the backup folder must

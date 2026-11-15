@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Models\CommandRun;
+use App\Services\EmergencyRosterExporter;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
@@ -91,9 +92,30 @@ class BackupDatabase extends Command
             }
         }
 
+        $this->writeEmergencyRoster();
+
         CommandRun::recordSuccess('backup:database');
 
         return self::SUCCESS;
+    }
+
+    /**
+     * The door's fallback for a night the system is down (see
+     * EmergencyRosterExporter), written here so it needs no timer of its
+     * own. Opt-in, and never a reason to call the backup itself failed.
+     */
+    private function writeEmergencyRoster(): void
+    {
+        if (! config('backup.emergency_roster')) {
+            return;
+        }
+
+        try {
+            $count = app(EmergencyRosterExporter::class)->write();
+            $this->info("Wrote the emergency roster ({$count} members) to ".EmergencyRosterExporter::path());
+        } catch (Throwable $exception) {
+            $this->warn("The backup is fine, but the emergency roster wasn't written: {$exception->getMessage()}");
+        }
     }
 
     /**

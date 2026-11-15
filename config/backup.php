@@ -58,4 +58,19 @@ return [
 
     'prefix' => env('BACKUP_PREFIX', 'portico'),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Emergency roster
+    |--------------------------------------------------------------------------
+    |
+    | When on, each backup also writes "roster/<prefix>-roster.xlsx" under the
+    | destination: every member with the door's decision for them (admit or
+    | not, flags, this month's subscription), for a night the system is down.
+    | It holds members' names in a plain spreadsheet, so it is off unless the
+    | club asks for it. `php artisan roster:export` writes it on demand.
+    |
+    */
+
+    'emergency_roster' => (bool) env('BACKUP_EMERGENCY_ROSTER', false),
+
 ];
