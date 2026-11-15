@@ -6,6 +6,7 @@ use App\Filament\Admin\Pages\CheckIn;
 use App\Models\AddOn;
 use App\Models\Attendance;
 use App\Models\Category;
+use App\Models\CompReason;
 use App\Models\Event;
 use App\Models\InstructorPayout;
 use App\Models\Member;
@@ -775,4 +776,70 @@ test('with a separate subscription envelope turned off, subscription cash goes i
     expect($body)->toContain('Entry: $20.00 · Subscriptions: $60.00 · Other: $0.00 (total $80.00)')
         ->and($body)->toContain('Make an envelope for Friday Social')
         ->and($body)->not->toContain('its own envelope');
+});
+
+test('a Manager comp adds nothing to the box expected count, even with Cash picked', function () {
+    $service = app(RegisterShiftService::class);
+    $shift = $service->openShift($this->register, $this->user, 100);
+    $reason = CompReason::factory()->create(['name' => 'House Sub']);
+    $member = cashClearMember($this->irregular);
+    $event = Event::factory()->create(['event_date' => now()->toDateString(), 'entry_fee' => 40, 'pool_fee' => 0]);
+
+    Livewire::test(CheckIn::class)
+        ->set('registerId', $this->register->id)
+        ->fillForm(['event_id' => $event->id, 'member_id' => $member->id])
+        ->fillForm(['comp_entry' => true, 'comp_reason_id' => $reason->id], 'pricingForm')
+        // A stale or forged Cash pick on a $0 visit.
+        ->callAction('checkIn', data: ['checked_in_at' => now(), 'payment_method' => 'cash'])
+        ->assertHasNoActionErrors();
+
+    $attendance = Attendance::where('member_id', $member->id)->firstOrFail();
+    expect($attendance->comp_reason_id)->toBe($reason->id)
+        ->and((float) $attendance->amount_paid)->toEqual(0.0)
+        ->and($attendance->payment_method)->toBeNull()
+        ->and($service->expectedClosingCount($shift->fresh()))->toEqual(100.0)
+        ->and($service->cashRevenueBreakdownCents($shift->fresh()))->each->toBe(0);
+});
+
+test('a comp waives only the entry: cash paid for the rest of the visit is still expected in the box', function () {
+    $service = app(RegisterShiftService::class);
+    $shift = $service->openShift($this->register, $this->user, 100);
+    $reason = CompReason::factory()->create(['name' => 'House Sub']);
+    $member = cashClearMember($this->irregular);
+    $event = Event::factory()->create(['event_date' => now()->toDateString(), 'entry_fee' => 40, 'pool_fee' => 5]);
+
+    Livewire::test(CheckIn::class)
+        ->set('registerId', $this->register->id)
+        ->fillForm(['event_id' => $event->id, 'member_id' => $member->id])
+        ->fillForm(['comp_entry' => true, 'comp_reason_id' => $reason->id], 'pricingForm')
+        ->callAction('checkIn', data: ['checked_in_at' => now(), 'payment_method' => 'cash'])
+        ->assertHasNoActionErrors();
+
+    // Only the $5 pool, not the $40 entry.
+    expect($service->expectedClosingCount($shift->fresh()))->toEqual(105.0);
+});
+
+test('marking a Comp List member arrived adds nothing to the box expected count', function () {
+    $service = app(RegisterShiftService::class);
+    $shift = $service->openShift($this->register, $this->user, 100);
+    $reason = CompReason::factory()->create(['name' => 'House Sub']);
+    $member = cashClearMember($this->irregular);
+    $event = Event::factory()->create(['event_date' => now()->toDateString(), 'entry_fee' => 40, 'pool_fee' => 0]);
+    // As CompListRelationManager writes it: comped, unarrived, no payment.
+    $attendance = Attendance::factory()->for($member)->for($event)->create([
+        'checked_in_at' => null,
+        'comp_reason_id' => $reason->id,
+        'entry_fee' => 40,
+        'amount_paid' => 0,
+        'payment_method' => null,
+        'register_shift_id' => null,
+    ]);
+
+    Livewire::test(CheckIn::class)
+        ->set('registerId', $this->register->id)
+        ->fillForm(['event_id' => $event->id, 'member_id' => $member->id])
+        ->callAction('markArrived');
+
+    expect($attendance->fresh()->checked_in_at)->not->toBeNull()
+        ->and($service->expectedClosingCount($shift->fresh()))->toEqual(100.0);
 });
