@@ -22,6 +22,12 @@ const IDLE_CHECK_MS = 1000;
 // Plenty for a code held up to the camera; the default is usually a much
 // larger picture at 30 frames a second.
 const CAMERA = { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 }, frameRate: { ideal: 10, max: 15 } };
+// Each note: [frequency in Hz, starts after (seconds), lasts (seconds)].
+const TONES = {
+    admitted: [[880, 0, 0.14], [1175, 0.14, 0.24]],
+    already_checked_in: [[880, 0, 0.2]],
+    problem: [[330, 0, 0.2], [247, 0.22, 0.34]],
+};
 
 function start() {
     if (!root) {
@@ -52,6 +58,7 @@ function start() {
     const sameCodeCooldownMs = (Number(root.dataset.sameCodeCooldownSeconds) || 8) * 1000;
     // 0: the camera never rests.
     const idleMs = screens.sleep ? (Number(root.dataset.idleSeconds) || 0) * 1000 : 0;
+    const soundOn = root.dataset.resultSound === '1';
     const result = root.querySelector('[data-result]');
     const video = root.querySelector('[data-video]');
     const canvas = document.createElement('canvas');
@@ -66,6 +73,7 @@ function start() {
     let lastCode = null;
     let lastCodeAt = 0;
     let resultTimer = null;
+    let audio = null;
 
     function show(name) {
         Object.entries(screens).forEach(([screen, element]) => {
@@ -82,15 +90,60 @@ function start() {
         show('message');
     }
 
+    // Browsers start audio only after a tap, so this runs at load (in case
+    // this one allows it) and again on every tap, "Tap to check in" included.
+    function unlockSound() {
+        if (!soundOn) {
+            return;
+        }
+
+        try {
+            audio ??= new (window.AudioContext || window.webkitAudioContext)();
+            if (audio.state === 'suspended') {
+                audio.resume().catch(() => {});
+            }
+        } catch {
+            // No Web Audio here: the kiosk stays silent.
+        }
+    }
+
+    // A rising chime for "you're in", one note for "already in", a falling
+    // lower pair for anything that needs the desk. Silent until unlocked.
+    function playSound(status) {
+        if (!audio || audio.state !== 'running') {
+            return;
+        }
+
+        (TONES[status] ?? TONES.problem).forEach(([frequency, startsAt, lasts]) => {
+            const oscillator = audio.createOscillator();
+            const gain = audio.createGain();
+            const from = audio.currentTime + startsAt;
+
+            oscillator.frequency.value = frequency;
+            gain.gain.setValueAtTime(0.0001, from);
+            gain.gain.exponentialRampToValueAtTime(0.5, from + 0.02);
+            gain.gain.exponentialRampToValueAtTime(0.0001, from + lasts);
+            oscillator.connect(gain).connect(audio.destination);
+            oscillator.start(from);
+            oscillator.stop(from + lasts);
+        });
+    }
+
+    // The whole screen takes the result's colour, with a mark that doesn't
+    // depend on colour, so it reads at a glance and from across the room.
     function showResult(status, message, durationMs, then) {
         window.clearTimeout(resultTimer);
         result.dataset.status = status;
+        result.dataset.icon = status in resultMs ? '✓' : '!';
         result.textContent = message;
         result.hidden = false;
+        document.body.dataset.flash = status;
         show(null);
+        playSound(status);
 
         resultTimer = window.setTimeout(() => {
             result.hidden = true;
+            delete document.body.dataset.flash;
             then();
         }, durationMs);
     }
@@ -363,6 +416,8 @@ function start() {
     }
 
     keepScreenOn();
+    unlockSound();
+    document.addEventListener('pointerdown', unlockSound);
     document.addEventListener('visibilitychange', () => {
         if (document.visibilityState === 'visible') {
             keepScreenOn();

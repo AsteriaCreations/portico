@@ -83,6 +83,7 @@ class MembershipSettings extends Page
             'kiosk_problem_result_seconds',
             'kiosk_same_code_cooldown_seconds',
             'kiosk_idle_seconds',
+            'kiosk_result_sound',
             'kiosk_requests_per_minute',
             'kiosk_code_email_batch_size',
             'week_starts_on',
@@ -468,6 +469,10 @@ class MembershipSettings extends Page
                             ->integer()
                             ->minValue(0)
                             ->maxValue(3600)
+                            ->required(),
+                        Toggle::make('kiosk_result_sound')
+                            ->label('Kiosk plays a sound with each result')
+                            ->helperText(__('A short rising chime when someone is checked in, and a lower tone when they need the front desk, so nobody has to read the screen. The tablet\'s own volume sets how loud. Some tablets stay silent until the screen has been tapped once after the page loads. Off by default.'))
                             ->required(),
                         TextInput::make('kiosk_requests_per_minute')
                             ->label('Kiosk scans allowed per minute')

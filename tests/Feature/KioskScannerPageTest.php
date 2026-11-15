@@ -227,3 +227,15 @@ test('the kiosk camera never rests by default, and offers tap to wake once an id
             ->assertSee('Tap to check in');
     });
 });
+
+test('the kiosk is silent by default and plays result sounds once the setting is on', function () {
+    withKioskBuild(true, function () {
+        Event::factory()->create(['event_date' => today()->toDateString()]);
+
+        openKiosk($this)->assertSee('data-result-sound="0"', false);
+
+        MembershipSetting::current()->update(['kiosk_result_sound' => true]);
+
+        openKiosk($this)->assertSee('data-result-sound="1"', false);
+    });
+});
