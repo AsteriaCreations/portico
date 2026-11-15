@@ -10,6 +10,13 @@ releases below could carry small breaking changes in a minor release.
 
 ## [Unreleased]
 
+### Documentation
+
+- **`docs/ADOPTING.md`: running Portico as your club's own system.** Why to use a private
+  repository rather than a GitHub fork, what belongs to your club and what stays shared, the
+  `.env` keys that make it yours, taking each release with a merge commit, GitHub settings, and
+  offering changes back. Linked from the README and `DEPLOYMENT.md`.
+
 ### Fixed
 
 - **The Guest flag shows only on a guest's first night.** The desk's checked-in roster and Active Patrons used to mark someone as a guest (with their sponsor) on every visit until their follow-up moved them out of the Guest category. Now the flag is only for the night they first come, like New member.
@@ -23,6 +30,9 @@ releases below could carry small breaking changes in a minor release.
 
 ### Added
 
+- **`SOURCE_CODE_URL`** sets where the panel footer's "Source code" link points, so a club running
+  a modified copy can point it at its own source without editing a shared file. Defaults to this
+  repository. No migration, no npm build.
 - **Emergency roster for a night the system is down.** With `BACKUP_EMERGENCY_ROSTER=true` in
   `.env`, each `backup:database` run also writes `roster/<prefix>-roster.xlsx` beside the
   backups: every member with the door's decision (*OK*, *Do not admit*, *Notify …*, *Paperwork

@@ -108,4 +108,17 @@ return [
 
     'system_user_email' => env('SYSTEM_USER_EMAIL', 'system@portico.internal'),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Source code link
+    |--------------------------------------------------------------------------
+    |
+    | Where the panel footer's "Source code" link points. A club running a
+    | modified copy for other people over a network must offer them its
+    | source (AGPL), so it points this at its own. See docs/ADOPTING.md.
+    |
+    */
+
+    'source_code_url' => env('SOURCE_CODE_URL', 'https://github.com/AsteriaCreations/portico'),
+
 ];

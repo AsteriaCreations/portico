@@ -9,6 +9,9 @@ This is a checklist, not a script. Values in `<angle brackets>` are yours to cho
 `scripts/apache/setup-apache.ps1` automates the Apache half on Windows, and
 `scripts/deploy.ps1` automates pulling down updates afterward (§7).
 
+Setting up your own repository to deploy from, and taking each release into it, is
+[`ADOPTING.md`](ADOPTING.md). Read it before you clone.
+
 ---
 
 ## 0. Before you start
