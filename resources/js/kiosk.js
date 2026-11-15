@@ -1,7 +1,12 @@
 // The kiosk tablet's scanner (resources/views/kiosk/scanner.blade.php).
-// Reads QR codes from the camera with jsQR and posts each one to the scan
-// endpoint. The tablet is identified by an HttpOnly cookie the server set
-// when the setup link was opened, so this script never sees a secret.
+// Reads QR codes from the camera and posts each one to the scan endpoint.
+// The tablet is identified by an HttpOnly cookie the server set when the
+// setup link was opened, so this script never sees a secret.
+//
+// It runs unattended on a battery, so it asks the camera for a small, slow
+// picture, decodes with the browser's own QR reader where there is one
+// (jsQR otherwise), and can turn the camera off altogether when nobody is
+// there ("Kiosk camera rests after" on Membership Settings).
 import jsQR from 'jsqr';
 
 const root = document.getElementById('kiosk');
@@ -10,6 +15,13 @@ const CLOSED_RELOAD_MS = 60000;
 // 20 a minute: well inside the kiosk rate limit, which counts this
 // endpoint separately from scans.
 const POLL_FOR_CODE_MS = 3000;
+// With the camera resting, a code sent from the desk can wait a little
+// longer, and the Wi-Fi radio gets to rest too.
+const POLL_FOR_CODE_ASLEEP_MS = 10000;
+const IDLE_CHECK_MS = 1000;
+// Plenty for a code held up to the camera; the default is usually a much
+// larger picture at 30 frames a second.
+const CAMERA = { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 }, frameRate: { ideal: 10, max: 15 } };
 
 function start() {
     if (!root) {
@@ -29,6 +41,7 @@ function start() {
         message: root.querySelector('[data-screen="message"]'),
         scan: root.querySelector('[data-screen="scan"]'),
         code: root.querySelector('[data-screen="code"]'),
+        sleep: root.querySelector('[data-screen="sleep"]'),
     };
     const showCodeUrl = root.dataset.showCodeUrl;
     const showCodeSeconds = Number(root.dataset.showCodeSeconds) || 60;
@@ -37,22 +50,29 @@ function start() {
     const resultMs = { admitted: successMs, already_checked_in: successMs };
     const problemResultMs = (Number(root.dataset.problemResultSeconds) || 7) * 1000;
     const sameCodeCooldownMs = (Number(root.dataset.sameCodeCooldownSeconds) || 8) * 1000;
+    // 0: the camera never rests.
+    const idleMs = screens.sleep ? (Number(root.dataset.idleSeconds) || 0) * 1000 : 0;
     const result = root.querySelector('[data-result]');
     const video = root.querySelector('[data-video]');
     const canvas = document.createElement('canvas');
     const context = canvas.getContext('2d', { willReadFrequently: true });
 
     let busy = false;
+    let asleep = false;
+    let decoding = false;
+    let detector = null;
+    let scanTimer = null;
+    let lastActivityAt = Date.now();
     let lastCode = null;
     let lastCodeAt = 0;
     let resultTimer = null;
 
     function show(name) {
-        screens.message.hidden = name !== 'message';
-        screens.scan.hidden = name !== 'scan';
-        if (screens.code) {
-            screens.code.hidden = name !== 'code';
-        }
+        Object.entries(screens).forEach(([screen, element]) => {
+            if (element) {
+                element.hidden = screen !== name;
+            }
+        });
     }
 
     // A lasting problem only staff can fix: stop scanning and say so.
@@ -76,7 +96,8 @@ function start() {
     }
 
     function backToScanning() {
-        show('scan');
+        lastActivityAt = Date.now();
+        show(asleep ? 'sleep' : 'scan');
         busy = false;
     }
 
@@ -131,11 +152,21 @@ function start() {
         showResult(body.status, body.message, resultMs[body.status] ?? problemResultMs, backToScanning);
     }
 
-    function scanFrame() {
-        if (busy || video.readyState < video.HAVE_ENOUGH_DATA) {
-            return;
+    // The browser's own QR reader (Chrome on Android), which costs far less
+    // than decoding in script. Null where there isn't one (Safari, Firefox).
+    async function nativeDetector() {
+        try {
+            if ('BarcodeDetector' in window && (await window.BarcodeDetector.getSupportedFormats()).includes('qr_code')) {
+                return new window.BarcodeDetector({ formats: ['qr_code'] });
+            }
+        } catch {
+            // Fall through to jsQR.
         }
 
+        return null;
+    }
+
+    function decodeWithJsQr() {
         // Downscaled: plenty for a code held up to the camera, and much
         // cheaper to decode five times a second.
         const width = Math.min(640, video.videoWidth);
@@ -144,31 +175,96 @@ function start() {
         canvas.height = height;
         context.drawImage(video, 0, 0, width, height);
 
-        const code = jsQR(context.getImageData(0, 0, width, height).data, width, height, { inversionAttempts: 'dontInvert' });
-        if (!code || !code.data) {
-            return;
+        return jsQR(context.getImageData(0, 0, width, height).data, width, height, { inversionAttempts: 'dontInvert' })?.data || null;
+    }
+
+    async function decode() {
+        if (detector) {
+            try {
+                return (await detector.detect(video))[0]?.rawValue || null;
+            } catch {
+                // It stopped working: use jsQR from here on.
+                detector = null;
+            }
         }
-        if (code.data === lastCode && Date.now() - lastCodeAt < sameCodeCooldownMs) {
+
+        return decodeWithJsQr();
+    }
+
+    async function scanFrame() {
+        if (busy || asleep || decoding || video.readyState < video.HAVE_ENOUGH_DATA) {
             return;
         }
 
-        submit(code.data);
+        decoding = true;
+        let code = null;
+        try {
+            code = await decode();
+        } finally {
+            decoding = false;
+        }
+
+        // A code was sent from the desk, or the camera went to rest, while
+        // this frame was being read.
+        if (!code || busy || asleep) {
+            return;
+        }
+
+        // Someone is here, even if it's a code already scanned.
+        lastActivityAt = Date.now();
+        if (code === lastCode && Date.now() - lastCodeAt < sameCodeCooldownMs) {
+            return;
+        }
+
+        submit(code);
     }
 
     async function startCamera() {
         try {
-            const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' }, audio: false });
+            const stream = await navigator.mediaDevices.getUserMedia({ video: CAMERA, audio: false });
             video.srcObject = stream;
             await video.play();
         } catch {
             showMessage(strings.noCamera);
 
+            return false;
+        }
+
+        scanTimer = window.setInterval(scanFrame, SCAN_EVERY_MS);
+
+        return true;
+    }
+
+    function stopCamera() {
+        window.clearInterval(scanTimer);
+        video.srcObject?.getTracks().forEach((track) => track.stop());
+        video.srcObject = null;
+    }
+
+    // Nobody has held up a code for a while: turn the camera off, which is
+    // most of what the tablet's battery goes on, until someone taps.
+    function restIfIdle() {
+        if (busy || asleep || Date.now() - lastActivityAt < idleMs) {
             return;
         }
 
-        window.setInterval(scanFrame, SCAN_EVERY_MS);
-        if (showCodeUrl && screens.code) {
-            window.setInterval(pollForCode, POLL_FOR_CODE_MS);
+        asleep = true;
+        stopCamera();
+        document.body.classList.add('asleep');
+        show('sleep');
+    }
+
+    async function wake() {
+        if (!asleep || busy) {
+            return;
+        }
+
+        // Held so a code from the desk can't land while the camera starts.
+        busy = true;
+        asleep = false;
+        document.body.classList.remove('asleep');
+        if (await startCamera()) {
+            backToScanning();
         }
     }
 
@@ -236,6 +332,12 @@ function start() {
         busy = false;
     }
 
+    // One poll after another, so the wait can stretch while the camera rests.
+    async function pollLoop() {
+        await pollForCode();
+        window.setTimeout(pollLoop, asleep ? POLL_FOR_CODE_ASLEEP_MS : POLL_FOR_CODE_MS);
+    }
+
     // Keeps an unattended tablet's screen on, where the browser allows it.
     async function keepScreenOn() {
         try {
@@ -245,13 +347,28 @@ function start() {
         }
     }
 
+    async function begin() {
+        detector = await nativeDetector();
+        if (!(await startCamera())) {
+            return;
+        }
+
+        if (showCodeUrl && screens.code) {
+            window.setTimeout(pollLoop, POLL_FOR_CODE_MS);
+        }
+        if (idleMs > 0) {
+            screens.sleep.querySelector('[data-wake]').addEventListener('click', wake);
+            window.setInterval(restIfIdle, IDLE_CHECK_MS);
+        }
+    }
+
     keepScreenOn();
     document.addEventListener('visibilitychange', () => {
         if (document.visibilityState === 'visible') {
             keepScreenOn();
         }
     });
-    startCamera();
+    begin();
 }
 
 start();

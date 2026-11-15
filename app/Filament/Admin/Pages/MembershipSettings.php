@@ -82,6 +82,7 @@ class MembershipSettings extends Page
             'kiosk_result_seconds',
             'kiosk_problem_result_seconds',
             'kiosk_same_code_cooldown_seconds',
+            'kiosk_idle_seconds',
             'kiosk_requests_per_minute',
             'kiosk_code_email_batch_size',
             'week_starts_on',
@@ -459,6 +460,14 @@ class MembershipSettings extends Page
                             ->integer()
                             ->minValue(1)
                             ->maxValue(60)
+                            ->required(),
+                        TextInput::make('kiosk_idle_seconds')
+                            ->label('Kiosk camera rests after (seconds)')
+                            ->helperText(__('Saves the tablet\'s battery: after this long with no code held up, the kiosk turns its camera off and shows "Tap to check in"; a tap turns it back on in about a second. 0 keeps the camera on all night.'))
+                            ->numeric()
+                            ->integer()
+                            ->minValue(0)
+                            ->maxValue(3600)
                             ->required(),
                         TextInput::make('kiosk_requests_per_minute')
                             ->label('Kiosk scans allowed per minute')
