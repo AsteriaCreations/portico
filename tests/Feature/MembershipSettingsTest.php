@@ -410,3 +410,17 @@ test('the kiosk camera rest time defaults to never and saves', function () {
 
     expect(MembershipSetting::current()->fresh()->kiosk_idle_seconds)->toBe(90);
 });
+
+test('the kiosk result sound is off by default and saves', function () {
+    expect(MembershipSetting::current()->kiosk_result_sound)->toBeFalse();
+
+    $this->actingAs(userWithRoleForSettings(Role::Manager));
+
+    Livewire::test(MembershipSettings::class)
+        ->assertSchemaStateSet(['kiosk_result_sound' => false])
+        ->fillForm(['kiosk_result_sound' => true])
+        ->callAction('save')
+        ->assertHasNoErrors();
+
+    expect(MembershipSetting::current()->fresh()->kiosk_result_sound)->toBeTrue();
+});

@@ -50,6 +50,7 @@ class KioskCheckInController extends Controller
             'problemResultSeconds' => $settings->kiosk_problem_result_seconds,
             'sameCodeCooldownSeconds' => $settings->kiosk_same_code_cooldown_seconds,
             'idleSeconds' => $settings->kiosk_idle_seconds,
+            'resultSound' => $settings->kiosk_result_sound,
             'isBuilt' => ViteBuild::has(self::SCRIPT),
             'script' => self::SCRIPT,
         ]);

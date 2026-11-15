@@ -23,6 +23,12 @@ releases below could carry small breaking changes in a minor release.
 
 ### Added
 
+- **Kiosk: a result you can see and hear without reading.** After a scan the whole kiosk screen
+  takes the result's colour, with a large check mark or exclamation mark so it doesn't depend on
+  colour. *Kiosk plays a sound with each result* on Membership Settings (`kiosk_result_sound`,
+  default off) adds a rising chime for "checked in" and a lower falling tone for anything that
+  needs the desk; some tablets stay silent until the screen has been tapped once. Migration: one
+  `membership_settings` column. Needs an npm build.
 - **Kiosk: easier on the tablet's battery.** The kiosk asks the camera for a small, slow picture
   and uses the browser's own QR reader where there is one (Chrome on Android; jsQR otherwise).
   *Kiosk camera rests after (seconds)* on Membership Settings (`kiosk_idle_seconds`, default 0 =

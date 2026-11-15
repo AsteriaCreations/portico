@@ -29,6 +29,13 @@ below cover only what happens on the tablet itself. --}}
         .result[data-status="already_checked_in"] { background: #1e40af; }
         .result[data-status="see_staff"], .result[data-status="not_recognized"], .result[data-status="error"] { background: #92400e; }
         .result[data-status="closed"] { background: #374151; }
+        .result::before { content: attr(data-icon); display: block; margin-bottom: 8px; font-size: clamp(72px, 16vw, 160px); font-weight: 700; line-height: 1; }
+        /* The whole screen takes the result's colour; the card keeps an outline. */
+        body[data-flash] .result { border: 4px solid rgba(255, 255, 255, .4); }
+        body[data-flash="admitted"] { background: #065f46; }
+        body[data-flash="already_checked_in"] { background: #1e40af; }
+        body[data-flash="see_staff"], body[data-flash="not_recognized"], body[data-flash="error"] { background: #92400e; }
+        body[data-flash="closed"] { background: #374151; }
         .code-image { display: block; width: min(80vw, 420px); height: auto; margin: 0 auto 16px; padding: 12px; border-radius: 16px; background: #fff; image-rendering: pixelated; }
         .done { margin-top: 16px; padding: 16px 48px; border: 0; border-radius: 12px; background: #f9fafb; color: #111827; font-size: 24px; font-weight: 700; cursor: pointer; }
         .wake { display: block; width: 100%; padding: 64px 24px; border: 2px solid #374151; border-radius: 16px; background: transparent; color: #d1d5db; font: inherit; font-size: clamp(28px, 5vw, 48px); font-weight: 700; cursor: pointer; }
@@ -50,6 +57,7 @@ below cover only what happens on the tablet itself. --}}
         data-problem-result-seconds="{{ $problemResultSeconds }}"
         data-same-code-cooldown-seconds="{{ $sameCodeCooldownSeconds }}"
         data-idle-seconds="{{ $idleSeconds }}"
+        data-result-sound="{{ $resultSound ? '1' : '0' }}"
         @if ($showsCodes)
             data-show-code-url="{{ route('kiosk.show-code') }}"
             data-show-code-seconds="{{ \App\Services\KioskCodeDisplay::seconds() }}"
