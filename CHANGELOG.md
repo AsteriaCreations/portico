@@ -10,23 +10,34 @@ releases below could carry small breaking changes in a minor release.
 
 ## [Unreleased]
 
-### Documentation
+## [1.1.0] — 2026-11-15
 
-- **`docs/ADOPTING.md`: running Portico as your club's own system.** Why to use a private
-  repository rather than a GitHub fork, what belongs to your club and what stays shared, the
-  `.env` keys that make it yours, taking each release with a merge commit, GitHub settings, and
-  offering changes back. Linked from the README and `DEPLOYMENT.md`.
+**Staff scheduling, private room rentals, and a door that keeps working when the system
+doesn't.** New, all off until a club turns them on: staff scheduling with availability, a
+published schedule, shift check-in, a monthly requirement and role task lists; private room
+rentals booked and paid at the desk; a desk refund soon after check-in; an emergency door roster
+written beside each backup. The kiosk is easier on a tablet's battery and shows each result
+across the whole screen, with an optional sound. `docs/ADOPTING.md` is new, for a club running
+Portico as its own system.
 
-### Fixed
+**Upgrading from 1.0.0:** run `scripts/deploy.ps1` without `-SkipNpm` or `-SkipMigrate`: there
+are 25 new migrations and the kiosk script needs `npm run build`. `composer install --no-dev`
+brings in Laravel 13.42, Filament 5.11.2 and PhpSpreadsheet 5.11 (which adds one new package,
+`phpoffice/wmf`). PHP stays at 8.4.27 or later. Two new `.env` keys, both optional:
+`BACKUP_EMERGENCY_ROSTER` and `SOURCE_CODE_URL` (`.env.example`). New settings and flags default
+to the old behavior, with one exception:
 
-- **The Guest flag shows only on a guest's first night.** The desk's checked-in roster and Active Patrons used to mark someone as a guest (with their sponsor) on every visit until their follow-up moved them out of the Guest category. Now the flag is only for the night they first come, like New member.
-- **Signing in only checks staff in during the event.** With staff sign-in check-in on, it used to check a linked login in to any event dated today, so signing in that afternoon for a 9 PM event did it. Now it needs the event's own start-to-end window, give or take the event window buffer; an event with no start or end time is never auto-checked.
-- **My tasks: Propose a task opens its dialog.** The page only shows its table on History, and Filament leaves a table page's dialogs to the table, so on the tasks view the button did nothing.
-- **My shifts: every row lines up.** A day's shifts now have the same four columns whether or not a row has a "spots open" or "You" badge.
-- **Staffing: readable times.** Start and end times show as "Fri Nov 13, 9:00 PM" instead of "2026-11-13 21:00:00", on Staffing and an event's shift list.
-- **Issue reports: the snapshot's first line is no longer indented.** Copying it still gives the plain JSON.
-- **Active Patrons: Sort by names the default.** It shows "Arrival time, Descending" instead of "-"; a sort chosen this session is still kept.
-- **Editing a user no longer asks "Leave site?" with nothing changed.** The password box started as empty on the server and "" in the browser; it now starts as "", and Chrome no longer offers the signed-in Admin's own password there.
+- **The Cleaning Checklist moves into role task lists.** Its two screens (*Cleaning Checklist*
+  and *Cleaning Tasks*) and the user *Capabilities* tab are gone. Every cleaning task and its
+  history moves to a *Cleaning Crew* shift role that isn't scheduled, everyone who had the
+  Cleaning Crew capability gets that role, and *Staff scheduling* is turned on if the checklist
+  was in use. Staff find the same list under *My tasks*. The migration drops `cleaning_tasks`,
+  `cleaning_task_completions` and `user_capabilities` after copying them, so take a backup first
+  (deploy.ps1 does not). We've released this as a minor version rather than a major because
+  nothing is lost and the feature carries over, though it does remove screens.
+
+Also behaving differently: comping an entry that a subscription, comped category or the host
+already covered now keeps that coverage and records only the reason (see Changed).
 
 ### Added
 
@@ -276,6 +287,14 @@ releases below could carry small breaking changes in a minor release.
 
 ### Fixed
 
+- **The Guest flag shows only on a guest's first night.** The desk's checked-in roster and Active Patrons used to mark someone as a guest (with their sponsor) on every visit until their follow-up moved them out of the Guest category. Now the flag is only for the night they first come, like New member.
+- **Signing in only checks staff in during the event.** With staff sign-in check-in on, it used to check a linked login in to any event dated today, so signing in that afternoon for a 9 PM event did it. Now it needs the event's own start-to-end window, give or take the event window buffer; an event with no start or end time is never auto-checked.
+- **My tasks: Propose a task opens its dialog.** The page only shows its table on History, and Filament leaves a table page's dialogs to the table, so on the tasks view the button did nothing.
+- **My shifts: every row lines up.** A day's shifts now have the same four columns whether or not a row has a "spots open" or "You" badge.
+- **Staffing: readable times.** Start and end times show as "Fri Nov 13, 9:00 PM" instead of "2026-11-13 21:00:00", on Staffing and an event's shift list.
+- **Issue reports: the snapshot's first line is no longer indented.** Copying it still gives the plain JSON.
+- **Active Patrons: Sort by names the default.** It shows "Arrival time, Descending" instead of "-"; a sort chosen this session is still kept.
+- **Editing a user no longer asks "Leave site?" with nothing changed.** The password box started as empty on the server and "" in the browser; it now starts as "", and Chrome no longer offers the signed-in Admin's own password there.
 - **Instructor payouts stop showing once the event has ended.** The desk's "payout so far"
   line and *Pay instructor* stayed up until midnight, so a class over at 9pm was still on
   offer at 11. They now go once the event's end time passes. A Manager can still use
@@ -301,6 +320,13 @@ releases below could carry small breaking changes in a minor release.
   outstanding the line now reads, for example, "0 in the building · 147 prepaid not yet
   arrived · 147/200 spots taken". The capacity cap is unchanged: a prepay still holds its spot,
   so walk-ins stop at the same number as before. No migration.
+
+### Documentation
+
+- **`docs/ADOPTING.md`: running Portico as your club's own system.** Why to use a private
+  repository rather than a GitHub fork, what belongs to your club and what stays shared, the
+  `.env` keys that make it yours, taking each release with a merge commit, GitHub settings, and
+  offering changes back. Linked from the README and `DEPLOYMENT.md`.
 
 ## [1.0.0] — 2026-10-29
 
