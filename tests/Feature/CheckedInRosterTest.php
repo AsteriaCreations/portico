@@ -140,7 +140,7 @@ test('the roster marks a person who paid for a subscription with this visit', fu
     expect($component->html())->toContain('aria-label="Bought a subscription"');
 });
 
-test('the roster marks a guest with their sponsor and an Irregular on their first visit as a new member', function () {
+test('the roster marks a guest with their sponsor on their first night only, and an Irregular on their first visit as a new member', function () {
     $irregular = Category::factory()->create(['name' => 'Irregular']);
     $guestCategory = Category::factory()->create(['name' => 'Guest']);
     $event = Event::factory()->create();
@@ -148,10 +148,13 @@ test('the roster marks a guest with their sponsor and an Irregular on their firs
 
     $sponsor = Member::factory()->create(['username' => 'host', 'preferred_name' => 'Hosty', 'category_id' => $irregular->id]);
     $guest = Member::factory()->create(['username' => 'visitor', 'category_id' => $guestCategory->id, 'sponsor_id' => $sponsor->id]);
+    $returningGuest = Member::factory()->create(['username' => 'again', 'category_id' => $guestCategory->id, 'sponsor_id' => $sponsor->id]);
     $newMember = Member::factory()->create(['username' => 'newbie', 'category_id' => $irregular->id]);
 
-    Attendance::factory()->create(['member_id' => $sponsor->id, 'event_id' => $lastWeek->id, 'checked_in_at' => now()->subWeek()]);
-    foreach ([$sponsor, $guest, $newMember] as $member) {
+    foreach ([$sponsor, $returningGuest] as $member) {
+        Attendance::factory()->create(['member_id' => $member->id, 'event_id' => $lastWeek->id, 'checked_in_at' => now()->subWeek()]);
+    }
+    foreach ([$sponsor, $guest, $returningGuest, $newMember] as $member) {
         Attendance::factory()->create(['member_id' => $member->id, 'event_id' => $event->id, 'checked_in_at' => now()]);
     }
 
@@ -161,6 +164,8 @@ test('the roster marks a guest with their sponsor and an Irregular on their firs
     ), 'label');
 
     expect($labels($guest))->toBe(['Guest of Hosty'])
+        // Still a Guest (no follow-up yet), but back a second night.
+        ->and($labels($returningGuest))->toBe([])
         ->and($labels($newMember))->toBe(['New member — first visit'])
         // Back for a second visit: no longer new.
         ->and($labels($sponsor))->toBe([]);

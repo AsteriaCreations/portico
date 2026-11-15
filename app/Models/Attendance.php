@@ -157,7 +157,28 @@ class Attendance extends Model
      */
     public function isNewMemberVisit(): bool
     {
-        if ($this->checked_in_at === null || $this->member?->category?->name !== 'Irregular' || $this->member->hasPriorVisits()) {
+        return $this->member?->category?->name === 'Irregular' && $this->isFirstArrival();
+    }
+
+    /**
+     * A guest on the night they first came: the Guest flag is for the desk
+     * and Active Patrons to notice a new face and their sponsor, so it isn't
+     * repeated on every later visit while the guest is still in the Guest
+     * category (awaiting follow-up).
+     */
+    public function isGuestFirstVisit(): bool
+    {
+        return (bool) $this->member?->isGuest() && $this->isFirstArrival();
+    }
+
+    /**
+     * This visit is the member's first arrival ever, with no visits from
+     * before these records (Member::hasPriorVisits()). Reads
+     * first_arrived_at from withFirstArrival() when loaded.
+     */
+    private function isFirstArrival(): bool
+    {
+        if ($this->checked_in_at === null || $this->member === null || $this->member->hasPriorVisits()) {
             return false;
         }
 

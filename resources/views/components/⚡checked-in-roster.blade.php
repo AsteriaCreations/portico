@@ -77,8 +77,8 @@ new class extends Component
 
     /**
      * The icons beside a person's name, the same list for the phone cards
-     * and the table: on the watchlist (or recently off it), a guest (with
-     * their sponsor), a member promoted from Prospective tonight, and a
+     * and the table: on the watchlist (or recently off it), a guest on their
+     * first night (with their sponsor), a member promoted from Prospective tonight, and a
      * subscription bought with the visit. Only that a member is on the
      * watchlist, never why: the reason stays Manager+.
      *
@@ -95,7 +95,7 @@ new class extends Component
                 $member->isOnWatchlistProbation() => $legend['watchlist_probation'],
                 default => null,
             },
-            $member->isGuest() ? [
+            $attendance->isGuestFirstVisit() ? [
                 ...$legend['guest'],
                 'label' => $member->sponsor ? __('Guest of :sponsor', ['sponsor' => $member->sponsor->displayName()]) : __('Guest'),
             ] : null,

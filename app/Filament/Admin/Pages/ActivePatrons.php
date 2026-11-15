@@ -176,7 +176,7 @@ class ActivePatrons extends Page implements HasTable
                             ->getStateUsing(fn (Attendance $record): array => array_values(array_filter([
                                 $record->member?->on_watchlist ? __('Watchlist') : null,
                                 $record->member?->isOnWatchlistProbation() ? __('Recently off watchlist') : null,
-                                $record->member?->isGuest() ? __('Guest') : null,
+                                $record->isGuestFirstVisit() ? __('Guest') : null,
                                 $record->isNewMemberVisit() ? __('New member') : null,
                                 $record->isSubscriptionPurchaseVisit() ? __('New subscription') : null,
                                 $record->isOvernightStay() ? __('Overnight') : null,
@@ -197,7 +197,7 @@ class ActivePatrons extends Page implements HasTable
                                 __('New subscription') => 'success',
                                 default => 'info',
                             })
-                            ->tooltip(fn (Attendance $record): ?string => $record->member?->isGuest() && $record->member->sponsor
+                            ->tooltip(fn (Attendance $record): ?string => $record->isGuestFirstVisit() && $record->member->sponsor
                                 ? __('Guest of :sponsor', ['sponsor' => $record->member->sponsor->displayName()])
                                 : null)
                             ->alignment(Alignment::End)

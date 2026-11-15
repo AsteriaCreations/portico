@@ -277,7 +277,7 @@ test('the flags column badges Overnight only for an overnight stay', function ()
         ->assertTableColumnStateSet('flags', null, $ordinaryAttendance);
 });
 
-test('the flags column badges Guest for a guest and New member for an Irregular on their first visit', function () {
+test('the flags column badges Guest for a guest on their first night and New member for an Irregular on their first visit', function () {
     $volunteer = User::factory()->create(['active' => true, 'role' => Role::Volunteer]);
     $this->actingAs($volunteer);
 
@@ -285,15 +285,19 @@ test('the flags column badges Guest for a guest and New member for an Irregular 
     $event = Event::factory()->create(['event_date' => today()->toDateString()]);
     $sponsor = clearMemberForActivePatrons($this->irregular, ['username' => 'sponsor-one']);
     $guest = clearMemberForActivePatrons($guestCategory, ['username' => 'guest-one', 'sponsor_id' => $sponsor->id]);
+    $returningGuest = clearMemberForActivePatrons($guestCategory, ['username' => 'guest-two', 'sponsor_id' => $sponsor->id]);
     $newMember = clearMemberForActivePatrons($this->irregular, ['username' => 'new-one']);
-    givePriorVisit($sponsor, $guest);
+    givePriorVisit($sponsor, $returningGuest);
 
     $sponsorAttendance = Attendance::factory()->for($sponsor)->for($event)->create(['checked_in_at' => now()]);
     $guestAttendance = Attendance::factory()->for($guest)->for($event)->create(['checked_in_at' => now()]);
+    $returningGuestAttendance = Attendance::factory()->for($returningGuest)->for($event)->create(['checked_in_at' => now()]);
     $newMemberAttendance = Attendance::factory()->for($newMember)->for($event)->create(['checked_in_at' => now()]);
 
     Livewire::test(ActivePatrons::class)
         ->assertTableColumnStateSet('flags', ['Guest'], $guestAttendance)
+        // Still a Guest, but back a second night.
+        ->assertTableColumnStateSet('flags', null, $returningGuestAttendance)
         ->assertTableColumnStateSet('flags', ['New member'], $newMemberAttendance)
         ->assertTableColumnStateSet('flags', null, $sponsorAttendance);
 });
@@ -309,7 +313,8 @@ test('the flags column badges New subscription only for a subscription paid for 
     $perk = clearMemberForActivePatrons($this->irregular, ['username' => 'perk']);
     $sponsor = clearMemberForActivePatrons($this->irregular, ['username' => 'host', 'preferred_name' => 'Hosty']);
     $guest = clearMemberForActivePatrons($guestCategory, ['username' => 'visitor', 'sponsor_id' => $sponsor->id]);
-    givePriorVisit($buyer, $oldSubscriber, $perk, $sponsor, $guest);
+    // The guest's first night: the Guest flag shows only then.
+    givePriorVisit($buyer, $oldSubscriber, $perk, $sponsor);
 
     // Bought last week, before tonight's visit: no badge.
     $this->travel(-7)->days();

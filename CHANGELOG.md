@@ -12,6 +12,7 @@ releases below could carry small breaking changes in a minor release.
 
 ### Fixed
 
+- **The Guest flag shows only on a guest's first night.** The desk's checked-in roster and Active Patrons used to mark someone as a guest (with their sponsor) on every visit until their follow-up moved them out of the Guest category. Now the flag is only for the night they first come, like New member.
 - **Signing in only checks staff in during the event.** With staff sign-in check-in on, it used to check a linked login in to any event dated today, so signing in that afternoon for a 9 PM event did it. Now it needs the event's own start-to-end window, give or take the event window buffer; an event with no start or end time is never auto-checked.
 - **My tasks: Propose a task opens its dialog.** The page only shows its table on History, and Filament leaves a table page's dialogs to the table, so on the tasks view the button did nothing.
 - **My shifts: every row lines up.** A day's shifts now have the same four columns whether or not a row has a "spots open" or "You" badge.
