@@ -23,6 +23,12 @@ releases below could carry small breaking changes in a minor release.
 
 ### Added
 
+- **Emergency roster for a night the system is down.** With `BACKUP_EMERGENCY_ROSTER=true` in
+  `.env`, each `backup:database` run also writes `roster/<prefix>-roster.xlsx` beside the
+  backups: every member with the door's decision (*OK*, *Do not admit*, *Notify …*, *Paperwork
+  needed*), the under-age flag and this month's subscription. No ban or watchlist reason, date
+  of birth, notes or email. `php artisan roster:export` writes it on demand. Off by default. No
+  migration, no npm build.
 - **Kiosk: a result you can see and hear without reading.** After a scan the whole kiosk screen
   takes the result's colour, with a large check mark or exclamation mark so it doesn't depend on
   colour. *Kiosk plays a sound with each result* on Membership Settings (`kiosk_result_sound`,
