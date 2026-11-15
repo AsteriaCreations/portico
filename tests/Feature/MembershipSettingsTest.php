@@ -391,3 +391,22 @@ test('the kiosk code email batch defaults to 50 and saves', function () {
 
     expect(MembershipSetting::current()->fresh()->kiosk_code_email_batch_size)->toBe(20);
 });
+
+test('the kiosk camera rest time defaults to never and saves', function () {
+    expect(MembershipSetting::current()->kiosk_idle_seconds)->toBe(0);
+
+    $this->actingAs(userWithRoleForSettings(Role::Manager));
+
+    Livewire::test(MembershipSettings::class)
+        ->assertSchemaStateSet(['kiosk_idle_seconds' => 0])
+        ->fillForm(['kiosk_idle_seconds' => 3601])
+        ->callAction('save')
+        ->assertHasFormErrors(['kiosk_idle_seconds']);
+
+    Livewire::test(MembershipSettings::class)
+        ->fillForm(['kiosk_idle_seconds' => 90])
+        ->callAction('save')
+        ->assertHasNoErrors();
+
+    expect(MembershipSetting::current()->fresh()->kiosk_idle_seconds)->toBe(90);
+});

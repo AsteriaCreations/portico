@@ -171,6 +171,7 @@ It's wording only. Who gets in, the bar's colour and the watchlist's "I have not
 | Kiosk "checked in" message time (seconds) | `4` | How long the kiosk shows "checked in" / "already checked in" before it's ready for the next person. |
 | Kiosk problem message time (seconds) | `7` | How long the kiosk shows any other result, such as "see staff" or "code not recognized". |
 | Kiosk ignores a repeated code for (seconds) | `8` | So a code still held up to the camera isn't scanned twice. A different code scans right away. |
+| Kiosk camera rests after (seconds) | `0` | Saves the tablet's battery: after this long with no code held up, the kiosk turns its camera off and shows "Tap to check in"; a tap turns it back on. `0` keeps the camera on all night. |
 | Kiosk scans allowed per minute | `30` | The kiosk's rate limit; past it, the tablet asks the member to wait. It stops anyone guessing codes. Can't go below 30. |
 | Kiosk codes emailed per click | `50` | How many subscribers one click of "Email kiosk codes" (Subscriptions) sends to. Lower it if a slow mail server times the page out. |
 
