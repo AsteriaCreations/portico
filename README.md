@@ -20,6 +20,7 @@ logic. [`CONTRIBUTING.md`](CONTRIBUTING.md) has the working conventions for this
 Where to look next:
 
 - [`docs/FEATURES.md`](docs/FEATURES.md) — a flat inventory of what's built, by area.
+- [`docs/ADOPTING.md`](docs/ADOPTING.md) — running Portico as your club's own system: your own repository, what's yours, taking each release.
 - [`docs/CONFIGURING.md`](docs/CONFIGURING.md) — setting Portico up for your club.
 - [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md) — standing it up on a club LAN.
 - [`docs/DATA_DICTIONARY.md`](docs/DATA_DICTIONARY.md) — what the tables mean, for analysts querying the data. Read-only database accounts for reporting (a full one, and a limited one that can't see personal data) are in [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md) §4a.
@@ -266,4 +267,4 @@ Portico ships a **feature-flag mechanism** (`/admin/feature-flags`, Manager+) so
 
 ## License
 
-Licensed under the [GNU Affero General Public License v3.0 or later](LICENSE) (AGPL-3.0-or-later). The AGPL's key difference from the plain GPL: running a modified version of this app on a server and letting others use it over a network counts as distribution, so the modified source must be made available to those users too. The admin panel footer carries a "Source code" link for exactly this reason — point it at your fork if you deploy a modified version.
+Licensed under the [GNU Affero General Public License v3.0 or later](LICENSE) (AGPL-3.0-or-later). The AGPL's key difference from the plain GPL: running a modified version of this app on a server and letting others use it over a network counts as distribution, so the modified source must be made available to those users too. The admin panel footer carries a "Source code" link for exactly this reason — set `SOURCE_CODE_URL` in `.env` to point it at your own source if you deploy a modified version (see [`docs/ADOPTING.md`](docs/ADOPTING.md)).

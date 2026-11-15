@@ -36,3 +36,14 @@ test('the panel footer shows the Portico logo for light and dark mode', function
         ->assertSee('images/portico-logo.svg')
         ->assertSee('images/portico-logo-white.svg');
 });
+
+test('the footer source code link follows SOURCE_CODE_URL, and the Portico logo still links upstream', function () {
+    expect(view('filament.admin.footer')->render())
+        ->toContain('<a href="https://github.com/AsteriaCreations/portico" target="_blank" rel="noopener" class="underline');
+
+    config(['membership.source_code_url' => 'https://example.test/our-club/membership']);
+
+    expect(view('filament.admin.footer')->render())
+        ->toContain('<a href="https://example.test/our-club/membership" target="_blank" rel="noopener" class="underline')
+        ->toContain('<a href="https://github.com/AsteriaCreations/portico" target="_blank" rel="noopener" class="inline-block');
+});
