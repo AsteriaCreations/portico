@@ -31,6 +31,10 @@ below cover only what happens on the tablet itself. --}}
         .result[data-status="closed"] { background: #374151; }
         .code-image { display: block; width: min(80vw, 420px); height: auto; margin: 0 auto 16px; padding: 12px; border-radius: 16px; background: #fff; image-rendering: pixelated; }
         .done { margin-top: 16px; padding: 16px 48px; border: 0; border-radius: 12px; background: #f9fafb; color: #111827; font-size: 24px; font-weight: 700; cursor: pointer; }
+        .wake { display: block; width: 100%; padding: 64px 24px; border: 2px solid #374151; border-radius: 16px; background: transparent; color: #d1d5db; font: inherit; font-size: clamp(28px, 5vw, 48px); font-weight: 700; cursor: pointer; }
+        .wake small { display: block; margin-top: 12px; font-size: 18px; font-weight: 400; color: #9ca3af; }
+        body.asleep { background: #000; }
+        body.asleep .mark, body.asleep .org, body.asleep h1 { opacity: .4; }
         [hidden] { display: none !important; }
     </style>
     @if ($isBuilt)
@@ -45,6 +49,7 @@ below cover only what happens on the tablet itself. --}}
         data-result-seconds="{{ $resultSeconds }}"
         data-problem-result-seconds="{{ $problemResultSeconds }}"
         data-same-code-cooldown-seconds="{{ $sameCodeCooldownSeconds }}"
+        data-idle-seconds="{{ $idleSeconds }}"
         @if ($showsCodes)
             data-show-code-url="{{ route('kiosk.show-code') }}"
             data-show-code-seconds="{{ \App\Services\KioskCodeDisplay::seconds() }}"
@@ -99,6 +104,16 @@ below cover only what happens on the tablet itself. --}}
                 <p class="prompt">{{ __('Hold your kiosk QR code up to the camera.') }}</p>
                 <p class="note">{{ __('No code, or need to pay? Please see the front desk.') }}</p>
             </div>
+
+            @if ($idleSeconds > 0)
+                {{-- The camera is off to save the battery; a tap turns it back on. --}}
+                <div class="panel" data-screen="sleep" hidden>
+                    <button type="button" class="wake" data-wake>
+                        {{ __('Tap to check in') }}
+                        <small>{{ __('The camera is resting to save the battery.') }}</small>
+                    </button>
+                </div>
+            @endif
 
             @if ($showsCodes)
                 {{-- A code sent from the desk ("Show on kiosk"), for the member to photograph. --}}

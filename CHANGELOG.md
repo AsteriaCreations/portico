@@ -23,6 +23,12 @@ releases below could carry small breaking changes in a minor release.
 
 ### Added
 
+- **Kiosk: easier on the tablet's battery.** The kiosk asks the camera for a small, slow picture
+  and uses the browser's own QR reader where there is one (Chrome on Android; jsQR otherwise).
+  *Kiosk camera rests after (seconds)* on Membership Settings (`kiosk_idle_seconds`, default 0 =
+  never) turns the camera off when no code has been held up for that long and shows "Tap to check
+  in"; a tap turns it back on. While it rests, a code sent with "Show on kiosk" can take up to 10
+  seconds to appear. Migration: one `membership_settings` column. Needs an npm build.
 - **Tasks on Shifts Worked.** *Tasks done* (task-list ticks that month) and *Off-shift tasks*
   (done on a shift the person wasn't on) sit beside the shift counts, so a Manager can see who
   goes beyond when granting the voucher. Someone who only did tasks (Cleaning Crew) is listed

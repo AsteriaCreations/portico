@@ -210,3 +210,20 @@ test('the kiosk screen gets its message and repeat-scan times from Membership Se
             ->assertSee('data-same-code-cooldown-seconds="15"', false);
     });
 });
+
+test('the kiosk camera never rests by default, and offers tap to wake once an idle time is set', function () {
+    withKioskBuild(true, function () {
+        Event::factory()->create(['event_date' => today()->toDateString()]);
+
+        openKiosk($this)
+            ->assertSee('data-idle-seconds="0"', false)
+            ->assertDontSee('data-screen="sleep"', false);
+
+        MembershipSetting::current()->update(['kiosk_idle_seconds' => 90]);
+
+        openKiosk($this)
+            ->assertSee('data-idle-seconds="90"', false)
+            ->assertSee('data-screen="sleep"', false)
+            ->assertSee('Tap to check in');
+    });
+});
