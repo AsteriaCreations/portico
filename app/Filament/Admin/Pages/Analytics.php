@@ -7,6 +7,9 @@ use App\Filament\Admin\Widgets\AddOnRevenueWidget;
 use App\Filament\Admin\Widgets\AttendanceTrendChartWidget;
 use App\Filament\Admin\Widgets\CategoryBreakdownWidget;
 use App\Filament\Admin\Widgets\CompCostWidget;
+use App\Filament\Admin\Widgets\EventComparisonWidget;
+use App\Filament\Admin\Widgets\EventTypeRollUpWidget;
+use App\Filament\Admin\Widgets\EventWeekdayRollUpWidget;
 use App\Filament\Admin\Widgets\MembershipCompositionWidget;
 use App\Filament\Admin\Widgets\NewMembersChartWidget;
 use App\Filament\Admin\Widgets\PaymentMethodMixWidget;
@@ -106,6 +109,7 @@ class Analytics extends Page
             'overview' => __('Overview'),
             'revenue' => __('Revenue'),
             'members' => __('Members'),
+            'events' => __('Events'),
         ];
 
         return $schema->components([
@@ -145,6 +149,11 @@ class Analytics extends Page
                 MembershipCompositionWidget::class,
                 CategoryBreakdownWidget::class,
                 NewMembersChartWidget::class,
+            ],
+            'events' => [
+                EventComparisonWidget::class,
+                EventTypeRollUpWidget::class,
+                EventWeekdayRollUpWidget::class,
             ],
         ];
     }

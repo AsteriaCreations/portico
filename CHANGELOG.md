@@ -26,6 +26,11 @@ releases below could carry small breaking changes in a minor release.
   list behind them: first-time visitors, subscribers, a category's members, vouchers, register
   shifts. The Members list has a *First visit* date filter and Subscriptions a *Covers the month
   of* filter. No migration.
+- Analytics gains an *Events* tab: every event held in the chosen period side by side (headcount,
+  how that sits against the usual for its type over the last twelve months, first-timers,
+  subscribers, comps, prepaid no-shows, revenue and revenue per head), sortable, filterable by
+  type, each row opening the event, with *Export (CSV)*. Below it, the average night by event type
+  and by day of the week. Private rentals and events still to come are left out. No migration.
 - **Event timelines** (Feature Flags, off by default): an event's showrunner, or an Admin+, lays
   out what happens when on an *Event timeline* day grid bounded by the event's start and end.
   Each item has a *Timeline category* (Admin+) saying who sees it: Public, or staff from a given
