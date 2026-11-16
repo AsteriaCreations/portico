@@ -5,6 +5,7 @@
         <p>{{ __('Each item\'s category says who sees it: a Public one is for attendees, others for staff from a given role up. An Admin manages the categories.') }}</p>
         <p>{{ __('You can edit the timeline of an event you\'re the showrunner of until it ends; an Admin can edit any event\'s. Other staff see current and upcoming events\' timelines here, read-only.') }}</p>
         <p>{!! __('<strong>Show public only</strong> shows the timeline as attendees see it. <strong>Print</strong> prints what\'s shown, so switch to public only first for a sheet to post.') !!}</p>
+        <p>{!! __('<strong>Display screen</strong> opens tonight\'s public timeline full screen, for a TV or tablet by the door: what\'s on now and what\'s next, updating every minute. Open that link in the screen\'s own browser; it needs no sign-in and shows only Public items.') !!}</p>
     </x-screen-instructions>
 
     <x-filament::section>

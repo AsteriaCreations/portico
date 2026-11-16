@@ -19,6 +19,10 @@ releases below could carry small breaking changes in a minor release.
 - Event timelines for the rest of the staff: Volunteer+ read a current or upcoming event's timeline
   (the categories they see), *Show public only* shows it as attendees would and *Print* prints
   what's shown, and a *Tonight's timeline* Dashboard widget shows what's on now and up next.
+- A display screen for tonight's public timeline at `/kiosk/timeline`, for a TV or tablet by the
+  door: what's on now and next at each event (private rentals left out), reloading every minute.
+  Needs no sign-in or device link; it shows Public items only. *Display screen* on the Event
+  timeline page opens it.
 
 ## [1.1.0] — 2026-11-15
 

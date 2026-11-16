@@ -828,6 +828,8 @@ Behind `event_timelines_enabled` (default off). An event's timeline (`event_time
 
 **Reading it.** Volunteer+ open any current or upcoming event's timeline read-only (`canView()`), seeing only the categories they're allowed. *Show public only* shows it through an attendee's eyes (`visibleCategoriesQuery(null)`), and *Print* prints what's on screen (print CSS hides the panel chrome and the click targets), so a public sheet is two clicks. The **Tonight's timeline** Dashboard widget (`EventTimelineNowWidget`, polls every 60 s) lists, per event running now (`Event::currentQuery()`) that has a timeline, what's on now (a span under way, or a moment in the last `SLOT_MINUTES`) and the next three (`nowAndNext()`).
 
+**Display screen.** `GET /kiosk/timeline` (`EventTimelineDisplayController`, `kiosk.timeline`, in `routes/kiosk.php` so outside `web`, under `throttle:kiosk`) is tonight's public timeline full screen for a TV or tablet by the door: per event in `Event::currentQuery()->excludingPrivateRentals()`, what's on now and the next six, Public categories only (`publicDisplay()`), reloading itself every 60 s with a meta refresh and no script. It writes nothing and shows only what attendees may see, so like the scanner screen its only guard is the flag (404 when off); no device secret. *Display screen* on the Event timeline page opens it.
+
 ## Build order (thin vertical slices)
 
 The app was built in thin vertical slices, in roughly this order — a useful reading order for the codebase:

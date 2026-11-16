@@ -9,6 +9,7 @@ use App\Models\EventTimelineCategory;
 use App\Models\EventTimelineItem;
 use App\Models\Member;
 use App\Models\MembershipSetting;
+use App\Models\PrivateRental;
 use App\Models\User;
 use App\Services\EventTimelineService;
 use Illuminate\Database\QueryException;
@@ -367,4 +368,42 @@ test('Admin reaches the categories list', function () {
 
     Livewire::test(ListEventTimelineCategories::class)
         ->assertCanSeeTableRecords(EventTimelineCategory::all());
+});
+
+test('the display screen is 404 with the flag off', function () {
+    MembershipSetting::current()->update(['event_timelines_enabled' => false]);
+
+    $this->get('/kiosk/timeline')->assertNotFound();
+});
+
+test('the display screen shows tonight\'s public items only, with no sign-in, and leaves out private rentals', function () {
+    $event = Event::factory()->create(['name' => 'Saturday Social', 'event_date' => today(), 'starts_at' => now()->subHour(), 'ends_at' => now()->addHours(3)]);
+    $public = EventTimelineCategory::where('name', 'Public')->value('id');
+    $staff = EventTimelineCategory::where('name', 'Event staff')->value('id');
+    EventTimelineItem::factory()->create(['event_id' => $event->id, 'event_timeline_category_id' => $public, 'title' => 'Workshop', 'starts_at' => now()->subMinutes(10), 'ends_at' => now()->addMinutes(20)]);
+    EventTimelineItem::factory()->create(['event_id' => $event->id, 'event_timeline_category_id' => $public, 'title' => 'Raffle draw', 'starts_at' => now()->addHour(), 'ends_at' => null]);
+    EventTimelineItem::factory()->create(['event_id' => $event->id, 'event_timeline_category_id' => $staff, 'title' => 'Stock the bar', 'starts_at' => now()->addMinutes(30), 'ends_at' => null]);
+
+    $later = timelineEvent();
+    EventTimelineItem::factory()->create(['event_id' => $later->id, 'event_timeline_category_id' => $public, 'title' => 'Next week thing', 'starts_at' => $later->starts_at]);
+
+    $rental = Event::factory()->create(['event_date' => today(), 'starts_at' => now()->subHour(), 'ends_at' => now()->addHours(3)]);
+    PrivateRental::factory()->create(['event_id' => $rental->id]);
+    EventTimelineItem::factory()->create(['event_id' => $rental->id, 'event_timeline_category_id' => $public, 'title' => 'Birthday cake', 'starts_at' => now()->addMinutes(15)]);
+
+    $this->get('/kiosk/timeline')
+        ->assertSuccessful()
+        ->assertSee('Saturday Social')
+        ->assertSee('Workshop')
+        ->assertSee('Raffle draw')
+        ->assertDontSee('Stock the bar')
+        ->assertDontSee('Next week thing')
+        ->assertDontSee('Birthday cake')
+        ->assertSee('http-equiv="refresh"', false);
+});
+
+test('the display screen says so when nothing public is on tonight', function () {
+    $this->get('/kiosk/timeline')
+        ->assertSuccessful()
+        ->assertSee('Nothing on the timeline right now.');
 });

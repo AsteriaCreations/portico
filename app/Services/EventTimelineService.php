@@ -168,6 +168,30 @@ class EventTimelineService
     }
 
     /**
+     * The display screen's content: tonight's events (private rentals left
+     * out, as on the kiosk), public items only, each with what's on now and
+     * what's next. An event with nothing public now or later is left out.
+     *
+     * @return list<array{event: Event, now: Collection<int, EventTimelineItem>, next: Collection<int, EventTimelineItem>}>
+     */
+    public function publicDisplay(?CarbonInterface $at = null, int $limit = 6): array
+    {
+        if (! $this->enabled()) {
+            return [];
+        }
+
+        return Event::currentQuery()
+            ->excludingPrivateRentals()
+            ->whereNotNull('starts_at')
+            ->orderBy('starts_at')
+            ->get()
+            ->map(fn (Event $event): array => ['event' => $event] + $this->nowAndNext($event, null, $at, $limit))
+            ->filter(fn (array $timeline): bool => $timeline['now']->isNotEmpty() || $timeline['next']->isNotEmpty())
+            ->values()
+            ->all();
+    }
+
+    /**
      * Why these times can't go on this event's timeline, or null if they can.
      */
     public function timeError(Event $event, ?CarbonInterface $startsAt, ?CarbonInterface $endsAt): ?string

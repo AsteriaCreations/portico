@@ -167,6 +167,13 @@ class EventTimeline extends Page
                 ->color('gray')
                 ->visible(fn (): bool => $this->getSelectedEvent() !== null)
                 ->alpineClickHandler('window.print()'),
+            // Tonight's public timeline for a screen by the door; open it on
+            // that screen's browser. Shows Public items only.
+            Action::make('displayScreen')
+                ->label(__('Display screen'))
+                ->icon(Heroicon::OutlinedTv)
+                ->color('gray')
+                ->url(route('kiosk.timeline'), shouldOpenInNewTab: true),
         ];
     }
 
