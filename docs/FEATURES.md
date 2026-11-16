@@ -138,6 +138,7 @@ REPORTING & ANALYTICS
 - Tonight's attendance overview
 - Period headline: visits, different visitors, first-time visitors, revenue and Regular subscribers, each compared with the same stretch of the period before
 - Revenue by payment method for the chosen period
+- Event comparison for the chosen period (headcount against the usual for its type, first-timers, subscribers, comps, prepaid no-shows, revenue, revenue per head), with CSV export, plus the average night by event type and by day of the week
 - Tiles that open the list behind them (first-time visitors, subscribers, a category's members, vouchers, register shifts); Members list "First visit" filter and Subscriptions "Covers the month of" filter
 - Per-event-type and per-category breakdowns for the chosen period
 - Revenue, attendance and new-member trends by week or month (Event/Subscription/Rental/Other), each repeated as a table for screen readers
