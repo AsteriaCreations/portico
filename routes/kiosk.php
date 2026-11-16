@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\EventTimelineDisplayController;
 use App\Http\Controllers\KioskCheckInController;
 use App\Http\Middleware\VerifyKioskDevice;
 use Illuminate\Support\Facades\Route;
@@ -23,3 +24,8 @@ Route::post('/kiosk/scan', [KioskCheckInController::class, 'scan'])
 Route::post('/kiosk/show-code', [KioskCheckInController::class, 'showCode'])
     ->middleware(VerifyKioskDevice::class)
     ->name('kiosk.show-code');
+
+// Tonight's public event timeline, for a screen by the door. Read-only and
+// Public categories only, so the feature flag (checked in the controller)
+// is its only guard, like the scanner screen.
+Route::get('/kiosk/timeline', [EventTimelineDisplayController::class, 'show'])->name('kiosk.timeline');

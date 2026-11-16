@@ -115,6 +115,7 @@ EVENT TIMELINES
 - Timeline categories (Admin+): colour, and Public (attendees) or seen by staff from a chosen role up; seeded Public and Event staff
 - Volunteer+ read current and upcoming timelines (only the categories they see); Show public only + Print for a sheet to post
 - Tonight's timeline Dashboard widget: now and up next at each running event, polling every minute
+- Display screen (`/kiosk/timeline`): tonight's public timeline full screen for a TV or tablet by the door, no sign-in, reloads every minute
 
 VOUCHERS & COMP REWARDS
 -------------------------
