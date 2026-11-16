@@ -4,18 +4,18 @@ use App\Enums\AddOnKind;
 use App\Enums\EntryCoverageSource;
 use App\Enums\Role;
 use App\Filament\Admin\Widgets\AddOnRevenueWidget;
+use App\Filament\Admin\Widgets\AttendanceTrendChartWidget;
+use App\Filament\Admin\Widgets\CategoryBreakdownWidget;
 use App\Filament\Admin\Widgets\CompCostWidget;
 use App\Filament\Admin\Widgets\MembershipCompositionWidget;
-use App\Filament\Admin\Widgets\MonthlyRevenueChartWidget;
 use App\Filament\Admin\Widgets\NewMembersChartWidget;
 use App\Filament\Admin\Widgets\RegisterVarianceWidget;
+use App\Filament\Admin\Widgets\RevenueByEventTypeWidget;
+use App\Filament\Admin\Widgets\RevenueTrendChartWidget;
 use App\Filament\Admin\Widgets\ScheduledJobsWidget;
 use App\Filament\Admin\Widgets\SubscriptionOverviewWidget;
 use App\Filament\Admin\Widgets\TonightOverviewWidget;
 use App\Filament\Admin\Widgets\VoucherLiabilityWidget;
-use App\Filament\Admin\Widgets\WeeklyAttendanceChartWidget;
-use App\Filament\Admin\Widgets\WeeklyCategoryBreakdownWidget;
-use App\Filament\Admin\Widgets\WeeklySummaryWidget;
 use App\Models\AddOn;
 use App\Models\AddOnDayPass;
 use App\Models\Attendance;
@@ -105,9 +105,9 @@ test('weekly summary widget groups revenue by type for the current calendar week
     Attendance::factory()->for($classEvent)->create(['checked_in_at' => now(), 'amount_paid' => 5]);
     Attendance::factory()->for($lastWeekSocialEvent)->create(['checked_in_at' => now(), 'amount_paid' => 999]);
 
-    Livewire::test(WeeklySummaryWidget::class)->assertSuccessful();
+    Livewire::test(RevenueByEventTypeWidget::class)->assertSuccessful();
 
-    $widget = new WeeklySummaryWidget;
+    $widget = new RevenueByEventTypeWidget;
     $stats = (fn () => $this->getStats())->call($widget);
 
     expect($stats)->toHaveCount(2);
@@ -120,11 +120,11 @@ test('weekly summary widget groups revenue by type for the current calendar week
 test('weekly summary widget is restricted to manager and up', function () {
     $door = User::factory()->create(['active' => true, 'role' => Role::Door]);
     $this->actingAs($door);
-    expect(WeeklySummaryWidget::canView())->toBeFalse();
+    expect(RevenueByEventTypeWidget::canView())->toBeFalse();
 
     $manager = User::factory()->create(['active' => true, 'role' => Role::Manager]);
     $this->actingAs($manager);
-    expect(WeeklySummaryWidget::canView())->toBeTrue();
+    expect(RevenueByEventTypeWidget::canView())->toBeTrue();
 });
 
 test('weekly category breakdown widget groups revenue by category for the current calendar week only', function () {
@@ -144,9 +144,9 @@ test('weekly category breakdown widget groups revenue by category for the curren
     // Arrived last week — should not count.
     Attendance::factory()->for($regularMember)->create(['checked_in_at' => now()->subWeeks(2), 'amount_paid' => 999]);
 
-    Livewire::test(WeeklyCategoryBreakdownWidget::class)->assertSuccessful();
+    Livewire::test(CategoryBreakdownWidget::class)->assertSuccessful();
 
-    $widget = new WeeklyCategoryBreakdownWidget;
+    $widget = new CategoryBreakdownWidget;
     $stats = (fn () => $this->getStats())->call($widget);
 
     expect($stats)->toHaveCount(2);
@@ -159,11 +159,11 @@ test('weekly category breakdown widget groups revenue by category for the curren
 test('weekly category breakdown widget is restricted to manager and up', function () {
     $door = User::factory()->create(['active' => true, 'role' => Role::Door]);
     $this->actingAs($door);
-    expect(WeeklyCategoryBreakdownWidget::canView())->toBeFalse();
+    expect(CategoryBreakdownWidget::canView())->toBeFalse();
 
     $manager = User::factory()->create(['active' => true, 'role' => Role::Manager]);
     $this->actingAs($manager);
-    expect(WeeklyCategoryBreakdownWidget::canView())->toBeTrue();
+    expect(CategoryBreakdownWidget::canView())->toBeTrue();
 });
 
 test('weekly attendance chart widget counts arrivals per week, excluding prepays and older visits', function () {
@@ -176,16 +176,16 @@ test('weekly attendance chart widget counts arrivals per week, excluding prepays
     Attendance::factory()->for($event)->create(['checked_in_at' => now()]);
     // Prepaid, never arrived — should not count.
     Attendance::factory()->for($event)->create(['checked_in_at' => null]);
-    // Arrived, but well outside the 8-week window — should not count.
+    // Arrived, but well outside the 12-week window — should not count.
     Attendance::factory()->for($event)->create(['checked_in_at' => now()->subWeeks(20)]);
 
-    Livewire::test(WeeklyAttendanceChartWidget::class)->assertSuccessful();
+    Livewire::test(AttendanceTrendChartWidget::class)->assertSuccessful();
 
-    $widget = new WeeklyAttendanceChartWidget;
+    $widget = new AttendanceTrendChartWidget;
     $data = (fn () => $this->getData())->call($widget);
 
-    expect($data['labels'])->toHaveCount(8)
-        ->and($data['datasets'][0]['data'])->toHaveCount(8)
+    expect($data['labels'])->toHaveCount(12)
+        ->and($data['datasets'][0]['data'])->toHaveCount(12)
         ->and(array_sum($data['datasets'][0]['data']))->toBe(2)
         ->and(end($data['datasets'][0]['data']))->toBe(2);
 });
@@ -193,18 +193,18 @@ test('weekly attendance chart widget counts arrivals per week, excluding prepays
 test('weekly attendance chart widget is restricted to manager and up', function () {
     $door = User::factory()->create(['active' => true, 'role' => Role::Door]);
     $this->actingAs($door);
-    expect(WeeklyAttendanceChartWidget::canView())->toBeFalse();
+    expect(AttendanceTrendChartWidget::canView())->toBeFalse();
 
     $manager = User::factory()->create(['active' => true, 'role' => Role::Manager]);
     $this->actingAs($manager);
-    expect(WeeklyAttendanceChartWidget::canView())->toBeTrue();
+    expect(AttendanceTrendChartWidget::canView())->toBeTrue();
 });
 
 test('weekly attendance chart widget forces whole-number y-axis ticks', function () {
     $manager = User::factory()->create(['active' => true, 'role' => Role::Manager]);
     $this->actingAs($manager);
 
-    $widget = new WeeklyAttendanceChartWidget;
+    $widget = new AttendanceTrendChartWidget;
     $options = (fn () => $this->getOptions())->call($widget);
 
     expect($options['scales']['y']['ticks']['stepSize'])->toBe(1)
@@ -355,7 +355,7 @@ test('subscription overview widget counts active subscribers this month by plan 
 
     $regularStat = collect($stats)->first(fn ($stat) => $stat->getLabel() === 'Active Regular subscribers');
     $poolStat = collect($stats)->first(fn ($stat) => $stat->getLabel() === 'Active Pool subscribers');
-    $revenueStat = collect($stats)->first(fn ($stat) => $stat->getLabel() === 'Subscription revenue this week');
+    $revenueStat = collect($stats)->first(fn ($stat) => $stat->getLabel() === 'Subscription revenue');
 
     expect($regularStat->getValue())->toBe(3)
         ->and($poolStat->getValue())->toBe(1)
@@ -402,9 +402,9 @@ test('monthly revenue chart widget buckets event, subscription, and other revenu
     // 13 months ago — outside the 12-month rolling window, should not count.
     Attendance::factory()->for($event)->create(['checked_in_at' => now()->startOfMonth()->subMonths(13), 'amount_paid' => 999]);
 
-    Livewire::test(MonthlyRevenueChartWidget::class)->assertSuccessful();
+    Livewire::test(RevenueTrendChartWidget::class)->assertSuccessful();
 
-    $widget = new MonthlyRevenueChartWidget;
+    $widget = new RevenueTrendChartWidget;
     $data = (fn () => $this->getData())->call($widget);
 
     expect($data['labels'])->toHaveCount(12)
@@ -419,7 +419,7 @@ test('monthly revenue chart widget stacks its scales', function () {
     $manager = User::factory()->create(['active' => true, 'role' => Role::Manager]);
     $this->actingAs($manager);
 
-    $widget = new MonthlyRevenueChartWidget;
+    $widget = new RevenueTrendChartWidget;
     $options = (fn () => $this->getOptions())->call($widget);
 
     expect($options['scales']['x']['stacked'])->toBeTrue()
@@ -429,11 +429,11 @@ test('monthly revenue chart widget stacks its scales', function () {
 test('monthly revenue chart widget is restricted to manager and up', function () {
     $door = User::factory()->create(['active' => true, 'role' => Role::Door]);
     $this->actingAs($door);
-    expect(MonthlyRevenueChartWidget::canView())->toBeFalse();
+    expect(RevenueTrendChartWidget::canView())->toBeFalse();
 
     $manager = User::factory()->create(['active' => true, 'role' => Role::Manager]);
     $this->actingAs($manager);
-    expect(MonthlyRevenueChartWidget::canView())->toBeTrue();
+    expect(RevenueTrendChartWidget::canView())->toBeTrue();
 });
 
 test('add-on revenue widget groups revenue by snapshotted name for the current calendar week only', function () {
@@ -564,7 +564,7 @@ test('register variance widget sums variance across shifts closed this week only
     $widget = new RegisterVarianceWidget;
     $stats = (fn () => $this->getStats())->call($widget);
 
-    $totalStat = collect($stats)->first(fn ($stat) => $stat->getLabel() === 'Total register variance this week');
+    $totalStat = collect($stats)->first(fn ($stat) => $stat->getLabel() === 'Total register variance');
     $countStat = collect($stats)->first(fn ($stat) => $stat->getLabel() === 'Shifts with variance');
 
     expect($totalStat->getValue())->toBe('$10.00')
@@ -583,7 +583,7 @@ test('register variance widget counts a drawer that balances to the cent as exac
     RegisterDrop::factory()->create(['register_shift_id' => $shift->id, 'amount' => 20]);
 
     $stats = (fn () => $this->getStats())->call(new RegisterVarianceWidget);
-    $totalStat = collect($stats)->first(fn ($stat) => $stat->getLabel() === 'Total register variance this week');
+    $totalStat = collect($stats)->first(fn ($stat) => $stat->getLabel() === 'Total register variance');
     $countStat = collect($stats)->first(fn ($stat) => $stat->getLabel() === 'Shifts with variance');
 
     expect($totalStat->getValue())->toBe('$0.00')

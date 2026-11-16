@@ -1,11 +1,11 @@
 <?php
 
 use App\Enums\Role;
-use App\Filament\Admin\Widgets\MonthlyRevenueChartWidget;
 use App\Filament\Admin\Widgets\RecordDeparturesWidget;
+use App\Filament\Admin\Widgets\RevenueByEventTypeWidget;
+use App\Filament\Admin\Widgets\RevenueTrendChartWidget;
 use App\Filament\Admin\Widgets\TonightOverviewWidget;
 use App\Filament\Admin\Widgets\VoucherLiabilityWidget;
-use App\Filament\Admin\Widgets\WeeklySummaryWidget;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
@@ -18,8 +18,8 @@ beforeEach(function () {
     app('translator')->setLoaded(['*' => ['*' => ['es' => [
         'Outstanding voucher liability' => 'xx-Voucher liability',
         "Tonight's check-ins" => "xx-Tonight's check-ins",
-        'This Week' => 'xx-This Week',
-        'Monthly Revenue' => 'xx-Monthly Revenue',
+        'By event type — :period' => 'xx-By event type — :period', 'This week' => 'xx-This week',
+        'Revenue trend' => 'xx-Revenue trend',
         ':count in the building' => 'xx-:count inside',
         ':occupancy/:capacity in the building' => 'xx-:occupancy of :capacity inside',
     ]]]]);
@@ -42,10 +42,10 @@ test('a stats widget heading and a chart widget heading are translated', functio
     app()->setLocale('es');
 
     // A stats widget's getHeading() is protected, so read it from inside the instance.
-    $statsWidget = Livewire::test(WeeklySummaryWidget::class)->instance();
+    $statsWidget = Livewire::test(RevenueByEventTypeWidget::class)->instance();
 
-    expect((fn () => $this->getHeading())->call($statsWidget))->toBe('xx-This Week')
-        ->and(Livewire::test(MonthlyRevenueChartWidget::class)->instance()->getHeading())->toBe('xx-Monthly Revenue');
+    expect((fn () => $this->getHeading())->call($statsWidget))->toBe('xx-By event type — xx-This week')
+        ->and(Livewire::test(RevenueTrendChartWidget::class)->instance()->getHeading())->toBe('xx-Revenue trend');
 });
 
 test('the departures widget text is translated and unchanged in English', function () {

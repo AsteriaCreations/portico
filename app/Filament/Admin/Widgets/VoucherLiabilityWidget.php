@@ -4,7 +4,8 @@ namespace App\Filament\Admin\Widgets;
 
 use App\Enums\Role;
 use App\Models\MembershipSetting;
-use App\Models\Voucher;
+use App\Services\Analytics\RevenueAnalytics;
+use App\Support\Cents;
 use Filament\Widgets\StatsOverviewWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
 
@@ -31,7 +32,10 @@ class VoucherLiabilityWidget extends StatsOverviewWidget
     protected function getStats(): array
     {
         return [
-            Stat::make(__('Outstanding voucher liability'), MembershipSetting::formatMoney(Voucher::sum('amount'))),
+            Stat::make(
+                __('Outstanding voucher liability'),
+                MembershipSetting::formatMoney(Cents::toFloat(app(RevenueAnalytics::class)->voucherLiabilityCents())),
+            )->description(__('As of today')),
         ];
     }
 }

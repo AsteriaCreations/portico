@@ -2,18 +2,19 @@
 
 namespace App\Filament\Admin\Widgets;
 
-use App\Enums\EntryCoverageSource;
 use App\Enums\Role;
+use App\Filament\Concerns\ReadsAnalyticsPeriod;
 use App\Models\MembershipSetting;
+use App\Services\Analytics\AttendanceAnalytics;
+use App\Support\Cents;
 use Filament\Widgets\StatsOverviewWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
-use Illuminate\Support\Facades\DB;
 
 /**
  * Foregone revenue from per-event comps (App\Enums\EntryCoverageSource::
- * EventComp), grouped by comp_reasons, this week -- useful for spotting
- * whether a comp reason is being overused, distinct from Voucher
- * LiabilityWidget's real cash-at-risk figure. Scoped to EventComp
+ * EventComp), grouped by comp_reasons, over the Analytics page's period --
+ * useful for spotting whether a comp reason is being overused, distinct from
+ * VoucherLiabilityWidget's real cash-at-risk figure. Scoped to EventComp
  * specifically, not Host (which isn't reason-tagged the same way and is
  * already its own documented, separately-tested concept). Not gated by
  * showrunner_comp_requests_enabled -- that flag only covers the Showrunner
@@ -21,13 +22,15 @@ use Illuminate\Support\Facades\DB;
  */
 class CompCostWidget extends StatsOverviewWidget
 {
+    use ReadsAnalyticsPeriod;
+
     // See TonightOverviewWidget's own comment on why this is set — same
     // Analytics-page visibility and testability reasoning.
     protected static bool $isLazy = false;
 
     protected function getHeading(): ?string
     {
-        return __('Comp Cost This Week');
+        return __('Comp cost — :period', ['period' => $this->period()->label()]);
     }
 
     public static function canView(): bool
@@ -37,19 +40,9 @@ class CompCostWidget extends StatsOverviewWidget
 
     protected function getStats(): array
     {
-        $rows = DB::table('attendance')
-            ->join('comp_reasons', 'comp_reasons.id', '=', 'attendance.comp_reason_id')
-            ->whereNotNull('attendance.checked_in_at')
-            ->where('attendance.entry_covered_by', EntryCoverageSource::EventComp->value)
-            ->whereBetween('attendance.checked_in_at', [MembershipSetting::startOfWeek(), MembershipSetting::endOfWeek()])
-            ->groupBy('comp_reasons.id', 'comp_reasons.name', 'comp_reasons.sort_order')
-            ->orderBy('comp_reasons.sort_order')
-            ->selectRaw('comp_reasons.name as name, COUNT(*) as comps, SUM(attendance.entry_coverage) as foregone')
-            ->get();
-
-        return $rows
-            ->map(fn ($row) => Stat::make($row->name, trans_choice(':count comp|:count comps', $row->comps))
-                ->description(__(':amount foregone', ['amount' => MembershipSetting::formatMoney($row->foregone)])))
+        return app(AttendanceAnalytics::class)->compCostByReason($this->period())
+            ->map(fn (array $row) => Stat::make($row['name'], trans_choice(':count comp|:count comps', $row['comps']))
+                ->description(__(':amount foregone', ['amount' => MembershipSetting::formatMoney(Cents::toFloat($row['foregone_cents']))])))
             ->all();
     }
 }

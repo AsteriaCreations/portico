@@ -97,7 +97,7 @@ rarely need to touch most of them.
 | Organization logo | *(none)* | Owner only. Replaces the name in the panel header, the login page and the kiosk — see "Name & branding". |
 | Language | *(blank — server default, English)* | The admin panel's language for everyone on this install. Lists only languages that have a `lang/{code}.json` translation file; with none installed, English is the only choice. Names you enter yourself (categories, comp reasons, plans, …) are never translated. |
 | Currency code | `USD` | A 3-letter ISO 4217 code, used everywhere a money figure is shown — the check-in desk's live totals, every Analytics widget, and every money column in the admin panel. |
-| Week starts on | *(blank — follows the language; Monday in English)* | First day of the club's week, for the "this week" figures on Analytics. |
+| Week starts on | *(blank — follows the language; Monday in English)* | First day of the club's week, for the "This week" and "Last week" periods and the weekly trends on Analytics. |
 | Staff schedule week starts on | *(blank — same as Week starts on)* | First day of each week on the staff schedule (e.g. Thursday for a Thursday–Wednesday rota). Only matters with Staff scheduling on. |
 | One-shift nights | *(none)* | Days whose events get one whole-night shift by default instead of Open and Close (e.g. Sunday–Thursday). Any event can be changed on Staffing. |
 | Handover between Open and Close (minutes) | 30 | Close starts this long before Open ends, so the shifts overlap. |
