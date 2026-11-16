@@ -5,6 +5,7 @@ namespace App\Providers;
 use App\Enums\Role;
 use App\Models\AttendanceBehaviorNote;
 use App\Models\CompReason;
+use App\Models\Event as EventModel;
 use App\Models\Member;
 use App\Models\MembershipSetting;
 use App\Models\User;
@@ -12,6 +13,7 @@ use App\Observers\CompReasonObserver;
 use App\Observers\MemberObserver;
 use App\Observers\UserObserver;
 use App\Services\BehaviorNoteRetractionService;
+use App\Services\EventTimelineService;
 use App\Services\RoleTaskService;
 use App\Services\ShiftAvailabilityService;
 use App\Services\ShiftScheduleService;
@@ -143,6 +145,11 @@ class AppServiceProvider extends ServiceProvider
 
         Gate::define('manage-behavior-notes', fn (User $user): bool => $user->role->atLeast(Role::Volunteer)
             && MembershipSetting::current()->behavior_notes_enabled);
+
+        // An event's run of show: its own showrunner while it's current or
+        // upcoming, Admin+ for any event. The rule (flag included) lives in
+        // EventTimelineService, which re-checks it on every write.
+        Gate::define('edit-event-timeline', fn (User $user, EventModel $event): bool => app(EventTimelineService::class)->canEdit($user, $event));
 
         // Taking back one behavior note: Manager+ for any note, the author
         // for their own. The rule (incl. the feature flag) lives in

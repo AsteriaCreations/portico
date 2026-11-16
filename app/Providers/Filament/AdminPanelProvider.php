@@ -10,6 +10,7 @@ use App\Filament\Admin\Resources\AddOns\AddOnResource;
 use App\Filament\Admin\Resources\Categories\CategoryResource;
 use App\Filament\Admin\Resources\CompReasons\CompReasonResource;
 use App\Filament\Admin\Resources\Events\EventResource;
+use App\Filament\Admin\Resources\EventTimelineCategories\EventTimelineCategoryResource;
 use App\Filament\Admin\Resources\EventTypes\EventTypeResource;
 use App\Filament\Admin\Resources\IssueReports\IssueReportResource;
 use App\Filament\Admin\Resources\Members\MemberResource;
@@ -168,6 +169,7 @@ class AdminPanelProvider extends PanelProvider
             CompReasonResource::class => 'comp-reasons',
             EventTypeResource::class => 'event-types',
             EventResource::class => 'events',
+            EventTimelineCategoryResource::class => 'event-timeline-categories',
             IssueReportResource::class => 'issue-reports',
             MemberResource::class => 'members',
             PaperworkTypeResource::class => 'paperwork-types',

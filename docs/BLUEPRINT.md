@@ -816,6 +816,16 @@ Behind `staff_scheduling_enabled` (default off). A **shift role** (Admin+) (`shi
 
 ---
 
+## Event timelines (run of show)
+
+Behind `event_timelines_enabled` (default off). An event's timeline (`event_timeline_items`) is what happens when during it: a `title`, optional `description`, `starts_at` and an optional `ends_at` (none = a moment, "Raffle draw"), each between the event's own `starts_at` and `ends_at` (an event without both has no timeline). It's a plan, not a ledger: items are edited and deleted freely (`created_by`/`updated_by` kept), and go when the event is deleted. All rules live in `EventTimelineService`.
+
+**Who edits.** The event's assigned showrunner (the login linked to `events.showrunner_id`, whatever its role) while the event is current or upcoming, and Admin+ for any unarchived event, past ones included (`edit-event-timeline` gate, the flag baked in; every write re-checks it). Manager can't, in line with event editing being Admin+.
+
+**Who sees what.** Each item has a **timeline category** (`event_timeline_categories`, Admin+): a `color`, and either `is_public` (for attendees: the printed sheet and display screen, and every signed-in user) or a `min_role` (staff at or above it; none = the showrunner and Admin+ only). The showrunner of the event and Admin+ see every category. Seeded: *Public*, and *Event staff* (Volunteer and up). A category in use can't be deleted.
+
+**The page.** **Event timeline** (Front of House) is a day view from the event's start to its end, hour lines and 15-minute click targets (`EventTimelineService::SLOT_MINUTES`): click empty space to add an item there, click an item to change or delete it; overlapping items sit side by side (`layout()`). *Add item* does the same from the keyboard, and an *In order* list under the grid reads the timeline as text. An event's View/Edit page has a *Timeline* link for whoever can edit it.
+
 ## Build order (thin vertical slices)
 
 The app was built in thin vertical slices, in roughly this order — a useful reading order for the codebase:
