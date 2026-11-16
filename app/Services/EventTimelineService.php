@@ -56,6 +56,21 @@ class EventTimelineService
     }
 
     /**
+     * Whether $user may read $event's timeline (the categories they see):
+     * anyone who can edit it, and Volunteer+ for a current or upcoming
+     * event.
+     */
+    public function canView(User $user, Event $event): bool
+    {
+        if ($this->canEdit($user, $event)) {
+            return true;
+        }
+
+        return $this->enabled() && $user->active && ! $event->isArchived()
+            && $user->role->atLeast(Role::Volunteer) && $event->isCurrentOrFuture();
+    }
+
+    /**
      * Whether $user may open the Event timeline page at all.
      */
     public function canAccessPage(User $user): bool
@@ -64,9 +79,41 @@ class EventTimelineService
             return false;
         }
 
-        return $user->role->atLeast(Role::Admin)
+        return $user->role->atLeast(Role::Volunteer)
             || $user->role === Role::Showrunner
             || ($user->member_id !== null && Event::currentOrFutureQuery()->where('showrunner_id', $user->member_id)->exists());
+    }
+
+    /**
+     * The events $user may pick to read: every current or upcoming one for
+     * Volunteer+, else the ones they can edit.
+     *
+     * @return Builder<Event>
+     */
+    public function viewableEventsQuery(User $user): Builder
+    {
+        return $user->role->atLeast(Role::Volunteer)
+            ? Event::currentOrFutureQuery()
+            : $this->editableEventsQuery($user);
+    }
+
+    /**
+     * What's on now and what's next on $event for $user: "now" is a span
+     * under way, or a moment from the last SLOT_MINUTES; "next" is the
+     * soonest $limit items still to start.
+     *
+     * @return array{now: Collection<int, EventTimelineItem>, next: Collection<int, EventTimelineItem>}
+     */
+    public function nowAndNext(Event $event, ?User $user, ?CarbonInterface $at = null, int $limit = 3): array
+    {
+        $at ??= now();
+        $items = $this->itemsFor($event, $user);
+
+        return [
+            'now' => $items->filter(fn (EventTimelineItem $item): bool => $item->starts_at->lte($at)
+                && ($item->ends_at ? $item->ends_at->gt($at) : $item->starts_at->gt($at->copy()->subMinutes(self::SLOT_MINUTES))))->values(),
+            'next' => $items->filter(fn (EventTimelineItem $item): bool => $item->starts_at->gt($at))->take($limit)->values(),
+        ];
     }
 
     /**

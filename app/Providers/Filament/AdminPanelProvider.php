@@ -31,6 +31,7 @@ use App\Filament\Admin\Resources\TaskAreas\TaskAreaResource;
 use App\Filament\Admin\Resources\Users\UserResource;
 use App\Filament\Admin\Resources\VisitRemovals\VisitRemovalResource;
 use App\Filament\Admin\Resources\Vouchers\VoucherResource;
+use App\Filament\Admin\Widgets\EventTimelineNowWidget;
 use App\Filament\Admin\Widgets\RecordDeparturesWidget;
 use App\Http\Middleware\RequirePasswordChange;
 use App\Http\Middleware\SetLocale;
@@ -133,6 +134,7 @@ class AdminPanelProvider extends PanelProvider
             ->widgets([
                 AccountWidget::class,
                 RecordDeparturesWidget::class,
+                EventTimelineNowWidget::class,
             ])
             ->middleware([
                 EncryptCookies::class,

@@ -3,6 +3,7 @@
 use App\Enums\Role;
 use App\Filament\Admin\Pages\EventTimeline;
 use App\Filament\Admin\Resources\EventTimelineCategories\Pages\ListEventTimelineCategories;
+use App\Filament\Admin\Widgets\EventTimelineNowWidget;
 use App\Models\Event;
 use App\Models\EventTimelineCategory;
 use App\Models\EventTimelineItem;
@@ -101,17 +102,103 @@ test('with the flag off nobody edits a timeline or reaches the page', function (
     expect(EventTimeline::canAccess())->toBeFalse();
 });
 
-test('the page is for Admin+ and showrunners only in this slice', function () {
+test('the page is for Volunteer+ and showrunners', function () {
     $event = timelineEvent();
 
     $this->actingAs(timelineShowrunner($event));
     expect(EventTimeline::canAccess())->toBeTrue();
 
-    $this->actingAs(timelineUser(Role::Admin));
-    expect(EventTimeline::canAccess())->toBeTrue();
+    foreach ([Role::Volunteer, Role::Manager, Role::Admin] as $role) {
+        $this->actingAs(timelineUser($role));
+        expect(EventTimeline::canAccess())->toBeTrue();
+    }
+});
 
-    $this->actingAs(timelineUser(Role::Manager));
-    expect(EventTimeline::canAccess())->toBeFalse();
+test('Volunteer+ read a current or upcoming event\'s timeline, not a past one, and can\'t add to it', function () {
+    $event = timelineEvent();
+    $past = Event::factory()->create(['event_date' => today()->subWeek(), 'starts_at' => today()->subWeek()->setTime(20, 0), 'ends_at' => today()->subWeek()->setTime(23, 0)]);
+    $manager = EventTimelineCategory::factory()->forRole(Role::Manager)->create();
+    EventTimelineItem::factory()->create(['event_id' => $event->id, 'event_timeline_category_id' => EventTimelineCategory::where('name', 'Event staff')->value('id'), 'title' => 'Stock the bar', 'starts_at' => $event->starts_at]);
+    EventTimelineItem::factory()->create(['event_id' => $event->id, 'event_timeline_category_id' => $manager->id, 'title' => 'Count the float', 'starts_at' => $event->starts_at]);
+
+    $volunteer = timelineUser(Role::Volunteer);
+    $service = app(EventTimelineService::class);
+    expect($service->canView($volunteer, $event))->toBeTrue()
+        ->and($service->canView($volunteer, $past))->toBeFalse()
+        ->and($service->canView(timelineUser(Role::Showrunner), $event))->toBeFalse();
+
+    $this->actingAs($volunteer);
+    $page = Livewire::test(EventTimeline::class)
+        ->assertSet('data.event_id', $event->id)
+        ->assertSee('Stock the bar')
+        ->assertDontSee('Count the float')
+        ->assertActionHidden('addItem')
+        ->assertActionHidden('editItem')
+        ->set('data.event_id', $past->id);
+
+    expect($page->instance()->getSelectedEvent())->toBeNull();
+});
+
+test('Show public only hides staff items, and Print is offered', function () {
+    $event = timelineEvent();
+    EventTimelineItem::factory()->create(['event_id' => $event->id, 'event_timeline_category_id' => EventTimelineCategory::where('name', 'Public')->value('id'), 'title' => 'Doors open', 'starts_at' => $event->starts_at]);
+    EventTimelineItem::factory()->create(['event_id' => $event->id, 'event_timeline_category_id' => EventTimelineCategory::where('name', 'Event staff')->value('id'), 'title' => 'Stock the bar', 'starts_at' => $event->starts_at]);
+    $this->actingAs(timelineUser(Role::Admin));
+
+    Livewire::test(EventTimeline::class)
+        ->assertSee('Stock the bar')
+        ->assertActionVisible('print')
+        ->callAction('togglePublicOnly')
+        ->assertSee('Doors open')
+        ->assertDontSee('Stock the bar')
+        ->assertSee('Showing public items only');
+});
+
+test('now and next: a span under way or a moment just passed is now; the soonest later ones are next', function () {
+    $event = timelineEvent();
+    $public = EventTimelineCategory::where('name', 'Public')->value('id');
+    $at = $event->starts_at->copy()->addHour();
+    $make = fn (string $title, Carbon $from, ?Carbon $to) => EventTimelineItem::factory()->create(['event_id' => $event->id, 'event_timeline_category_id' => $public, 'title' => $title, 'starts_at' => $from, 'ends_at' => $to]);
+
+    $make('Over', $event->starts_at->copy(), $at->copy());
+    $make('Running', $at->copy()->subMinutes(30), $at->copy()->addMinutes(30));
+    $make('Just drawn', $at->copy()->subMinutes(5), null);
+    $make('Long ago moment', $at->copy()->subMinutes(40), null);
+    foreach (['Later 1', 'Later 2', 'Later 3', 'Later 4'] as $n => $title) {
+        $make($title, $at->copy()->addMinutes(10 * ($n + 1)), null);
+    }
+
+    $result = app(EventTimelineService::class)->nowAndNext($event, null, $at);
+
+    expect($result['now']->pluck('title')->all())->toBe(['Running', 'Just drawn'])
+        ->and($result['next']->pluck('title')->all())->toBe(['Later 1', 'Later 2', 'Later 3']);
+});
+
+test('the Dashboard widget shows what\'s on now and next at a running event, only in categories the viewer sees', function () {
+    $event = Event::factory()->create(['event_date' => today(), 'starts_at' => now()->subHour(), 'ends_at' => now()->addHours(3)]);
+    $staff = EventTimelineCategory::where('name', 'Event staff')->value('id');
+    $manager = EventTimelineCategory::factory()->forRole(Role::Manager)->create();
+    EventTimelineItem::factory()->create(['event_id' => $event->id, 'event_timeline_category_id' => $staff, 'title' => 'Workshop', 'starts_at' => now()->subMinutes(10), 'ends_at' => now()->addMinutes(20)]);
+    EventTimelineItem::factory()->create(['event_id' => $event->id, 'event_timeline_category_id' => $staff, 'title' => 'Raffle draw', 'starts_at' => now()->addHour(), 'ends_at' => null]);
+    EventTimelineItem::factory()->create(['event_id' => $event->id, 'event_timeline_category_id' => $manager->id, 'title' => 'Count the float', 'starts_at' => now()->addMinutes(30), 'ends_at' => null]);
+
+    $this->actingAs(timelineUser(Role::Volunteer))
+        ->get('/admin')
+        ->assertSuccessful()
+        ->assertSee('Workshop')
+        ->assertSee('Raffle draw')
+        ->assertDontSee('Count the float');
+
+    MembershipSetting::current()->update(['event_timelines_enabled' => false]);
+    $this->actingAs(timelineUser(Role::Volunteer));
+    expect(EventTimelineNowWidget::canView())->toBeFalse();
+});
+
+test('the Dashboard widget stays away with no running event that has a timeline', function () {
+    $this->actingAs(timelineUser(Role::Admin));
+    Event::factory()->create(['event_date' => today(), 'starts_at' => now()->subHour(), 'ends_at' => now()->addHours(3)]);
+
+    expect(EventTimelineNowWidget::canView())->toBeFalse();
 });
 
 test('a Manager calling the service directly is refused and nothing is written', function () {

@@ -16,6 +16,9 @@ releases below could carry small breaking changes in a minor release.
   out what happens when on an *Event timeline* day grid bounded by the event's start and end.
   Each item has a *Timeline category* (Admin+) saying who sees it: Public, or staff from a given
   role up. Migration: two new tables, seeded with *Public* and *Event staff*.
+- Event timelines for the rest of the staff: Volunteer+ read a current or upcoming event's timeline
+  (the categories they see), *Show public only* shows it as attendees would and *Print* prints
+  what's shown, and a *Tonight's timeline* Dashboard widget shows what's on now and up next.
 
 ## [1.1.0] — 2026-11-15
 

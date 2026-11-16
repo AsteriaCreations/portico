@@ -113,6 +113,8 @@ EVENT TIMELINES
 --------------------------
 - Event timeline (Feature Flags, off by default): the event's showrunner (until it ends) or an Admin+ lays out its run of show on a day grid bounded by the event's start and end — click to add, click an item to change or delete it, overlaps side by side, plus an in-order list
 - Timeline categories (Admin+): colour, and Public (attendees) or seen by staff from a chosen role up; seeded Public and Event staff
+- Volunteer+ read current and upcoming timelines (only the categories they see); Show public only + Print for a sheet to post
+- Tonight's timeline Dashboard widget: now and up next at each running event, polling every minute
 
 VOUCHERS & COMP REWARDS
 -------------------------
