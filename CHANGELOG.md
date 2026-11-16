@@ -23,6 +23,8 @@ releases below could carry small breaking changes in a minor release.
   door: what's on now and next at each event (private rentals left out), reloading every minute.
   Needs no sign-in or device link; it shows Public items only. *Display screen* on the Event
   timeline page opens it.
+- A red "now" line across the Event timeline grid while the event is on, with the time, moving on
+  by itself every 30 seconds.
 
 ## [1.1.0] — 2026-11-15
 
