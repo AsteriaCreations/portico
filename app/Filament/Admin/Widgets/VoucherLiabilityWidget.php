@@ -3,6 +3,7 @@
 namespace App\Filament\Admin\Widgets;
 
 use App\Enums\Role;
+use App\Filament\Admin\Resources\Vouchers\VoucherResource;
 use App\Models\MembershipSetting;
 use App\Services\Analytics\RevenueAnalytics;
 use App\Support\Cents;
@@ -35,7 +36,7 @@ class VoucherLiabilityWidget extends StatsOverviewWidget
             Stat::make(
                 __('Outstanding voucher liability'),
                 MembershipSetting::formatMoney(Cents::toFloat(app(RevenueAnalytics::class)->voucherLiabilityCents())),
-            )->description(__('As of today')),
+            )->description(__('As of today'))->url(VoucherResource::getUrl('index')),
         ];
     }
 }

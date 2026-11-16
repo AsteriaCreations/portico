@@ -204,6 +204,38 @@ class MembersTable
 
                         return $indicators;
                     }),
+                // By first arrived visit, not by when the record was made
+                // (Member::scopeFirstVisitedBetween()). Analytics links its
+                // first-time visitor count here.
+                Filter::make('first_visit')
+                    ->schema([
+                        DatePicker::make('first_visit_from')->label('First visit from'),
+                        DatePicker::make('first_visit_until')->label('First visit until'),
+                    ])
+                    ->query(function (Builder $query, array $data): Builder {
+                        $from = $data['first_visit_from'] ?? null;
+                        $until = $data['first_visit_until'] ?? null;
+
+                        if (! $from && ! $until) {
+                            return $query;
+                        }
+
+                        return $query->firstVisitedBetween(
+                            $from ? Carbon::parse($from)->startOfDay() : Carbon::create(1900),
+                            $until ? Carbon::parse($until)->startOfDay()->addDay() : Carbon::create(9999),
+                        );
+                    })
+                    ->indicateUsing(function (array $data): array {
+                        $indicators = [];
+                        if ($data['first_visit_from'] ?? null) {
+                            $indicators[] = __('First visit from :date', ['date' => Carbon::parse($data['first_visit_from'])->isoFormat('ll')]);
+                        }
+                        if ($data['first_visit_until'] ?? null) {
+                            $indicators[] = __('First visit until :date', ['date' => Carbon::parse($data['first_visit_until'])->isoFormat('ll')]);
+                        }
+
+                        return $indicators;
+                    }),
             ])
             ->recordActions([
                 EditAction::make(),

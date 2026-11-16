@@ -143,8 +143,9 @@ test('the overview tab stays within its query budget', function () {
     $queries = count(DB::getQueryLog());
     DB::disableQueryLog();
 
-    // Two 12-step trend charts (1 and 4 queries a step) plus the panel's own.
-    expect($queries)->toBeLessThan(75);
+    // Two 12-step trend charts (1 and 4 queries a step), the headline (five
+    // figures, each for the period and the one before) and the panel's own.
+    expect($queries)->toBeLessThan(95);
 });
 
 test('a door volunteer is forbidden from the analytics page', function () {

@@ -3,6 +3,7 @@
 namespace App\Filament\Admin\Widgets;
 
 use App\Enums\Role;
+use App\Filament\Admin\Resources\RegisterShifts\RegisterShiftResource;
 use App\Filament\Concerns\ReadsAnalyticsPeriod;
 use App\Models\MembershipSetting;
 use App\Services\Analytics\RevenueAnalytics;
@@ -64,7 +65,8 @@ class RegisterVarianceWidget extends StatsOverviewWidget
                     $total > 0 => Heroicon::ArrowUpCircle,
                     default => Heroicon::ArrowDownCircle,
                 }),
-            Stat::make(__('Shifts with variance'), __(':count of :total', ['count' => $variance['with_variance'], 'total' => $variance['shifts']])),
+            Stat::make(__('Shifts with variance'), __(':count of :total', ['count' => $variance['with_variance'], 'total' => $variance['shifts']]))
+                ->url(RegisterShiftResource::getUrl('index')),
         ];
     }
 }

@@ -116,6 +116,38 @@ final class AnalyticsPeriod
     }
 
     /**
+     * This period as far as it has run: cut off at the end of today when it
+     * is still under way. A period that is over, or hasn't begun, is itself.
+     */
+    public function elapsed(): self
+    {
+        $tomorrow = CarbonImmutable::now()->startOfDay()->addDay();
+
+        return $tomorrow->greaterThan($this->from) && $tomorrow->lessThan($this->untilExclusive)
+            ? new self($this->preset, $this->from, $tomorrow, $this->label)
+            : $this;
+    }
+
+    /**
+     * The like-for-like stretch before this one, to compare it with: the same
+     * days one week, month, quarter or year earlier for a preset (so the 1st
+     * to the 18th is set against the 1st to the 18th of the month before),
+     * and the same number of days immediately before for custom dates.
+     */
+    public function previous(): self
+    {
+        $shift = match ($this->preset) {
+            'this_week', 'last_week' => fn (CarbonImmutable $day): CarbonImmutable => $day->subWeek(),
+            'this_month', 'last_month' => fn (CarbonImmutable $day): CarbonImmutable => $day->subMonthNoOverflow(),
+            'this_quarter' => fn (CarbonImmutable $day): CarbonImmutable => $day->subMonthsNoOverflow(3),
+            'this_year', 'last_12_months' => fn (CarbonImmutable $day): CarbonImmutable => $day->subYearNoOverflow(),
+            default => fn (CarbonImmutable $day): CarbonImmutable => $day->subDays((int) $this->from->diffInDays($this->untilExclusive)),
+        };
+
+        return new self(self::CUSTOM, $shift($this->from), $shift($this->untilExclusive));
+    }
+
+    /**
      * The step a trend chart uses for this period: weeks for a period of a
      * week or less, months for anything longer.
      */
