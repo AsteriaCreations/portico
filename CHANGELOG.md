@@ -12,6 +12,13 @@ releases below could carry small breaking changes in a minor release.
 
 ### Added
 
+- **Analytics: one period for the whole page, and tabs.** A *Period* picker at the top (this or last
+  week, this or last month, this quarter, this year, last 12 months, or custom dates) now drives
+  every figure that covers a span of time, and the widgets are grouped into *Overview*, *Revenue*
+  and *Members* tabs; only the open tab runs its queries. The trend charts show the twelve weeks
+  or months ending with the chosen period and repeat their numbers as a table for screen readers.
+  The page opens on *This week*, so the tiles read as before; the charts now open by week rather
+  than on a fixed 12 months (pick a longer period for months). No migration.
 - **Event timelines** (Feature Flags, off by default): an event's showrunner, or an Admin+, lays
   out what happens when on an *Event timeline* day grid bounded by the event's start and end.
   Each item has a *Timeline category* (Admin+) saying who sees it: Public, or staff from a given

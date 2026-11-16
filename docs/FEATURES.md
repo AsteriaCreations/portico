@@ -134,9 +134,10 @@ ROLES & PERMISSIONS
 
 REPORTING & ANALYTICS
 ------------------------
-- Tonight/weekly attendance overview
-- Weekly per-event-type and per-category breakdowns
-- 12-month revenue trend (Event/Subscription/Other)
+- Analytics page in tabs (Overview, Revenue, Members) with one period picker for the whole page: this or last week, month, quarter, year, last 12 months, or custom dates
+- Tonight's attendance overview
+- Per-event-type and per-category breakdowns for the chosen period
+- Revenue, attendance and new-member trends by week or month (Event/Subscription/Rental/Other), each repeated as a table for screen readers
 - Voucher liability (outstanding credit owed)
 - Subscription overview (active counts + revenue)
 - Add-on revenue breakout

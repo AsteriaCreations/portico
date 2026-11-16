@@ -3,15 +3,14 @@
 namespace App\Filament\Admin\Widgets;
 
 use App\Enums\Role;
+use App\Services\Analytics\MembershipAnalytics;
 use Filament\Widgets\StatsOverviewWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
-use Illuminate\Support\Facades\DB;
 
 /**
- * All-time active-member composition by category -- the roster itself, not
- * this-week visits (WeeklyCategoryBreakdownWidget's own concern). Least
- * time-sensitive of the seven ranked reporting gaps, but rounds out the
- * series: the club's whole makeup had no view anywhere on Analytics.
+ * Active-member composition by category as it stands today -- the roster
+ * itself, not visits (CategoryBreakdownWidget's own concern), so it doesn't
+ * follow the Analytics page's period.
  */
 class MembershipCompositionWidget extends StatsOverviewWidget
 {
@@ -31,16 +30,8 @@ class MembershipCompositionWidget extends StatsOverviewWidget
 
     protected function getStats(): array
     {
-        $rows = DB::table('members')
-            ->join('categories', 'categories.id', '=', 'members.category_id')
-            ->where('members.is_active', true)
-            ->groupBy('categories.id', 'categories.name', 'categories.sort_order')
-            ->orderBy('categories.sort_order')
-            ->selectRaw('categories.name as name, COUNT(*) as members')
-            ->get();
-
-        return $rows
-            ->map(fn ($row) => Stat::make($row->name, trans_choice(':count member|:count members', $row->members)))
+        return app(MembershipAnalytics::class)->activeByCategory()
+            ->map(fn (array $row) => Stat::make($row['name'], trans_choice(':count member|:count members', $row['members'])))
             ->all();
     }
 }

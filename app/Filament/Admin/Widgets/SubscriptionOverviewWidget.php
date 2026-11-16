@@ -3,26 +3,35 @@
 namespace App\Filament\Admin\Widgets;
 
 use App\Enums\Role;
+use App\Filament\Concerns\ReadsAnalyticsPeriod;
 use App\Models\AddOn;
 use App\Models\MembershipSetting;
-use App\Models\Subscription;
+use App\Services\Analytics\MembershipAnalytics;
+use App\Services\Analytics\RevenueAnalytics;
+use App\Support\Cents;
 use Filament\Widgets\StatsOverviewWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
 
 /**
- * Subscriptions are a core recurring revenue stream with no prior Analytics
- * visibility at all. "Active this month" mirrors Member::
- * hasActiveSubscriptionFor()'s own predicate (covered_month is stored as a
- * first-of-month date, per SubscriptionBundleService::resolveStart());
- * revenue windows on paid_on (when money actually changed hands), not
- * covered_month, matching how cash reporting elsewhere windows on
- * transaction date rather than covered period.
+ * Subscriptions are a core recurring revenue stream. The subscriber counts
+ * are for the current month whatever period the Analytics page shows (who
+ * holds one now); the revenue figure follows the page's period, windowed on
+ * paid_on (when money actually changed hands), not covered_month, matching
+ * how cash reporting elsewhere windows on transaction date rather than
+ * covered period.
  */
 class SubscriptionOverviewWidget extends StatsOverviewWidget
 {
+    use ReadsAnalyticsPeriod;
+
     // See TonightOverviewWidget's own comment on why this is set — same
     // Analytics-page visibility and testability reasoning.
     protected static bool $isLazy = false;
+
+    protected function getHeading(): ?string
+    {
+        return __('Subscriptions');
+    }
 
     public static function canView(): bool
     {
@@ -31,16 +40,11 @@ class SubscriptionOverviewWidget extends StatsOverviewWidget
 
     protected function getStats(): array
     {
-        $thisMonth = now()->startOfMonth()->toDateString();
+        $membership = app(MembershipAnalytics::class);
 
         $stats = [
-            Stat::make(
-                __('Active Regular subscribers'),
-                Subscription::where('add_on_id', AddOn::entry()->id)
-                    ->whereDate('covered_month', $thisMonth)
-                    ->distinct('member_id')
-                    ->count('member_id'),
-            ),
+            Stat::make(__('Active Regular subscribers'), $membership->activeSubscribers(AddOn::entry(), now()))
+                ->description(__('This month')),
         ];
 
         // Pool subscriptions aren't retroactively hidden once purchased (see
@@ -48,21 +52,14 @@ class SubscriptionOverviewWidget extends StatsOverviewWidget
         // off entirely doesn't need this count cluttering the page.
         $poolAddOn = AddOn::pool();
         if ($poolAddOn && MembershipSetting::current()->pool_enabled) {
-            $stats[] = Stat::make(
-                __('Active Pool subscribers'),
-                Subscription::where('add_on_id', $poolAddOn->id)
-                    ->whereDate('covered_month', $thisMonth)
-                    ->distinct('member_id')
-                    ->count('member_id'),
-            );
+            $stats[] = Stat::make(__('Active Pool subscribers'), $membership->activeSubscribers($poolAddOn, now()))
+                ->description(__('This month'));
         }
 
         $stats[] = Stat::make(
-            __('Subscription revenue this week'),
-            MembershipSetting::formatMoney(
-                Subscription::whereBetween('paid_on', [MembershipSetting::startOfWeek(), MembershipSetting::endOfWeek()])->sum('amount_paid'),
-            ),
-        );
+            __('Subscription revenue'),
+            MembershipSetting::formatMoney(Cents::toFloat(app(RevenueAnalytics::class)->subscriptionCents($this->period()))),
+        )->description($this->period()->label());
 
         return $stats;
     }

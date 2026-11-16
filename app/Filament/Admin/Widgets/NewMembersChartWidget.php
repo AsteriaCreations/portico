@@ -2,38 +2,19 @@
 
 namespace App\Filament\Admin\Widgets;
 
-use App\Enums\Role;
-use App\Models\Member;
-use Filament\Widgets\ChartWidget;
+use App\Services\Analytics\MembershipAnalytics;
+use App\Support\AnalyticsPeriod;
 
 /**
- * 12-month rolling count of newly-created members, same iteration shape as
- * MonthlyRevenueChartWidget. Known, deliberately accepted caveat: created_at
- * is the right signal for anyone created through the live app (guest
- * registration, admin create, Prospective promotion), but a one-time bulk
- * import of a historical roster won't backdate created_at, so those members
- * cluster on the day the import ran. date_vetted isn't a substitute either
- * -- it's a plain optional field on MemberForm, never auto-set, so it's
- * sparse for live-created members too. Not engineered around, matching this
- * codebase's existing "note it, don't special-case a one-time historical
- * event" philosophy.
+ * Member records created per week or month. After a bulk import every
+ * imported member lands in the import's own week, so that bar is the import,
+ * not a rush of new people.
  */
-class NewMembersChartWidget extends ChartWidget
+class NewMembersChartWidget extends AnalyticsChartWidget
 {
-    private const MONTHS = 12;
-
-    // See TonightOverviewWidget's own comment on why this is set — same
-    // Analytics-page visibility and testability reasoning.
-    protected static bool $isLazy = false;
-
     public function getHeading(): ?string
     {
         return __('New Members');
-    }
-
-    public static function canView(): bool
-    {
-        return auth()->user()?->role->atLeast(Role::Manager) ?? false;
     }
 
     protected function getType(): string
@@ -43,35 +24,19 @@ class NewMembersChartWidget extends ChartWidget
 
     protected function getData(): array
     {
-        $months = collect(range(self::MONTHS - 1, 0))
-            ->map(fn (int $monthsAgo) => now()->startOfMonth()->subMonths($monthsAgo));
+        $analytics = app(MembershipAnalytics::class);
 
         return [
             'datasets' => [[
                 'label' => __('New members'),
-                'data' => $months->map(fn ($month) => Member::query()
-                    ->whereBetween('created_at', [$month, $month->copy()->endOfMonth()])
-                    ->count())->all(),
+                'data' => $this->perBucket(fn (AnalyticsPeriod $bucket): int => $analytics->newMembers($bucket)),
             ]],
-            'labels' => $months->map(fn ($month) => $month->translatedFormat('M Y'))->all(),
+            'labels' => $this->bucketLabels(),
         ];
     }
 
-    /**
-     * A member count is a whole number, same reasoning as
-     * WeeklyAttendanceChartWidget's own y-axis override.
-     */
     protected function getOptions(): array
     {
-        return [
-            'scales' => [
-                'y' => [
-                    'ticks' => [
-                        'stepSize' => 1,
-                        'precision' => 0,
-                    ],
-                ],
-            ],
-        ];
+        return $this->wholeNumberScale();
     }
 }

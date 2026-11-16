@@ -3,11 +3,16 @@
 namespace App\Filament\Admin\Widgets;
 
 use App\Enums\Role;
-use App\Models\Attendance;
 use App\Models\MembershipSetting;
+use App\Services\Analytics\AttendanceAnalytics;
+use App\Support\Cents;
 use Filament\Widgets\StatsOverviewWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
 
+/**
+ * Tonight's numbers. Always tonight: it doesn't follow the Analytics page's
+ * period.
+ */
 class TonightOverviewWidget extends StatsOverviewWidget
 {
     // Not lazy: hosted on the Analytics page, where a Manager should see it
@@ -23,13 +28,11 @@ class TonightOverviewWidget extends StatsOverviewWidget
 
     protected function getStats(): array
     {
-        $baseQuery = fn () => Attendance::query()
-            ->whereHas('event', fn ($query) => $query->whereDate('event_date', today()))
-            ->whereNotNull('checked_in_at');
+        $tonight = app(AttendanceAnalytics::class)->tonight();
 
         return [
-            Stat::make(__("Tonight's check-ins"), $baseQuery()->count()),
-            Stat::make(__("Tonight's door take"), MembershipSetting::formatMoney($baseQuery()->sum('amount_paid'))),
+            Stat::make(__("Tonight's check-ins"), $tonight['check_ins']),
+            Stat::make(__("Tonight's door take"), MembershipSetting::formatMoney(Cents::toFloat($tonight['door_take_cents']))),
         ];
     }
 }
