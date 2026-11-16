@@ -268,10 +268,11 @@ class EventTimelineService
      * The event's day grid: an hour line per hour, a click-to-add slot every
      * SLOT_MINUTES, and each item as a block placed by percentage of the
      * event's length. Overlapping items share the width side by side, in
-     * as many lanes as their busiest moment needs.
+     * as many lanes as their busiest moment needs. While the event is on, a
+     * "now" line marks the current time.
      *
      * @param  Collection<int, EventTimelineItem>  $items
-     * @return array{slotCount: int, hours: list<array{label: string, top: float}>, slots: list<array{at: string, label: string, top: float}>, blocks: list<array{item: EventTimelineItem, top: float, height: float, lane: int, lanes: int, time: string}>}|null
+     * @return array{slotCount: int, hours: list<array{label: string, top: float}>, slots: list<array{at: string, label: string, top: float}>, blocks: list<array{item: EventTimelineItem, top: float, height: float, lane: int, lanes: int, time: string}>, now: array{top: float, label: string}|null, startsAtMs: int, endsAtMs: int}|null
      */
     public function layout(Event $event, Collection $items): ?array
     {
@@ -336,11 +337,20 @@ class EventTimelineService
         }
         $flush();
 
+        $now = now();
+
         return [
             'slotCount' => count($slots),
             'hours' => $hours,
             'slots' => $slots,
             'blocks' => $blocks,
+            // Where the "now" line sits as the page loads (null outside the
+            // event); the grid moves it on in the browser from these bounds.
+            'now' => $now->betweenIncluded($event->starts_at, $event->ends_at)
+                ? ['top' => $percent($now), 'label' => $now->isoFormat('LT')]
+                : null,
+            'startsAtMs' => $event->starts_at->getTimestampMs(),
+            'endsAtMs' => $event->ends_at->getTimestampMs(),
         ];
     }
 }

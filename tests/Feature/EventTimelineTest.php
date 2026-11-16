@@ -12,6 +12,7 @@ use App\Models\MembershipSetting;
 use App\Models\PrivateRental;
 use App\Models\User;
 use App\Services\EventTimelineService;
+use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
@@ -406,4 +407,24 @@ test('the display screen says so when nothing public is on tonight', function ()
     $this->get('/kiosk/timeline')
         ->assertSuccessful()
         ->assertSee('Nothing on the timeline right now.');
+});
+
+test('the grid places a now line while the event is on, and none before it starts', function () {
+    $this->freezeSecond();
+    $service = app(EventTimelineService::class);
+    $running = Event::factory()->create(['event_date' => today(), 'starts_at' => now()->subHour(), 'ends_at' => now()->addHours(3)]);
+
+    $layout = $service->layout($running, new EloquentCollection);
+    expect($layout['now']['top'])->toEqual(25.0)
+        ->and($layout['now']['label'])->toBe(now()->isoFormat('LT'))
+        ->and($layout['startsAtMs'])->toBe($running->starts_at->getTimestampMs())
+        ->and($layout['endsAtMs'])->toBe($running->ends_at->getTimestampMs());
+
+    expect($service->layout(timelineEvent(), new EloquentCollection)['now'])->toBeNull();
+
+    $this->actingAs(timelineUser(Role::Admin));
+    Livewire::test(EventTimeline::class)
+        ->set('data.event_id', $running->id)
+        ->assertSeeHtml('class="event-timeline-now"')
+        ->assertSeeHtml('top:25%;');
 });

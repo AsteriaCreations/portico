@@ -64,12 +64,41 @@
                 @endif
             @endforeach
         </div>
+
+        {{-- The "now" line: placed by the server as the page loads, then
+        moved on every 30 s in the browser from the event's bounds, so the
+        page needn't poll (and an open dialog is left alone). Hidden outside
+        the event. Clicks pass through it. --}}
+        <div
+            class="event-timeline-now"
+            role="img"
+            x-data="{
+                startsAt: {{ $grid['startsAtMs'] }},
+                endsAt: {{ $grid['endsAtMs'] }},
+                top: @js($grid['now']['top'] ?? null),
+                label: @js($grid['now']['label'] ?? ''),
+                tick() {
+                    const now = Date.now();
+                    this.top = now >= this.startsAt && now <= this.endsAt ? (now - this.startsAt) / (this.endsAt - this.startsAt) * 100 : null;
+                    this.label = new Date(now).toLocaleTimeString(document.documentElement.lang || undefined, { hour: 'numeric', minute: '2-digit' });
+                },
+            }"
+            x-init="tick(); setInterval(() => tick(), 30000)"
+            x-show="top !== null"
+            {{-- Object form: a string would replace the whole style attribute. --}}
+            :style="{ top: top === null ? null : top + '%' }"
+            :aria-label="@js(__('Now')) + ', ' + label"
+            aria-label="{{ __('Now') }}, {{ $grid['now']['label'] ?? '' }}"
+            style="position:absolute;left:0;right:0;height:0;border-top:2px solid #dc2626;z-index:2;pointer-events:none;{{ $grid['now'] ? 'top:'.$grid['now']['top'].'%;' : 'display:none;' }}"
+        >
+            <span x-text="label" style="position:absolute;left:.25rem;top:-.7rem;padding:0 .3rem;border-radius:.25rem;background:#dc2626;color:#fff;font-size:.7rem;font-weight:600;line-height:1.3rem;">{{ $grid['now']['label'] ?? '' }}</span>
+        </div>
     </div>
 
     <style>
         .event-timeline-slot:hover { background: rgba(128,128,128,.12) !important; }
         @media print {
-            .fi-sidebar, .fi-topbar, .fi-header-actions, details.fi-section, .event-timeline-slot { display: none !important; }
+            .fi-sidebar, .fi-topbar, .fi-header-actions, details.fi-section, .event-timeline-slot, .event-timeline-now { display: none !important; }
             .fi-main, .fi-page { padding: 0 !important; margin: 0 !important; max-width: none !important; }
             .event-timeline-grid div[role="note"], .event-timeline-grid button { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
         }
