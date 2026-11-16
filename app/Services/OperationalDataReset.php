@@ -57,6 +57,7 @@ class OperationalDataReset
         'shift_availabilities',
         'shift_week_notes',
         'shift_slots',
+        'event_timeline_items',
         'events',
         'members',
         'occupancy_adjustments',
@@ -100,6 +101,7 @@ class OperationalDataReset
         'task_areas',
         'role_tasks',
         'role_task_votes',
+        'event_timeline_categories',
     ];
 
     /**

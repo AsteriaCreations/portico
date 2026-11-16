@@ -89,6 +89,7 @@ class FeatureFlags extends Page
             'issue_reports_enabled',
             'private_rentals_enabled',
             'staff_scheduling_enabled',
+            'event_timelines_enabled',
             'kiosk_show_code_enabled',
             'kiosk_subscribers_only',
             'hold_desk_prepay_cash',
@@ -235,6 +236,10 @@ class FeatureFlags extends Page
                         Toggle::make('staff_scheduling_enabled')
                             ->label('Staff scheduling')
                             ->helperText(__('Adds Shift Roles (the jobs staff work, and who can work each, Admin+), a Staffing page (Manager+), My availability, the Staff schedule (Admin+) and My shifts. Off by default.'))
+                            ->required(),
+                        Toggle::make('event_timelines_enabled')
+                            ->label('Event timelines')
+                            ->helperText(__('Adds an Event timeline page where an event\'s showrunner (or Admin+) lays out what happens when, between the event\'s start and end, and Timeline Categories (Admin+) for who each item is for. Off by default.'))
                             ->required(),
                     ]),
                 Section::make(__('System'))

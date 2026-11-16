@@ -10,6 +10,13 @@ releases below could carry small breaking changes in a minor release.
 
 ## [Unreleased]
 
+### Added
+
+- **Event timelines** (Feature Flags, off by default): an event's showrunner, or an Admin+, lays
+  out what happens when on an *Event timeline* day grid bounded by the event's start and end.
+  Each item has a *Timeline category* (Admin+) saying who sees it: Public, or staff from a given
+  role up. Migration: two new tables, seeded with *Public* and *Event staff*.
+
 ## [1.1.0] — 2026-11-15
 
 **Staff scheduling, private room rentals, and a door that keeps working when the system

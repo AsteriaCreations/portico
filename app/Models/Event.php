@@ -174,6 +174,14 @@ class Event extends Model
     }
 
     /**
+     * The event's run of show -- see EventTimelineService.
+     */
+    public function timelineItems(): HasMany
+    {
+        return $this->hasMany(EventTimelineItem::class)->orderBy('starts_at');
+    }
+
+    /**
      * The private rental this event was created for, if it was one -- see
      * PrivateRentalService::book().
      */

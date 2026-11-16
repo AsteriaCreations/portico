@@ -109,6 +109,11 @@ ROLE TASK LISTS
 - Each shift role has a standard task list (Task lists, Manager+), optionally grouped by Task areas with notes on how each area is handled
 - My tasks: tick tasks on a shift that's running (once per shift; ticking someone else's shift of a role you can work counts as extra), or weekly for a role that isn't scheduled (Cleaning Crew), with a history of what you did
 
+EVENT TIMELINES
+--------------------------
+- Event timeline (Feature Flags, off by default): the event's showrunner (until it ends) or an Admin+ lays out its run of show on a day grid bounded by the event's start and end — click to add, click an item to change or delete it, overlaps side by side, plus an in-order list
+- Timeline categories (Admin+): colour, and Public (attendees) or seen by staff from a chosen role up; seeded Public and Event staff
+
 VOUCHERS & COMP REWARDS
 -------------------------
 - Append-only voucher ledger (account credit)

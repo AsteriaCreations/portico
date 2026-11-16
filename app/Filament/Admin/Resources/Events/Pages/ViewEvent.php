@@ -2,6 +2,7 @@
 
 namespace App\Filament\Admin\Resources\Events\Pages;
 
+use App\Filament\Admin\Pages\EventTimeline;
 use App\Filament\Admin\Resources\Events\EventResource;
 use App\Filament\Admin\Widgets\EventCompCostWidget;
 use App\Filament\Admin\Widgets\InstructorPayoutWidget;
@@ -23,6 +24,7 @@ class ViewEvent extends ViewRecord
     {
         return [
             // EditAction checks EventPolicy::update(), so only Admins see it.
+            EventTimeline::linkAction(),
             EditAction::make(),
         ];
     }

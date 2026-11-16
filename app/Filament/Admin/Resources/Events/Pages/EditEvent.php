@@ -2,6 +2,7 @@
 
 namespace App\Filament\Admin\Resources\Events\Pages;
 
+use App\Filament\Admin\Pages\EventTimeline;
 use App\Filament\Admin\Resources\Events\EventResource;
 use App\Filament\Admin\Resources\Events\Tables\EventsTable;
 use App\Filament\Admin\Widgets\EventCompCostWidget;
@@ -19,6 +20,7 @@ class EditEvent extends EditRecord
     protected function getHeaderActions(): array
     {
         return [
+            EventTimeline::linkAction(),
             EventsTable::archiveAction(),
             EventsTable::unarchiveAction(),
             // EventPolicy::delete() hides this once anything is recorded
