@@ -3,7 +3,8 @@
         <p>{{ __('Lay out what happens when during an event, so staff (and, for public items, attendees) know what\'s coming. The grid runs from the event\'s start to its end; set those on the event itself.') }}</p>
         <p>{!! __('Click an empty spot on the grid to add an item starting there, or use <strong>Add item</strong>. Click an item to change or delete it. Leave <strong>Ends</strong> empty for a moment rather than a span.') !!}</p>
         <p>{{ __('Each item\'s category says who sees it: a Public one is for attendees, others for staff from a given role up. An Admin manages the categories.') }}</p>
-        <p>{{ __('You can edit the timeline of an event you\'re the showrunner of until it ends; an Admin can edit any event\'s.') }}</p>
+        <p>{{ __('You can edit the timeline of an event you\'re the showrunner of until it ends; an Admin can edit any event\'s. Other staff see current and upcoming events\' timelines here, read-only.') }}</p>
+        <p>{!! __('<strong>Show public only</strong> shows the timeline as attendees see it. <strong>Print</strong> prints what\'s shown, so switch to public only first for a sheet to post.') !!}</p>
     </x-screen-instructions>
 
     <x-filament::section>
@@ -15,6 +16,12 @@
             $grid = $this->grid();
             $items = $this->items();
         @endphp
+
+        <p role="status" style="margin:0;font-size:.875rem;">
+            @if ($this->publicOnly)
+                {{ __('Showing public items only, as attendees see them.') }}
+            @endif
+        </p>
 
         <x-filament::section>
             @if ($this->canEditSelected() && $grid)

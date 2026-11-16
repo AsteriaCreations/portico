@@ -6,6 +6,7 @@ use App\Filament\Concerns\TranslatesPageLabels;
 use App\Models\Event;
 use App\Models\EventTimelineCategory;
 use App\Models\EventTimelineItem;
+use App\Models\User;
 use App\Services\EventTimelineService;
 use BackedEnum;
 use Closure;
@@ -52,6 +53,9 @@ class EventTimeline extends Page
      */
     public ?array $data = [];
 
+    /** Show (and print) only the Public categories, as attendees see it. */
+    public bool $publicOnly = false;
+
     public static function canAccess(): bool
     {
         $user = auth()->user();
@@ -66,7 +70,7 @@ class EventTimeline extends Page
         $this->form->fill([
             'event_id' => $requested && $this->eventIfAllowed($requested)
                 ? $requested
-                : $this->timelines()->editableEventsQuery(auth()->user())->orderBy('event_date')->orderBy('starts_at')->value('id'),
+                : $this->defaultEventId(),
         ]);
     }
 
@@ -84,7 +88,7 @@ class EventTimeline extends Page
     }
 
     /**
-     * The picked event, re-checked against what this user may edit each
+     * The picked event, re-checked against what this user may see each
      * time, never trusted from the submitted id alone.
      */
     public function getSelectedEvent(): ?Event
@@ -118,15 +122,52 @@ class EventTimeline extends Page
     {
         $event = $this->getSelectedEvent();
 
-        return $event ? $this->timelines()->itemsFor($event, auth()->user()) : new \Illuminate\Database\Eloquent\Collection;
+        return $event ? $this->timelines()->itemsFor($event, $this->audience()) : new \Illuminate\Database\Eloquent\Collection;
     }
 
     /**
+     * The categories shown: what this user sees, or Public only.
+     *
      * @return Collection<int, EventTimelineCategory>
      */
     public function legend(): Collection
     {
-        return $this->timelines()->visibleCategoriesQuery(auth()->user(), $this->getSelectedEvent())->get();
+        return $this->timelines()->visibleCategoriesQuery($this->audience(), $this->getSelectedEvent())->get();
+    }
+
+    /**
+     * The categories an editor can put an item in: every one they see,
+     * whatever the Public only view shows.
+     *
+     * @return array<int, string>
+     */
+    protected function categoryOptions(): array
+    {
+        return $this->timelines()->visibleCategoriesQuery(auth()->user(), $this->getSelectedEvent())->pluck('name', 'id')->all();
+    }
+
+    /** Whose eyes the timeline is shown through: null = an attendee's. */
+    protected function audience(): ?User
+    {
+        return $this->publicOnly ? null : auth()->user();
+    }
+
+    protected function getHeaderActions(): array
+    {
+        return [
+            Action::make('togglePublicOnly')
+                ->label(fn (): string => $this->publicOnly ? __('Show everything I can see') : __('Show public only'))
+                ->icon(fn (): Heroicon => $this->publicOnly ? Heroicon::OutlinedEye : Heroicon::OutlinedUserGroup)
+                ->color('gray')
+                ->visible(fn (): bool => $this->getSelectedEvent() !== null)
+                ->action(fn () => $this->publicOnly = ! $this->publicOnly),
+            Action::make('print')
+                ->label(__('Print'))
+                ->icon(Heroicon::OutlinedPrinter)
+                ->color('gray')
+                ->visible(fn (): bool => $this->getSelectedEvent() !== null)
+                ->alpineClickHandler('window.print()'),
+        ];
     }
 
     public function addItemAction(): Action
@@ -143,7 +184,7 @@ class EventTimeline extends Page
                 $end = $at?->copy()->addMinutes(30);
 
                 return [
-                    'event_timeline_category_id' => $this->legend()->first()?->id,
+                    'event_timeline_category_id' => array_key_first($this->categoryOptions()),
                     'starts_at' => $at?->format('Y-m-d H:i:s'),
                     'ends_at' => $end && $event?->ends_at && $end->gt($event->ends_at) ? $event->ends_at->format('Y-m-d H:i:s') : $end?->format('Y-m-d H:i:s'),
                 ];
@@ -231,7 +272,7 @@ class EventTimeline extends Page
             Select::make('event_timeline_category_id')
                 ->label(__('Category'))
                 ->helperText(__('Who sees it. Public items go on the printed timeline and the display screen.'))
-                ->options(fn (): array => $this->legend()->pluck('name', 'id')->all())
+                ->options(fn (): array => $this->categoryOptions())
                 ->required(),
             DateTimePicker::make('starts_at')
                 ->label(__('Starts'))
@@ -269,11 +310,22 @@ class EventTimeline extends Page
         return $event;
     }
 
+    /**
+     * The soonest event this user can edit, else the soonest they can see.
+     */
+    protected function defaultEventId(): ?int
+    {
+        $user = auth()->user();
+        $soonest = fn ($query) => $query->orderBy('event_date')->orderBy('starts_at')->value('id');
+
+        return $soonest($this->timelines()->editableEventsQuery($user)) ?? $soonest($this->timelines()->viewableEventsQuery($user));
+    }
+
     protected function eventIfAllowed(int $id): ?Event
     {
         $event = Event::find($id);
 
-        return $event && $this->timelines()->canEdit(auth()->user(), $event) ? $event : null;
+        return $event && $this->timelines()->canView(auth()->user(), $event) ? $event : null;
     }
 
     /**
@@ -281,7 +333,7 @@ class EventTimeline extends Page
      */
     protected function eventOptions(): array
     {
-        $options = $this->timelines()->editableEventsQuery(auth()->user())
+        $options = $this->timelines()->viewableEventsQuery(auth()->user())
             ->orderBy('event_date')
             ->orderBy('starts_at')
             ->get()
