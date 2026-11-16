@@ -19,6 +19,13 @@ releases below could carry small breaking changes in a minor release.
   or months ending with the chosen period and repeat their numbers as a table for screen readers.
   The page opens on *This week*, so the tiles read as before; the charts now open by week rather
   than on a fixed 12 months (pick a longer period for months). No migration.
+- Analytics *Overview* gains a headline for the chosen period: visits, different visitors,
+  first-time visitors, revenue and Regular subscribers, each against the same stretch of the
+  period before (a week or month still under way is compared as far as it has run). *Revenue*
+  gains *How it was paid*, the period's takings by payment method. Several tiles now open the
+  list behind them: first-time visitors, subscribers, a category's members, vouchers, register
+  shifts. The Members list has a *First visit* date filter and Subscriptions a *Covers the month
+  of* filter. No migration.
 - **Event timelines** (Feature Flags, off by default): an event's showrunner, or an Admin+, lays
   out what happens when on an *Event timeline* day grid bounded by the event's start and end.
   Each item has a *Timeline category* (Admin+) saying who sees it: Public, or staff from a given

@@ -136,6 +136,9 @@ REPORTING & ANALYTICS
 ------------------------
 - Analytics page in tabs (Overview, Revenue, Members) with one period picker for the whole page: this or last week, month, quarter, year, last 12 months, or custom dates
 - Tonight's attendance overview
+- Period headline: visits, different visitors, first-time visitors, revenue and Regular subscribers, each compared with the same stretch of the period before
+- Revenue by payment method for the chosen period
+- Tiles that open the list behind them (first-time visitors, subscribers, a category's members, vouchers, register shifts); Members list "First visit" filter and Subscriptions "Covers the month of" filter
 - Per-event-type and per-category breakdowns for the chosen period
 - Revenue, attendance and new-member trends by week or month (Event/Subscription/Rental/Other), each repeated as a table for screen readers
 - Voucher liability (outstanding credit owed)

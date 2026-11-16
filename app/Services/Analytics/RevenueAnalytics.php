@@ -14,6 +14,8 @@ use App\Models\Voucher;
 use App\Services\RegisterShiftService;
 use App\Support\AnalyticsPeriod;
 use App\Support\Cents;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 
 /**
  * Money taken, for the Analytics page, in integer cents (App\Support\Cents).
@@ -58,6 +60,54 @@ class RevenueAnalytics
             + Cents::of($period->constrain(AddOnDayPass::query(), 'created_at')->sum('amount_paid'));
 
         return $streams;
+    }
+
+    /**
+     * Everything taken in the period: the streams() added up.
+     */
+    public function totalCents(AnalyticsPeriod $period): int
+    {
+        return array_sum($this->streams($period));
+    }
+
+    /**
+     * The same money as streams(), split by how it was paid instead of what
+     * it was for, largest first. Refunds net off their method; a method that
+     * nets to nothing is left out, and so is every $0 row. An amount with no
+     * method on it (older or imported records) comes under a null code.
+     *
+     * @return Collection<int, array{code: ?string, cents: int, payments: int}>
+     */
+    public function byPaymentMethod(AnalyticsPeriod $period): Collection
+    {
+        $sources = [
+            [$period->constrain(DB::table('attendance'), 'checked_in_at'), 'amount_paid'],
+            [$period->constrainDate(DB::table('subscriptions'), 'paid_on'), 'amount_paid'],
+            [$period->constrain(DB::table('private_rental_payments'), 'created_at'), 'amount'],
+            [$period->constrain(DB::table('miscellaneous_payments'), 'created_at'), 'amount'],
+            [$period->constrain(DB::table('add_on_day_passes'), 'created_at'), 'amount_paid'],
+        ];
+
+        $totals = [];
+
+        foreach ($sources as [$query, $amount]) {
+            $rows = $query->where($amount, '!=', 0)
+                ->groupBy('payment_method')
+                ->selectRaw("payment_method, SUM({$amount}) as total, COUNT(*) as payments")
+                ->get();
+
+            foreach ($rows as $row) {
+                $key = (string) $row->payment_method;
+                $totals[$key] ??= ['code' => $row->payment_method, 'cents' => 0, 'payments' => 0];
+                $totals[$key]['cents'] += Cents::of($row->total);
+                $totals[$key]['payments'] += (int) $row->payments;
+            }
+        }
+
+        return collect($totals)
+            ->filter(fn (array $method): bool => $method['cents'] !== 0)
+            ->sortByDesc('cents')
+            ->values();
     }
 
     /**

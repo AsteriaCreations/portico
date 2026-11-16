@@ -522,6 +522,22 @@ class Member extends Model
     }
 
     /**
+     * Members whose very first visit fell on or after $from and before
+     * $untilExclusive: an arrival in that span, none recorded earlier, and no
+     * visits from before these records (the isFirstVisit() rule, applied to
+     * a past span). Deliberately not created_at, which is the day the record
+     * was made: a bulk import puts every member on one day.
+     */
+    public function scopeFirstVisitedBetween(Builder $query, CarbonInterface $from, CarbonInterface $untilExclusive): void
+    {
+        $query->where('prior_visits', 0)
+            ->whereHas('attendance', fn (Builder $attendance) => $attendance
+                ->where('checked_in_at', '>=', $from)
+                ->where('checked_in_at', '<', $untilExclusive))
+            ->whereDoesntHave('attendance', fn (Builder $attendance) => $attendance->where('checked_in_at', '<', $from));
+    }
+
+    /**
      * Probation after an Owner took the member off the watchlist -- separate
      * from new-member probation (isOnProbation()), though by default the same
      * length (MembershipSetting::watchlistProbationDays()), read live, so

@@ -4,6 +4,7 @@ namespace App\Services\Analytics;
 
 use App\Enums\EntryCoverageSource;
 use App\Models\Attendance;
+use App\Models\Member;
 use App\Support\AnalyticsPeriod;
 use App\Support\Cents;
 use Illuminate\Support\Collection;
@@ -34,6 +35,23 @@ class AttendanceAnalytics
     public function arrivals(AnalyticsPeriod $period): int
     {
         return $period->constrain(Attendance::query(), 'checked_in_at')->count();
+    }
+
+    /**
+     * Different people who arrived at least once in the period.
+     */
+    public function uniqueVisitors(AnalyticsPeriod $period): int
+    {
+        return $period->constrain(Attendance::query(), 'checked_in_at')->distinct('member_id')->count('member_id');
+    }
+
+    /**
+     * People whose very first visit fell in the period
+     * (Member::scopeFirstVisitedBetween()).
+     */
+    public function firstTimeVisitors(AnalyticsPeriod $period): int
+    {
+        return Member::query()->firstVisitedBetween($period->from, $period->untilExclusive)->count();
     }
 
     /**

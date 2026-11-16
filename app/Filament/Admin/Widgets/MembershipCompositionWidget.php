@@ -3,6 +3,7 @@
 namespace App\Filament\Admin\Widgets;
 
 use App\Enums\Role;
+use App\Filament\Admin\Resources\Members\MemberResource;
 use App\Services\Analytics\MembershipAnalytics;
 use Filament\Widgets\StatsOverviewWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
@@ -31,7 +32,11 @@ class MembershipCompositionWidget extends StatsOverviewWidget
     protected function getStats(): array
     {
         return app(MembershipAnalytics::class)->activeByCategory()
-            ->map(fn (array $row) => Stat::make($row['name'], trans_choice(':count member|:count members', $row['members'])))
+            ->map(fn (array $row) => Stat::make($row['name'], trans_choice(':count member|:count members', $row['members']))
+                ->url(MemberResource::getUrl('index', ['tableFilters' => [
+                    'category_id' => ['value' => $row['id']],
+                    'is_active' => ['value' => 1],
+                ]])))
             ->all();
     }
 }

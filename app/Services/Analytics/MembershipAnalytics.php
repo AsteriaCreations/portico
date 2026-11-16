@@ -26,7 +26,7 @@ class MembershipAnalytics
     /**
      * Active members by category, as it stands today.
      *
-     * @return Collection<int, array{name: string, members: int}>
+     * @return Collection<int, array{id: int, name: string, members: int}>
      */
     public function activeByCategory(): Collection
     {
@@ -35,9 +35,9 @@ class MembershipAnalytics
             ->where('members.is_active', true)
             ->groupBy('categories.id', 'categories.name', 'categories.sort_order')
             ->orderBy('categories.sort_order')
-            ->selectRaw('categories.name as name, COUNT(*) as members')
+            ->selectRaw('categories.id as id, categories.name as name, COUNT(*) as members')
             ->get()
-            ->map(fn (object $row): array => ['name' => $row->name, 'members' => (int) $row->members]);
+            ->map(fn (object $row): array => ['id' => (int) $row->id, 'name' => $row->name, 'members' => (int) $row->members]);
     }
 
     /**

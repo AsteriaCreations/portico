@@ -119,3 +119,31 @@ test('a date-only column is matched by day at both ends of the period', function
 
     expect($dates)->toBe(['2026-11-01', '2026-11-30']);
 });
+
+test('a period still under way is cut off at the end of today; a finished one is left whole', function (string $preset, string $from, string $until) {
+    expect(periodBounds(AnalyticsPeriod::forPreset($preset)->elapsed()))->toBe([$from.' 00:00:00', $until.' 00:00:00']);
+})->with([
+    ['this_week', '2026-11-16', '2026-11-19'],
+    ['this_month', '2026-11-01', '2026-11-19'],
+    ['this_year', '2026-01-01', '2026-11-19'],
+    ['last_week', '2026-11-09', '2026-11-16'],
+    ['last_month', '2026-10-01', '2026-11-01'],
+]);
+
+test('the period before is the same days one unit earlier', function (string $preset, string $from, string $until) {
+    expect(periodBounds(AnalyticsPeriod::forPreset($preset)->elapsed()->previous()))->toBe([$from.' 00:00:00', $until.' 00:00:00']);
+})->with([
+    ['this_week', '2026-11-09', '2026-11-12'],
+    ['last_week', '2026-11-02', '2026-11-09'],
+    ['this_month', '2026-10-01', '2026-10-19'],
+    ['last_month', '2026-09-01', '2026-10-01'],
+    ['this_quarter', '2026-07-01', '2026-08-19'],
+    ['this_year', '2025-01-01', '2025-11-19'],
+    ['last_12_months', '2024-12-01', '2025-11-19'],
+]);
+
+test('custom dates are compared with the same number of days just before them', function () {
+    $period = AnalyticsPeriod::fromFilters(['preset' => 'custom', 'from' => '2026-09-01', 'until' => '2026-09-05']);
+
+    expect(periodBounds($period->previous()))->toBe(['2026-08-27 00:00:00', '2026-09-01 00:00:00']);
+});

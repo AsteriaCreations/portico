@@ -9,6 +9,8 @@ use App\Filament\Admin\Widgets\CategoryBreakdownWidget;
 use App\Filament\Admin\Widgets\CompCostWidget;
 use App\Filament\Admin\Widgets\MembershipCompositionWidget;
 use App\Filament\Admin\Widgets\NewMembersChartWidget;
+use App\Filament\Admin\Widgets\PaymentMethodMixWidget;
+use App\Filament\Admin\Widgets\PeriodHeadlineWidget;
 use App\Filament\Admin\Widgets\RegisterVarianceWidget;
 use App\Filament\Admin\Widgets\RevenueByEventTypeWidget;
 use App\Filament\Admin\Widgets\RevenueTrendChartWidget;
@@ -126,11 +128,13 @@ class Analytics extends Page
         return [
             'overview' => [
                 TonightOverviewWidget::class,
+                PeriodHeadlineWidget::class,
                 AttendanceTrendChartWidget::class,
                 RevenueTrendChartWidget::class,
             ],
             'revenue' => [
                 RevenueByEventTypeWidget::class,
+                PaymentMethodMixWidget::class,
                 SubscriptionOverviewWidget::class,
                 AddOnRevenueWidget::class,
                 CompCostWidget::class,
