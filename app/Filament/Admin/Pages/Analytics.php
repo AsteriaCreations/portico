@@ -4,8 +4,10 @@ namespace App\Filament\Admin\Pages;
 
 use App\Enums\Role;
 use App\Filament\Admin\Widgets\AddOnRevenueWidget;
+use App\Filament\Admin\Widgets\ArrivalTimesChartWidget;
 use App\Filament\Admin\Widgets\AttendanceTrendChartWidget;
 use App\Filament\Admin\Widgets\CategoryBreakdownWidget;
+use App\Filament\Admin\Widgets\CheckInChannelWidget;
 use App\Filament\Admin\Widgets\CohortRetentionWidget;
 use App\Filament\Admin\Widgets\CompCostWidget;
 use App\Filament\Admin\Widgets\EventComparisonWidget;
@@ -14,10 +16,13 @@ use App\Filament\Admin\Widgets\EventWeekdayRollUpWidget;
 use App\Filament\Admin\Widgets\FirstVisitReturnWidget;
 use App\Filament\Admin\Widgets\GuestConversionWidget;
 use App\Filament\Admin\Widgets\LapsedMembersWidget;
+use App\Filament\Admin\Widgets\LengthOfStayWidget;
 use App\Filament\Admin\Widgets\MemberFunnelWidget;
 use App\Filament\Admin\Widgets\MembershipCompositionWidget;
 use App\Filament\Admin\Widgets\NewMembersChartWidget;
+use App\Filament\Admin\Widgets\OccupancySummaryWidget;
 use App\Filament\Admin\Widgets\PaymentMethodMixWidget;
+use App\Filament\Admin\Widgets\PeakOccupancyChartWidget;
 use App\Filament\Admin\Widgets\PeriodHeadlineWidget;
 use App\Filament\Admin\Widgets\RegisterVarianceWidget;
 use App\Filament\Admin\Widgets\RevenueByEventTypeWidget;
@@ -119,6 +124,7 @@ class Analytics extends Page
             'members' => __('Members'),
             'subscriptions' => __('Subscriptions'),
             'events' => __('Events'),
+            'operations' => __('Operations'),
         ];
 
         return $schema->components([
@@ -173,6 +179,13 @@ class Analytics extends Page
                 EventComparisonWidget::class,
                 EventTypeRollUpWidget::class,
                 EventWeekdayRollUpWidget::class,
+            ],
+            'operations' => [
+                OccupancySummaryWidget::class,
+                CheckInChannelWidget::class,
+                PeakOccupancyChartWidget::class,
+                ArrivalTimesChartWidget::class,
+                LengthOfStayWidget::class,
             ],
         ];
     }

@@ -42,6 +42,13 @@ releases below could carry small breaking changes in a minor release.
   entry fees covered per subscriber against the price of a month), and how many active members
   could subscribe today and haven't, linking to a new Members filter. The subscriber counts tile
   moves here from *Revenue*. No migration.
+- Analytics gains an *Operations* tab for the door: how full the building got each night (the most
+  people inside at once, replayed from check-ins, departures and anonymous departures, against the
+  venue capacity), when people arrive by hour, how long they stay (from recorded departures, with
+  how many that is), and how people were checked in (desk, kiosk, prepaid, staff checking
+  themselves in, imported records). The event comparison gains a *Most inside* column and CSV
+  field. Times of day use only visits checked in through the app, never imported history. No
+  migration.
 - **Event timelines** (Feature Flags, off by default): an event's showrunner, or an Admin+, lays
   out what happens when on an *Event timeline* day grid bounded by the event's start and end.
   Each item has a *Timeline category* (Admin+) saying who sees it: Public, or staff from a given

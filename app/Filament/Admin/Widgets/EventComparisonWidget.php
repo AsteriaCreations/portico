@@ -7,6 +7,7 @@ use App\Filament\Admin\Resources\Events\EventResource;
 use App\Filament\Concerns\ReadsAnalyticsPeriod;
 use App\Models\Event;
 use App\Models\EventType;
+use App\Services\Analytics\DoorFlowAnalytics;
 use App\Services\Analytics\EventAnalytics;
 use App\Support\Cents;
 use App\Support\CsvDownload;
@@ -36,6 +37,9 @@ class EventComparisonWidget extends TableWidget
 
     /** @var array<int, int>|null */
     protected ?array $usualHeadcounts = null;
+
+    /** @var array<string, int>|null night => most inside at once */
+    protected ?array $peaks = null;
 
     public static function canView(): bool
     {
@@ -86,6 +90,11 @@ class EventComparisonWidget extends TableWidget
                     ->label('Comps')
                     ->state(fn (Event $record): string => $this->withShare($this->figures($record)['comps'], $this->figures($record)['comp_percent']))
                     ->sortable(),
+                TextColumn::make('night_peak')
+                    ->label('Most inside')
+                    ->state(fn (Event $record): ?int => $this->peakOf($record))
+                    ->placeholder('—')
+                    ->tooltip(__('The most people inside at once that night, every event on it together. Blank for a night not checked in through the app.')),
                 TextColumn::make('no_shows')
                     ->label('Prepaid, no-show')
                     ->numeric()
@@ -121,7 +130,7 @@ class EventComparisonWidget extends TableWidget
                 'event-comparison-'.now()->toDateString().'.csv',
                 [
                     'Date', 'Event', 'Type', 'Headcount', 'Usual Headcount', 'First-timers', 'Subscribers',
-                    'Comps', 'Prepaid No-show', 'Revenue', 'Revenue Per Head',
+                    'Comps', 'Prepaid No-show', 'Revenue', 'Revenue Per Head', 'Most Inside',
                 ],
                 $this->getTableQueryForExport()->get()->map(function (Event $event): array {
                     $figures = $this->figures($event);
@@ -138,6 +147,7 @@ class EventComparisonWidget extends TableWidget
                         $figures['no_shows'],
                         Cents::toDecimal($figures['revenue_cents']),
                         $figures['per_head_cents'] === null ? null : Cents::toDecimal($figures['per_head_cents']),
+                        $this->peakOf($event),
                     ];
                 }),
             ));
@@ -151,6 +161,17 @@ class EventComparisonWidget extends TableWidget
         $analytics = app(EventAnalytics::class);
 
         return $analytics->figures($event, $this->usualHeadcounts ??= $analytics->usualHeadcounts($this->period()));
+    }
+
+    /**
+     * The most people inside at once on the event's night (DoorFlowAnalytics),
+     * shared by every event that night.
+     */
+    private function peakOf(Event $event): ?int
+    {
+        $this->peaks ??= app(DoorFlowAnalytics::class)->peaks($this->period());
+
+        return $this->peaks[$event->event_date->toDateString()] ?? null;
     }
 
     private function nameOf(Event $event): string
