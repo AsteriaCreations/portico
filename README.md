@@ -161,7 +161,7 @@ This table covers the roles' distinguishing capabilities, not an exhaustive feat
 
 Populated with `DemoDataSeeder`'s sample data.
 
-**Analytics** — attendance, revenue, and outstanding voucher liability, for tonight and for any period you pick (a week, month, quarter, year, or custom dates), with week-by-week or month-by-month trends.
+**Analytics** — attendance, revenue, retention, subscriptions, event-by-event comparison, door flow and desk/staff activity, for tonight and for any period you pick (a week, month, quarter, year, or custom dates), each set against the period before, with week-by-week or month-by-month trends, CSV export, and tiles that open the list behind the number.
 
 ![Analytics](docs/screenshots/analytics.jpg)
 
