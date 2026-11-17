@@ -129,6 +129,15 @@ final class AnalyticsPeriod
     }
 
     /**
+     * The first day of the month this period ends in, as far as it has run:
+     * the month a monthly figure (subscriptions) is shown for.
+     */
+    public function closingMonth(): CarbonImmutable
+    {
+        return $this->elapsed()->untilExclusive->subDay()->startOfMonth();
+    }
+
+    /**
      * The like-for-like stretch before this one, to compare it with: the same
      * days one week, month, quarter or year earlier for a preset (so the 1st
      * to the 18th is set against the 1st to the 18th of the month before),

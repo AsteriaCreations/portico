@@ -5,6 +5,7 @@ namespace App\Filament\Admin\Resources\Members\Tables;
 use App\Models\Category;
 use App\Models\Member;
 use App\Models\MembershipSetting;
+use App\Services\Analytics\SubscriptionAnalytics;
 use Carbon\Carbon;
 use Filament\Actions\BulkAction;
 use Filament\Actions\BulkActionGroup;
@@ -204,6 +205,11 @@ class MembersTable
 
                         return $indicators;
                     }),
+                // Analytics links its "can subscribe, not subscribed" count here.
+                Filter::make('eligible_not_subscribed')
+                    ->label('Can subscribe, not subscribed this month')
+                    ->toggle()
+                    ->query(fn (Builder $query): Builder => app(SubscriptionAnalytics::class)->eligibleNotSubscribed($query)),
                 // By first arrived visit, not by when the record was made
                 // (Member::scopeFirstVisitedBetween()). Analytics links its
                 // first-time visitor count here.

@@ -36,6 +36,12 @@ releases below could carry small breaking changes in a minor release.
   back, what became of guests, where the active membership stands from record to subscriber, and
   a list of regulars who have stopped coming (at least 3 visits and none in 90 days by default,
   both adjustable; never banned, deceased or inactive members) with *Export (CSV)*. No migration.
+- Analytics gains a *Subscriptions* tab for the Regular subscription: the month's subscribers split
+  into new, renewed and came back, how many did not renew (and that as a share of the month
+  before), a twelve-month chart of the same, how much use subscribers got (visits, who never came,
+  entry fees covered per subscriber against the price of a month), and how many active members
+  could subscribe today and haven't, linking to a new Members filter. The subscriber counts tile
+  moves here from *Revenue*. No migration.
 - **Event timelines** (Feature Flags, off by default): an event's showrunner, or an Admin+, lays
   out what happens when on an *Event timeline* day grid bounded by the event's start and end.
   Each item has a *Timeline category* (Admin+) saying who sees it: Public, or staff from a given
