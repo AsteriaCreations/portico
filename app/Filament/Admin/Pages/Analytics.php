@@ -6,10 +6,15 @@ use App\Enums\Role;
 use App\Filament\Admin\Widgets\AddOnRevenueWidget;
 use App\Filament\Admin\Widgets\AttendanceTrendChartWidget;
 use App\Filament\Admin\Widgets\CategoryBreakdownWidget;
+use App\Filament\Admin\Widgets\CohortRetentionWidget;
 use App\Filament\Admin\Widgets\CompCostWidget;
 use App\Filament\Admin\Widgets\EventComparisonWidget;
 use App\Filament\Admin\Widgets\EventTypeRollUpWidget;
 use App\Filament\Admin\Widgets\EventWeekdayRollUpWidget;
+use App\Filament\Admin\Widgets\FirstVisitReturnWidget;
+use App\Filament\Admin\Widgets\GuestConversionWidget;
+use App\Filament\Admin\Widgets\LapsedMembersWidget;
+use App\Filament\Admin\Widgets\MemberFunnelWidget;
 use App\Filament\Admin\Widgets\MembershipCompositionWidget;
 use App\Filament\Admin\Widgets\NewMembersChartWidget;
 use App\Filament\Admin\Widgets\PaymentMethodMixWidget;
@@ -147,8 +152,13 @@ class Analytics extends Page
             ],
             'members' => [
                 MembershipCompositionWidget::class,
+                MemberFunnelWidget::class,
                 CategoryBreakdownWidget::class,
+                FirstVisitReturnWidget::class,
+                GuestConversionWidget::class,
+                CohortRetentionWidget::class,
                 NewMembersChartWidget::class,
+                LapsedMembersWidget::class,
             ],
             'events' => [
                 EventComparisonWidget::class,

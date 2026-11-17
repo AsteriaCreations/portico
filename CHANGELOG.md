@@ -31,6 +31,11 @@ releases below could carry small breaking changes in a minor release.
   subscribers, comps, prepaid no-shows, revenue and revenue per head), sortable, filterable by
   type, each row opening the event, with *Export (CSV)*. Below it, the average night by event type
   and by day of the week. Private rentals and events still to come are left out. No migration.
+- Analytics *Members* tab gains retention: whether first-time visitors come back within 30, 60 and
+  90 days (counted only once those days are up), a month-by-month cohort grid of who keeps coming
+  back, what became of guests, where the active membership stands from record to subscriber, and
+  a list of regulars who have stopped coming (at least 3 visits and none in 90 days by default,
+  both adjustable; never banned, deceased or inactive members) with *Export (CSV)*. No migration.
 - **Event timelines** (Feature Flags, off by default): an event's showrunner, or an Admin+, lays
   out what happens when on an *Event timeline* day grid bounded by the event's start and end.
   Each item has a *Timeline category* (Admin+) saying who sees it: Public, or staff from a given

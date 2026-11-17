@@ -538,6 +538,31 @@ class Member extends Model
     }
 
     /**
+     * isSubscriptionEligible() as a query, for counting and listing: the
+     * manual flag, or enough attended events (eligibilityAttendanceCount()'s
+     * rule: within the settings' window if one is set, otherwise all-time
+     * plus prior_visits).
+     */
+    public function scopeSubscriptionEligible(Builder $query): void
+    {
+        $settings = MembershipSetting::current();
+        $windowMonths = $settings->subscription_eligibility_window_months;
+
+        $attended = Attendance::query()
+            ->selectRaw('count(*)')
+            ->whereColumn('attendance.member_id', 'members.id')
+            ->whereNotNull('checked_in_at')
+            ->when($windowMonths, fn (Builder $attendance) => $attendance->where('checked_in_at', '>=', now()->subMonthsNoOverflow($windowMonths)));
+
+        $query->where(fn (Builder $eligible) => $eligible
+            ->where('subscription_eligible', true)
+            ->orWhereRaw(
+                '('.$attended->toSql().')'.($windowMonths ? '' : ' + members.prior_visits').' >= ?',
+                [...$attended->getBindings(), $settings->subscription_eligibility_threshold],
+            ));
+    }
+
+    /**
      * Probation after an Owner took the member off the watchlist -- separate
      * from new-member probation (isOnProbation()), though by default the same
      * length (MembershipSetting::watchlistProbationDays()), read live, so
