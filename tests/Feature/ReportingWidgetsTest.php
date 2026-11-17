@@ -4,6 +4,7 @@ use App\Enums\AddOnKind;
 use App\Enums\EntryCoverageSource;
 use App\Enums\Role;
 use App\Filament\Admin\Widgets\AddOnRevenueWidget;
+use App\Filament\Admin\Widgets\AnalyticsChartWidget;
 use App\Filament\Admin\Widgets\AttendanceTrendChartWidget;
 use App\Filament\Admin\Widgets\CategoryBreakdownWidget;
 use App\Filament\Admin\Widgets\CompCostWidget;
@@ -207,8 +208,41 @@ test('weekly attendance chart widget forces whole-number y-axis ticks', function
     $widget = new AttendanceTrendChartWidget;
     $options = (fn () => $this->getOptions())->call($widget);
 
-    expect($options['scales']['y']['ticks']['stepSize'])->toBe(1)
-        ->and($options['scales']['y']['ticks']['precision'])->toBe(0);
+    // Precision only: a forced step of 1 thinned to odd steps (9, 18, 27...).
+    expect($options['scales']['y']['ticks']['precision'])->toBe(0)
+        ->and($options['scales']['y']['ticks'])->not->toHaveKey('stepSize');
+});
+
+test('each series of a chart gets its own colour, and a series can keep its own', function () {
+    $this->actingAs(User::factory()->create(['active' => true, 'role' => Role::Manager]));
+
+    $data = (fn () => $this->getCachedData())->call(Livewire::test(RevenueTrendChartWidget::class)->instance());
+    $colours = array_column($data['datasets'], 'borderColor');
+
+    expect($colours)->toHaveCount(count($data['datasets']))
+        ->and(array_unique($colours))->toHaveCount(count($colours))
+        // Bars are filled slightly see-through; a line's fill is its colour.
+        ->and($data['datasets'][0]['backgroundColor'])->toBe($colours[0].'CC');
+
+    // A widget that sets a colour on a series keeps it.
+    $widget = new class extends AnalyticsChartWidget
+    {
+        protected function getType(): string
+        {
+            return 'line';
+        }
+
+        protected function getData(): array
+        {
+            return ['datasets' => [['label' => 'A', 'data' => [1], 'borderColor' => '#000000'], ['label' => 'B', 'data' => [2]]], 'labels' => ['x']];
+        }
+    };
+
+    $data = (fn () => $this->getCachedData())->call($widget);
+
+    expect($data['datasets'][0]['borderColor'])->toBe('#000000')
+        ->and($data['datasets'][1]['borderColor'])->toBe('#0072B2')
+        ->and($data['datasets'][1]['backgroundColor'])->toBe('#0072B2');
 });
 
 test('the scheduled jobs widget is restricted to admin and up', function () {

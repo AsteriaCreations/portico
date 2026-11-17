@@ -10,6 +10,12 @@ releases below could carry small breaking changes in a minor release.
 
 ## [Unreleased]
 
+### Fixed
+
+- Analytics charts gave every series the same colour, so the stacked revenue bars and the
+  subscriber chart couldn't be told apart. Each series now has its own colour from a
+  colour-blind-safe palette (Okabe-Ito). Count axes no longer step in odd numbers (9, 18, 27...).
+
 ### Added
 
 - **Analytics: one period for the whole page, and tabs.** A *Period* picker at the top (this or last

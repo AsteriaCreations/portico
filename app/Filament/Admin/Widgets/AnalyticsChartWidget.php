@@ -74,7 +74,9 @@ abstract class AnalyticsChartWidget extends ChartWidget
     /**
      * A count is a whole number, so the y-axis shouldn't offer fractional
      * ticks (Chart.js's default "nice number" step picking can land on e.g.
-     * 0.5 for a low-count week).
+     * 0.5 for a low-count week). Only the precision is pinned: forcing a
+     * step of 1 makes Chart.js thin the ticks to odd steps (9, 18, 27...)
+     * once the counts run into the dozens.
      *
      * @return array<string, mixed>
      */
@@ -84,11 +86,43 @@ abstract class AnalyticsChartWidget extends ChartWidget
             'scales' => [
                 'y' => [
                     'ticks' => [
-                        'stepSize' => 1,
                         'precision' => 0,
                     ],
                 ],
             ],
         ];
     }
+
+    /**
+     * getData() with a colour for each series. Filament draws every series
+     * of a chart in the panel's one primary colour, so a stacked bar or a
+     * second line can't be told apart; these are the Okabe-Ito colours,
+     * which stay distinct for colour-blind viewers, in both light and dark
+     * mode. A series that sets its own colour keeps it.
+     *
+     * @return array<string, mixed>
+     */
+    protected function getCachedData(): array
+    {
+        if ($this->cachedData !== null) {
+            return $this->cachedData;
+        }
+
+        $data = $this->getData();
+
+        foreach ($data['datasets'] ?? [] as $index => $dataset) {
+            $colour = self::SERIES_COLOURS[$index % count(self::SERIES_COLOURS)];
+
+            $data['datasets'][$index] = $dataset + [
+                'borderColor' => $colour,
+                'backgroundColor' => ($dataset['type'] ?? $this->getType()) === 'line' ? $colour : $colour.'CC',
+                'pointBackgroundColor' => $colour,
+            ];
+        }
+
+        return $this->cachedData = $data;
+    }
+
+    /** Okabe-Ito: orange, blue, bluish green, reddish purple, sky blue, vermillion. */
+    private const SERIES_COLOURS = ['#E69F00', '#0072B2', '#009E73', '#CC79A7', '#56B4E9', '#D55E00'];
 }
