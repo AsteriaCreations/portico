@@ -142,6 +142,7 @@ REPORTING & ANALYTICS
 - Retention: first-visit return rate (30/60/90 days), month-by-month cohort grid, guest conversion, record-to-subscriber funnel, and a lapsed-regulars list with adjustable thresholds and CSV export
 - Subscription health: new, renewed, returned and not-renewed subscribers per month with a twelve-month chart, subscriber usage against the price of a month, and members who could subscribe and haven't (with a Members list filter)
 - Door and operations: nightly peak occupancy against capacity, arrivals by hour, length of stay, and check-in channel mix (desk, kiosk, prepaid, staff self check-in, imported); peak occupancy also on the event comparison
+- Staff and conduct: desk corrections, register variance by who closed, staff shifts worked and task ticks, and conduct counts (behavior notes, bans, watchlist) with a trend
 - Tiles that open the list behind them (first-time visitors, subscribers, a category's members, vouchers, register shifts); Members list "First visit" filter and Subscriptions "Covers the month of" filter
 - Per-event-type and per-category breakdowns for the chosen period
 - Revenue, attendance and new-member trends by week or month (Event/Subscription/Rental/Other), each repeated as a table for screen readers

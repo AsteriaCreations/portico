@@ -10,6 +10,9 @@ use App\Filament\Admin\Widgets\CategoryBreakdownWidget;
 use App\Filament\Admin\Widgets\CheckInChannelWidget;
 use App\Filament\Admin\Widgets\CohortRetentionWidget;
 use App\Filament\Admin\Widgets\CompCostWidget;
+use App\Filament\Admin\Widgets\ConductTrendChartWidget;
+use App\Filament\Admin\Widgets\ConductWidget;
+use App\Filament\Admin\Widgets\DeskExceptionsWidget;
 use App\Filament\Admin\Widgets\EventComparisonWidget;
 use App\Filament\Admin\Widgets\EventTypeRollUpWidget;
 use App\Filament\Admin\Widgets\EventWeekdayRollUpWidget;
@@ -27,11 +30,13 @@ use App\Filament\Admin\Widgets\PeriodHeadlineWidget;
 use App\Filament\Admin\Widgets\RegisterVarianceWidget;
 use App\Filament\Admin\Widgets\RevenueByEventTypeWidget;
 use App\Filament\Admin\Widgets\RevenueTrendChartWidget;
+use App\Filament\Admin\Widgets\StaffActivityWidget;
 use App\Filament\Admin\Widgets\SubscriberMovementChartWidget;
 use App\Filament\Admin\Widgets\SubscriptionHealthWidget;
 use App\Filament\Admin\Widgets\SubscriptionOverviewWidget;
 use App\Filament\Admin\Widgets\SubscriptionUsageWidget;
 use App\Filament\Admin\Widgets\TonightOverviewWidget;
+use App\Filament\Admin\Widgets\VarianceByCloserWidget;
 use App\Filament\Admin\Widgets\VoucherLiabilityWidget;
 use App\Filament\Concerns\TranslatesPageLabels;
 use App\Support\AnalyticsPeriod;
@@ -186,6 +191,11 @@ class Analytics extends Page
                 PeakOccupancyChartWidget::class,
                 ArrivalTimesChartWidget::class,
                 LengthOfStayWidget::class,
+                DeskExceptionsWidget::class,
+                VarianceByCloserWidget::class,
+                StaffActivityWidget::class,
+                ConductWidget::class,
+                ConductTrendChartWidget::class,
             ],
         ];
     }
