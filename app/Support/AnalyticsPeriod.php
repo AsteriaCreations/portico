@@ -160,15 +160,16 @@ final class AnalyticsPeriod
      * The trailing run of weeks or months a trend chart draws, oldest first,
      * ending with the one this period's last day falls in. A chart of only
      * the period itself would often be a single bar.
+     * $grain forces weeks or months whatever the period's length.
      *
      * @return list<self>
      */
-    public function buckets(int $count = 12): array
+    public function buckets(int $count = 12, ?string $grain = null): array
     {
         $lastDay = $this->untilExclusive->subDay();
         $buckets = [];
 
-        if ($this->grain() === self::GRAIN_WEEK) {
+        if (($grain ?? $this->grain()) === self::GRAIN_WEEK) {
             $end = CarbonImmutable::instance(MembershipSetting::startOfWeek($lastDay))->startOfDay();
 
             for ($back = $count - 1; $back >= 0; $back--) {
