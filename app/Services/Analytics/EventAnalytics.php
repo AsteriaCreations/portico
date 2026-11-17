@@ -107,7 +107,7 @@ class EventAnalytics
      */
     public function byEventType(AnalyticsPeriod $period): Collection
     {
-        return $this->comparisonQuery($period)->get()
+        return $this->rollUpQuery($period)->with('eventType')->get()
             ->sortBy(fn (Event $event): int => $event->eventType?->sort_order ?? PHP_INT_MAX)
             ->groupBy(fn (Event $event): string => $event->eventType?->name ?? __('No type'))
             ->map($this->rollUp(...))
@@ -124,11 +124,23 @@ class EventAnalytics
     {
         $firstDay = MembershipSetting::startOfWeek()->dayOfWeek;
 
-        return $this->comparisonQuery($period)->get()
+        return $this->rollUpQuery($period)->get()
             ->sortBy(fn (Event $event): int => ($event->event_date->dayOfWeek - $firstDay + 7) % 7)
             ->groupBy(fn (Event $event): string => $event->event_date->isoFormat('dddd'))
             ->map($this->rollUp(...))
             ->values();
+    }
+
+    /**
+     * The period's events with just what rollUp() reads: the comparison
+     * query's other counts (first-timers above all) cost a subquery per visit.
+     *
+     * @return Builder<Event>
+     */
+    private function rollUpQuery(AnalyticsPeriod $period): Builder
+    {
+        return $period->constrainDate($this->heldEvents(), 'event_date')
+            ->withSum('attendance as revenue', 'amount_paid');
     }
 
     /**
