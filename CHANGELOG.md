@@ -55,6 +55,11 @@ releases below could carry small breaking changes in a minor release.
   themselves in, imported records). The event comparison gains a *Most inside* column and CSV
   field. Times of day use only visits checked in through the app, never imported history. No
   migration.
+- The *Operations* tab also gains the staff side: corrections at the desk (visits removed, entries
+  turned into subscriptions, desk refunds, cash given for electronic payments), register variance
+  by who closed the shift, staff shifts worked and task-list ticks (when staff scheduling is on),
+  and conduct: behavior notes net of retractions, bans and watchlist changes, as tiles and a
+  trend. Counts and amounts only, never a member's name, a reason or a note's text. No migration.
 - **Event timelines** (Feature Flags, off by default): an event's showrunner, or an Admin+, lays
   out what happens when on an *Event timeline* day grid bounded by the event's start and end.
   Each item has a *Timeline category* (Admin+) saying who sees it: Public, or staff from a given
