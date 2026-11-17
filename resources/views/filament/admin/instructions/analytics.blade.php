@@ -7,5 +7,6 @@
     <p>{{ __('On the Members tab, "coming back" always means a visit on a later day, and a first visit is the first one on record for someone with no visits from before these records. The list of regulars who have stopped coming is as of today; open Filters on it to change how many visits make a regular or how long is too long.') }}</p>
     <p>{{ __('The Subscriptions tab is always by month, because a subscription covers a month: it shows the month your period ends in. While that month is still running, "Not renewed yet" counts people who subscribed last month and may still renew.') }}</p>
     <p>{{ __('The Operations tab only uses visits checked in through this app, because imported history has no real arrival or departure times. "Most inside" counts someone never marked as leaving as still there, so on a night with few departures recorded it is the end-of-night figure; the length of stay says how many departures it is based on.') }}</p>
+    <p>{{ __('The conduct figures are counts only. To see who and why, open the member\'s own record.') }}</p>
     <p>{{ __('A stat tied to an optional feature (vouchers, add-ons, register shifts) disappears on its own once that feature is turned off in Feature Flags — nothing to configure here.') }}</p>
 </x-screen-instructions>
