@@ -140,6 +140,7 @@ REPORTING & ANALYTICS
 - Revenue by payment method for the chosen period
 - Event comparison for the chosen period (headcount against the usual for its type, first-timers, subscribers, comps, prepaid no-shows, revenue, revenue per head), with CSV export, plus the average night by event type and by day of the week
 - Retention: first-visit return rate (30/60/90 days), month-by-month cohort grid, guest conversion, record-to-subscriber funnel, and a lapsed-regulars list with adjustable thresholds and CSV export
+- Subscription health: new, renewed, returned and not-renewed subscribers per month with a twelve-month chart, subscriber usage against the price of a month, and members who could subscribe and haven't (with a Members list filter)
 - Tiles that open the list behind them (first-time visitors, subscribers, a category's members, vouchers, register shifts); Members list "First visit" filter and Subscriptions "Covers the month of" filter
 - Per-event-type and per-category breakdowns for the chosen period
 - Revenue, attendance and new-member trends by week or month (Event/Subscription/Rental/Other), each repeated as a table for screen readers

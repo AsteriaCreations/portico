@@ -56,7 +56,6 @@ test('only the open tab renders its widgets', function () {
         ->get('/admin/analytics?tab=revenue')
         ->assertSuccessful()
         ->assertSee('By event type — This week')
-        ->assertSee('Active Regular subscribers')
         ->assertSee('Add-on revenue — This week')
         ->assertSee('Comp cost — This week')
         ->assertSee('Total register variance')

@@ -22,7 +22,10 @@ use App\Filament\Admin\Widgets\PeriodHeadlineWidget;
 use App\Filament\Admin\Widgets\RegisterVarianceWidget;
 use App\Filament\Admin\Widgets\RevenueByEventTypeWidget;
 use App\Filament\Admin\Widgets\RevenueTrendChartWidget;
+use App\Filament\Admin\Widgets\SubscriberMovementChartWidget;
+use App\Filament\Admin\Widgets\SubscriptionHealthWidget;
 use App\Filament\Admin\Widgets\SubscriptionOverviewWidget;
+use App\Filament\Admin\Widgets\SubscriptionUsageWidget;
 use App\Filament\Admin\Widgets\TonightOverviewWidget;
 use App\Filament\Admin\Widgets\VoucherLiabilityWidget;
 use App\Filament\Concerns\TranslatesPageLabels;
@@ -114,6 +117,7 @@ class Analytics extends Page
             'overview' => __('Overview'),
             'revenue' => __('Revenue'),
             'members' => __('Members'),
+            'subscriptions' => __('Subscriptions'),
             'events' => __('Events'),
         ];
 
@@ -144,7 +148,6 @@ class Analytics extends Page
             'revenue' => [
                 RevenueByEventTypeWidget::class,
                 PaymentMethodMixWidget::class,
-                SubscriptionOverviewWidget::class,
                 AddOnRevenueWidget::class,
                 CompCostWidget::class,
                 RegisterVarianceWidget::class,
@@ -159,6 +162,12 @@ class Analytics extends Page
                 CohortRetentionWidget::class,
                 NewMembersChartWidget::class,
                 LapsedMembersWidget::class,
+            ],
+            'subscriptions' => [
+                SubscriptionOverviewWidget::class,
+                SubscriptionHealthWidget::class,
+                SubscriberMovementChartWidget::class,
+                SubscriptionUsageWidget::class,
             ],
             'events' => [
                 EventComparisonWidget::class,
