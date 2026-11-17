@@ -134,7 +134,7 @@ ROLES & PERMISSIONS
 
 REPORTING & ANALYTICS
 ------------------------
-- Analytics page in tabs (Overview, Revenue, Members) with one period picker for the whole page: this or last week, month, quarter, year, last 12 months, or custom dates
+- Analytics page in tabs (Overview, Revenue, Members, Subscriptions, Events, Operations) with one period picker for the whole page: this or last week, month, quarter, year, last 12 months, or custom dates
 - Tonight's attendance overview
 - Period headline: visits, different visitors, first-time visitors, revenue and Regular subscribers, each compared with the same stretch of the period before
 - Revenue by payment method for the chosen period
