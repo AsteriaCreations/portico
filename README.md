@@ -25,6 +25,8 @@ Where to look next:
 - [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md) — standing it up on a club LAN.
 - [`docs/DATA_DICTIONARY.md`](docs/DATA_DICTIONARY.md) — what the tables mean, for analysts querying the data. Read-only database accounts for reporting (a full one, and a limited one that can't see personal data) are in [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md) §4a.
 - [`CHANGELOG.md`](CHANGELOG.md) — what changed, release by release.
+- [`SUPPORT.md`](SUPPORT.md) — where to ask a question, report a bug or report a security problem.
+- [`docs/MAINTAINING.md`](docs/MAINTAINING.md) — looking after the Portico repository: reviewing PRs, dependencies, releases.
 
 > **License note:** Portico is [AGPL-3.0-or-later](LICENSE). If you run a modified version
 > as a network service, you must offer your users the modified source. See
@@ -48,7 +50,10 @@ cp .env.example .env
 php artisan key:generate
 ```
 
-Set `DB_DATABASE`, `DB_USERNAME`, `DB_PASSWORD` in `.env` for your local MariaDB, then:
+Set `DB_DATABASE`, `DB_USERNAME`, `DB_PASSWORD` in `.env` for your local MariaDB. (For a quick look
+on your own computer, SQLite works too: set `DB_CONNECTION=sqlite`, point `DB_DATABASE` at the full
+path of an empty file such as `database/database.sqlite`, and create that file. Use MariaDB or MySQL
+for a club's real install.) Then:
 
 ```bash
 php artisan migrate:fresh --seed

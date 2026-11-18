@@ -10,6 +10,17 @@ releases below could carry small breaking changes in a minor release.
 
 ## [Unreleased]
 
+### Documentation
+
+- **`docs/MAINTAINING.md`**, a guide for whoever looks after the Portico repository: its GitHub
+  settings, what CI checks, a pull request review checklist, dependency updates and the PHP
+  platform pin, issues and security reports, releases, recurring chores and handing over.
+- **`SUPPORT.md`** says where to ask a question, report a bug or report a security problem. The
+  issue templates are now forms, and blank issues point to Discussions or a private security
+  report instead.
+- The README's setup notes that SQLite works for a quick local look (MariaDB or MySQL for a
+  club's real install). Found on a fresh-clone install run-through, which otherwise went cleanly.
+
 ### Fixed
 
 - Analytics charts gave every series the same colour, so the stacked revenue bars and the

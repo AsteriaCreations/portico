@@ -1,0 +1,41 @@
+name: Feature request
+description: Suggest a capability or a change
+labels: [enhancement]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Not sure yet what you need, or just asking how to do something? Start a
+        [Discussion](https://github.com/AsteriaCreations/portico/discussions) instead.
+        Portico runs on a club's own network only, so online payments and a member-facing
+        portal are out of scope.
+  - type: textarea
+    id: problem
+    attributes:
+      label: The problem
+      description: What can't your club do today? Who runs into it, and when?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What you'd like
+      description: |
+        The capability, roughly. If it changes who gets in or what they pay, say how it fits the
+        admission and pricing rules in docs/BLUEPRINT.md.
+    validations:
+      required: true
+  - type: dropdown
+    id: flag
+    attributes:
+      label: Should other clubs be able to turn it off?
+      description: Optional features sit behind /admin/feature-flags so a club can opt out.
+      options:
+        - "Yes, behind a feature flag"
+        - "No, every club should have it"
+        - Not sure
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Workarounds you use today, or other ways it could work.
