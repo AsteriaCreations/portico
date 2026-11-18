@@ -16,6 +16,11 @@ releases below could carry small breaking changes in a minor release.
   subscriber chart couldn't be told apart. Each series now has its own colour from a
   colour-blind-safe palette (Okabe-Ito). Count axes no longer step in odd numbers (9, 18, 27...).
 
+- Analytics *Operations* and *Events* tabs were slow on a year of data (3.5 s and 1.7 s on 7,800
+  visits). Operations no longer parses every visit's timestamps with Carbon, and the Events
+  roll-ups by type and weekday no longer run the comparison table's per-visit first-timer count
+  (now 0.4 s and 0.6 s).
+
 ### Added
 
 - **Analytics: one period for the whole page, and tabs.** A *Period* picker at the top (this or last

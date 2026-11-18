@@ -184,7 +184,7 @@ class DoorFlowAnalytics
 
         $minutes = $live
             ->filter(fn (object $visit): bool => $visit->departed_at !== null && $visit->departed_at >= $visit->checked_in_at)
-            ->map(fn (object $visit): int => (int) CarbonImmutable::parse($visit->checked_in_at)->diffInMinutes(CarbonImmutable::parse($visit->departed_at)))
+            ->map(fn (object $visit): int => intdiv(strtotime($visit->departed_at) - strtotime($visit->checked_in_at), 60))
             ->sort()
             ->values();
 
@@ -256,12 +256,24 @@ class DoorFlowAnalytics
             ])
             ->map(function (object $visit): object {
                 // Same shape on SQLite and MariaDB: plain "Y-m-d H:i:s" strings.
+                // Cut, not parsed: a year of visits is thousands of rows, and
+                // a Carbon parse of each timestamp took seconds.
                 $visit->event_date = substr((string) $visit->event_date, 0, 10);
-                $visit->checked_in_at = CarbonImmutable::parse($visit->checked_in_at)->toDateTimeString();
-                $visit->departed_at = $visit->departed_at === null ? null : CarbonImmutable::parse($visit->departed_at)->toDateTimeString();
-                $visit->created_at = $visit->created_at === null ? null : CarbonImmutable::parse($visit->created_at)->toDateTimeString();
+                $visit->checked_in_at = self::dateTime($visit->checked_in_at);
+                $visit->departed_at = self::dateTime($visit->departed_at);
+                $visit->created_at = self::dateTime($visit->created_at);
 
                 return $visit;
             });
+    }
+
+    /**
+     * A stored timestamp as "Y-m-d H:i:s", whichever database wrote it.
+     *
+     * @return ($value is null ? null : string)
+     */
+    private static function dateTime(?string $value): ?string
+    {
+        return $value === null ? null : substr(str_replace('T', ' ', $value), 0, 19);
     }
 }
