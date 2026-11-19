@@ -1,0 +1,70 @@
+name: Bug report
+description: Something isn't working the way it should
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting. **Security problems don't go here:** report them privately as
+        described in [SECURITY.md](https://github.com/AsteriaCreations/portico/blob/main/SECURITY.md).
+        Please leave out member names, dates of birth and notes, in the text and in screenshots.
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What you saw. Paste exact error text if it's short.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: Include the screen and the role you were signed in as (Door, Manager, ...).
+      placeholder: |
+        1. Sign in as a Door user
+        2. Open Check-In Desk
+        3. ...
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Portico version or commit
+      description: The release tag (e.g. v1.1.0) or `git rev-parse --short HEAD`.
+    validations:
+      required: true
+  - type: input
+    id: php
+    attributes:
+      label: PHP version
+      placeholder: "8.4.27"
+  - type: dropdown
+    id: database
+    attributes:
+      label: Database
+      options:
+        - MariaDB
+        - MySQL
+        - SQLite
+        - Other
+  - type: dropdown
+    id: server
+    attributes:
+      label: How it's served
+      options:
+        - Apache + mod_php (scripts/apache)
+        - nginx + PHP-FPM
+        - Laravel Herd or another local dev server
+        - Other
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs and anything else
+      description: Relevant lines from storage/logs/laravel.log, screenshots, browser console errors.
+      render: text

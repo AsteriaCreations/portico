@@ -10,6 +10,9 @@ other system.
 the schema, fee rules, admission rules, and roles. When this file and the blueprint
 disagree, the blueprint wins.
 
+Reviewing pull requests, handling dependency updates and cutting releases are covered in
+[`docs/MAINTAINING.md`](docs/MAINTAINING.md).
+
 ## Stack
 
 - Laravel (current stable), PHP 8.4+
