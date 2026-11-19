@@ -321,6 +321,31 @@ test('a showrunner adds, changes and deletes items from the page', function () {
     expect(EventTimelineItem::count())->toBe(0);
 });
 
+test('cancelling the delete confirmation goes back to the item, leaving nothing open after', function () {
+    $event = timelineEvent();
+    $this->actingAs(timelineShowrunner($event));
+    $item = EventTimelineItem::factory()->create([
+        'event_id' => $event->id,
+        'event_timeline_category_id' => EventTimelineCategory::where('name', 'Public')->value('id'),
+        'title' => 'Doors open',
+        'starts_at' => $event->starts_at,
+    ]);
+
+    $page = Livewire::test(EventTimeline::class)
+        ->mountAction([['name' => 'editItem', 'arguments' => ['item' => $item->id]], 'deleteItem']);
+
+    // Stacked over the item dialog: replacing it is what left the browser
+    // with an action still open after both dialogs closed ("Leave site?").
+    expect($page->instance()->getMountedAction()->shouldOverlayParentActions())->toBeTrue();
+
+    $page->call('unmountAction');
+    expect(collect($page->get('mountedActions'))->pluck('name')->all())->toBe(['editItem']);
+
+    $page->call('unmountAction');
+    expect($page->get('mountedActions'))->toBe([])
+        ->and($item->fresh())->not->toBeNull();
+});
+
 test('the page refuses an event the user may not edit, even with a forged id', function () {
     $own = timelineEvent();
     $other = timelineEvent();

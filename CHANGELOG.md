@@ -10,6 +10,13 @@ releases below could carry small breaking changes in a minor release.
 
 ## [Unreleased]
 
+### Fixed
+
+- **Event timeline:** clicking *Delete* on an item and then *Cancel* on "Delete this timeline item?"
+  closed both dialogs but left the item's dialog open behind the scenes, so leaving the page then
+  asked "Leave site?" with nothing unsaved. The confirmation now opens on top of the item's
+  dialog, and *Cancel* goes back to it.
+
 ### Documentation
 
 - **`docs/MAINTAINING.md`**, a guide for whoever looks after the Portico repository: its GitHub
