@@ -223,6 +223,10 @@ class EventTimeline extends Page
                     ->label(__('Delete'))
                     ->color('danger')
                     ->requiresConfirmation()
+                    // On top of the item dialog, not instead of it: closing the dialog
+                    // underneath left the browser out of step with the open actions, so
+                    // cancelling here hid both dialogs and the page then asked "Leave site?".
+                    ->overlayParentActions()
                     ->modalHeading(__('Delete this timeline item?'))
                     ->action(function (Action $action) use ($arguments): void {
                         $this->requireEditableEvent();
