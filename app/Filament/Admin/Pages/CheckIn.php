@@ -1169,7 +1169,7 @@ class CheckIn extends Page implements HasTable
         $event = $this->getSelectedEvent();
         $requiresAcknowledgement = $this->getDecision()?->requiresAcknowledgement() ?? false;
         $openShift = $this->getOpenShift();
-        $lockedOneTimeCodes = $member?->hasUsedOneTimeMethod() ? PaymentMethod::oneTimeCodes()->all() : [];
+        $lockedOneTimeCodes = $member?->isOneTimeMethodLocked() ? PaymentMethod::oneTimeCodes()->all() : [];
 
         return Action::make('checkIn')
             // Named, so a wrong pick between overlapping events shows at the click.

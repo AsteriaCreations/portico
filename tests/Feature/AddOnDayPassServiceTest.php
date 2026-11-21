@@ -55,6 +55,19 @@ test('a one-time method is recorded on the member, and refused once already used
     expect(AddOnDayPass::where('event_id', $nextEvent->id)->exists())->toBeFalse();
 });
 
+test('a member in an exempt category can buy day passes with a one-time method again and again', function () {
+    PaymentMethod::factory()->create(['code' => 'once-only', 'label' => 'Once Only', 'one_time_only' => true]);
+    $this->member->category->update(['one_time_payment_exempt' => true]);
+    $this->member->refresh();
+
+    $this->service->sell($this->member, $this->pool, $this->event, $this->staff, paymentMethod: 'once-only');
+    $nextEvent = Event::factory()->create(['event_date' => today()->toDateString(), 'pool_fee' => 15]);
+    $this->service->sell($this->member, $this->pool, $nextEvent, $this->staff, paymentMethod: 'once-only');
+
+    expect(AddOnDayPass::where('member_id', $this->member->id)->count())->toBe(2)
+        ->and((string) $this->member->refresh()->hospitality_note)->not->toContain('Once Only used');
+});
+
 test('a second pass for the same member, event and add-on is refused with a message, not a server error', function () {
     $this->service->sell($this->member, $this->pool, $this->event, $this->staff, 'comp');
 

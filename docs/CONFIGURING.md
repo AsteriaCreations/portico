@@ -61,7 +61,7 @@ All are Manager+ unless noted. They're grouped in the left nav exactly as listed
 
 | Screen | What it's for |
 |---|---|
-| **Categories** | Membership categories and their flags (`is_comped` = never charged entry). **Prospective, Guest, and Irregular are protected** — business logic matches them by name, so they can't be renamed or deleted (everything else about them is editable). |
+| **Categories** | Membership categories and their flags (`is_comped` = never charged entry; `one_time_payment_exempt` = may pay entry with a one-time payment method on every visit). **Prospective, Guest, and Irregular are protected** — business logic matches them by name, so they can't be renamed or deleted (everything else about them is editable). |
 | **Paperwork Types** | Waivers/forms a member signs. `required`, `renewal_months`, and `gates_add_on_id` (e.g. a Pool Waiver that gates the Pool add-on). |
 | **Skills** | A tag catalog (e.g. "First aid", "DJ"). Assigning a skill to a member is Admin+; editing the catalog is Manager+. |
 | **Event Types** | Social, Class, Munch, … Each event picks one. Its **Instructor Pay Rates** tab sets per-head instructor pay (only if `instructor_payouts_enabled`). |

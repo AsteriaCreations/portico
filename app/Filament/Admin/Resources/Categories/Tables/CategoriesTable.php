@@ -24,6 +24,11 @@ class CategoriesTable
                     ->label('Comped')
                     ->boolean()
                     ->tooltip(fn (bool $state): string => $state ? __('Comped') : __('Not comped')),
+                IconColumn::make('one_time_payment_exempt')
+                    ->label(__('One-time payment exempt'))
+                    ->boolean()
+                    ->toggleable()
+                    ->tooltip(fn (bool $state): string => $state ? __('Exempt from the one-time payment limit') : __('One-time payment limit applies')),
                 TextColumn::make('sort_order')
                     ->numeric()
                     ->sortable(),

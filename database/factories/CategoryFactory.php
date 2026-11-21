@@ -21,6 +21,7 @@ class CategoryFactory extends Factory
             'name' => fake()->unique()->word(),
             'description' => fake()->sentence(),
             'is_comped' => false,
+            'one_time_payment_exempt' => false,
             'sort_order' => 0,
             'active' => true,
         ];

@@ -421,6 +421,25 @@ class Member extends Model
     }
 
     /**
+     * Whether the one-time limit stops this member paying entry with a
+     * one-time method now: they've used one, and their category isn't
+     * exempt (categories.one_time_payment_exempt). Every gate on the limit
+     * reads this, not hasUsedOneTimeMethod().
+     */
+    public function isOneTimeMethodLocked(): bool
+    {
+        return ! $this->isOneTimeMethodExempt() && $this->hasUsedOneTimeMethod();
+    }
+
+    /**
+     * Whether this member's category lets them use one-time methods freely.
+     */
+    public function isOneTimeMethodExempt(): bool
+    {
+        return (bool) $this->category?->one_time_payment_exempt;
+    }
+
+    /**
      * Appends a dated marker to hospitality_note when a member's one-time
      * payment method is spent, so staff glancing at the member record see
      * it without digging through payment history. Prior content is kept,

@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-#[Fillable(['name', 'description', 'is_comped', 'sort_order', 'active'])]
+#[Fillable(['name', 'description', 'is_comped', 'one_time_payment_exempt', 'sort_order', 'active'])]
 class Category extends Model
 {
     /** @use HasFactory<CategoryFactory> */
@@ -27,6 +27,7 @@ class Category extends Model
     {
         return [
             'is_comped' => 'boolean',
+            'one_time_payment_exempt' => 'boolean',
             'sort_order' => 'integer',
             'active' => 'boolean',
         ];
