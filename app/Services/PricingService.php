@@ -207,6 +207,37 @@ class PricingService
     }
 
     /**
+     * How much of a door discount (e.g. $5 off for a food donation) this
+     * visit actually gets, in cents: the discount's amount, capped at the
+     * entry still owed after subscription credit, a comped category or a
+     * per-event comp -- so a fully covered entry gets nothing off, and
+     * add-ons and pool are never discounted. Applied before vouchers, which
+     * then cover what's left. Like applyEventComp(), layered on top of
+     * price(), not inside it.
+     */
+    public function entryDiscountCents(PriceBreakdown $breakdown, int $discountCents): int
+    {
+        $entryOwedCents = $breakdown->entryFeeCents - $breakdown->entryCoverageCents - $breakdown->voucherCoverageCents;
+
+        return max(0, min($discountCents, $entryOwedCents, $breakdown->amountPaidCents));
+    }
+
+    /**
+     * Takes an entryDiscountCents() amount off what's due.
+     */
+    public function applyDiscount(PriceBreakdown $breakdown, int $appliedCents): PriceBreakdown
+    {
+        return new PriceBreakdown(
+            entryFeeCents: $breakdown->entryFeeCents,
+            entryCoverageCents: $breakdown->entryCoverageCents,
+            entryCoveredBy: $breakdown->entryCoveredBy,
+            addOnLines: $breakdown->addOnLines,
+            voucherCoverageCents: $breakdown->voucherCoverageCents,
+            amountPaidCents: max(0, $breakdown->amountPaidCents - $appliedCents),
+        );
+    }
+
+    /**
      * Applies voucher credit on top of an already-priced breakdown. A
      * separate, explicit step from price() because it's opt-in and partial
      * at check-in, not a deterministic function of member+event — see

@@ -515,6 +515,25 @@ Overrides whatever `price()` computed for an entry that still owes something —
 
 ---
 
+## Door discounts (a fixed amount off one visit's entry)
+
+A partial counterpart to the per-event comp: a fixed amount off entry for one visit, e.g. **$5 off for bringing a food donation**. The amounts are editable data in a **Manager+** list, `door_discounts` (`name`, `amount`, `sort_order`, `active`), never constants. At check-in, **Door+** (`apply-door-discount` gate) may pick one; the desk hides the field while no discount is active, so an empty list is the off switch and there is no feature flag.
+
+Layered on top of `price()` after the per-event comp and before vouchers:
+
+```
+entryDiscountCents(breakdown, discount):
+    owed = breakdown.entry_fee - breakdown.entry_cov - breakdown.voucher_cov
+    return max(0, min(discount, owed, breakdown.due))
+
+applyDiscount(breakdown, applied):
+    return breakdown with due = max(0, breakdown.due - applied)   # coverage untouched
+```
+
+It comes off **entry still owed only**: after subscription credit, a comped category or a per-event comp, never below zero. A fully covered entry gets nothing off, and pool and add-ons are never discounted. Vouchers then cover what's left. What came off is an append-only `attendance_discounts` row (`attendance_id` unique, `door_discount_id`, `name` and applied `amount` snapshotted), and `amount_paid` is already net of it. So entry due on a row is `entry_fee − entry_coverage − voucher_coverage − discount`. A discounted entry can't be converted to a subscription (`EntryCorrectionService`). The kiosk and check-in on sign-in never apply one. CheckInService re-reads the discount, so a forged, inactive, or unpermitted choice is ignored.
+
+---
+
 ## Payment corrections (same-night entry → subscription)
 
 Standard procedure is that a recorded payment isn't changed. The one sanctioned exception: a subscription-eligible member who paid a normal door entry and comes back **the same night** wanting to subscribe instead. A **Manager+** does it from the Check-In Desk ("Convert entry to subscription", `correct-entry-payment` gate). It is never a hand edit: `amount_paid`/`payment_method` are read-only on every attendance edit form.

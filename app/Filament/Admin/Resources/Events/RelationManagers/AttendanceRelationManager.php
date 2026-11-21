@@ -9,6 +9,7 @@ use App\Filament\Concerns\TranslatesRelationManagerTitle;
 use App\Models\Attendance;
 use App\Models\AttendanceAddOn;
 use App\Models\Member;
+use App\Models\MembershipSetting;
 use App\Models\PaymentMethod;
 use App\Services\PricingService;
 use Filament\Actions\BulkActionGroup;
@@ -96,6 +97,10 @@ class AttendanceRelationManager extends RelationManager
                 TextColumn::make('entry_fee')->money()->sortable(),
                 TextColumn::make('entry_coverage')->money()->sortable(),
                 TextColumn::make('entry_covered_by')->badge(),
+                TextColumn::make('discount.name')
+                    ->label(__('Discount'))
+                    ->description(fn (Attendance $record): ?string => $record->discount ? MembershipSetting::formatMoney((float) $record->discount->amount) : null)
+                    ->toggleable(),
                 TextColumn::make('amount_paid')->money()->sortable(),
                 TextColumn::make('payment_method')
                     ->toggleable(isToggledHiddenByDefault: true),

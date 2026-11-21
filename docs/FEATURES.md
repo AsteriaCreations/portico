@@ -17,6 +17,7 @@ CHECK-IN DESK
 - Standalone subscription purchase (independent of event check-in)
 - Voucher redemption (account credit, cross-member; one check-in can spend the attendee's own credit first and then another member's)
 - Per-event comp (Manager+ waives one visit's entry fee; Door too, with a reason an Admin marked door-allowed)
+- Door discounts (Door+ takes a fixed amount off one visit's entry, e.g. $5 for a food donation; Manager+ keeps the list)
 - Event Add-Ons (room rental, sleepover — priced extras)
 - Pool day pass (single-visit pool coverage); the desk form starts on the event picked on the page
 - Guest registration (sponsor-gated, full identity capture); can be switched off, optionally allowed during probation, and optionally capped per member per night

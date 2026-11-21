@@ -112,6 +112,10 @@ class AppServiceProvider extends ServiceProvider
         Gate::define('grant-event-comp', fn (User $user, ?CompReason $reason = null): bool => $user->role->atLeast(Role::Manager)
             || ($user->role->atLeast(Role::Door) && $reason !== null && $reason->active && $reason->door_allowed));
 
+        // A fixed amount off entry at check-in (App\Models\DoorDiscount,
+        // e.g. a food donation). Anyone who checks people in may apply one.
+        Gate::define('apply-door-discount', fn (User $user): bool => $user->role->atLeast(Role::Door));
+
         // Who may mark a comp reason door_allowed, i.e. delegate a comp to
         // Door. Above the Manager+ floor of the rest of the reason form,
         // enforced on every save path by CompReasonObserver.

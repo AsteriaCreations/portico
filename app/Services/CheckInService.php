@@ -6,7 +6,9 @@ use App\Exceptions\CheckInRefused;
 use App\Models\AddOn;
 use App\Models\Attendance;
 use App\Models\AttendanceAddOn;
+use App\Models\AttendanceDiscount;
 use App\Models\CompReason;
+use App\Models\DoorDiscount;
 use App\Models\Event;
 use App\Models\Member;
 use App\Models\MembershipSetting;
@@ -203,6 +205,19 @@ class CheckInService
                 $compReasonId = $compReason?->id;
             }
 
+            // A door discount (e.g. a food donation), re-read here: a forged
+            // or since-deactivated id, or a role that may not apply one, is
+            // ignored. Off entry still owed only, before vouchers.
+            $doorDiscount = $request->doorDiscountId && Gate::forUser($staff)->allows('apply-door-discount')
+                ? DoorDiscount::active()->find($request->doorDiscountId)
+                : null;
+            $discountApplied = $doorDiscount
+                ? app(PricingService::class)->entryDiscountCents($breakdown, Cents::of($doorDiscount->amount))
+                : 0;
+            if ($discountApplied > 0) {
+                $breakdown = app(PricingService::class)->applyDiscount($breakdown, $discountApplied);
+            }
+
             // Voucher credit: one balance (the attendee's own, or another
             // member's), or the attendee's own first and then another
             // member's. PricingService::planVoucherDraws() splits it,
@@ -308,6 +323,15 @@ class CheckInService
                 // changes needed there.
                 'amount_paid' => Cents::toDecimal($breakdown->amountPaidCents + $addOnTotal + $transactionFee),
             ]);
+
+            if ($discountApplied > 0) {
+                AttendanceDiscount::create([
+                    'attendance_id' => $attendance->id,
+                    'door_discount_id' => $doorDiscount->id,
+                    'name' => $doorDiscount->name,
+                    'amount' => Cents::toDecimal($discountApplied),
+                ]);
+            }
 
             foreach ($selectedAddOns as $addOn) {
                 AttendanceAddOn::create([
