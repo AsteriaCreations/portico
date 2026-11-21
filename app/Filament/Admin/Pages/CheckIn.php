@@ -18,6 +18,7 @@ use App\Filament\Concerns\TranslatesPageLabels;
 use App\Models\AddOn;
 use App\Models\Attendance;
 use App\Models\CompReason;
+use App\Models\DoorDiscount;
 use App\Models\Event;
 use App\Models\Member;
 use App\Models\MembershipSetting;
@@ -539,7 +540,22 @@ class CheckIn extends Page implements HasTable
             $breakdown = app(PricingService::class)->applyEventComp($breakdown);
         }
 
-        return $breakdown;
+        $discountCents = $this->getSelectedDoorDiscountCents($breakdown);
+
+        return $discountCents > 0 ? app(PricingService::class)->applyDiscount($breakdown, $discountCents) : $breakdown;
+    }
+
+    /**
+     * What the door discount picked in pricingForm takes off this visit, in
+     * cents -- the same PricingService::entryDiscountCents() cap
+     * CheckInService applies, so the Due line matches what's charged.
+     */
+    private function getSelectedDoorDiscountCents(PriceBreakdown $breakdown): int
+    {
+        $id = $this->pricingData['door_discount_id'] ?? null;
+        $discount = filled($id) && Gate::allows('apply-door-discount') ? DoorDiscount::active()->find($id) : null;
+
+        return $discount ? app(PricingService::class)->entryDiscountCents($breakdown, Cents::of($discount->amount)) : 0;
     }
 
     // The page's own running total — what pricingForm()'s current selections
@@ -720,6 +736,9 @@ class CheckIn extends Page implements HasTable
         // reason door-allowed, and then only those reasons.
         $canGrantComp = Gate::allows('grant-event-comp') || CompReason::grantableBy(auth()->user())->exists();
         $entryFee = $this->getPriceBreakdown()?->entryFeeCents ?? 0;
+        $doorDiscountOptions = DoorDiscount::active()->orderBy('sort_order')->orderBy('name')->get()
+            ->mapWithKeys(fn (DoorDiscount $discount): array => [$discount->id => $discount->name.' — '.$this->formatCurrency((float) $discount->amount)])
+            ->all();
         $ownBalance = $member?->voucherBalance() ?? 0.0;
         // Entry/pool still owed plus any subscription picked above -- credit
         // can pay toward either (CheckInService spends it in that order).
@@ -805,6 +824,17 @@ class CheckIn extends Page implements HasTable
                     ->live()
                     ->required(fn (Get $get): bool => (bool) $get('comp_entry'))
                     ->visible(fn (Get $get): bool => $canPreviewPricing && $canGrantComp && (bool) $get('comp_entry')),
+                Select::make('door_discount_id')
+                    ->label(__('Discount'))
+                    ->placeholder(__('None'))
+                    ->options($doorDiscountOptions)
+                    // Off entry still owed only, so a covered entry gets
+                    // nothing off -- PricingService::entryDiscountCents().
+                    ->helperText(fn (Get $get): ?string => filled($get('door_discount_id')) && ($breakdown = $this->getLivePriceBreakdownBeforeVoucher()) && $breakdown->entryCoverageCents >= $breakdown->entryFeeCents
+                        ? __('Entry is already covered tonight, so the discount takes nothing off.')
+                        : null)
+                    ->live()
+                    ->visible($canPreviewPricing && $entryFee > 0 && $doorDiscountOptions !== [] && Gate::allows('apply-door-discount')),
                 Checkbox::make('apply_voucher')
                     ->label($voucherLabel)
                     ->live()
@@ -1414,6 +1444,7 @@ class CheckIn extends Page implements HasTable
             voucherAmountCents: Cents::of($pricingData['voucher_amount'] ?? 0),
             voucherReason: (string) ($pricingData['voucher_reason'] ?? ''),
             ownVoucherAmountCents: Cents::of($pricingData['own_voucher_amount'] ?? 0),
+            doorDiscountId: $pricingData['door_discount_id'] ?? null,
         );
     }
 

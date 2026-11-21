@@ -9,6 +9,7 @@ use App\Filament\Admin\Pages\Technical;
 use App\Filament\Admin\Resources\AddOns\AddOnResource;
 use App\Filament\Admin\Resources\Categories\CategoryResource;
 use App\Filament\Admin\Resources\CompReasons\CompReasonResource;
+use App\Filament\Admin\Resources\DoorDiscounts\DoorDiscountResource;
 use App\Filament\Admin\Resources\Events\EventResource;
 use App\Filament\Admin\Resources\EventTimelineCategories\EventTimelineCategoryResource;
 use App\Filament\Admin\Resources\EventTypes\EventTypeResource;
@@ -169,6 +170,7 @@ class AdminPanelProvider extends PanelProvider
             AddOnResource::class => 'add-ons',
             CategoryResource::class => 'categories',
             CompReasonResource::class => 'comp-reasons',
+            DoorDiscountResource::class => 'door-discounts',
             EventTypeResource::class => 'event-types',
             EventResource::class => 'events',
             EventTimelineCategoryResource::class => 'event-timeline-categories',

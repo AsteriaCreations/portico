@@ -12,6 +12,12 @@ releases below could carry small breaking changes in a minor release.
 
 ### Added
 
+- **Door discounts:** a fixed amount Door staff can take off one visit's entry at check-in, for
+  example $5 off for bringing a food donation. Managers keep the list (*Desk & Money → Door
+  Discounts*: name, amount, active). The desk's new *Discount* field takes it off the entry still
+  owed after any subscription credit or comp, never below zero, before vouchers; pool and add-ons
+  are not discounted. Each use is snapshotted on the visit and shown on the event's Attendance tab.
+  The field stays hidden until a discount is active. Migration.
 - **Categories:** a new *Exempt from the one-time payment limit* setting. Members in a category with
   it on can pay entry or a day pass with a one-time payment method (such as Venmo) on every visit,
   and no "used" note is added to their record. Off by default, so the limit still applies

@@ -32,5 +32,7 @@ final readonly class CheckInRequest
         // With another member's balance picked above: how much of the
         // attendee's own balance to spend first. 0 = none, as before.
         public int $ownVoucherAmountCents = 0,
+        // A DoorDiscount to take off entry (e.g. a food donation); null = none.
+        public int|string|null $doorDiscountId = null,
     ) {}
 }

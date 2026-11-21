@@ -38,11 +38,13 @@ class FindStrayTransactionFees extends Command
             ->whereNotNull('payment_method')
             ->with(['member', 'event'])
             ->withSum('addOns', 'price')
+            ->withSum('discount', 'amount')
             ->chunkById(500, function ($chunk) use (&$rows, &$totalCents) {
                 foreach ($chunk as $attendance) {
                     $dueCents = Cents::of($attendance->entry_fee)
                         - Cents::of($attendance->entry_coverage)
                         - Cents::of($attendance->voucher_coverage)
+                        - Cents::of($attendance->discount_sum_amount)
                         + Cents::of($attendance->add_ons_sum_price);
 
                     if ($dueCents !== 0) {

@@ -25,7 +25,7 @@ disagree, the migration wins, and this page needs fixing.
    ledger; don't pick out "the" row. These are: `vouchers`, `occupancy_adjustments`,
    `ban_exceptions`, `member_status_changes`, `member_username_changes`,
    `attendance_behavior_notes`, `behavior_note_retractions`, `miscellaneous_payments`, `add_on_day_passes`,
-   `attendance_add_ons`, `member_paperwork`, `watchlist_reviews`, `payment_corrections`,
+   `attendance_add_ons`, `attendance_discounts`, `member_paperwork`, `watchlist_reviews`, `payment_corrections`,
    `visit_removals`, `instructor_payouts`, `register_drops`, `cash_exchanges`.
 5. **Attendance rows are price snapshots.** Each row stores what was charged that night.
    Changing an event's fee or a plan's price later never rewrites old rows. Report from the row,
@@ -48,6 +48,7 @@ categories ─< members >─ sponsor (members, a guest's sponsor)
                  ├─< attendance >── events >── event_types
                  │      │             │
                  │      ├─< attendance_add_ons >── add_ons
+                 │      ├── attendance_discounts >── door_discounts
                  │      ├── comp_reasons
                  │      └── register_shifts >── registers
                  │
@@ -128,7 +129,7 @@ table.**
 
 **What `amount_paid` contains:**
 `(entry_fee − entry_coverage) + Σ subscribable add-on lines (fee − coverage) + Σ flat add-ons
-(price) − voucher_coverage + the payment method's transaction fee`.
+(price) − voucher_coverage − attendance_discounts.amount + the payment method's transaction fee`.
 In other words, it's everything that changed hands for the visit in one figure. The transaction
 fee isn't stored separately; `payment_methods.transaction_fee` is only today's setting. So
 "entry revenue" vs "add-on revenue" needs `attendance_add_ons` (below), and is approximate
@@ -147,6 +148,19 @@ the time.
 | `coverage`, `covered_by` | Subscribable lines only: amount waived and why (`none`, `comp`, `subscription`, `day_pass`, `legacy_import`). NULL for flat add-ons. |
 
 Money from an add-on line = `COALESCE(fee, price) − coverage`.
+
+### `attendance_discounts`
+At most one row per visit: a door discount the desk took off entry (e.g. $5 for a food
+donation). Copied in at the time.
+
+| Column | Meaning |
+|---|---|
+| `attendance_id` | → `attendance` (unique; deleted along with the visit). |
+| `door_discount_id` | → `door_discounts`; may become NULL if the discount is later deleted, so use `name`. |
+| `name` | The discount's name at check-in. |
+| `amount` | What actually came off: the discount's amount, or less when less entry than that was owed. Already subtracted from `attendance.amount_paid`. |
+
+To count one event's discounts (say, food donations), join to `attendance` and filter on its `event_id`.
 
 ### `subscriptions`
 One row per member per subscription per covered month.
@@ -215,6 +229,7 @@ drawer, add those rows back (see recipe).
 | `categories` | Member categories; `is_comped`; `one_time_payment_exempt` (the one-time payment method limit doesn't apply). *Prospective*, *Guest*, *Irregular* are fixed names the app relies on. |
 | `event_types` | Event taxonomy for reporting. |
 | `comp_reasons` | Why someone was comp-listed; `grants_voucher_amount`. |
+| `door_discounts` | Fixed amounts the desk can take off entry (`name`, `amount`, `active`). What each visit got is in `attendance_discounts`. |
 | `payment_methods` | `code` (what other tables store), `label`, `requires_register_shift` (cash), `one_time_only`, `transaction_fee`, `active`. |
 | `add_ons` | Extras and subscriptions. `kind = 'entry'` is the Regular subscription's anchor row; `subscribable`; `priced_per_event` (price comes from the event, e.g. `events.pool_fee`); `price`. |
 | `add_on_event` | Which flat add-ons each event offers. |

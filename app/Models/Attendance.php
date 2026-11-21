@@ -12,6 +12,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 #[Fillable([
     'member_id', 'event_id', 'checked_in_by', 'checked_in_at', 'departed_at',
@@ -68,6 +69,14 @@ class Attendance extends Model
     public function addOns(): HasMany
     {
         return $this->hasMany(AttendanceAddOn::class);
+    }
+
+    /**
+     * The door discount this visit got, if any (e.g. a food donation).
+     */
+    public function discount(): HasOne
+    {
+        return $this->hasOne(AttendanceDiscount::class);
     }
 
     public function behaviorNotes(): HasMany

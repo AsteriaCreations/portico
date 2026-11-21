@@ -51,6 +51,7 @@ class EntryCorrectionService
             Cents::of($attendance->entry_fee) <= 0,
             $attendance->entry_covered_by !== EntryCoverageSource::None,
             Cents::of($attendance->voucher_coverage) > 0,
+            $attendance->discount()->exists(),
             $attendance->comp_reason_id !== null => __('Only a plain paid entry can be converted.'),
             ! $member->isSubscriptionEligible() => __('The member isn\'t subscription-eligible.'),
             $member->hasActiveSubscriptionFor(AddOn::entry(), $event->event_date->clone()->startOfMonth()) => __('The member already has a subscription for this month.'),

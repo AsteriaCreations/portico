@@ -26,6 +26,7 @@ class OperationalDataReset
      */
     public const CLEARED_TABLES = [
         'attendance_add_ons',
+        'attendance_discounts',
         'behavior_note_retractions',
         'attendance_behavior_notes',
         'payment_corrections',
@@ -88,6 +89,7 @@ class OperationalDataReset
         'event_types',
         'plans',
         'comp_reasons',
+        'door_discounts',
         'registers',
         'payment_methods',
         'add_ons',
