@@ -41,8 +41,10 @@ beforeEach(function () {
     $this->shift = RegisterShift::factory()->create();
     $this->event = Event::factory()->create([
         'event_date' => today()->toDateString(),
-        'starts_at' => today()->setTime(20, 0),
-        'ends_at' => today()->setTime(23, 0),
+        // Already started whatever the clock says: an event that hasn't
+        // reached starts_at isn't tonight's yet (Event::isCurrentlyActive()).
+        'starts_at' => today(),
+        'ends_at' => today()->endOfDay(),
         'entry_fee' => 40,
     ]);
     $this->member = Member::factory()->create([
