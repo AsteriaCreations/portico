@@ -189,7 +189,7 @@ trait SellsSubscriptionsAtDesk
     {
         $member = $this->getSelectedMember();
         $openShift = $this->getOpenShift();
-        $lockedOneTimeCodes = $member?->hasUsedOneTimeMethod() ? PaymentMethod::oneTimeCodes()->all() : [];
+        $lockedOneTimeCodes = $member?->isOneTimeMethodLocked() ? PaymentMethod::oneTimeCodes()->all() : [];
         $dayPasses = app(AddOnDayPassService::class);
         $dayPassableAddOns = $member ? $dayPasses->sellableAddOns($member) : collect();
         $defaultAddOnId = $dayPassableAddOns->count() === 1 ? $dayPassableAddOns->first()->id : null;

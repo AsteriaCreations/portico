@@ -212,7 +212,7 @@ drawer, add those rows back (see recipe).
 
 | Table | What |
 |---|---|
-| `categories` | Member categories; `is_comped`. *Prospective*, *Guest*, *Irregular* are fixed names the app relies on. |
+| `categories` | Member categories; `is_comped`; `one_time_payment_exempt` (the one-time payment method limit doesn't apply). *Prospective*, *Guest*, *Irregular* are fixed names the app relies on. |
 | `event_types` | Event taxonomy for reporting. |
 | `comp_reasons` | Why someone was comp-listed; `grants_voucher_amount`. |
 | `payment_methods` | `code` (what other tables store), `label`, `requires_register_shift` (cash), `one_time_only`, `transaction_fee`, `active`. |

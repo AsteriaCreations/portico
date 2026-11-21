@@ -10,6 +10,13 @@ releases below could carry small breaking changes in a minor release.
 
 ## [Unreleased]
 
+### Added
+
+- **Categories:** a new *Exempt from the one-time payment limit* setting. Members in a category with
+  it on can pay entry or a day pass with a one-time payment method (such as Venmo) on every visit,
+  and no "used" note is added to their record. Off by default, so the limit still applies
+  everywhere after an update; a club can turn it on for Guest, for example. Migration.
+
 ### Fixed
 
 - **Check-In Desk:** an event later today could be checked into at any time of day, because

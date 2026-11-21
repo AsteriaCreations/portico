@@ -326,7 +326,7 @@ class CheckInService
                 AttendanceAddOn::create(['attendance_id' => $attendance->id, ...$row]);
             }
 
-            if (in_array($paymentMethod, PaymentMethod::oneTimeCodes()->all(), true)) {
+            if (in_array($paymentMethod, PaymentMethod::oneTimeCodes()->all(), true) && ! $member->isOneTimeMethodExempt()) {
                 $member->recordOneTimeMethodUsage(PaymentMethod::where('code', $paymentMethod)->value('label'));
             }
 

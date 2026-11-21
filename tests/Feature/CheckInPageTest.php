@@ -2077,6 +2077,44 @@ test('using one one-time method (venmo) also locks out the others (paypal)', fun
     expect(Attendance::where('member_id', $member->id)->where('event_id', $eventTwo->id)->exists())->toBeFalse();
 });
 
+test('a member in a category exempt from the one-time limit can pay entry with venmo on every visit', function () {
+    $this->irregular->update(['one_time_payment_exempt' => true]);
+    $member = clearMember($this->irregular);
+    $eventOne = Event::factory()->create(['event_date' => now()->toDateString(), 'entry_fee' => 20, 'pool_fee' => 0]);
+    $eventTwo = Event::factory()->create(['event_date' => now()->addMonth()->toDateString(), 'entry_fee' => 20, 'pool_fee' => 0, 'door_prepay_enabled' => true]);
+
+    foreach ([$eventOne, $eventTwo] as $event) {
+        Livewire::test(CheckIn::class)
+            ->fillForm(['event_id' => $event->id, 'member_id' => $member->id])
+            ->callAction('checkIn', data: [
+                'checked_in_at' => now(),
+                'payment_method' => 'venmo',
+            ])
+            ->assertHasNoActionErrors();
+    }
+
+    $member->refresh();
+    expect(Attendance::where('member_id', $member->id)->where('payment_method', 'venmo')->count())->toBe(2)
+        ->and($member->hasUsedOneTimeMethod())->toBeTrue()
+        ->and($member->isOneTimeMethodLocked())->toBeFalse()
+        ->and((string) $member->hospitality_note)->not->toContain('Venmo used');
+});
+
+test('the exemption follows the category: switching it on unlocks a member who already used a one-time method', function () {
+    $member = clearMember($this->irregular);
+    $event = Event::factory()->create(['event_date' => now()->toDateString(), 'entry_fee' => 20, 'pool_fee' => 0]);
+
+    Livewire::test(CheckIn::class)
+        ->fillForm(['event_id' => $event->id, 'member_id' => $member->id])
+        ->callAction('checkIn', data: ['checked_in_at' => now(), 'payment_method' => 'venmo'])
+        ->assertHasNoActionErrors();
+
+    expect($member->fresh()->isOneTimeMethodLocked())->toBeTrue();
+
+    $this->irregular->update(['one_time_payment_exempt' => true]);
+    expect($member->fresh()->isOneTimeMethodLocked())->toBeFalse();
+});
+
 test('a non-one-time method never locks anything out', function () {
     $member = clearMember($this->irregular);
     $eventOne = Event::factory()->create(['event_date' => now()->toDateString(), 'entry_fee' => 20, 'pool_fee' => 0]);

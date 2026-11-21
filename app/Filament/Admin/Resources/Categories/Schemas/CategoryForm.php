@@ -33,6 +33,11 @@ class CategoryForm
                     ->helperText(__('Members in this category are fully comped on entry and pool fees.'))
                     ->required()
                     ->default(false),
+                Toggle::make('one_time_payment_exempt')
+                    ->label(__('Exempt from the one-time payment limit'))
+                    ->helperText(__('Members in this category can pay entry with a one-time payment method (such as Venmo) on every visit, not just once.'))
+                    ->required()
+                    ->default(false),
                 TextInput::make('sort_order')
                     ->required()
                     ->numeric()

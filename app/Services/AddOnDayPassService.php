@@ -83,7 +83,7 @@ class AddOnDayPassService
         abort_unless($this->eventOptionsQuery($addOn)->whereKey($event->id)->exists(), 403);
 
         $isOneTime = in_array($paymentMethod, PaymentMethod::oneTimeCodes()->all(), true);
-        abort_if($isOneTime && $member->hasUsedOneTimeMethod(), 422, 'This member has already used a one-time payment method.');
+        abort_if($isOneTime && $member->isOneTimeMethodLocked(), 422, 'This member has already used a one-time payment method.');
 
         $price = $addOn->priceFor($event);
         abort_unless($price !== null, 422);
@@ -103,7 +103,7 @@ class AddOnDayPassService
                     'recorded_by' => $staff->id,
                 ]);
 
-                if ($isOneTime) {
+                if ($isOneTime && ! $member->isOneTimeMethodExempt()) {
                     $member->recordOneTimeMethodUsage(PaymentMethod::where('code', $paymentMethod)->value('label'));
                 }
 
