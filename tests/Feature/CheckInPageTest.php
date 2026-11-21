@@ -2733,6 +2733,73 @@ test('the event picker still works for a legacy event with no starts_at/ends_at 
     expect($options->invoke(null)->pluck('id'))->toContain($legacy->id);
 });
 
+test('a same-day event stays off the picker until starts_at less the buffer, then stays on after it ends', function () {
+    $tonight = Event::factory()->create([
+        'event_date' => '2026-07-18',
+        'starts_at' => '2026-07-18 21:00:00',
+        'ends_at' => '2026-07-18 23:00:00',
+        'door_prepay_enabled' => false,
+    ]);
+
+    $options = (new ReflectionClass(CheckIn::class))->getMethod('eventSelectQuery');
+    $options->setAccessible(true);
+
+    $this->travelTo(Carbon::parse('2026-07-18 10:00:00'));
+    expect($options->invoke(null)->pluck('id'))->not->toContain($tonight->id)
+        ->and($tonight->fresh()->isCurrentlyActive())->toBeFalse();
+
+    // Default 15-minute buffer.
+    $this->travelTo(Carbon::parse('2026-07-18 20:45:00'));
+    expect($options->invoke(null)->pluck('id'))->toContain($tonight->id)
+        ->and($tonight->fresh()->isCurrentlyActive())->toBeTrue();
+
+    $this->travelTo(Carbon::parse('2026-07-18 23:50:00'));
+    expect($options->invoke(null)->pluck('id'))->toContain($tonight->id)
+        ->and($tonight->fresh()->isCurrentlyActive())->toBeTrue();
+});
+
+test('a forged event_id for a same-day event that has not started yet checks nobody in', function () {
+    $this->travelTo(Carbon::parse('2026-07-18 10:00:00'));
+    $member = clearMember($this->irregular);
+    $tonight = Event::factory()->create([
+        'event_date' => '2026-07-18',
+        'starts_at' => '2026-07-18 21:00:00',
+        'ends_at' => '2026-07-18 23:00:00',
+        'entry_fee' => 0,
+        'door_prepay_enabled' => false,
+    ]);
+
+    try {
+        Livewire::test(CheckIn::class)
+            ->set('data.event_id', $tonight->id)
+            ->set('data.member_id', $member->id)
+            ->callAction('checkIn', data: ['payment_method' => 'comp']);
+    } catch (Throwable) {
+        // A hidden or aborted action -- either way, nothing may be written.
+    }
+
+    expect(Attendance::where('member_id', $member->id)->exists())->toBeFalse();
+});
+
+test('a door-prepay event later today is offered before it starts, as a prepay with no arrival time', function () {
+    $this->travelTo(Carbon::parse('2026-07-18 10:00:00'));
+    $tonight = Event::factory()->create([
+        'event_date' => '2026-07-18',
+        'starts_at' => '2026-07-18 21:00:00',
+        'ends_at' => '2026-07-18 23:00:00',
+        'door_prepay_enabled' => true,
+    ]);
+
+    $options = (new ReflectionClass(CheckIn::class))->getMethod('eventSelectQuery');
+    $options->setAccessible(true);
+
+    expect($options->invoke(null)->pluck('id'))->toContain($tonight->id)
+        ->and($tonight->isCurrentlyActive())->toBeFalse();
+
+    $reason = (new ReflectionMethod(CheckIn::class, 'arrivalBlockedReason'))->invoke(new CheckIn, $tonight);
+    expect($reason)->toBe('opens when the event starts');
+});
+
 test('a prepay for a future-month event creates a subscription covering that event\'s month, not today\'s', function () {
     $member = clearMember($this->irregular, ['subscription_eligible' => true]);
     $eventDate = now()->addMonths(2)->day(19);

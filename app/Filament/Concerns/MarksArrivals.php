@@ -159,7 +159,7 @@ trait MarksArrivals
             return null;
         }
 
-        return $event->event_date->isFuture()
+        return $event->event_date->isFuture() || ($event->event_date->isToday() && ! $event->hasCheckInWindowOpened())
             ? __('opens when the event starts')
             : __('the event is over');
     }

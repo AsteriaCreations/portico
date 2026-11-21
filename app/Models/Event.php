@@ -284,9 +284,13 @@ class Event extends Model
      * editable via the Membership Settings page) as an alternative match,
      * not a replacement — event_date keeps its existing "whole calendar day"
      * reach for events that don't cross midnight, this only adds coverage
-     * for ones that do. Events with no starts_at/ends_at (nullable for
-     * pre-existing events) fall back to the event_date check alone. An
-     * archived event is never current, whatever its dates.
+     * for ones that do. That whole-day reach runs only *from* starts_at
+     * (less the buffer): a 9pm event isn't current at 10am, so the desk
+     * can't check anyone into it early. It still runs to the end of the
+     * day, for refunds and corrections after the event. Events with no
+     * starts_at/ends_at (nullable for pre-existing events) fall back to the
+     * event_date check alone. An archived event is never current, whatever
+     * its dates.
      */
     public static function currentQuery(): Builder
     {
@@ -294,7 +298,11 @@ class Event extends Model
         $now = now();
 
         return static::query()->whereNull('archived_at')->where(fn ($query) => $query
-            ->whereDate('event_date', today())
+            ->where(fn ($today) => $today
+                ->whereDate('event_date', today())
+                ->where(fn ($started) => $started
+                    ->whereNull('starts_at')
+                    ->orWhere('starts_at', '<=', $now->copy()->addMinutes($buffer))))
             ->orWhere(fn ($withinWindow) => $withinWindow
                 ->whereNotNull('starts_at')
                 ->whereNotNull('ends_at')
@@ -357,13 +365,23 @@ class Event extends Model
             return false;
         }
 
-        return $this->event_date->isToday() || $this->isWithinTimeWindow();
+        return ($this->event_date->isToday() && $this->hasCheckInWindowOpened()) || $this->isWithinTimeWindow();
+    }
+
+    /**
+     * Whether starts_at, less event_window_buffer_minutes, has come. An
+     * event with no start time counts as open all day.
+     */
+    public function hasCheckInWindowOpened(): bool
+    {
+        return $this->starts_at === null
+            || $this->starts_at->lte(now()->addMinutes(MembershipSetting::current()->event_window_buffer_minutes));
     }
 
     /**
      * Strictly inside starts_at..ends_at, give or take
-     * event_window_buffer_minutes -- unlike isCurrentlyActive(), "today"
-     * alone isn't enough, so a 9pm event isn't running at 10am. An event
+     * event_window_buffer_minutes -- unlike isCurrentlyActive(), which keeps
+     * a same-day event current after it ends, this stops at ends_at. An event
      * with no start or end time never is. Used where nobody at the desk
      * decides, e.g. StaffLoginCheckInService.
      */
