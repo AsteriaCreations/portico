@@ -12,6 +12,13 @@ releases below could carry small breaking changes in a minor release.
 
 ### Fixed
 
+- **Check-In Desk:** an event later today could be checked into at any time of day, because
+  "today's event" meant its whole calendar day. A same-day event now joins the desk's event picker
+  only from its start time, less the Membership Settings event window buffer, and the desk, the
+  kiosk, *Mark arrived* and check-in on sign-in all refuse it until then, even with a forged event.
+  It still stays on the desk until the end of the day once it has ended. A door-prepay event later
+  today is still offered, as a prepay with no arrival time. An event with no start time is
+  unchanged.
 - **Event timeline:** clicking *Delete* on an item and then *Cancel* on "Delete this timeline item?"
   closed both dialogs but left the item's dialog open behind the scenes, so leaving the page then
   asked "Leave site?" with nothing unsaved. The confirmation now opens on top of the item's
