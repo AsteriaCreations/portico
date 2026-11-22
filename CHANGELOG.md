@@ -10,6 +10,27 @@ releases below could carry small breaking changes in a minor release.
 
 ## [Unreleased]
 
+## [1.2.0] — 2026-11-22
+
+**Analytics, event timelines, and fixes at the door.** The Analytics page is rebuilt around one
+period with *Overview*, *Revenue*, *Members*, *Events*, *Subscriptions* and *Operations* tabs.
+Event timelines (off until a club turns them on) let a showrunner lay out the night on a day grid,
+with a public display screen for the door. At the desk: door discounts (such as $5 off for a food
+donation), *Correct payment method* for a visit recorded as paid the wrong way, and an optional
+hourly job that departs everyone still checked in once an event has ended. A category can be
+exempted from the one-time payment limit. A same-day event can no longer be checked into before
+its start time.
+
+**Upgrading from 1.1.0:** run `scripts/deploy.ps1` without `-SkipNpm` or `-SkipMigrate`: there
+are 5 new migrations, and the desk and Analytics views need `npm run build` for their styles.
+`composer install --no-dev` brings in Laravel 13.43, Filament 5.11.4 and Livewire 4.4.9, with no new
+packages. PHP stays at 8.4.27 or later. No new `.env` keys. New settings and flags default to the
+old behavior: Event timelines and *Depart everyone when an event ends* are off, and no category is
+exempt from the one-time limit. *Correct payment method* has no flag and is there for Door staff
+straight away. To use auto-depart, register the hourly `scripts/run-depart-ended.bat` task
+(`docs/DEPLOYMENT.md`) and then turn the flag on. One behavior change to tell desk staff about: a
+same-day event now appears on the desk only from its start time, less the event window buffer.
+
 ### Added
 
 - **Correct payment method at the desk:** Door staff can fix a visit recorded as paid the wrong
@@ -37,45 +58,6 @@ releases below could carry small breaking changes in a minor release.
   it on can pay entry or a day pass with a one-time payment method (such as Venmo) on every visit,
   and no "used" note is added to their record. Off by default, so the limit still applies
   everywhere after an update; a club can turn it on for Guest, for example. Migration.
-
-### Fixed
-
-- **Check-In Desk:** an event later today could be checked into at any time of day, because
-  "today's event" meant its whole calendar day. A same-day event now joins the desk's event picker
-  only from its start time, less the Membership Settings event window buffer, and the desk, the
-  kiosk, *Mark arrived* and check-in on sign-in all refuse it until then, even with a forged event.
-  It still stays on the desk until the end of the day once it has ended. A door-prepay event later
-  today is still offered, as a prepay with no arrival time. An event with no start time is
-  unchanged.
-- **Event timeline:** clicking *Delete* on an item and then *Cancel* on "Delete this timeline item?"
-  closed both dialogs but left the item's dialog open behind the scenes, so leaving the page then
-  asked "Leave site?" with nothing unsaved. The confirmation now opens on top of the item's
-  dialog, and *Cancel* goes back to it.
-
-### Documentation
-
-- **`docs/MAINTAINING.md`**, a guide for whoever looks after the Portico repository: its GitHub
-  settings, what CI checks, a pull request review checklist, dependency updates and the PHP
-  platform pin, issues and security reports, releases, recurring chores and handing over.
-- **`SUPPORT.md`** says where to ask a question, report a bug or report a security problem. The
-  issue templates are now forms, and blank issues point to Discussions or a private security
-  report instead.
-- The README's setup notes that SQLite works for a quick local look (MariaDB or MySQL for a
-  club's real install). Found on a fresh-clone install run-through, which otherwise went cleanly.
-
-### Fixed
-
-- Analytics charts gave every series the same colour, so the stacked revenue bars and the
-  subscriber chart couldn't be told apart. Each series now has its own colour from a
-  colour-blind-safe palette (Okabe-Ito). Count axes no longer step in odd numbers (9, 18, 27...).
-
-- Analytics *Operations* and *Events* tabs were slow on a year of data (3.5 s and 1.7 s on 7,800
-  visits). Operations no longer parses every visit's timestamps with Carbon, and the Events
-  roll-ups by type and weekday no longer run the comparison table's per-visit first-timer count
-  (now 0.4 s and 0.6 s).
-
-### Added
-
 - **Analytics: one period for the whole page, and tabs.** A *Period* picker at the top (this or last
   week, this or last month, this quarter, this year, last 12 months, or custom dates) now drives
   every figure that covers a span of time, and the widgets are grouped into *Overview*, *Revenue*
@@ -131,6 +113,38 @@ releases below could carry small breaking changes in a minor release.
   timeline page opens it.
 - A red "now" line across the Event timeline grid while the event is on, with the time, moving on
   by itself every 30 seconds.
+
+### Fixed
+
+- **Check-In Desk:** an event later today could be checked into at any time of day, because
+  "today's event" meant its whole calendar day. A same-day event now joins the desk's event picker
+  only from its start time, less the Membership Settings event window buffer, and the desk, the
+  kiosk, *Mark arrived* and check-in on sign-in all refuse it until then, even with a forged event.
+  It still stays on the desk until the end of the day once it has ended. A door-prepay event later
+  today is still offered, as a prepay with no arrival time. An event with no start time is
+  unchanged.
+- **Event timeline:** clicking *Delete* on an item and then *Cancel* on "Delete this timeline item?"
+  closed both dialogs but left the item's dialog open behind the scenes, so leaving the page then
+  asked "Leave site?" with nothing unsaved. The confirmation now opens on top of the item's
+  dialog, and *Cancel* goes back to it.
+- Analytics charts gave every series the same colour, so the stacked revenue bars and the
+  subscriber chart couldn't be told apart. Each series now has its own colour from a
+  colour-blind-safe palette (Okabe-Ito). Count axes no longer step in odd numbers (9, 18, 27...).
+- Analytics *Operations* and *Events* tabs were slow on a year of data (3.5 s and 1.7 s on 7,800
+  visits). Operations no longer parses every visit's timestamps with Carbon, and the Events
+  roll-ups by type and weekday no longer run the comparison table's per-visit first-timer count
+  (now 0.4 s and 0.6 s).
+
+### Documentation
+
+- **`docs/MAINTAINING.md`**, a guide for whoever looks after the Portico repository: its GitHub
+  settings, what CI checks, a pull request review checklist, dependency updates and the PHP
+  platform pin, issues and security reports, releases, recurring chores and handing over.
+- **`SUPPORT.md`** says where to ask a question, report a bug or report a security problem. The
+  issue templates are now forms, and blank issues point to Discussions or a private security
+  report instead.
+- The README's setup notes that SQLite works for a quick local look (MariaDB or MySQL for a
+  club's real install). Found on a fresh-clone install run-through, which otherwise went cleanly.
 
 ## [1.1.0] — 2026-11-15
 
