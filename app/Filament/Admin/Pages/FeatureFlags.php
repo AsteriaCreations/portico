@@ -84,6 +84,7 @@ class FeatureFlags extends Page
             'door_username_rename_enabled',
             'door_preferred_name_change_enabled',
             'desk_refunds_enabled',
+            'auto_depart_at_event_end',
             'kiosk_checkin_enabled',
             'staff_login_checkin_enabled',
             'issue_reports_enabled',
@@ -163,6 +164,10 @@ class FeatureFlags extends Page
                         Toggle::make('reset_desk_event_on_member_change')
                             ->label('Pick the event again for each member')
                             ->helperText(__('On the Check-In Desk, picking a different member puts Event back to what a fresh page shows: tonight\'s event, or blank when several events overlap, so the desk has to choose. If the member is already on exactly one of tonight\'s events (prepaid, on the comp list or checked in), that one is chosen for them. Off, Event stays on whatever was last picked. On by default.'))
+                            ->required(),
+                        Toggle::make('auto_depart_at_event_end')
+                            ->label('Depart everyone when an event ends')
+                            ->helperText(__('Once an event has ended and its event window buffer (Membership Settings) has passed, anyone still checked in is marked departed at the event\'s end time, so they stop counting toward occupancy and leave Active Patrons. Overnight stays, prepays who never arrived and workday events (their reward is paid on hours worked, so staff record those departures) are left alone. Runs hourly from the events:depart-ended scheduled task (docs/DEPLOYMENT.md). Off by default.'))
                             ->required(),
                         Toggle::make('kiosk_checkin_enabled')
                             ->label('Kiosk check-in')

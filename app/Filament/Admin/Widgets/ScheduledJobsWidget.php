@@ -40,6 +40,10 @@ class ScheduledJobsWidget extends StatsOverviewWidget
             $this->statFor('vouchers:grant-comp-rewards', __('Comp reward vouchers')),
         ];
 
+        if (MembershipSetting::current()->auto_depart_at_event_end) {
+            $stats[] = $this->statFor('events:depart-ended', __('Depart at event end'));
+        }
+
         if (MembershipSetting::current()->upstream_check_enabled) {
             $stats[] = $this->statFor('upstream:check', __('Upstream check'));
         }
