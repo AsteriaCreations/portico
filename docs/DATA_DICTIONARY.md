@@ -26,7 +26,7 @@ disagree, the migration wins, and this page needs fixing.
    `ban_exceptions`, `member_status_changes`, `member_username_changes`,
    `attendance_behavior_notes`, `behavior_note_retractions`, `miscellaneous_payments`, `add_on_day_passes`,
    `attendance_add_ons`, `attendance_discounts`, `member_paperwork`, `watchlist_reviews`, `payment_corrections`,
-   `visit_removals`, `instructor_payouts`, `register_drops`, `cash_exchanges`.
+   `payment_method_corrections`, `visit_removals`, `instructor_payouts`, `register_drops`, `cash_exchanges`.
 5. **Attendance rows are price snapshots.** Each row stores what was charged that night.
    Changing an event's fee or a plan's price later never rewrites old rows. Report from the row,
    not from today's prices.
@@ -194,6 +194,7 @@ automatically after an event to comp-listed members who arrived (`comp_reasons.g
 | `add_on_day_passes` | An add-on bought for one event outside a check-in | `amount_paid` |
 | `miscellaneous_payments` | Other money at the desk (vendor, donation, …), with a `notation` | `amount` |
 | `payment_corrections` | A same-night paid entry converted into a subscription, or a desk refund soon after check-in (`subscription_id` empty; see below) | `old_amount_paid`, `new_amount_paid`, `subscription_amount`, `net_amount` |
+| `payment_method_corrections` | A visit's payment method fixed at the desk, amount unchanged (`old_payment_method` → `new_payment_method`); the visit row itself now carries the new method | `amount` (informational; already in the visit's `amount_paid`) |
 | `visit_removals` | A deleted visit, a copy of what it had paid | `amount_paid` |
 | `instructor_payouts` | Cash paid to an event's instructor out of the drawer (signed; corrections are further rows) | `amount` (`calculated_amount` = what the rule suggested) |
 | `register_drops` | Cash taken out of the drawer mid-shift | `amount` |

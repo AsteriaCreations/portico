@@ -12,6 +12,14 @@ releases below could carry small breaking changes in a minor release.
 
 ### Added
 
+- **Correct payment method at the desk:** Door staff can fix a visit recorded as paid the wrong
+  way (say Venmo when the patron really paid cash) with a new *Correct payment method* button on
+  tonight's paid visit. They pick how it was really paid and give a reason. The amount stays the
+  same; only the method changes, so the register's cash and electronic totals move to match. Each
+  fix is logged (append-only, shown on the member page as *Payment method corrections*) and the
+  Owners are notified. A one-time method moved off a visit is freed again. Not for a visit paid
+  ahead or on a closed shift, and a subscription or day pass bought in the same check-in isn't
+  changed. Migration.
 - **Depart everyone when an event ends:** a new hourly `events:depart-ended` command
   (`scripts/run-depart-ended.bat`) marks anyone still checked in as departed once an event has
   ended and the event window buffer has passed, stamped with the event's end time, so they stop

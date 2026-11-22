@@ -27,7 +27,7 @@ use Illuminate\Support\Facades\Notification as LaravelNotification;
  * closed shift's numbers never move).
  *
  * A visit that other records point at -- voucher activity, behavior notes, a
- * comp request, a payment correction -- is never removed: those are
+ * comp request, a payment or payment method correction -- is never removed: those are
  * append-only histories of that visit.
  */
 class VisitRemovalService
@@ -136,6 +136,7 @@ class VisitRemovalService
             $attendance->behaviorNotes()->exists() => __('behavior notes'),
             CompRequest::where('attendance_id', $attendance->id)->exists() => __('a comp request'),
             $attendance->paymentCorrections()->exists() => __('a payment correction'),
+            $attendance->paymentMethodCorrections()->exists() => __('a payment method correction'),
             default => null,
         };
     }

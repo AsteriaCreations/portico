@@ -179,6 +179,15 @@ class Member extends Model
     }
 
     /**
+     * Every desk fix of a visit's payment method on this member's visits --
+     * see App\Services\PaymentMethodCorrectionService.
+     */
+    public function paymentMethodCorrections(): HasManyThrough
+    {
+        return $this->hasManyThrough(PaymentMethodCorrection::class, Attendance::class);
+    }
+
+    /**
      * Available account credit, always summed live from the ledger — never
      * stored, so it can't drift the way the old spreadsheet balance did.
      */
