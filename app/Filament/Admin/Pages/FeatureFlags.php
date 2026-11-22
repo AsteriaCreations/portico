@@ -167,7 +167,7 @@ class FeatureFlags extends Page
                             ->required(),
                         Toggle::make('auto_depart_at_event_end')
                             ->label('Depart everyone when an event ends')
-                            ->helperText(__('Once an event has ended and its event window buffer (Membership Settings) has passed, anyone still checked in is marked departed at the event\x27s end time, so they stop counting toward occupancy and leave Active Patrons. Overnight stays and prepays who never arrived are left alone. Runs hourly from the events:depart-ended scheduled task (docs/DEPLOYMENT.md). Off by default.'))
+                            ->helperText(__('Once an event has ended and its event window buffer (Membership Settings) has passed, anyone still checked in is marked departed at the event\'s end time, so they stop counting toward occupancy and leave Active Patrons. Overnight stays, prepays who never arrived and workday events (their reward is paid on hours worked, so staff record those departures) are left alone. Runs hourly from the events:depart-ended scheduled task (docs/DEPLOYMENT.md). Off by default.'))
                             ->required(),
                         Toggle::make('kiosk_checkin_enabled')
                             ->label('Kiosk check-in')

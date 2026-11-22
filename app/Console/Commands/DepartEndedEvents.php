@@ -16,10 +16,12 @@ use Illuminate\Console\Command;
  * window buffer (the same grace Event::currentQuery() gives stragglers),
  * then stamps departed_at with ends_at itself, or the arrival time for
  * someone who arrived after it, so time-on-site stays honest in the
- * analytics and workday rewards. Skips prepays who never arrived and
- * overnight stays, which stay until checked out. Run hourly from Windows
- * Task Scheduler, like events:notify-ended; does nothing while the
- * auto_depart_at_event_end flag is off.
+ * analytics. Skips prepays who never arrived, overnight stays (they stay
+ * until checked out), and workday events: their reward is paid on hours
+ * from checked_in_at to departed_at, so an invented departure could earn a
+ * voucher nobody worked for. Run hourly from Windows Task Scheduler, like
+ * events:notify-ended; does nothing while the auto_depart_at_event_end
+ * flag is off.
  */
 #[Signature('events:depart-ended')]
 #[Description('Mark everyone still on site as departed once their event has ended.')]
@@ -40,7 +42,8 @@ class DepartEndedEvents extends Command
             ->whereNull('departed_at')
             ->whereHas('event', fn ($query) => $query
                 ->whereNotNull('ends_at')
-                ->where('ends_at', '<', now()->subMinutes($settings->event_window_buffer_minutes)))
+                ->where('ends_at', '<', now()->subMinutes($settings->event_window_buffer_minutes))
+                ->where(fn ($workday) => $workday->whereNull('workday_voucher_amount')->orWhereNull('workday_min_hours')))
             ->whereDoesntHave('addOns', fn ($query) => $query->where('is_overnight', true))
             ->with('event')
             ->get();

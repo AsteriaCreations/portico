@@ -74,3 +74,13 @@ test('nothing is departed while the flag is off', function () {
 
     expect($attendance->fresh()->departed_at)->toBeNull();
 });
+
+test('a workday event is left for staff to depart, since its reward is paid on hours worked', function () {
+    $workday = endedEvent(90);
+    $workday->update(['workday_voucher_amount' => 10, 'workday_min_hours' => 3]);
+    $attendance = Attendance::factory()->for($workday)->create(['checked_in_at' => now()->subHours(4)]);
+
+    $this->artisan('events:depart-ended')->assertSuccessful();
+
+    expect($attendance->fresh()->departed_at)->toBeNull();
+});

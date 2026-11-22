@@ -15,8 +15,9 @@ releases below could carry small breaking changes in a minor release.
 - **Depart everyone when an event ends:** a new hourly `events:depart-ended` command
   (`scripts/run-depart-ended.bat`) marks anyone still checked in as departed once an event has
   ended and the event window buffer has passed, stamped with the event's end time, so they stop
-  counting toward occupancy and leave Active Patrons. Overnight stays and prepays who never arrived
-  are left alone. Behind a new Feature Flag, off by default; register the scheduled task to use it.
+  counting toward occupancy and leave Active Patrons. Overnight stays, prepays who never arrived and
+  workday events (their reward is paid on hours worked) are left alone.
+  Behind a new Feature Flag, off by default; register the scheduled task to use it.
   Migration.
 - **Door discounts:** a fixed amount Door staff can take off one visit's entry at check-in, for
   example $5 off for bringing a food donation. Managers keep the list (*Desk & Money → Door

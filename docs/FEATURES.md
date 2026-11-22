@@ -87,7 +87,7 @@ EVENTS
 - Comp-list due-date reminder + overdue indicator
 - Per-event comp list cost breakdown (foregone entry revenue by reason, arrived attendees only)
 - Event-ended notification (email + in-app) to Owner(s) and the assigned Showrunner, with an attendance/revenue summary (events:notify-ended, timer-driven, idempotent)
-- Auto-depart at event end: anyone still checked in is marked departed at the event's end time once its window buffer has passed, skipping overnight stays and unarrived prepays (events:depart-ended, timer-driven, flag off by default)
+- Auto-depart at event end: anyone still checked in is marked departed at the event's end time once its window buffer has passed, skipping overnight stays, unarrived prepays and workday events (events:depart-ended, timer-driven, flag off by default)
 
 SHOWRUNNER COMP REQUESTS
 -------------------------
