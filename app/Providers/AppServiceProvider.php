@@ -202,6 +202,12 @@ class AppServiceProvider extends ServiceProvider
         Gate::define('refund-visit-at-desk', fn (User $user): bool => $user->role->atLeast(Role::Door)
             && MembershipSetting::current()->desk_refunds_enabled);
 
+        // Door+, no flag: fix the method on tonight's paid visit, amount
+        // unchanged. The rest of the rules are
+        // PaymentMethodCorrectionService::refusalReason(); re-checked in
+        // CorrectsPaymentMethodAtDesk.
+        Gate::define('correct-visit-payment-method', fn (User $user): bool => $user->role->atLeast(Role::Door));
+
         // Door+ once the club turns on private_rentals_enabled: book a room
         // for a member's private rental at the desk. Re-checked server-side
         // in BooksPrivateRentals; who may be booked for is

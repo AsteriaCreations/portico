@@ -422,6 +422,13 @@
                     </div>
                 @endif
 
+                {{-- Door+, only while PaymentMethodCorrectionService allows it. --}}
+                @if ($this->correctPaymentMethodAction->isVisible())
+                    <div class="mt-4">
+                        {{ $this->correctPaymentMethodAction }}
+                    </div>
+                @endif
+
                 {{-- Manager+ only, and only while EntryCorrectionService allows it. --}}
                 @if ($this->convertEntryToSubscriptionAction->isVisible())
                     <div class="mt-4">

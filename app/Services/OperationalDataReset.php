@@ -30,6 +30,7 @@ class OperationalDataReset
         'behavior_note_retractions',
         'attendance_behavior_notes',
         'payment_corrections',
+        'payment_method_corrections',
         'visit_removals',
         'issue_reports',
         'comp_requests',
