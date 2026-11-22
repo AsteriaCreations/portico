@@ -102,6 +102,14 @@ class Attendance extends Model
     }
 
     /**
+     * Append-only -- see App\Services\PaymentMethodCorrectionService.
+     */
+    public function paymentMethodCorrections(): HasMany
+    {
+        return $this->hasMany(PaymentMethodCorrection::class);
+    }
+
+    /**
      * Refunded at the desk (DeskRefundService): a correction with no
      * subscription.
      */

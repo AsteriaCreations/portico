@@ -8,6 +8,7 @@ use App\Enums\Role;
 use App\Exceptions\CheckInRefused;
 use App\Filament\Concerns\BooksPrivateRentals;
 use App\Filament\Concerns\CapturesMemberIdentity;
+use App\Filament\Concerns\CorrectsPaymentMethodAtDesk;
 use App\Filament\Concerns\ManagesCashBox;
 use App\Filament\Concerns\MarksArrivals;
 use App\Filament\Concerns\RefundsVisitsAtDesk;
@@ -74,6 +75,7 @@ class CheckIn extends Page implements HasTable
 {
     use BooksPrivateRentals;
     use CapturesMemberIdentity;
+    use CorrectsPaymentMethodAtDesk;
     use InteractsWithTable;
     use ManagesCashBox;
     use MarksArrivals;
