@@ -269,6 +269,7 @@ Scheduler or cron) — see [`docs/DEPLOYMENT.md`](DEPLOYMENT.md) §3:
 | `php artisan backup:database` | nightly |
 | `php artisan events:notify-ended` | hourly |
 | `php artisan vouchers:grant-comp-rewards` | hourly |
+| `php artisan events:depart-ended` | hourly (only with "Depart everyone when an event ends" on) |
 
 ## Your first week
 

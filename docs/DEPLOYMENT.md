@@ -339,6 +339,7 @@ register on a timer (Windows Task Scheduler, or cron). Wrappers live in `scripts
 | `backup:database` | nightly, low-traffic hour | `scripts/run-backup.bat` |
 | `events:notify-ended` | hourly | `scripts/run-notify-event-ended.bat` |
 | `vouchers:grant-comp-rewards` | hourly | `scripts/run-vouchers-grant-comp-rewards.bat` |
+| `events:depart-ended` | hourly | `scripts/run-depart-ended.bat` — does nothing until "Depart everyone when an event ends" is on at Feature Flags |
 | `upstream:check` | hourly, or your preference | `scripts/run-upstream-check.bat` — optional, only relevant if this fork tracks an upstream remote (§7) |
 
 For each Task Scheduler task: run whether the user is logged on or not, as the account
@@ -370,7 +371,7 @@ Notes:
 - **"Ran" isn't "worked".** Task Scheduler reporting a task as run only means the `.bat`
   was launched, not that the command inside it succeeded. After each task's first real
   run, check its log (`storage/logs/backup.log`, `vouchers-grant-comp-rewards.log`,
-  `notify-event-ended.log`), and that `Last Result` is `0x0`.
+  `notify-event-ended.log`, `depart-ended.log`), and that `Last Result` is `0x0`.
 
 ---
 
