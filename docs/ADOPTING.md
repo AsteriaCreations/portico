@@ -112,8 +112,8 @@ Do this on a development machine, not the server:
    git checkout main
    git pull origin main
    git fetch portico --tags
-   git switch -c update/v1.1.0
-   git merge v1.1.0
+   git switch -c update/v1.2.0
+   git merge v1.2.0
    ```
 
 3. If there are conflicts, keep your side for your own files (§3) and Portico's side for
