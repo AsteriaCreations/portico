@@ -10,6 +10,11 @@ releases below could carry small breaking changes in a minor release.
 
 ## [Unreleased]
 
+### Changed
+
+- CI runs the Pest suite in parallel on both SQLite and MariaDB, and a new push to a pull request
+  cancels that branch's older, still-running CI run.
+
 ## [1.2.0] — 2026-11-22
 
 **Analytics, event timelines, and fixes at the door.** The Analytics page is rebuilt around one
