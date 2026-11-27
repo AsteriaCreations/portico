@@ -10,6 +10,13 @@ on:
 permissions:
   contents: read
 
+# A new push to the same PR branch makes the older run moot, so cancel it
+# instead of queueing behind it. Runs on main are never cancelled: each
+# merged commit keeps its own result.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
 jobs:
   tests:
     name: Pest (PHP ${{ matrix.php }})
@@ -46,8 +53,9 @@ jobs:
       - name: Generate application key
         run: php artisan key:generate
 
+      # Paratest ships with Pest: one worker per runner core.
       - name: Run tests
-        run: php artisan test --compact
+        run: php artisan test --parallel --compact
 
   migrate-mariadb:
     name: Migrate + seed (MariaDB)
@@ -107,8 +115,10 @@ jobs:
       # only place row locks are real. tests/Feature/CheckInConcurrencyTest.php
       # stages two-register races here and skips itself on SQLite. Real
       # environment variables win over phpunit.xml's own <env> defaults.
+      # In parallel, Laravel gives each worker its own portico_test_N
+      # database (root can create them), so the races stay isolated.
       - name: Run tests on MariaDB
-        run: php artisan test --compact
+        run: php artisan test --parallel --compact
         env:
           DB_CONNECTION: mariadb
           DB_HOST: 127.0.0.1

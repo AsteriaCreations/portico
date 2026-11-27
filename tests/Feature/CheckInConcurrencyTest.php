@@ -13,6 +13,7 @@ use App\Models\MembershipSetting;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabaseState;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\ParallelTesting;
 use Livewire\Livewire;
 
 /*
@@ -36,7 +37,10 @@ beforeEach(function () {
         $this->markTestSkipped('Needs MariaDB/MySQL row locks; run the suite with DB_CONNECTION=mariadb.');
     }
 
-    if (! RefreshDatabaseState::$migrated) {
+    // Under --parallel, RefreshDatabase tests move to a per-worker
+    // database, but this file (without that trait) stays on the base one,
+    // which $migrated says nothing about: rebuild it too.
+    if (! RefreshDatabaseState::$migrated || ParallelTesting::token() !== false) {
         $this->artisan('migrate:fresh');
         RefreshDatabaseState::$migrated = true;
     }
