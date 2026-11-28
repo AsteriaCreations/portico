@@ -17,12 +17,12 @@ concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
-# Each test suite is split across three runners, each running every third
-# test file (sorted by path; scripts/ci-shard-phpunit.php) with --parallel. A private repo's runners have
-# only 2 cores, so sharding is what keeps CI quick there. Pest's own --shard
-# isn't used: it selects tests with one long --filter regex, and combined
-# with --parallel on Linux that exited 1 with every test passing. The
-# rulesets require the un-sharded check names, so a small gate job reports
+# Each test suite is split across three runners. scripts/ci-shard-phpunit.php
+# writes a PHPUnit config holding every third test file (sorted by path), and
+# each runner runs it with --parallel. A private repo's runners have only 2
+# cores, so sharding is what keeps CI quick there. Pest's own --shard isn't
+# used: combined with --parallel on Linux it exited 1 with every test passing.
+# The rulesets require the un-sharded check names, so a small gate job reports
 # each one, passing only when every shard passed.
 jobs:
   tests:
