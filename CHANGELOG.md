@@ -10,6 +10,13 @@ releases below could carry small breaking changes in a minor release.
 
 ## [Unreleased]
 
+### Added
+
+- Staffing takes a bulk upload of Setup and extra shifts across many events: download a template,
+  check a file first (a dry run that returns every row's result), then upload. Each row names the
+  event by date (and by name when two share a date), with the same rules as adding one shift by
+  hand. Standard shifts are still set on each event. Manager+.
+
 ### Changed
 
 - CI runs the Pest suite in parallel on both SQLite and MariaDB, and a new push to a pull request

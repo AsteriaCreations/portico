@@ -6,10 +6,16 @@ use App\Enums\ShiftKind;
 use App\Filament\Concerns\TranslatesPageLabels;
 use App\Models\Event;
 use App\Models\MembershipSetting;
+use App\Models\ShiftRole;
 use App\Models\ShiftSlot;
+use App\Services\Concerns\PrunesUploadedFiles;
+use App\Services\ShiftSlotBulkImporter;
 use BackedEnum;
 use Carbon\CarbonImmutable;
 use Filament\Actions\Action;
+use Filament\Actions\ActionGroup;
+use Filament\Forms\Components\FileUpload;
+use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
@@ -18,7 +24,9 @@ use Filament\Tables\Contracts\HasTable;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Storage;
 use Livewire\Attributes\Url;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 use UnitEnum;
 
 /**
@@ -31,6 +39,7 @@ use UnitEnum;
 class Staffing extends Page implements HasTable
 {
     use InteractsWithTable;
+    use PrunesUploadedFiles;
     use TranslatesPageLabels;
 
     protected string $view = 'filament.admin.pages.staffing';
@@ -136,7 +145,136 @@ class Staffing extends Page implements HasTable
                 ->iconPosition('after')
                 ->color('gray')
                 ->action(fn () => $this->moveWeek(1)),
+            ActionGroup::make([
+                $this->downloadShiftTemplateAction(),
+                $this->checkShiftFileAction(),
+                $this->bulkUploadShiftsAction(),
+            ])
+                ->label(__('Upload shifts'))
+                ->icon(Heroicon::OutlinedArrowUpTray)
+                ->button()
+                ->color('gray'),
         ];
+    }
+
+    /**
+     * Generated on the fly rather than a static file, so the columns can
+     * never drift from what ShiftSlotBulkImporter actually reads.
+     */
+    protected function downloadShiftTemplateAction(): Action
+    {
+        return Action::make('downloadShiftTemplate')
+            ->label('Download shift template')
+            ->icon(Heroicon::OutlinedArrowDownTray)
+            ->visible(fn (): bool => Gate::allows('create', ShiftSlot::class))
+            ->action(function (): StreamedResponse {
+                $role = ShiftRole::query()->scheduled()->orderBy('sort_order')->orderBy('name')->value('name') ?? 'Setup';
+                $event = Event::whereNull('archived_at')->whereDate('event_date', '>=', today())->orderBy('event_date')->first();
+                $date = $event?->event_date ?? today();
+                $starts = $event?->starts_at ?? $date->copy()->setTime(20, 0);
+
+                return response()->streamDownload(function () use ($role, $event, $date, $starts): void {
+                    $handle = fopen('php://output', 'w');
+                    fputcsv($handle, ['event_date', 'event_name', 'shift_role', 'kind', 'label', 'starts_at', 'ends_at', 'people_needed', 'notes']);
+                    fputcsv($handle, [$date->toDateString(), $event?->name ?? '', $role, 'setup', 'Bar setup', $starts->copy()->subHours(3)->format('Y-m-d H:i'), $starts->format('Y-m-d H:i'), '2', '']);
+                    fclose($handle);
+                }, 'shift-upload-template-'.now()->toDateString().'.csv');
+            });
+    }
+
+    /**
+     * Runs the upload's own rules over a file without adding anything, and
+     * downloads every row with the event it matched and what's wrong with
+     * it, so a file can be fixed before the real upload.
+     */
+    protected function checkShiftFileAction(): Action
+    {
+        return Action::make('checkShiftFile')
+            ->label('Check shift file')
+            ->icon(Heroicon::OutlinedClipboardDocumentCheck)
+            ->modalDescription(__('Nothing is added. You get a results file listing every row, the event it matched, and any problem that would make the upload skip it.'))
+            ->modalSubmitActionLabel(__('Check and download results'))
+            ->schema([$this->shiftFileUpload()])
+            ->visible(fn (): bool => Gate::allows('create', ShiftSlot::class))
+            ->action(function (array $data): StreamedResponse {
+                abort_unless(Gate::allows('create', ShiftSlot::class), 403);
+
+                $rows = app(ShiftSlotBulkImporter::class)->check(Storage::disk('local')->path($data['file']));
+                $this->pruneUploads('shift-uploads');
+
+                $problems = collect($rows)->whereNotNull('problem')->count();
+
+                Notification::make()
+                    ->title(__(':ok of :total rows would be added; :problems with problems', [
+                        'ok' => count($rows) - $problems,
+                        'total' => count($rows),
+                        'problems' => $problems,
+                    ]))
+                    ->color($problems ? 'warning' : 'success')
+                    ->send();
+
+                return response()->streamDownload(function () use ($rows): void {
+                    $handle = fopen('php://output', 'w');
+                    fputcsv($handle, ['row', 'event_date', 'event_name', 'shift_role', 'kind', 'label', 'starts_at', 'ends_at', 'people_needed', 'notes', 'matched_event', 'result']);
+
+                    foreach ($rows as $row) {
+                        fputcsv($handle, [
+                            $row['row'],
+                            $row['event_date'],
+                            $row['event_name'],
+                            $row['role'],
+                            $row['kind'],
+                            $row['label'],
+                            $row['starts_at'],
+                            $row['ends_at'],
+                            $row['headcount'],
+                            $row['notes'],
+                            $row['event'] ?? '',
+                            $row['problem'] ?? 'OK',
+                        ]);
+                    }
+
+                    fclose($handle);
+                }, 'shift-upload-check-'.now()->toDateString().'.csv');
+            });
+    }
+
+    protected function bulkUploadShiftsAction(): Action
+    {
+        return Action::make('bulkUploadShifts')
+            ->label('Bulk upload shifts')
+            ->icon(Heroicon::OutlinedArrowUpTray)
+            ->modalDescription(__('Adds setup and extra shifts to any events, one shift per row. Standard shifts are still set on each event. A shift already on its event is skipped, so re-uploading a file never adds anything twice.'))
+            ->schema([$this->shiftFileUpload()])
+            ->visible(fn (): bool => Gate::allows('create', ShiftSlot::class))
+            ->action(function (array $data): void {
+                abort_unless(Gate::allows('create', ShiftSlot::class), 403);
+
+                $result = app(ShiftSlotBulkImporter::class)->import(Storage::disk('local')->path($data['file']));
+
+                Notification::make()
+                    ->title(trans_choice('Added :count shift|Added :count shifts', $result['created']))
+                    ->body($result['log'] ? implode("\n", $result['log']) : null)
+                    ->success()
+                    ->send();
+
+                $this->pruneUploads('shift-uploads');
+                $this->resetTable();
+            });
+    }
+
+    private function shiftFileUpload(): FileUpload
+    {
+        return FileUpload::make('file')
+            ->label('Shifts file')
+            ->disk('local')
+            ->directory('shift-uploads')
+            ->acceptedFileTypes([
+                'text/csv',
+                'application/vnd.ms-excel',
+                'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            ])
+            ->required();
     }
 
     public function moveWeek(int $weeks): void
