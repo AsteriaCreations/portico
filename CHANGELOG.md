@@ -10,6 +10,13 @@ releases below could carry small breaking changes in a minor release.
 
 ## [Unreleased]
 
+### Added
+
+- Task lists take a bulk upload: download a template, check a file first (a dry run that returns
+  every row's result, including any task area it would create), then upload. Each row is a task for
+  an active shift role, with an optional area (created if new), details and sort order. Tasks
+  already on a role's list are skipped. Manager+.
+
 ### Changed
 
 - CI runs the Pest suite in parallel on both SQLite and MariaDB, and a new push to a pull request

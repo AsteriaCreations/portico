@@ -109,6 +109,7 @@ SHOWRUNNER & INSTRUCTOR PAYOUTS
 ROLE TASK LISTS
 --------------------------
 - Each shift role has a standard task list (Task lists, Manager+), optionally grouped by Task areas with notes on how each area is handled
+- Task list bulk upload (Manager+, with a template and a check-only dry run): one task per row for an active shift role, with optional area (created if new), details and sort order; tasks already on the list are skipped
 - My tasks: tick tasks on a shift that's running (once per shift; ticking someone else's shift of a role you can work counts as extra), or weekly for a role that isn't scheduled (Cleaning Crew), with a history of what you did
 
 EVENT TIMELINES
