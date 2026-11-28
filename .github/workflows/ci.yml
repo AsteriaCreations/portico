@@ -18,7 +18,7 @@ concurrency:
   cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 # Each test suite is split across three runners, each running every third
-# test file (sorted by path) with --parallel. A private repo's runners have
+# test file (sorted by path; scripts/ci-shard-phpunit.php) with --parallel. A private repo's runners have
 # only 2 cores, so sharding is what keeps CI quick there. Pest's own --shard
 # isn't used: it selects tests with one long --filter regex, and combined
 # with --parallel on Linux that exited 1 with every test passing. The
@@ -63,7 +63,7 @@ jobs:
 
       # Paratest ships with Pest: one worker per runner core.
       - name: Run tests
-        run: php artisan test --parallel --compact $(find tests -name '*Test.php' | sort | awk -v n=${{ matrix.shard }} 'NR % 3 == n % 3')
+        run: php scripts/ci-shard-phpunit.php ${{ matrix.shard }} 3 && php artisan test --parallel --compact --configuration=phpunit.shard.xml
 
   tests-result:
     name: Pest (PHP 8.4)
@@ -145,7 +145,7 @@ jobs:
       # In parallel, Laravel gives each worker its own portico_test_N
       # database (root can create them), so the races stay isolated.
       - name: Run tests on MariaDB
-        run: php artisan test --parallel --compact $(find tests -name '*Test.php' | sort | awk -v n=${{ matrix.shard }} 'NR % 3 == n % 3')
+        run: php scripts/ci-shard-phpunit.php ${{ matrix.shard }} 3 && php artisan test --parallel --compact --configuration=phpunit.shard.xml
         env:
           DB_CONNECTION: mariadb
           DB_HOST: 127.0.0.1
