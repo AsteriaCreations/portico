@@ -63,7 +63,7 @@ jobs:
       # directly because `artisan test --parallel` adds a --runner option
       # that --shard's test listing rejects.
       - name: Run tests
-        run: vendor/bin/pest --parallel --shard=${{ matrix.shard }}/3 --display-warnings --display-notices --display-deprecations --display-errors
+        run: vendor/bin/pest --shard=${{ matrix.shard }}/3 --compact; echo "pest exit=$?"; exit 1
 
   tests-result:
     name: Pest (PHP 8.4)
@@ -145,7 +145,7 @@ jobs:
       # In parallel, Laravel gives each worker its own portico_test_N
       # database (root can create them), so the races stay isolated.
       - name: Run tests on MariaDB
-        run: vendor/bin/pest --parallel --shard=${{ matrix.shard }}/3 --display-warnings --display-notices --display-deprecations --display-errors
+        run: vendor/bin/pest --shard=${{ matrix.shard }}/3 --compact; echo "pest exit=$?"; exit 1
         env:
           DB_CONNECTION: mariadb
           DB_HOST: 127.0.0.1
