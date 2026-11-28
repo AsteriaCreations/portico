@@ -12,6 +12,10 @@ releases below could carry small breaking changes in a minor release.
 
 ### Added
 
+- Staffing takes a bulk upload of Setup and extra shifts across many events: download a template,
+  check a file first (a dry run that returns every row's result), then upload. Each row names the
+  event by date (and by name when two share a date), with the same rules as adding one shift by
+  hand. Standard shifts are still set on each event. Manager+.
 - Task lists take a bulk upload: download a template, check a file first (a dry run that returns
   every row's result, including any task area it would create), then upload. Each row is a task for
   an active shift role, with an optional area (created if new), details and sort order. Tasks
