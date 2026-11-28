@@ -16,6 +16,10 @@ releases below could carry small breaking changes in a minor release.
   check a file first (a dry run that returns every row's result), then upload. Each row names the
   event by date (and by name when two share a date), with the same rules as adding one shift by
   hand. Standard shifts are still set on each event. Manager+.
+- An event's Comp List takes a bulk upload, like the Prepay List: download a template, check a
+  file first (a dry run that returns every row's result), then upload. Each row is a member and an
+  active comp reason, with optional notes, and gets the same rules as adding one comp by hand.
+  Manager+.
 
 ### Changed
 
