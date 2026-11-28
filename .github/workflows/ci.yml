@@ -17,11 +17,13 @@ concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
-# Each test suite is split across three runners (Pest --shard), each running
-# its share with --parallel. A private repo's runners have only 2 cores, so
-# sharding is what keeps CI quick there. The rulesets require the
-# un-sharded check names, so a small gate job reports each one, passing only
-# when every shard passed.
+# Each test suite is split across three runners, each running every third
+# test file (sorted by path) with --parallel. A private repo's runners have
+# only 2 cores, so sharding is what keeps CI quick there. Pest's own --shard
+# isn't used: it selects tests with one long --filter regex, and combined
+# with --parallel on Linux that exited 1 with every test passing. The
+# rulesets require the un-sharded check names, so a small gate job reports
+# each one, passing only when every shard passed.
 jobs:
   tests:
     name: Pest (PHP ${{ matrix.php }}, shard ${{ matrix.shard }}/3)
@@ -59,11 +61,9 @@ jobs:
       - name: Generate application key
         run: php artisan key:generate
 
-      # Paratest ships with Pest: one worker per runner core. Pest is called
-      # directly because `artisan test --parallel` adds a --runner option
-      # that --shard's test listing rejects.
+      # Paratest ships with Pest: one worker per runner core.
       - name: Run tests
-        run: set +e; vendor/bin/pest --shard=${{ matrix.shard }}/3 --compact --log-events-text ev.txt; echo "PEST_EXIT=$?"; grep -iE "warning|deprecat|error|risky|notice" ev.txt | grep -v "Passed" | head -20; exit 1
+        run: php artisan test --parallel --compact $(find tests -name '*Test.php' | sort | awk -v n=${{ matrix.shard }} 'NR % 3 == n % 3')
 
   tests-result:
     name: Pest (PHP 8.4)
@@ -145,7 +145,7 @@ jobs:
       # In parallel, Laravel gives each worker its own portico_test_N
       # database (root can create them), so the races stay isolated.
       - name: Run tests on MariaDB
-        run: set +e; vendor/bin/pest --shard=${{ matrix.shard }}/3 --compact --log-events-text ev.txt; echo "PEST_EXIT=$?"; grep -iE "warning|deprecat|error|risky|notice" ev.txt | grep -v "Passed" | head -20; exit 1
+        run: php artisan test --parallel --compact $(find tests -name '*Test.php' | sort | awk -v n=${{ matrix.shard }} 'NR % 3 == n % 3')
         env:
           DB_CONNECTION: mariadb
           DB_HOST: 127.0.0.1
