@@ -10,6 +10,12 @@ releases below could carry small breaking changes in a minor release.
 
 ## [Unreleased]
 
+### Added
+
+- The Skills page takes two bulk uploads, each with a template and a check-only dry run: add skills
+  to the catalog (Manager+), and tag members with active skills (Admin+, like tagging by hand).
+  Tags are only ever added, never removed; existing skills and tags are skipped.
+
 ### Changed
 
 - CI runs the Pest suite in parallel on both SQLite and MariaDB, and a new push to a pull request

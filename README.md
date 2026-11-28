@@ -145,7 +145,7 @@ Seven nested tiers — `Showrunner ⊂ Volunteer ⊂ DM ⊂ Door ⊂ Manager ⊂
 | Grant the monthly free regular subscription (self or gift to a member) † | | | | | ✓ | | ✓ |
 | Create, edit, or delete events (incl. their fees, start/end times, and door-prepay flag), manage volunteer accounts, issue/correct voucher credit | | | | | | ✓ | ✓ |
 | Approve or reject a comp request (Manager+ can see the queue on the event's Comp Requests tab) | | | | | | ✓ | ✓ |
-| Associate a Skill with a member (a Manager can edit the Skills catalog itself, but not tag a member) | | | | | | ✓ | ✓ |
+| Associate a Skill with a member, by hand or by bulk upload (a Manager can edit or bulk-upload the Skills catalog itself, but not tag a member) | | | | | | ✓ | ✓ |
 | Open the Technical page, and Upstream Updates when that flag is on — including "Run update now" once the deploy flag and task are configured | | | | | | ✓ | ✓ |
 | Bulk upload staff accounts or vouchers; set up the kiosk tablet | | | | | | ✓ | ✓ |
 | Change the club's displayed name (Membership Settings) | | | | | | | ✓ |
