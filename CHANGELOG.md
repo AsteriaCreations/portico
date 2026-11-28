@@ -14,6 +14,8 @@ releases below could carry small breaking changes in a minor release.
 
 - CI runs the Pest suite in parallel on both SQLite and MariaDB, and a new push to a pull request
   cancels that branch's older, still-running CI run.
+- Each CI test suite is split across three runners (`pest --shard`). The required check names are
+  unchanged: a gate job under each name passes only when all of its shards do.
 
 ## [1.2.0] — 2026-11-22
 
