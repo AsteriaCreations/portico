@@ -172,6 +172,7 @@ SETTINGS & CONFIGURATION
 DATA IMPORT/EXPORT
 ---------------------
 - Prepay List bulk upload
+- Skills bulk uploads on Skills (each with a template and a check-only dry run): add skills to the catalog (Manager+), and tag members with active skills (Admin+, the same gate as tagging by hand; tags are only ever added); existing skills and tags are skipped
 - Shift bulk upload on Staffing (Manager+, with a template and a check-only dry run): Setup and extra shifts across many events, one per row (event date, plus its name when two share a date); standard shifts stay on each event's Set standard shifts; a shift already on its event is skipped
 - Comp List bulk upload (Manager+, with a template and a check-only dry run) — each row names a member and an active comp reason; anyone already on the list is skipped
 - Staff account bulk upload (Admin+, with a template) — each new account gets a random temporary password, downloaded once as a CSV, and must choose its own at first sign-in; existing emails are skipped

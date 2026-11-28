@@ -12,6 +12,9 @@ releases below could carry small breaking changes in a minor release.
 
 ### Added
 
+- The Skills page takes two bulk uploads, each with a template and a check-only dry run: add skills
+  to the catalog (Manager+), and tag members with active skills (Admin+, like tagging by hand).
+  Tags are only ever added, never removed; existing skills and tags are skipped.
 - Staffing takes a bulk upload of Setup and extra shifts across many events: download a template,
   check a file first (a dry run that returns every row's result), then upload. Each row names the
   event by date (and by name when two share a date), with the same rules as adding one shift by
