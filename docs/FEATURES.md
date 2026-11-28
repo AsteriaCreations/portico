@@ -171,6 +171,7 @@ SETTINGS & CONFIGURATION
 DATA IMPORT/EXPORT
 ---------------------
 - Prepay List bulk upload
+- Comp List bulk upload (Manager+, with a template and a check-only dry run) — each row names a member and an active comp reason; anyone already on the list is skipped
 - Staff account bulk upload (Admin+, with a template) — each new account gets a random temporary password, downloaded once as a CSV, and must choose its own at first sign-in; existing emails are skipped
 - Member status CSV export
 - Bulk-email list CSV export
