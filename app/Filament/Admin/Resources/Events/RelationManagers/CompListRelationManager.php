@@ -11,17 +11,26 @@ use App\Models\CompReason;
 use App\Models\Member;
 use App\Services\AdmissionPolicy;
 use App\Services\CapacityService;
+use App\Services\CompListImporter;
+use App\Services\Concerns\PrunesUploadedFiles;
 use App\Services\PricingService;
+use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\CreateAction;
 use Filament\Actions\EditAction;
+use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
+use Filament\Notifications\Notification;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Schemas\Schema;
+use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
+use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Storage;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
  * A per-event admin-managed comp list — same underlying mechanism as the
@@ -34,6 +43,7 @@ use Filament\Tables\Table;
  */
 class CompListRelationManager extends RelationManager
 {
+    use PrunesUploadedFiles;
     use ReadOnlyWhenEventArchived;
     use RemovesVisits;
     use TranslatesRelationManagerTitle;
@@ -155,6 +165,9 @@ class CompListRelationManager extends RelationManager
                             AttendanceAddOn::create(['attendance_id' => $record->id, ...$row]);
                         }
                     }),
+                $this->downloadCompListTemplateAction(),
+                $this->checkCompListFileAction(),
+                $this->bulkUploadCompListAction(),
             ])
             ->recordActions([
                 EditAction::make(),
@@ -165,5 +178,123 @@ class CompListRelationManager extends RelationManager
                     $this->deleteUnpaidVisitsBulkAction(),
                 ]),
             ]);
+    }
+
+    private function canUploadCompList(): bool
+    {
+        return ! $this->isOwnerEventArchived() && Gate::allows('create', Attendance::class);
+    }
+
+    /**
+     * Generated on the fly rather than a static file, so the columns can
+     * never drift from what CompListImporter actually reads.
+     */
+    protected function downloadCompListTemplateAction(): Action
+    {
+        return Action::make('downloadCompListTemplate')
+            ->label('Download comp list template')
+            ->icon(Heroicon::OutlinedArrowDownTray)
+            ->color('gray')
+            ->visible(fn (): bool => $this->canUploadCompList())
+            ->action(function (): StreamedResponse {
+                $reason = CompReason::where('active', true)->orderBy('sort_order')->value('name') ?? 'Presenter';
+
+                return response()->streamDownload(function () use ($reason): void {
+                    $handle = fopen('php://output', 'w');
+                    fputcsv($handle, ['member_number_or_username', 'comp_reason', 'notes']);
+                    fputcsv($handle, ['jsmith', $reason, 'Teaching the 9pm class']);
+                    fclose($handle);
+                }, 'comp-list-upload-template-'.now()->toDateString().'.csv');
+            });
+    }
+
+    /**
+     * Runs the upload's own rules over a file without adding anyone, and
+     * downloads every row with the member it matched and what's wrong with
+     * it, so a file can be fixed before the real upload.
+     */
+    protected function checkCompListFileAction(): Action
+    {
+        return Action::make('checkCompListFile')
+            ->label('Check comp list file')
+            ->icon(Heroicon::OutlinedClipboardDocumentCheck)
+            ->color('gray')
+            ->modalDescription(__('Nobody is added. You get a results file listing every row, the member it matched, and any problem that would make the upload skip it.'))
+            ->modalSubmitActionLabel(__('Check and download results'))
+            ->schema([$this->compListFileUpload()])
+            ->visible(fn (): bool => $this->canUploadCompList())
+            ->action(function (array $data): StreamedResponse {
+                abort_unless($this->canUploadCompList(), 403);
+
+                $rows = app(CompListImporter::class)->check($this->getOwnerRecord(), Storage::disk('local')->path($data['file']));
+                $this->pruneUploads('comp-list-uploads');
+
+                $problems = collect($rows)->whereNotNull('problem')->count();
+
+                Notification::make()
+                    ->title(__(':ok of :total rows would be added; :problems with problems', [
+                        'ok' => count($rows) - $problems,
+                        'total' => count($rows),
+                        'problems' => $problems,
+                    ]))
+                    ->color($problems ? 'warning' : 'success')
+                    ->send();
+
+                return response()->streamDownload(function () use ($rows): void {
+                    $handle = fopen('php://output', 'w');
+                    fputcsv($handle, ['row', 'member_number_or_username', 'comp_reason', 'notes', 'matched_member', 'result']);
+
+                    foreach ($rows as $row) {
+                        fputcsv($handle, [
+                            $row['row'],
+                            $row['identifier'],
+                            $row['reason'],
+                            $row['notes'],
+                            $row['member'] ?? '',
+                            $row['problem'] ?? 'OK',
+                        ]);
+                    }
+
+                    fclose($handle);
+                }, 'comp-list-upload-check-'.now()->toDateString().'.csv');
+            });
+    }
+
+    protected function bulkUploadCompListAction(): Action
+    {
+        return Action::make('bulkUploadCompList')
+            ->label('Bulk upload comp list')
+            ->icon(Heroicon::OutlinedArrowUpTray)
+            ->modalDescription(__('One member per row, with a comp reason. Anyone already on this event\'s list is skipped, so re-uploading a file never adds anyone twice.'))
+            ->schema([$this->compListFileUpload()])
+            ->visible(fn (): bool => $this->canUploadCompList())
+            ->action(function (array $data): void {
+                abort_unless($this->canUploadCompList(), 403);
+
+                $path = Storage::disk('local')->path($data['file']);
+                $result = app(CompListImporter::class)->import($this->getOwnerRecord(), $path, auth()->user());
+
+                Notification::make()
+                    ->title(__('Added :count to the comp list', ['count' => $result['created']]))
+                    ->body($result['log'] ? implode("\n", $result['log']) : null)
+                    ->success()
+                    ->send();
+
+                $this->pruneUploads('comp-list-uploads');
+            });
+    }
+
+    private function compListFileUpload(): FileUpload
+    {
+        return FileUpload::make('file')
+            ->label('Comp list file')
+            ->disk('local')
+            ->directory('comp-list-uploads')
+            ->acceptedFileTypes([
+                'text/csv',
+                'application/vnd.ms-excel',
+                'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            ])
+            ->required();
     }
 }
