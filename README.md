@@ -141,7 +141,7 @@ Seven nested tiers — `Showrunner ⊂ Volunteer ⊂ DM ⊂ Door ⊂ Manager ⊂
 | Convert tonight's paid entry into a subscription, or remove a paid visit while its register shift is open (each needs a reason and is logged) | | | | | ✓ | ✓ | ✓ |
 | Put a member on the watchlist and set its review date | | | | | ✓ | ✓ | ✓ |
 | Manage an event's admin-run Prepay List (single add or bulk upload) | | | | | ✓ | ✓ | ✓ |
-| Manage an event's admin-run Comp List | | | | | ✓ | ✓ | ✓ |
+| Manage an event's admin-run Comp List (single add or bulk upload) | | | | | ✓ | ✓ | ✓ |
 | Grant the monthly free regular subscription (self or gift to a member) † | | | | | ✓ | | ✓ |
 | Create, edit, or delete events (incl. their fees, start/end times, and door-prepay flag), manage volunteer accounts, issue/correct voucher credit | | | | | | ✓ | ✓ |
 | Approve or reject a comp request (Manager+ can see the queue on the event's Comp Requests tab) | | | | | | ✓ | ✓ |

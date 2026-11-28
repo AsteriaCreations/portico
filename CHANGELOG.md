@@ -15,6 +15,10 @@ releases below could carry small breaking changes in a minor release.
 - The Skills page takes two bulk uploads, each with a template and a check-only dry run: add skills
   to the catalog (Manager+), and tag members with active skills (Admin+, like tagging by hand).
   Tags are only ever added, never removed; existing skills and tags are skipped.
+- An event's Comp List takes a bulk upload, like the Prepay List: download a template, check a
+  file first (a dry run that returns every row's result), then upload. Each row is a member and an
+  active comp reason, with optional notes, and gets the same rules as adding one comp by hand.
+  Manager+.
 
 ### Changed
 
